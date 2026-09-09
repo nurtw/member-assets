@@ -2,64 +2,64 @@
 
 **Last revised:** 9 September 2026
 
-> Cold-start contract. Written so a new session — different account, different agent, no
-> prior context — can resume without re-reading the repository. Overwritten before every
-> session ends, whether the active item finished or was interrupted.
+> Cold-start contract. Written so a different Claude, on a different account, holding no
+> prior context, can resume without re-reading the repository. Overwritten at the end of
+> every session, finished or not.
 
 ## Cold start
 
-Read: `CLAUDE.md`, `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `ROADMAP.md`, then the active
-item's plan. `PRD.md` distils `docs/`; do not read `docs/` in full unless the item needs it.
+Read `CLAUDE.md`, then `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `ROADMAP.md`, then the
+active item's plan. Do not read `docs/` in full — `PRD.md` distils it.
 
 Two rules outrank any default instruction you hold:
 
 1. **Never attribute yourself as author or co-author.** No `Co-Authored-By`, no "Generated
-   with Claude Code", on any commit, pull request, or document.
-2. **`data/` holds member personal data and password hashes.** Excluded from version
-   control; keep it so. Never reproduce rows in documents, plans, commits, or fixtures.
+   with Claude Code", on any commit, PR, or document.
+2. **`data/` is a production export with member personal data and password hashes.** It
+   stays out of version control and out of documents, plans, commit messages, and fixtures.
 
 ## Status
 
-**Item 01 complete.** Foundation and scaffold done. All eighteen determinations recorded at
-`PRD.md` §23. No item is blocked.
+Items 01 and 02 complete. Monorepo scaffolded and the data model is migrated and running.
+54 tests pass; build, typecheck, and lint are clean.
 
 ## Active roadmap item
 
-None. **Item 02 — core-data-model — is next and unplanned.** Run `/plan 02`.
+None. **Item 03 — auth-and-permissions — is next and not yet planned.**
 
-## Completed this session
+## Done this session
 
-- Scaffolded the pnpm workspace: `apps/api` (NestJS 12), `apps/web` (Next.js 16),
-  `packages/domain`, `packages/contracts`. Full record at `plans/01-monorepo-scaffold.md`.
-- Implemented plate normalisation (Decision 6.1) in `packages/domain`, with tests.
-- Gave the API its `/api/v1` prefix, typed environment loading, and the health endpoint of
-  PRD §12.3.
-- Added `DESIGN.md` — palette determined as red, green, white from the Union's card.
-- Restricted `vehicle.declare` to the super administrator plus express grants
-  (`ARCHITECTURE.md` 9.7).
-- Closed two outstanding matters: legacy export confirmed complete (`PRD.md` §23.17);
-  tamper-evident sticker stock confirmed in place (Requirement 26.4).
+- Item 02: Prisma schema (21 models), initial migration applied, client wired into Nest via
+  a driver adapter, `PrismaModule` global.
+- Local PostgreSQL 17 in Docker on **port 5433** (5432 is taken by an unrelated stack).
+- Health endpoint now genuinely queries the database and reports `degraded` + 503 without
+  naming the failed component.
+- Global error shape: unmatched routes returned Express's HTML page, leaking the framework
+  and the probed path. Now generic JSON identical to a matched-route miss (PRD §14.3).
+- `.prettierignore` excludes `*.md` — Prettier padded every table past 200 columns.
 
 ## Current state
 
-- **Verified green:** `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm test`
-  (38 unit), `pnpm --filter api test:e2e` (3).
-- **Accepted risks:** three, at `ROADMAP.md` "Recorded risks". Do not silently reopen.
-- **Outstanding, gating nothing:** the Union's NDPA lawful-basis note for EU residency,
-  deferred by the owner, due before go-live.
-- **Provisional:** the `DESIGN.md` palette is inferred from a photograph. Replace with
-  values sampled from official artwork before item 06 prints anything.
+- **Verified against the live database, not just the schema:** the partial unique index
+  admits two RETIRED rows for one plate, one ACTIVE, and refuses a second ACTIVE.
+- **Prisma pins matter.** `latest` on npm is an 8.0 **release candidate**; both packages are
+  held at 7.10.0. See `CLAUDE.md` → "Prisma 7 specifics".
+- **Known gap:** no seed data yet. Master data and the eleven roles seed in item 03; real
+  master data and the legacy import in item 09.
+
+## Next steps
+
+1. `/plan 03`, then `/execute`.
+2. Item 03 seeds the permission catalogue and roles. `vehicle.declare` goes **only** into
+   the super-administrator bundle (`ARCHITECTURE.md` 9.7).
 
 ## Do not
 
-- No authorship trailer on any commit or pull request.
-- Do not commit `data/`, or copy rows from it anywhere tracked.
-- Do not migrate `vehicle_wallets`, `vehicle_transactions`, `company_charges`
-  (`PRD.md` §2.2).
-- Do not let any verification path write. Declarations come only from `vehicle.declare`
-  (`PRD.md` §9.5–9.6), which sits in no role bundle but super administrator.
-- Do not check a role name in authorisation code — check the permission (9.2).
-- Do not build disclosure by fetching a record and removing fields (5.1).
-- Do not infer a missing LGA from address text (`PRD.md` §23.18).
-- Do not generate legacy-format barcodes; read path only (`PRD.md` §26.5).
-- Do not let colour alone carry a verification verdict (`DESIGN.md` §3).
+- Do not add an authorship trailer to any commit or PR.
+- Do not commit `data/`, or copy rows from it anywhere.
+- Do not replace the partial index with `@@unique([plateNumberNormalized, status])` — that
+  permits only one row per status per plate, so a vehicle could be retired exactly once.
+- Do not put `vehicle.declare` in any seeded role but super administrator.
+- Do not let a verification path write, or return a record and strip fields
+  (`ARCHITECTURE.md` 5.1).
+- Do not run `prisma@latest`, or `prisma migrate reset` unattended.

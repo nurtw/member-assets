@@ -1,0 +1,33 @@
+# Local development database.
+#
+# Production is Neon (EU region) per ARCHITECTURE.md Decision 10.4. This exists so
+# the schema and migrations are verifiable locally without provisioning cloud
+# infrastructure, and so a new contributor can run the stack from a clean
+# checkout with one command.
+#
+# This file is for development only. It is never the production deployment.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: nurtw-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nurtw
+      POSTGRES_PASSWORD: nurtw_local_dev
+      POSTGRES_DB: nurtw
+    ports:
+      # Host port 5433, not 5432. The default is occupied by an unrelated stack on
+      # this machine, and a shared default port is how two projects end up
+      # silently writing to one another's database.
+      - '5433:5432'
+    volumes:
+      - nurtw-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nurtw -d nurtw']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  nurtw-pgdata:

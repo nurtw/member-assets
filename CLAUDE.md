@@ -255,7 +255,52 @@ pnpm --filter @nurtw/domain exec vitest run -t "is idempotent"
 pnpm --filter @nurtw/domain exec vitest src/plate-number.test.ts
 ```
 
-Prisma commands arrive with roadmap item 02; the database is not yet wired.
+### Database
+
+Local PostgreSQL 17 runs in Docker on **port 5433**, not 5432 — the default is taken by
+an unrelated stack on the maintainer's machine, and a shared default port is how two
+projects end up writing to one another's database.
+
+```bash
+docker compose up -d                  # start; healthcheck must go green first
+pnpm --filter api db:migrate          # create + apply a migration (dev)
+pnpm --filter api db:deploy           # apply pending migrations (production)
+pnpm --filter api db:generate         # regenerate the client after a schema edit
+pnpm --filter api db:status           # what is applied vs pending
+pnpm --filter api db:studio           # browse data
+```
+
+`apps/api/.env` is required — the API refuses to start without `DATABASE_URL`, by design.
+Copy `.env.example`.
+
+### Prisma 7 specifics that will confuse you
+
+- **`url` is no longer in `schema.prisma`.** Prisma 7 moved it to `prisma.config.ts` for
+  migrate/introspect, and the runtime client takes a **driver adapter** (`@prisma/adapter-pg`)
+  instead. See `src/prisma/prisma.service.ts`.
+- **`prisma.config.ts` must `import 'dotenv/config'`** — Prisma 7 stops loading `.env`
+  implicitly once a config file exists.
+- **`latest` on npm is an 8.0 release candidate.** Both `prisma` and `@prisma/client` are
+  pinned to **7.10.0**. Do not run `prisma@latest`; it will pull an RC and desync the CLI
+  from the client.
+- **`--skip-generate` was removed** from `migrate dev`.
+- **`prisma migrate reset` is gated** behind an explicit-consent prompt. Unattended, drop
+  the container instead: `docker compose down -v && docker compose up -d`.
+
+### The partial index Prisma does not know about
+
+PRD §9.2 allows at most one **ACTIVE** declaration per normalised plate, while history
+stays open. That is a *partial* unique index, which Prisma cannot express in the schema, so
+it is raw SQL appended to the init migration:
+
+```sql
+CREATE UNIQUE INDEX "vehicle_one_active_declaration_per_plate"
+  ON "vehicle" ("plate_number_normalized") WHERE "status" = 'ACTIVE';
+```
+
+**Preserve it across future migrations.** A plain `@@unique([plateNumberNormalized, status])`
+is not equivalent and is wrong — it permits only one row per status per plate, so a vehicle
+could be retired exactly once and never again.
 
 ### Notes that will bite you otherwise
 

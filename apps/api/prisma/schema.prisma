@@ -1,0 +1,931 @@
+// NURTW Membership and Vehicle Verification System — data model.
+//
+// ARCHITECTURE.md §2: this schema is the single source of truth, and the
+// migration history is the durable record of structural change.
+//
+// Column names follow the canonical catalogue at PRD §24 verbatim, via @map.
+// TypeScript-side fields stay camelCase. The database names are contractual —
+// they are the shared vocabulary with the Union — so they are not re-spelled to
+// suit an ORM convention.
+//
+// Two rules govern what becomes an enum:
+//   * Record lifecycles are enums. They are closed sets fixed by the PRD, and a
+//     boolean cannot express the difference between never-issued, replaced, and
+//     reported-lost — yet those must produce different verification outcomes.
+//   * Master data is NEVER an enum. PRD §23.4 promised the Union it could change
+//     designations, branches, units, categories, and their lists without a
+//     deployment. An enum would silently break that promise.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7 removed `url` from the datasource block. The connection string for
+// migration and introspection now lives in prisma.config.ts, and the runtime
+// client receives a driver adapter instead. See ARCHITECTURE.md Decision 12.1 —
+// the connection is environment configuration and never appears in code.
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycles (PRD §8, §9, §10, §12.1)
+// ---------------------------------------------------------------------------
+
+/// PRD §23.1 — Council -> Zone -> Branch -> Unit -> Member.
+enum OrganisationLevel {
+  COUNCIL
+  ZONE
+  BRANCH
+  UNIT
+}
+
+/// PRD §5 — an active member is approved and not suspended, cancelled, or
+/// otherwise inactive.
+enum MemberStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+/// PRD §7 — application review and approval.
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+/// PRD §8 — nine states.
+enum CardStatus {
+  DRAFT
+  PENDING_APPROVAL
+  ISSUED
+  ACTIVE
+  SUSPENDED
+  LOST
+  REPLACED
+  EXPIRED
+  CANCELLED
+}
+
+/// PRD §10 — nine states. DAMAGED is present here and absent from CardStatus.
+enum StickerStatus {
+  DRAFT
+  ISSUED
+  ACTIVE
+  SUSPENDED
+  LOST
+  REPLACED
+  DAMAGED
+  EXPIRED
+  CANCELLED
+}
+
+/// PRD §9 — six states.
+enum DeclarationStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  RETIRED
+  DISPUTED
+  ARCHIVED
+}
+
+/// PRD §12.1 — external client lifecycle.
+enum ApiClientStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+  REVOKED
+}
+
+/// PRD §26.4 — every verification records which identifier scheme resolved it,
+/// so the Union can quantify legacy exposure over time and revisit the
+/// equivalence determination on evidence rather than argument.
+enum IdentifierScheme {
+  SIGNED
+  LEGACY
+}
+
+/// Stored media. Held in object storage, never in the database and never in the
+/// repository (ARCHITECTURE.md Decision 10.2). Rows here hold references only.
+enum MediaKind {
+  PASSPORT_PHOTOGRAPH
+  MEMBER_SIGNATURE
+  OFFICER_SIGNATURE
+  COLLATERAL_EVIDENCE
+}
+
+// ---------------------------------------------------------------------------
+// Organisation (PRD §6)
+// ---------------------------------------------------------------------------
+
+/// One self-referencing table rather than four.
+///
+/// ARCHITECTURE.md Decision 9.4 requires every permission assignment to carry an
+/// organisational scope, and every authorisation check to ask "does the subject
+/// record fall within the actor's scope". Against one table with a materialised
+/// path that is a prefix match; against four tables it is a four-way union that
+/// grows with every level the Union adds.
+///
+/// PRD Requirement 6.1 — every level exists in the model even where the Union
+/// does not presently operate one, so a default node is seeded rather than the
+/// level being omitted.
+model Organisation {
+  id       String            @id @default(uuid()) @db.Uuid
+  name     String
+  level    OrganisationLevel
+  parentId String?           @map("parent_id") @db.Uuid
+
+  /// Materialised ancestry, e.g. "/<council>/<zone>/<branch>/". Enables a scope
+  /// check to be a single indexed prefix comparison. Maintained on write; a
+  /// subtree move must rewrite descendants.
+  path String
+
+  /// PRD §23.2 — for a COUNCIL this is the issuing council's state, which is
+  /// what the membership card prints. It is distinct from a member's state of
+  /// origin and must never be conflated with it.
+  stateName String? @map("state_name")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  parent   Organisation?  @relation("OrganisationHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children Organisation[] @relation("OrganisationHierarchy")
+
+  members            Member[]
+  vehiclesByBranch   Vehicle[]             @relation("VehicleBranch")
+  vehiclesByUnit     Vehicle[]             @relation("VehicleUnit")
+  roleAssignments    UserRoleAssignment[]
+  permissionGrants   UserPermissionGrant[]
+  auditEvents        AuditEvent[]
+
+  @@index([parentId])
+  @@index([path])
+  @@index([level])
+  @@map("organisation")
+}
+
+// ---------------------------------------------------------------------------
+// Master data (PRD §23.4) — administrable tables, never enums
+// ---------------------------------------------------------------------------
+
+/// Vehicle categories. Seeded from the legacy export and thereafter corrected and
+/// extended by the Union through the interface.
+///
+/// PRD §23.17 — the seeded distribution is an opening baseline reflecting what
+/// the previous system held, not a complete picture of the Union's fleet.
+model VehicleCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  label       String
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  vehicles Vehicle[]
+
+  @@map("vehicle_category")
+}
+
+/// Member designations — the role printed on the membership card.
+model Designation {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  label     String
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  members Member[]
+
+  @@map("designation")
+}
+
+/// Local government areas.
+///
+/// PRD §23.18 — approximately 1,908 of 2,841 legacy vehicles carry no LGA. They
+/// are imported with the field blank and flagged for operational cleanup. The
+/// relation is therefore optional throughout, and the migration must never infer
+/// a value from address text: an inferred value would be indistinguishable from
+/// a recorded one.
+model Lga {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  stateName String   @map("state_name")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  memberContacts MemberContact[]
+  nextOfKin      NextOfKin[]
+
+  @@index([stateName])
+  @@map("lga")
+}
+
+// ---------------------------------------------------------------------------
+// Media (ARCHITECTURE.md Decision 10.2)
+// ---------------------------------------------------------------------------
+
+/// Object-storage reference. The bytes are never held here; access is by
+/// time-limited signed URL issued at read time.
+model MediaAsset {
+  id          String    @id @default(uuid()) @db.Uuid
+  kind        MediaKind
+  storageKey  String    @unique @map("storage_key")
+  contentType String    @map("content_type")
+  byteSize    Int       @map("byte_size")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  passportOf  Member? @relation("MemberPassportPhoto")
+  signatureOf Member? @relation("MemberSignature")
+
+  @@map("media_asset")
+}
+
+// ---------------------------------------------------------------------------
+// Member (PRD §7) — card-display data
+// ---------------------------------------------------------------------------
+
+/// Card-display data only.
+///
+/// ARCHITECTURE.md Decision 10.1 — sensitive registration data lives in separate
+/// tables, mediated by the member-profile module. The separation is structural,
+/// not a matter of query discipline: a verification path that joins this table
+/// cannot reach a telephone number or a guarantor, because they are not here.
+///
+/// PRD Requirement 7.1 and acceptance criterion 12 both depend on that.
+model Member {
+  id               String       @id @default(uuid()) @db.Uuid
+  membershipNumber String       @unique @map("membership_number")
+  status           MemberStatus @default(PENDING)
+
+  surname    String
+  firstName  String  @map("first_name")
+  middleName String? @map("middle_name")
+
+  organisationId String @map("organisation_id") @db.Uuid
+  designationId  String? @map("designation_id") @db.Uuid
+
+  passportPhotoId String? @unique @map("passport_photo_id") @db.Uuid
+  signatureId     String? @unique @map("signature_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organisation  Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  designation   Designation? @relation(fields: [designationId], references: [id], onDelete: Restrict)
+  passportPhoto MediaAsset?  @relation("MemberPassportPhoto", fields: [passportPhotoId], references: [id])
+  signature     MediaAsset?  @relation("MemberSignature", fields: [signatureId], references: [id])
+
+  contact     MemberContact?
+  nextOfKin   NextOfKin?
+  guarantor   Guarantor?
+  application MembershipApplication?
+  cards       Card[]
+  vehicles    Vehicle[]
+
+  @@index([organisationId])
+  @@index([status])
+  @@map("member")
+}
+
+/// Sensitive member data — telephone, residential address, state of origin.
+///
+/// Deliberately a separate table (Decision 10.1). Never exposed through any
+/// verification path at any disclosure level (PRD acceptance criterion 12).
+model MemberContact {
+  id       String @id @default(uuid()) @db.Uuid
+  memberId String @unique @map("member_id") @db.Uuid
+
+  phone              String
+  residentialAddress String  @map("residential_address")
+  area               String?
+  townCity           String? @map("town_city")
+  residentialLgaId   String? @map("residential_lga_id") @db.Uuid
+  stateOfOrigin      String? @map("state_of_origin")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  member         Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  residentialLga Lga?   @relation(fields: [residentialLgaId], references: [id], onDelete: Restrict)
+
+  @@map("member_contact")
+}
+
+/// PRD §7 — next of kin. Sensitive; never reachable through verification.
+model NextOfKin {
+  id       String @id @default(uuid()) @db.Uuid
+  memberId String @unique @map("member_id") @db.Uuid
+
+  surname    String
+  firstName  String  @map("first_name")
+  middleName String? @map("middle_name")
+
+  address       String
+  area          String?
+  townCity      String? @map("town_city")
+  lgaId         String? @map("lga_id") @db.Uuid
+  stateOfOrigin String? @map("state_of_origin")
+  phone         String
+  occupation    String?
+
+  signatureDate DateTime? @map("signature_date")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  lga    Lga?   @relation(fields: [lgaId], references: [id], onDelete: Restrict)
+
+  @@map("next_of_kin")
+}
+
+/// PRD §7 — guarantor, including the collateral response.
+///
+/// PRD Requirement 7.1 lists collateral among the data that must never surface
+/// through verification.
+model Guarantor {
+  id       String @id @default(uuid()) @db.Uuid
+  memberId String @unique @map("member_id") @db.Uuid
+
+  surname    String
+  firstName  String  @map("first_name")
+  middleName String? @map("middle_name")
+
+  address                String
+  area                   String?
+  townCity               String? @map("town_city")
+  relationshipToApplicant String @map("relationship_to_applicant")
+  phone                  String
+  occupation             String?
+
+  hasCollateral      Boolean? @map("has_collateral")
+  collateralDetails  String?  @map("collateral_details")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("guarantor")
+}
+
+/// PRD §7 — application, review, and approval, with the decision history
+/// retrievable (acceptance criterion 1).
+model MembershipApplication {
+  id                String            @id @default(uuid()) @db.Uuid
+  applicationNumber String            @unique @map("application_number")
+  status            ApplicationStatus @default(DRAFT)
+
+  memberId String? @unique @map("member_id") @db.Uuid
+
+  submittedAt     DateTime? @map("submitted_at")
+  reviewedByUserId String?  @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt      DateTime? @map("reviewed_at")
+  rejectionReason String?   @map("rejection_reason")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  member         Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  reviewedByUser User?   @relation(fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("membership_application")
+}
+
+// ---------------------------------------------------------------------------
+// Card (PRD §8)
+// ---------------------------------------------------------------------------
+
+model Card {
+  id         String     @id @default(uuid()) @db.Uuid
+  cardNumber String     @unique @map("card_number")
+  memberId   String     @map("member_id") @db.Uuid
+  status     CardStatus @default(DRAFT)
+
+  issueDate  DateTime? @map("issue_date")
+  expiryDate DateTime? @map("expiry_date")
+
+  /// PRD §23.5 — validity is configurable per template, so a redesign or a change
+  /// of renewal policy does not invalidate cards already issued.
+  templateVersion String @map("template_version")
+
+  /// PRD §8 Requirement 8.1 — a replacement preserves its relationship to the
+  /// card it supersedes (acceptance criterion 2). History is never overwritten.
+  replacementOfCardId String? @unique @map("replacement_of_card_id") @db.Uuid
+
+  issuedByUserId    String? @map("issued_by_user_id") @db.Uuid
+  approvedByUserId  String? @map("approved_by_user_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  member           Member  @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  replacementOf    Card?   @relation("CardReplacement", fields: [replacementOfCardId], references: [id])
+  replacedBy       Card?   @relation("CardReplacement")
+  issuedByUser     User?   @relation("CardIssuedBy", fields: [issuedByUserId], references: [id], onDelete: SetNull)
+  approvedByUser   User?   @relation("CardApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([memberId])
+  @@index([status])
+  @@map("card")
+}
+
+// ---------------------------------------------------------------------------
+// Vehicle (PRD §9)
+// ---------------------------------------------------------------------------
+
+model Vehicle {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// PRD Requirement 9.1 — stored twice. The normalised column carries the
+  /// uniqueness constraint and is the ONLY field used for lookup or matching.
+  /// The display column preserves the value exactly as entered.
+  plateNumberNormalized String @map("plate_number_normalized")
+  plateNumberDisplay    String @map("plate_number_display")
+
+  vehicleCategoryId String? @map("vehicle_category_id") @db.Uuid
+  make              String?
+  model             String?
+  color             String?
+
+  /// PRD Requirement 9.4 — restricted. Excluded from every disclosure profile and
+  /// from default query selections. Never exposed through an external API.
+  chassisVinRestricted String? @map("chassis_vin_restricted")
+
+  declaredByMemberId String?           @map("declared_by_member_id") @db.Uuid
+  branchId           String?           @map("branch_id") @db.Uuid
+  unitId             String?           @map("unit_id") @db.Uuid
+  status             DeclarationStatus @default(PENDING)
+  declaredAt         DateTime          @default(now()) @map("declared_at")
+
+  /// PRD §9.5 — declaration is a manual, permissioned act. The migration is the
+  /// sole exception and marks its records so they remain distinguishable in the
+  /// audit trail from an operator declaration.
+  isLegacyImport Boolean @map("is_legacy_import") @default(false)
+
+  /// Internal operational notes. PRD §9.1 — never exposed through verification.
+  notes String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  vehicleCategory  VehicleCategory? @relation(fields: [vehicleCategoryId], references: [id], onDelete: Restrict)
+  declaredByMember Member?          @relation(fields: [declaredByMemberId], references: [id], onDelete: Restrict)
+  branch           Organisation?    @relation("VehicleBranch", fields: [branchId], references: [id], onDelete: Restrict)
+  unit             Organisation?    @relation("VehicleUnit", fields: [unitId], references: [id], onDelete: Restrict)
+
+  stickers Sticker[]
+
+  /// PRD Requirement 9.2 — at most one ACTIVE declaration per normalised plate.
+  ///
+  /// Enforced by a PARTIAL unique index, added as raw SQL in the migration
+  /// because Prisma cannot express one in the schema:
+  ///
+  ///     CREATE UNIQUE INDEX ... ON vehicle (plate_number_normalized)
+  ///     WHERE status = 'ACTIVE'
+  ///
+  /// A plain `@@unique([plateNumberNormalized, status])` is WRONG here and was
+  /// the first attempt. It permits only one row per status per plate, so a
+  /// vehicle could be retired exactly once and never again — which contradicts
+  /// PRD §4.8, history is preserved. Declared, retired, re-declared, retired
+  /// again is a legitimate sequence and must remain possible.
+  @@index([plateNumberNormalized])
+  @@index([status])
+  @@index([declaredByMemberId])
+  @@map("vehicle")
+}
+
+// ---------------------------------------------------------------------------
+// Sticker (PRD §10, §26)
+// ---------------------------------------------------------------------------
+
+model Sticker {
+  id        String        @id @default(uuid()) @db.Uuid
+  vehicleId String        @map("vehicle_id") @db.Uuid
+  status    StickerStatus @default(DRAFT)
+
+  /// PRD §26.1–26.2 — opaque, non-sequential, carrying no personal data and no
+  /// derivable relationship to plate or member. The QR payload additionally
+  /// carries a truncated HMAC and the key id; the signature itself is not stored,
+  /// it is recomputed and compared.
+  stickerQrId String @unique @map("sticker_qr_id")
+
+  /// Identifies which signing key minted this sticker, so the secret can be
+  /// rotated without invalidating articles already issued (PRD §26.2).
+  signingKeyId String? @map("signing_key_id")
+
+  /// PRD §26.4 — the legacy scheme, kept in a DISTINCT column from the signed
+  /// identifier. Read-only: the issuance path has no route capable of producing
+  /// one (Requirement 26.5). The legacy value is a millisecond epoch timestamp
+  /// and is forgeable by inspection; the owner accepted this to preserve the
+  /// 2,408 stickers already in the field.
+  legacyBarcode String? @unique @map("legacy_barcode")
+
+  /// Plate recorded at issuance. PRD §26.3 — binding the sticker to a plate is
+  /// what detects a genuine sticker presented against another vehicle, which a
+  /// signature alone cannot do.
+  plateNumberAtIssue String @map("plate_number_at_issue")
+
+  issueDate  DateTime? @map("issue_date")
+  expiryDate DateTime? @map("expiry_date")
+
+  templateVersion String @map("template_version")
+
+  replacementOfStickerId String? @unique @map("replacement_of_sticker_id") @db.Uuid
+  issuedByUserId         String? @map("issued_by_user_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  replacementOf Sticker? @relation("StickerReplacement", fields: [replacementOfStickerId], references: [id])
+  replacedBy    Sticker? @relation("StickerReplacement")
+  issuedByUser  User?    @relation(fields: [issuedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId])
+  @@index([status])
+  @@map("sticker")
+}
+
+// ---------------------------------------------------------------------------
+// Users, roles, permissions (ARCHITECTURE.md Decisions 9.2–9.9)
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String  @id @default(uuid()) @db.Uuid
+  email        String  @unique
+  fullName     String  @map("full_name")
+  passwordHash String  @map("password_hash")
+
+  /// PRD Requirement 17.1 — multi-factor authentication is required for
+  /// privileged roles. The mechanism is pluggable (Decision 9.3).
+  mfaSecret       String?  @map("mfa_secret")
+  mfaEnabledAt    DateTime? @map("mfa_enabled_at")
+
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  roleAssignments      UserRoleAssignment[]
+  permissionGrants     UserPermissionGrant[]     @relation("GrantSubject")
+  grantsIssued         UserPermissionGrant[]     @relation("GrantIssuer")
+  permissionRevocations UserPermissionRevocation[] @relation("RevocationSubject")
+  revocationsIssued    UserPermissionRevocation[] @relation("RevocationIssuer")
+  applicationsReviewed MembershipApplication[]
+  cardsIssued          Card[]                    @relation("CardIssuedBy")
+  cardsApproved        Card[]                    @relation("CardApprovedBy")
+  stickersIssued       Sticker[]
+  auditEvents          AuditEvent[]
+
+  @@map("user")
+}
+
+/// The permission catalogue.
+///
+/// ARCHITECTURE.md Decision 9.2 — a seeded table, not a TypeScript enumeration,
+/// so a permission may be introduced without a schema migration. Code asks
+/// whether the actor holds `vehicle.declare`; it never asks whether the actor is
+/// a Vehicle-Record Officer.
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  /// `resource.action`, e.g. `vehicle.declare`, `card.issue`, `audit.export`.
+  code        String   @unique
+  description String
+
+  /// Decision 9.7.3 — step-up re-authentication is built and available per
+  /// permission. It is NOT presently enabled for `vehicle.declare`.
+  requiresStepUp Boolean @default(false) @map("requires_step_up")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  rolePermissions RolePermission[]
+  grants          UserPermissionGrant[]
+  revocations     UserPermissionRevocation[]
+
+  @@map("permission")
+}
+
+/// Roles are administrative bundles. They are never consulted in an
+/// authorisation decision (Decision 9.2).
+model Role {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique
+  label       String
+  description String?
+
+  /// Decision 9.5 — the eleven roles of PRD §16 are seeded as system roles and
+  /// cannot be edited or deleted, so a misconfiguration cannot silently broaden
+  /// a role the Union believes it understands. A super administrator may compose
+  /// additional roles from the catalogue.
+  isSystem Boolean @default(false) @map("is_system")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  permissions RolePermission[]
+  assignments UserRoleAssignment[]
+
+  @@map("role")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permission")
+}
+
+/// A role held by a user, within an organisational scope.
+///
+/// Decision 9.4 — the scope is a node of the hierarchy, or the root for
+/// Union-wide authority. Without it the eleven roles collapse into a single
+/// privilege level the moment a second branch exists.
+model UserRoleAssignment {
+  id             String @id @default(uuid()) @db.Uuid
+  userId         String @map("user_id") @db.Uuid
+  roleId         String @map("role_id") @db.Uuid
+  organisationId String @map("organisation_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, roleId, organisationId])
+  @@index([userId])
+  @@map("user_role_assignment")
+}
+
+/// An individual permission switched ON for a user who does not hold it by role.
+///
+/// Decision 9.7 — `vehicle.declare` belongs to no system role bundle other than
+/// super administrator, so this table is load-bearing for declaration work. That
+/// is the intended effect: the Union can answer "who may declare a vehicle" as an
+/// enumerable list of named grants rather than an inference across role
+/// membership (Decision 9.7.1).
+model UserPermissionGrant {
+  id             String @id @default(uuid()) @db.Uuid
+  userId         String @map("user_id") @db.Uuid
+  permissionId   String @map("permission_id") @db.Uuid
+  organisationId String @map("organisation_id") @db.Uuid
+
+  grantedByUserId String   @map("granted_by_user_id") @db.Uuid
+  reason          String
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user         User         @relation("GrantSubject", fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission   @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  grantedBy    User         @relation("GrantIssuer", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, permissionId, organisationId])
+  @@index([permissionId])
+  @@map("user_permission_grant")
+}
+
+/// An individual permission switched OFF for a user who does hold it by role.
+///
+/// Decision 9.3 — REVOCATION ALWAYS WINS. Where a permission is both granted and
+/// revoked for the same user and scope, it is withheld. Ambiguity in an
+/// access-control system must resolve towards denial.
+model UserPermissionRevocation {
+  id             String @id @default(uuid()) @db.Uuid
+  userId         String @map("user_id") @db.Uuid
+  permissionId   String @map("permission_id") @db.Uuid
+  organisationId String @map("organisation_id") @db.Uuid
+
+  revokedByUserId String   @map("revoked_by_user_id") @db.Uuid
+  reason          String
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user       User       @relation("RevocationSubject", fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  revokedBy  User       @relation("RevocationIssuer", fields: [revokedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, permissionId, organisationId])
+  @@index([permissionId])
+  @@map("user_permission_revocation")
+}
+
+// ---------------------------------------------------------------------------
+// External API clients and disclosure (PRD §12, §15)
+// ---------------------------------------------------------------------------
+
+model ApiClient {
+  id               String          @id @default(uuid()) @db.Uuid
+  organisationName String          @map("organisation_name")
+  status           ApiClientStatus @default(PENDING)
+
+  /// PRD §12.1 — business purpose, sponsor, and technical contact are part of the
+  /// approval record, not optional metadata.
+  businessPurpose  String  @map("business_purpose")
+  sponsorUserId    String? @map("sponsor_user_id") @db.Uuid
+  technicalContact String  @map("technical_contact")
+
+  /// Decision 5.2 — the profile is a row, so admitting a new class of external
+  /// organisation is configuration rather than a release.
+  disclosureProfileId String? @map("disclosure_profile_id") @db.Uuid
+
+  /// PRD §12.1 — allowed source ranges where practical.
+  allowedIpRanges String[] @map("allowed_ip_ranges")
+
+  rateLimitProfile String? @map("rate_limit_profile")
+  dailyQuota       Int?    @map("daily_quota")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  disclosureProfile DisclosureProfile? @relation(fields: [disclosureProfileId], references: [id], onDelete: Restrict)
+  tokens            ApiToken[]
+  scopes            ApiClientScope[]
+  requests          ApiRequestLog[]
+
+  @@index([status])
+  @@map("api_client")
+}
+
+/// PRD Requirement 12.1–12.2 — tokens are stored as hashes. The secret is shown
+/// once, at creation or rotation, and never appears in a URL, in browser-delivered
+/// code, in a QR payload, in a log, or in an error message.
+model ApiToken {
+  id        String @id @default(uuid()) @db.Uuid
+  clientId  String @map("client_id") @db.Uuid
+
+  tokenHash String  @unique @map("token_hash")
+  /// Short non-secret prefix, so a token can be identified in an audit trail
+  /// without storing anything that could authenticate a request.
+  tokenPrefix String @map("token_prefix")
+
+  /// PRD Requirement 12.6 — 90 days, determined at §23.12.
+  expiresAt DateTime  @map("expires_at")
+  /// Revocation is a state change and takes effect immediately, without a
+  /// redeployment (PRD acceptance criterion 11).
+  revokedAt DateTime? @map("revoked_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  client ApiClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("api_token")
+}
+
+/// Scopes held by a client. A join table rather than an array column so that a
+/// scope grant can be indexed, audited, and revoked individually.
+model ApiClientScope {
+  clientId String @map("client_id") @db.Uuid
+  scope    String
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  client ApiClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@id([clientId, scope])
+  @@map("api_client_scope")
+}
+
+/// PRD §15, Decision 5.2 — disclosure profiles are configuration data.
+///
+/// Decision 5.1 — responses are built by PROJECTION through the permitted field
+/// set below, never by fetching a record and removing fields. Redaction fails
+/// unsafely: a column added later would be disclosed by default.
+model DisclosureProfile {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique
+  label       String
+  description String?
+
+  isSystem Boolean @default(false) @map("is_system")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  fields  DisclosureField[]
+  clients ApiClient[]
+
+  @@map("disclosure_profile")
+}
+
+/// A field a profile is permitted to disclose. Absence means withheld; there is
+/// no implicit inclusion.
+model DisclosureField {
+  profileId String @map("profile_id") @db.Uuid
+  /// Dotted path of the permitted field, e.g. `vehicle.vehicle_category`.
+  fieldPath String @map("field_path")
+
+  profile DisclosureProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, fieldPath])
+  @@map("disclosure_field")
+}
+
+/// PRD §24 `api_request` — usage and audit for external calls.
+model ApiRequestLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  requestId   String   @map("request_id")
+  clientId    String?  @map("client_id") @db.Uuid
+  endpoint    String
+  scope       String?
+  /// Coarse outcome class. PRD Requirement 14.3 — the caller receives a generic
+  /// negative; the distinction is recorded here and withheld from them.
+  resultClass String   @map("result_class")
+  statusCode  Int      @map("status_code")
+  rateLimited Boolean  @default(false) @map("rate_limited")
+
+  /// PRD §26.4 — which identifier scheme resolved the lookup, so legacy exposure
+  /// is measurable rather than assumed.
+  identifierScheme IdentifierScheme? @map("identifier_scheme")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  client ApiClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([clientId, createdAt])
+  @@index([requestId])
+  @@map("api_request_log")
+}
+
+// ---------------------------------------------------------------------------
+// Audit (PRD §18, ARCHITECTURE.md Decisions 7.1–7.3)
+// ---------------------------------------------------------------------------
+
+/// Append-only. Decision 7.2 — no application code path updates or deletes a row
+/// here. Retention is enforced by an administrative process operating outside the
+/// application's write path.
+///
+/// Decision 7.3 — rows record actor, action, subject, before and after values for
+/// material changes, timestamp, request id, and the stated reason for an override.
+/// They must NOT record token values, images, signatures, or guarantor details.
+model AuditEvent {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// `resource.action`, matching the permission catalogue's convention. A string
+  /// rather than an enum: the set grows with every module, and an enum would make
+  /// adding an audited action a schema migration.
+  action String
+
+  actorUserId    String? @map("actor_user_id") @db.Uuid
+  actorApiClientId String? @map("actor_api_client_id") @db.Uuid
+  organisationId String? @map("organisation_id") @db.Uuid
+
+  /// Subject of the action, e.g. "vehicle" and its id.
+  subjectType String  @map("subject_type")
+  subjectId   String? @map("subject_id")
+
+  /// Before and after values for material changes (Decision 7.3). Json here is
+  /// deliberate: the shape varies by subject, and enumerating every column of
+  /// every table would couple the audit trail to each schema change.
+  beforeValue Json? @map("before_value")
+  afterValue  Json? @map("after_value")
+
+  /// Required for manual overrides, corrections, replacements, and suspensions
+  /// (PRD Requirement 18.1).
+  reason String?
+
+  requestId String? @map("request_id")
+  ipAddress String? @map("ip_address")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  actorUser    User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  organisation Organisation? @relation(fields: [organisationId], references: [id], onDelete: SetNull)
+
+  @@index([subjectType, subjectId])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@index([createdAt])
+  @@map("audit_event")
+}
+
+/// PRD Requirement 14.1 and 13.3 — limits, quotas, and the suppression threshold
+/// must be adjustable by a Union administrator at runtime, without a deployment.
+/// A code constant would break that promise.
+model SystemSetting {
+  key         String   @id
+  value       String
+  description String?
+
+  updatedByUserId String?  @map("updated_by_user_id") @db.Uuid
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("system_setting")
+}

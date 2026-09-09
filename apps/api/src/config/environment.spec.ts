@@ -9,11 +9,13 @@ import { loadEnvironment } from './environment.js';
  */
 describe('loadEnvironment', () => {
   const original = { ...process.env };
+  const VALID_URL = 'postgresql://user:pass@localhost:5433/db';
 
   beforeEach(() => {
     delete process.env.NODE_ENV;
     delete process.env.PORT;
     delete process.env.CORS_ORIGINS;
+    process.env.DATABASE_URL = VALID_URL;
   });
 
   afterEach(() => {
@@ -61,4 +63,22 @@ describe('loadEnvironment', () => {
     // cannot quietly become undefined.
     expect(loadEnvironment().maxRequestBodyBytes).toBeGreaterThan(0);
   });
+
+  it('reads the database connection string', () => {
+    expect(loadEnvironment().databaseUrl).toBe(VALID_URL);
+  });
+
+  it.each([undefined, '', '   '])(
+    'refuses to start without DATABASE_URL (%s)',
+    (value) => {
+      if (value === undefined) {
+        delete process.env.DATABASE_URL;
+      } else {
+        process.env.DATABASE_URL = value;
+      }
+
+      // Failing at boot beats failing on the first query in production.
+      expect(() => loadEnvironment()).toThrow(/DATABASE_URL is required/);
+    },
+  );
 });

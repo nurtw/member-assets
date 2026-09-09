@@ -37,8 +37,10 @@ export type ApiScope = (typeof API_SCOPES)[number];
  * `aggregate:vehicles:read` accepts the approved filter dimensions and is subject
  * to the suppression floor below.
  */
-export const AGGREGATE_TOTAL_SCOPE = 'aggregate:vehicles:total' satisfies ApiScope;
-export const AGGREGATE_FILTERED_SCOPE = 'aggregate:vehicles:read' satisfies ApiScope;
+export const AGGREGATE_TOTAL_SCOPE =
+  'aggregate:vehicles:total' satisfies ApiScope;
+export const AGGREGATE_FILTERED_SCOPE =
+  'aggregate:vehicles:read' satisfies ApiScope;
 
 /**
  * Default suppression floor, determined at PRD §23.12.

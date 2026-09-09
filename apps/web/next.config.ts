@@ -1,4 +1,4 @@
-import type { NextConfig } from 'next';
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /**
@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
    * @nurtw/contracts and imported here, so a change to a response shape produces
    * a compile error in the web application rather than a runtime defect.
    */
-  transpilePackages: ['@nurtw/contracts', '@nurtw/domain'],
+  transpilePackages: ["@nurtw/contracts", "@nurtw/domain"],
 
   /**
    * The API is a separate deployment (DigitalOcean) from the web application
@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
    * application code; only configuration differs between environments.
    */
   env: {
-    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL ?? '',
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "",
   },
 };
 

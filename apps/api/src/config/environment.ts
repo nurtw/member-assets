@@ -19,6 +19,11 @@ export interface Environment {
   readonly corsOrigins: readonly string[];
   /** Maximum accepted request body. PRD §14.3 requires an enforced ceiling. */
   readonly maxRequestBodyBytes: number;
+  /**
+   * PostgreSQL connection string. Supplied to the Prisma driver adapter at
+   * runtime; Prisma 7 no longer reads it from the schema.
+   */
+  readonly databaseUrl: string;
 }
 
 class EnvironmentError extends Error {
@@ -74,5 +79,17 @@ export function loadEnvironment(): Environment {
     port: readPort('PORT', 3001),
     corsOrigins: readList('CORS_ORIGINS'),
     maxRequestBodyBytes: 1_000_000,
+    databaseUrl: readRequired('DATABASE_URL'),
   };
+}
+
+function readRequired(key: string): string {
+  const raw = process.env[key]?.trim();
+  if (!raw) {
+    throw new EnvironmentError(
+      `${key} is required. Copy .env.example to .env and set it. For local ` +
+        'development run `docker compose up -d` first.',
+    );
+  }
+  return raw;
 }

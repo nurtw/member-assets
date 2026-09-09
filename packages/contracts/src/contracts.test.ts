@@ -103,12 +103,7 @@ describe('statuses', () => {
 describe('master data', () => {
   it('orders the hierarchy outermost first', () => {
     // PRD §23.1 — Council -> Zone -> Branch -> Unit -> Member.
-    expect(ORGANISATION_LEVELS).toEqual([
-      'COUNCIL',
-      'ZONE',
-      'BRANCH',
-      'UNIT',
-    ]);
+    expect(ORGANISATION_LEVELS).toEqual(['COUNCIL', 'ZONE', 'BRANCH', 'UNIT']);
   });
 
   it('carries legacy category counts totalling the exported register', () => {
