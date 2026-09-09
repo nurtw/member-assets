@@ -48,10 +48,13 @@ This repo uses a document-driven loop, backed by the owner's `/discover`, `/road
 ```
 PRD.md  ->  ARCHITECTURE.md  ->  ROADMAP.md  ->  plans/NN-name.md  ->  HANDOFF.md
 (what)      (how, decided)       (order)         (this item)           (session state)
-                 +
-            DESIGN.md
-       (visual identity, verdict
-        legibility, card fidelity)
+   ^             +
+   |        DESIGN.md
+   |   (visual identity, verdict
+   |    legibility, card fidelity)
+   |
+QUESTIONS.md
+(what the Union still has to tell us)
 ```
 
 [docs/reference/](docs/reference/) is the operator- and integrator-facing documentation:
@@ -206,10 +209,18 @@ than optimised away:
 
 ## Open decisions
 
-PRD §23 lists the questions NURTW must answer before parts of this can be built
-(hierarchy semantics, number formats, expiry policy, whether digital signatures are
-accepted, which external org types get access). **Do not invent answers.** If an item is
-blocked on one, record it in HANDOFF.md under "Conflicts" and build the surrounding work.
+**[QUESTIONS.md](QUESTIONS.md) is the register of everything the Union has been asked**,
+with its answer where one has been given and an empty slot where it has not. Check it before
+assuming a value, and add to it the moment a new question surfaces. PRD §23 holds the
+settled determinations; QUESTIONS.md holds the conversation, including what is still open.
+
+**Do not invent answers.** Where a question is open, build the surrounding work and leave
+the question open — a value assumed becomes indistinguishable from a value the Union
+supplied, which is exactly what the register exists to prevent. If an item is blocked on
+one, record it in HANDOFF.md under "Conflicts".
+
+When an answer arrives: fill it in on the question, flip its status, and where it binds
+implementation add it to PRD §23 and cite that section back in the register.
 
 ## Layout
 

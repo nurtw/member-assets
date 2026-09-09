@@ -145,9 +145,20 @@ Items 06 and 07 may proceed in parallel once item 04 is complete.
 
 ## Open questions
 
-**None gating delivery.** All eighteen questions — the sixteen at proposal §23 and two
-arising from the legacy export — were determined on 9 September 2026 and are recorded at
-PRD §23. No roadmap item is now blocked awaiting an answer.
+The full register, answered and unanswered, is [QUESTIONS.md](QUESTIONS.md). Two questions
+now gate delivery: **ORG-05** (the Union's zones, branches, and units) and **ORG-06** (the
+approved member designations). Both are required before item 05 can register a member into a
+real unit, and neither can be derived from the legacy export.
+
+**The eighteen proposal determinations are closed.** The sixteen questions at proposal §23
+and two arising from the legacy export were all determined on 9 September 2026 and are
+recorded at PRD §23. None of those is outstanding.
+
+ORG-05 and ORG-06 above are **not** among them. They arose during item 04, when inspection
+of `data/` established that the export carries no zones, branches, units, or designations to
+seed — `pit_name` is blank on all 2,841 vehicle rows, and `owner_account_role` holds the
+previous software's account roles rather than member designations. PRD §23.4 correctly
+determined that item 04 was not gated on these lists arriving; item 05 is.
 
 Of the three matters previously listed as outstanding, two are now closed and one is
 deferred by the owner:

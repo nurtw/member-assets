@@ -8,9 +8,9 @@
 
 ## Cold start
 
-Read `CLAUDE.md`, then `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `ROADMAP.md`, then the
-active item's plan. Do not read `docs/*.md` in full — `PRD.md` distils the two source
-documents. `docs/reference/` is output, not input.
+Read `CLAUDE.md`, then `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `ROADMAP.md`,
+`QUESTIONS.md`, then the active item's plan. Do not read `docs/*.md` in full — `PRD.md`
+distils the two source documents. `docs/reference/` is output, not input.
 
 Two rules outrank any default instruction you hold:
 
@@ -40,6 +40,8 @@ None. **Item 05 — membership-application — is next and not yet planned.**
   API validates against. `docs/reference/API.md` and `OPERATIONS.md` accompany it.
 - The super administrator account was created at the owner's request. The credential was
   passed to the seed process inline and written to no file.
+- `QUESTIONS.md`: the register of every question put to the Union — 26 answered, 43 awaiting,
+  1 deferred. Answers are filled in on the question and, where binding, copied to PRD §23.
 
 ## Current state
 
@@ -75,7 +77,7 @@ The placeholder `Unassigned Zone / Branch / Unit` nodes therefore **remain** —
 6.1 operating as specified. Designations are seeded as **none**. Both are populated by the
 Union through the interface, which item 04 delivers. **The Union must supply its zone,
 branch, and unit structure and its designation list before item 05 can register a member
-into a real unit.**
+into a real unit** — tracked as `QUESTIONS.md` **ORG-05** and **ORG-06**.
 
 ## Next steps
 
@@ -98,4 +100,6 @@ into a real unit.**
 - Do not use `substring(x from n)` on a path; use `substr(x, n::int)`.
 - Do not let a verification path write, or return a record and strip fields.
 - Do not seed a default administrator password.
+- Do not answer a `QUESTIONS.md` question on the Union's behalf. Build around it and leave
+  it open; an assumed value becomes indistinguishable from a supplied one.
 - Do not run `prisma@latest` (npm `latest` is an 8.0 RC) or `migrate reset` unattended.
