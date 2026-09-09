@@ -18,9 +18,17 @@ const nextConfig: NextConfig = {
    * ARCHITECTURE.md Decision 12.1 — no platform-specific API is called from
    * application code; only configuration differs between environments.
    */
-  env: {
-    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "",
-  },
+  /**
+   * NEXT_PUBLIC_ variables are inlined by Next from the environment and from
+   * .env files without being listed here.
+   *
+   * The previous explicit mapping defaulted to an empty string, which is worse
+   * than leaving it undefined: `undefined` falls through a `??` fallback, an
+   * empty string does not, and every API call became a relative request against
+   * the web origin. Configuration is read in one place — src/lib/api.ts — which
+   * both supplies the development default and refuses to start production
+   * without a real value.
+   */
 };
 
 export default nextConfig;

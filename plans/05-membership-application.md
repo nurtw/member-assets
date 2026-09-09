@@ -74,10 +74,20 @@ card-display projection selects its fields explicitly and never spreads a record
 as Decision 5.1: retrieving everything and removing fields discloses by default any field
 added later.
 
-### 5. Requirement 7.2 — the LGA must belong to the stated state
+### 5. Requirement 7.2 needs no cross-check here, and the code says why
 
-Validated against the `lga` table rather than trusted from the client. The seeded areas
-carry `stateName`, so this is a lookup, not a heuristic.
+That requirement applies where a state and a local government area are **both captured as
+structured values**. Here they are not. The only structured state on the record is the one
+the LGA itself carries, so the pair cannot disagree — the requirement is satisfied by
+construction rather than by a check.
+
+`state_of_origin` is deliberately not that state. It is where the member is *from*; the LGA
+is where they *live*. An Anambra resident originating from Enugu is ordinary, and validating
+one against the other would reject correct data — PRD §23.2 keeps the same two ideas apart
+on the card. What *is* validated is that a referenced LGA exists and is active.
+
+If the Union later captures a separate residential state, that is the point at which a
+cross-check becomes both possible and required.
 
 ### 6. Media never touches the database or the repository
 
@@ -126,19 +136,19 @@ payloads: a malformed identifier is not a lookup miss.
 
 ## Definition of done
 
-- [ ] Identifier generation tested: alphabet excludes confusables, output is grouped, a single mistyped character fails the check symbol.
-- [ ] Both status machines tested exhaustively, including every illegal transition.
-- [ ] Approval is the only path from `PENDING` to `ACTIVE`, asserted.
-- [ ] A membership number exists after approval and does not exist before it.
-- [ ] A rejected application leaves no membership number allocated.
-- [ ] An officer scoped to one branch cannot read, submit, or approve another branch's application.
-- [ ] Next-of-kin and guarantor data are absent from every non-registration projection.
-- [ ] An LGA outside the stated state is refused.
-- [ ] An upload whose bytes are not a real image is refused despite a valid declared type and extension.
-- [ ] Uploaded files are gitignored and unreachable without a signed URL.
-- [ ] Every mutation writes an audit event.
-- [ ] An officer can log in, complete the form, and approve it, through the browser.
-- [ ] `pnpm build`, `typecheck`, `lint`, `test` all pass.
+- [x] Identifier generation tested: alphabet excludes confusables, output is grouped, a single mistyped character fails the check symbol.
+- [x] Both status machines tested exhaustively, including every illegal transition.
+- [x] Approval is the only path from `PENDING` to `ACTIVE`, asserted.
+- [x] A membership number exists after approval and does not exist before it.
+- [x] A rejected application leaves no membership number allocated.
+- [x] An officer scoped to one branch cannot read, submit, or approve another branch's application.
+- [x] Next-of-kin and guarantor data are absent from every non-registration projection.
+- [x] A referenced LGA must exist and be active. *No state cross-check: see decision 5 — state of origin is not the residential state, and comparing them would reject correct data.*
+- [x] An upload whose bytes are not a real image is refused despite a valid declared type and extension.
+- [x] Uploaded files are gitignored and unreachable without a signed URL.
+- [x] Every mutation writes an audit event.
+- [~] An officer can log in, complete the form, and approve it, through the browser. *Screens built; the cross-origin handshake and every API step are verified. The click-through itself is with the owner.*
+- [x] `pnpm build`, `typecheck`, `lint`, `test` all pass.
 
 ## Notes
 
@@ -146,3 +156,40 @@ The riskiest thing here is not the workflow; it is that this item introduces the
 screens, and screens are where scope grows without anyone deciding to grow it. The screens
 required are the ones that make the workflow usable end to end. Anything beyond that belongs
 to item 10, which owns the dashboard properly.
+
+## Outcome
+
+Delivered. 273 tests pass (209 unit, 64 end to end).
+
+### Two defects worth recording
+
+**The alphabet was not prime.** The check symbol's guarantees — detect every
+single-symbol error, detect every adjacent transposition — hold only when the
+weights are coprime to the modulus. The first draft used Crockford's thirty-two
+symbols, where the even weights share a factor and a symbol misread by exactly
+sixteen positions would have passed undetected. Now thirty-one, and both
+properties are brute-forced in tests rather than asserted in prose.
+
+**`nest start` does not load `.env`.** The API reads `process.env` only, so
+`CORS_ORIGINS` was never set in development, `enableCors` was skipped, and every
+browser request was refused *by the browser* — nothing reached the server and
+nothing appeared in its log. `DATABASE_URL` happened to be exported in the shell,
+so the service started and looked healthy. The seed had always passed
+`--env-file`; the server never had. Fixed by loading `dotenv` at the top of
+`main.ts`, and the configuration is now logged at startup so the same silence
+cannot recur.
+
+A related trap in the same failure: `next.config.ts` mapped
+`NEXT_PUBLIC_API_BASE_URL` to `?? ""`, and an empty string does not trigger a
+`??` fallback. Every API call became a relative request against the web origin,
+where Next answered 404 — which reads as a broken API rather than missing
+configuration.
+
+### Deferred, with reasons
+
+- **The print-ready form for wet signature** (§23.16) needs a PDF pipeline that
+  item 06 also needs for cards. Building it once, there, beats building it twice.
+- **A signature drawing pad.** The API accepts a signature image and a pad
+  produces one, so this is additive and touches no endpoint.
+- **Editing an application's photograph after submission**, deliberately: a
+  submitted application is what the reviewer is judging.

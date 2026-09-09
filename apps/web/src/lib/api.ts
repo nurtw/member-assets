@@ -13,8 +13,29 @@
  * revoke, and one of them forgotten.
  */
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api/v1";
+/**
+ * Where the API lives.
+ *
+ * `||`, not `??`. The build injects an empty string when the variable is unset,
+ * and `"" ?? fallback` is `""` — which silently turns every call into a relative
+ * request against the web origin, where Next answers 404 for routes it has never
+ * heard of. That failure looks like a broken API rather than missing
+ * configuration, which is exactly the wrong place to send someone debugging.
+ *
+ * In production a missing value throws instead of falling back. A deployed build
+ * quietly pointing at localhost would appear to work in review and fail for every
+ * real user.
+ */
+const CONFIGURED_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+if (!CONFIGURED_BASE_URL && process.env.NODE_ENV === "production") {
+  throw new Error(
+    "NEXT_PUBLIC_API_BASE_URL is required in production. Set it to the API's " +
+      "public origin, including the /api/v1 prefix.",
+  );
+}
+
+const BASE_URL = CONFIGURED_BASE_URL || "http://localhost:3001/api/v1";
 
 /** A field-level validation failure, as returned for a rejected body. */
 export interface FieldError {
@@ -63,7 +84,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       body: options.body ? JSON.stringify(options.body) : undefined,
       signal: options.signal,
     });
-  } catch (cause) {
+  } catch {
     // A network failure is not an API error and must not be reported as one:
     // "the request could not be processed" would send the user looking for a
     // problem with their data.
@@ -133,3 +154,13 @@ export const api = {
   mediaUrl: (signedPath: string) =>
     `${BASE_URL.replace(/\/api\/v1$/, "")}${signedPath}`,
 };
+
+/**
+ * The SWR fetcher.
+ *
+ * One definition, so every screen fetches with the same credentials, the same
+ * error translation, and the same request-id handling. A screen that wrote its
+ * own would be the screen that forgot `credentials: 'include'` and mysteriously
+ * saw 401s.
+ */
+export const fetcher = <T>(path: string): Promise<T> => api.get<T>(path);

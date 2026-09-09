@@ -390,6 +390,45 @@ the public surface grows beyond health, login, and logout.
 Validation errors are the **only** responses carrying detail beyond the generic message.
 That is sound: `details` describes the request the caller just sent, never the record set.
 
+### Membership registration (item 05)
+
+- **A membership number is allocated on approval, never earlier.** `membershipNumber` is
+  nullable; somebody whose application was refused was never a member, and a number in the
+  register that identifies no member states something untrue. Approval is the **only** route
+  from `PENDING` to `ACTIVE`, and both happen in one transaction.
+- **`member.create` does not confer `application.decide`.** The officer who records an
+  application cannot approve it. Keep those separate.
+- **Status transitions live in `packages/domain`**, as tables. Do not re-implement "which
+  transitions are legal" in a service.
+- **Requirement 7.1 is projection.** The list carries no next-of-kin, guarantor, telephone,
+  or address; only the detail endpoint does. Select fields explicitly, never spread a record.
+- **Requirement 7.2 needs no state cross-check.** `state_of_origin` is where a member is
+  *from*; the LGA is where they *live*. Comparing them would reject correct data.
+- **Uploads are identified by sniffing bytes.** The declared content type and filename are
+  caller-supplied; the uploaded-file type deliberately does not expose them. **No SVG** — it
+  carries script and would be stored XSS. Bytes are served only through a link signed over
+  the id *and* an expiry; every failure answers 404.
+
+### The `.env` trap that cost real time
+
+**`nest start` does not load `.env`.** `main.ts` therefore does `import 'dotenv/config'` on
+its **first line**, above every other import, because `loadEnvironment()` reads
+`process.env` at call time.
+
+Before that fix, `DATABASE_URL` happened to be exported in the shell, so the API started and
+looked healthy — while `CORS_ORIGINS` was unset, `enableCors` was skipped, and every browser
+request was refused **by the browser**. Nothing reached the server, so nothing appeared in
+its log, and it read as a broken front-end. The startup log now states the CORS
+configuration; if it says CORS is disabled and you expected otherwise, that is your bug.
+
+The same failure had a second half in the web app: `next.config.ts` mapped
+`NEXT_PUBLIC_API_BASE_URL` to `?? ""`, and **an empty string does not trigger a `??`
+fallback**, so every call became a relative request to the web origin. Configuration is now
+read in one place, `apps/web/src/lib/api.ts`, which supplies the development default and
+**throws in production** rather than silently pointing at localhost.
+
+`apps/web/.env.local` is required for local development and is gitignored.
+
 ### The partial index Prisma does not know about
 
 PRD §9.2 allows at most one **ACTIVE** declaration per normalised plate, while history

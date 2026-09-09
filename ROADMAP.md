@@ -32,7 +32,7 @@ Each item is independently completable and independently testable. Status values
 | 02 | core-data-model | §24, §7–10 | **done** | `plans/02-core-data-model.md` |
 | 03 | auth-and-permissions | §16, §17 | **done** | `plans/03-auth-and-permissions.md` |
 | 04 | org-hierarchy | §6 | **done** | `plans/04-org-hierarchy.md` |
-| 05 | membership-application | §7 | not-started | `plans/05-membership-application.md` |
+| 05 | membership-application | §7 | **done** | `plans/05-membership-application.md` |
 | 06 | membership-card-issuance | §8 | not-started | `plans/06-membership-card-issuance.md` |
 | 07 | vehicle-declaration | §9 | not-started | `plans/07-vehicle-declaration.md` |
 | 08 | sticker-inventory-qr | §10 | not-started | `plans/08-sticker-inventory-qr.md` |
@@ -82,7 +82,13 @@ therefore built through the interface, and the placeholder nodes remain as the R
 **05 — membership-application.** The registration form of
 `docs/National_Union_of_Road_Transport_Workers_(NURTW).md` in full, the review and approval
 workflow, member status management, and upload handling for photographs and signatures.
-Numbering and signature determinations at PRD §23.6, §23.16, §26. Unblocked.
+Numbering and signature determinations at PRD §23.6, §23.16, §26.
+
+Delivered with the System's first officer-facing screens: sign-in, the application list, the
+registration form, and the review screen. A membership number is allocated on approval and
+not before, and `member.create` does not confer `application.decide` — the officer who
+records an application cannot decide it. The print-ready wet-signature form is deferred to
+item 06, which needs the same PDF pipeline for cards.
 
 **06 — membership-card-issuance.** Card templates carrying a version, card-number
 generation, the issuance and replacement workflow, and the nine-state card lifecycle.

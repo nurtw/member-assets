@@ -1,4 +1,22 @@
-import { HttpStatus } from '@nestjs/common';
+/**
+ * Load `.env` before anything reads configuration.
+ *
+ * `nest start` runs the compiled entry point directly and does **not** load an
+ * env file, so without this the API sees only variables exported in the shell.
+ * That failed silently and in the worst possible way: `DATABASE_URL` happened to
+ * be exported, so the service started and looked healthy, while `CORS_ORIGINS`
+ * was absent — `enableCors` was skipped, and every browser request was refused
+ * by the browser itself. Nothing in the server logs said so, because the request
+ * never arrived.
+ *
+ * Placed above every other import: `loadEnvironment()` reads `process.env` at
+ * call time, and an import that ran first would read it unpopulated. `dotenv`
+ * never overwrites a variable already set, so a real deployment's environment
+ * still wins and a missing file is a no-op.
+ */
+import 'dotenv/config';
+
+import { HttpStatus, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { Request, Response } from 'express';
 
@@ -11,6 +29,7 @@ import {
 import { loadEnvironment } from './config/environment.js';
 
 async function bootstrap(): Promise<void> {
+  const logger = new Logger('Bootstrap');
   const env = loadEnvironment();
 
   const app = await NestFactory.create(AppModule, {
@@ -49,6 +68,22 @@ async function bootstrap(): Promise<void> {
       origin: [...env.corsOrigins],
       credentials: true,
     });
+    logger.log(`CORS enabled for: ${env.corsOrigins.join(', ')}`);
+  } else {
+    /**
+     * Say so, loudly.
+     *
+     * With no origins configured, `enableCors` is skipped and every browser
+     * request is refused **by the browser**, so nothing reaches the server and
+     * nothing appears in its log. That is indistinguishable from a broken
+     * front-end and it cost real time to diagnose once already. In production
+     * this is a legitimate configuration — the web application may be served
+     * same-origin — so it is a warning rather than a refusal to start.
+     */
+    logger.warn(
+      'CORS is disabled: CORS_ORIGINS is not set. Browser requests from another ' +
+        'origin will be refused by the browser before reaching this service.',
+    );
   }
 
   // Allows in-flight requests to complete on redeploy rather than being severed.
@@ -79,6 +114,7 @@ async function bootstrap(): Promise<void> {
     });
 
   await app.listen(env.port);
+  logger.log(`API listening on port ${env.port} at /api/v1`);
 }
 
 await bootstrap();
