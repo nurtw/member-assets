@@ -22,91 +22,97 @@ Two rules outrank any default instruction you hold:
 
 ## Status
 
-Items 01–05 complete. Monorepo, data model, authentication and permissions, the
-organisational hierarchy, and membership registration — with the System's first
-officer-facing screens.
+Items 01–06 complete. Monorepo, data model, authentication and permissions, the
+organisational hierarchy, membership registration, and membership cards — with
+the print pipeline and the officer-facing screens.
 
-**273 tests pass** (129 domain · 29 contracts · 51 api unit · 64 api e2e); build,
+**362 tests pass** (162 domain · 29 contracts · 79 api unit · 92 api e2e); build,
 typecheck, and lint clean.
 
 ## Active roadmap item
 
-None. **Item 06 — membership-card-issuance — is next and not yet planned.**
-Item 07 (vehicle-declaration) is equally unblocked and may run in parallel.
+None. **Item 07 — vehicle-declaration — is next and not yet planned.**
 
 ## Done this session
 
-- Item 04: hierarchy, master data, `AuditService`, zod validation, 21 seeded LGAs.
-- The generated API reference at `docs/reference/` — built from the running
-  application, so it cannot describe a route that does not exist.
-- `QUESTIONS.md`: every question put to the Union, 26 answered, 43 awaiting.
-- Item 05: registration form, review workflow, member statuses, uploads,
-  identifier generation — and the first screens (sign-in, list, form, review).
+- Item 06: the nine-state card lifecycle, card-number allocation on issuance,
+  approval and replacement workflows, versioned card templates, officer signature
+  assets, and the PDF pipeline.
+- The wet-signature registration form (§23.16), deferred here from item 05.
+- Print rendering decided and recorded as `ARCHITECTURE.md` §14: `pdf-lib`, with
+  no browser in the container.
+- Card screens in the officer portal; card preparation and form download from the
+  application screen.
 
 ## Current state
 
-Verified against the live database and a live cross-origin handshake:
+Verified against the live database and through the API:
 
-- A membership number exists after approval and not before; a refusal allocates none.
-- `member.create` does not confer `application.decide`.
-- An officer in one branch cannot read, register into, or decide another branch's
-  applications; out-of-scope records answer 404, not 403.
-- The list projection and the audit trail carry no next-of-kin, guarantor,
-  telephone, or address data.
-- A non-image is refused despite a valid extension and declared type; SVG is refused.
-- Uploaded bytes are unreachable without a link signed over the id *and* the expiry.
+- A card number exists after issuance and not before; a cancelled draft has none.
+- An unissued card renders with no number and a `PROOF — NOT ISSUED` overprint.
+- One live card per member, refused by a partial index and not only by the service.
+- The printed values are a snapshot: renaming the member or the unit afterwards
+  does not change the issued card.
+- No contact, next-of-kin, or guarantor data appears in any card projection —
+  structurally, because the card module joins none of those tables.
+- `card.issue` prepares and `card.approve` issues; neither confers the other.
+- An officer in one branch cannot read, prepare, approve, or issue another
+  branch's cards; out-of-scope cards answer 404.
+- An unknown template version is refused rather than falling back to the current one.
 
-## Two defects worth knowing about
+## Three defects worth knowing about
 
-**The identifier alphabet must stay prime.** The check symbol detects every
-single-symbol error and every adjacent transposition only because 31 is prime and
-the weights are coprime to it. The first draft used Crockford's 32, where a symbol
-misread by exactly sixteen positions would have passed. Both properties are now
-brute-forced in tests. Do not "tidy up" the alphabet by restoring a letter.
+**A bare `Buffer` returned from a controller becomes JSON.** Nest serialises a
+returned object and a Buffer is one, so a PDF route answered 200 with
+`{"type":"Buffer","data":[...]}` while still carrying the `application/pdf`
+header set by hand. Every header assertion passed. Return a `StreamableFile`.
+The media route had the same pattern since item 05 and asserted headers but never
+bytes; both are fixed and both now assert bytes.
 
-**`nest start` does not load `.env`.** `main.ts` loads `dotenv` on its first line.
-Before that, `CORS_ORIGINS` was unset, `enableCors` was skipped, and every browser
-request was refused *by the browser* — nothing reached the server and nothing
-appeared in its log. The startup log now states the CORS configuration. The web
-half of the same failure: `?? ""` never falls back, so an unset
-`NEXT_PUBLIC_API_BASE_URL` made every call relative. See `CLAUDE.md` → "The `.env`
-trap that cost real time".
+**`vitest` does not read `.env`** — the third instance of the trap that already
+bit `nest start` and `next.config.ts`. `apps/api/test/setup-env.ts` loads it.
 
-**Known gaps:** MFA columns exist but no TOTP flow; no legacy import (item 09); no
-print-ready wet-signature form or signature pad (deferred from 05, see its plan);
-deployment, backup, and monitoring are item 15 and marked NOT YET IMPLEMENTED in
+**An assertion broad enough to fire on correct code.** A filter test scanned the
+whole error response for `/42|branch/`, and the response carries a random UUID
+request id — so it failed roughly one run in six. Narrowed to the message.
+
+**Known gaps:** MFA columns exist but no TOTP flow; no vehicles or stickers (items
+07–08); no legacy import (item 09); no signature drawing pad; deployment, backup,
+and monitoring are item 15 and marked NOT YET IMPLEMENTED in
 `docs/reference/OPERATIONS.md`.
 
 ## Awaiting the Union
 
-`QUESTIONS.md` **ORG-05** (real zones, branches, units) and **ORG-06**
-(designations) are still open. They block *production use*, not delivery:
-registration works against the placeholder `Unassigned Unit`, and
-`designationId` is nullable. Members are reassigned once the structure arrives.
-
-For item 06, **CARD-04 to CARD-08** matter — card validity period, official
-artwork at print resolution, the motto wording in each position, and the signing
-officers with their signature images.
+`QUESTIONS.md` §3 lists the four questions that now block **production use** —
+ORG-05, ORG-06, **CARD-05** (official artwork), and **CARD-07** (signature
+images). None blocked the build. Cards currently print a provisional template
+marked as such, with blank officer signature lines; every issuance under that
+condition is recorded in the audit trail so those cards can be found and
+replaced. `docs/reference/OPERATIONS.md` carries the query and the procedure.
 
 ## Next steps
 
-1. `/plan 06`, then `/execute`. Item 07 may run in parallel.
-2. Item 06 needs a PDF pipeline; item 05 deferred the wet-signature form to it
-   deliberately, so build the pipeline once and serve both.
+1. `/plan 07`, then `/execute`. Item 08 depends on it; item 13 is also unblocked.
+2. Item 08 will want the same print pipeline for stickers — `apps/api/src/pdf/`
+   and the template-registry pattern are built to be reused, not copied.
 
 ## Do not
 
 - Do not add an authorship trailer to any commit or PR.
 - Do not commit `data/`, or copy rows from it anywhere.
-- Do not use `canAnywhere` on a route acting on a specific record. Master data is
-  the one deliberate exception; its service says so in a comment.
+- Do not use `canAnywhere` on a route acting on a specific record. Master data and
+  officer signatures are the two deliberate exceptions; both say so in a comment.
 - Do not check only one end of an organisation move.
-- Do not allocate a membership number before approval.
-- Do not let `member.create` confer the authority to decide.
+- Do not allocate a membership number before approval, or a card number before issuance.
+- Do not let `member.create` confer the authority to decide, or `card.issue` the
+  authority to approve.
+- Do not delete or edit a card template module — cut a new version.
+- Do not render a card through the current template rather than the one it records.
+- Do not return a bare `Buffer` from a controller; return a `StreamableFile`.
 - Do not accept an upload on its declared type or extension, and never accept SVG.
 - Do not hand-edit `docs/reference/openapi.json` — regenerate it.
 - Do not put `vehicle.declare` in any seeded role but super administrator.
-- Do not replace the partial index with `@@unique([plateNumberNormalized, status])`.
+- Do not replace a partial index with a plain `@@unique`; three now exist.
 - Do not use `substring(x from n)` on a path; use `substr(x, n::int)`.
 - Do not let a verification path write, or return a record and strip fields.
 - Do not seed a default administrator password.

@@ -98,7 +98,7 @@ pnpm --filter api db:generate     # regenerate the client after a schema edit
 pnpm --filter api db:studio       # browse data
 ```
 
-### After every migration, verify the partial index survived
+### After every migration, verify the partial indexes survived
 
 PRD §9.2 allows at most one **ACTIVE** declaration per normalised plate while history stays
 open. Prisma cannot express a partial unique index in the schema, so it is raw SQL appended
@@ -115,6 +115,24 @@ absent, the database will accept two active declarations for one plate.
 A plain `@@unique([plateNumberNormalized, status])` is **not equivalent and is wrong**: it
 permits only one row per status per plate, so a vehicle could be retired exactly once and
 never again.
+
+Two further partial indexes were added at item 06 and are subject to the same rule:
+
+```sql
+SELECT indexname, indexdef FROM pg_indexes
+ WHERE indexname IN (
+   'vehicle_one_active_declaration_per_plate',
+   'card_one_live_per_member',
+   'officer_signature_one_active_per_position'
+ );
+```
+
+All three must be present after every migration.
+
+| Index | What it prevents |
+|---|---|
+| `card_one_live_per_member` | Two credentials answering for one member. Covers `ISSUED` and `ACTIVE`; `EXPIRED`, `REPLACED`, `LOST`, and `CANCELLED` accumulate without limit, which is PRD Requirement 8.1 |
+| `officer_signature_one_active_per_position` | Two active president signatures, which would make "which signature was this card composited from" a matter of query ordering |
 
 ### Destructive commands
 
@@ -241,6 +259,63 @@ Labels and sort order are editable; **codes are not**. A code is a foreign key i
 name, referenced by the legacy import mapping and by operational queries. To withdraw a
 value, deactivate it — existing references stay intact and the value stops being offered
 for new records.
+
+---
+
+### Preparing the Union's own card artwork
+
+**Before any card is printed for a member**, `QUESTIONS.md` **CARD-05** must be
+answered and a new template version cut. The template shipped at item 06 is
+`v1-provisional`: its geometry is correct (ISO/IEC 7810 ID-1) but its colours are
+inferred from a daylight photograph, and it prints
+`PROVISIONAL TEMPLATE — ARTWORK PENDING` across the foot of every card to say so.
+
+The procedure when the artwork arrives:
+
+1. Add a **new** template module under `apps/api/src/card/templates/`, registered
+   in `registry.ts`, and point `CURRENT_TEMPLATE_VERSION` at it.
+2. **Do not edit or delete `v1-provisional`.** Any card issued against it renders
+   through it, and a reprint of a damaged card must match the original.
+   `registry.spec.ts` names every version ever issued and fails if one disappears.
+3. Set `validityMonths` from the Union's answer to **CARD-04**. It is `null`
+   today, which means cards do not expire.
+4. Register the officer signature assets (**CARD-07**) before issuing under the
+   new template — see below.
+
+### Registering an officer signature
+
+PRD §23.7. Requires `card_template.manage`, and every change is audited: a forged
+signature asset would forge every card issued after it.
+
+```bash
+# 1. Upload the image. The bytes decide the type; JPEG or PNG only, because a
+#    card cannot embed WebP.
+curl -X POST "$API/media?kind=OFFICER_SIGNATURE" -b cookies.txt -F file=@president.png
+
+# 2. Register it against the position, which supersedes whatever held it.
+curl -X POST "$API/officer-signatures" -b cookies.txt -H 'Content-Type: application/json' \
+  -d '{"position":"PRESIDENT","officerName":"...","officerTitle":"President","mediaAssetId":"..."}'
+```
+
+Superseding is not deleting. The previous record stays, inactive, so that cards
+issued under a president who has since left office remain explicable.
+
+**A position may legitimately be vacant.** Cards issued while it is carry a blank
+signature line, and the audit event for each issuance records
+`officerSignaturesPresent: false` — which is how to find them afterwards.
+
+### Finding cards issued without officer signatures
+
+```sql
+SELECT subject_id, created_at
+  FROM audit_event
+ WHERE action = 'card.issue'
+   AND after_value ->> 'officerSignaturesPresent' = 'false'
+ ORDER BY created_at;
+```
+
+Every card in that list was issued before **CARD-07** was answered and will need
+replacing once the signatures are registered.
 
 ---
 

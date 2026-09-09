@@ -206,13 +206,78 @@ sent, which the caller already holds. Nothing derived from the database reaches 
 ### Changes that require a reason
 
 Moving an organisation, and activating or deactivating one, require a `reason` in the body.
-It is recorded in the audit trail with the before and after values. These are actions whose
-motivation is not recoverable after the fact, and the Union's own governance depends on
-being able to reconstruct why a unit was dissolved or a branch reassigned.
+So do every card status change, every card replacement, and withdrawing an officer
+signature. It is recorded in the audit trail with the before and after values. These are
+actions whose motivation is not recoverable after the fact, and the Union's own governance
+depends on being able to reconstruct why a unit was dissolved, a branch reassigned, or a
+member's card cancelled.
+
+### Documents
+
+Two routes return a PDF rather than JSON: `GET /cards/{id}/document` and
+`GET /applications/{id}/form`. Both are `application/pdf`, `Cache-Control: no-store`, and
+carry a `Content-Disposition` filename — an issued card by its card number, an unissued one
+by nothing identifying, and a registration form by its application number.
+
+**They are fetched with credentials, not linked to.** The session cookie belongs to the
+API's origin; a cross-site top-level navigation does not carry a `SameSite=Lax` cookie, so a
+plain link would answer 401. Fetch the document and save the blob.
 
 ---
 
-## 8. Auditing
+## 8. Membership cards
+
+The card surface has three properties an integrator or operator will meet immediately.
+
+**A card number exists only after issuance.** `cardNumber` is `null` on a card in `DRAFT` or
+`PENDING_APPROVAL`. A number identifies a card that was printed; a cancelled draft was never
+printed and is in nobody's pocket, so allocating one earlier would put an identifier in the
+register that names no artifact.
+
+**An unissued card renders as a proof.** `GET /cards/{id}/document` on a card that has not
+reached `ISSUED` returns a PDF with no card number and a diagonal `PROOF — NOT ISSUED`
+overprint. This is not a formatting nicety: without it a printed draft would be
+indistinguishable from the article, and the approval step would be decorative.
+
+**The printed values are a snapshot.** The `printed` object on a card detail is what was
+composited when the card was issued, not what the member record says now. A member who
+transfers between branches keeps the card in their pocket, and the System must describe that
+card rather than a card that would be printed today.
+
+### Which permission does what
+
+| Act | Permission |
+|---|---|
+| Prepare, amend, submit for approval; record collection | `card.issue` |
+| Approve for issuance, or return for amendment | `card.approve` |
+| Replace | `card.replace` |
+| Suspend, restore, report lost, expire, cancel | `card.suspend` |
+| Read, list, render | `card.read` |
+| Register or withdraw an officer signature | `card_template.manage` |
+
+`card.issue` and `card.approve` are separate deliberately: the officer who prepares a card
+cannot approve their own preparation. Recording collection (`ISSUED → ACTIVE`) is part of
+issuing rather than of suspending, so it has its own route — otherwise whoever may suspend a
+card could also complete an issuance nobody authorised them to complete.
+
+### Statuses
+
+Nine, per PRD §8. Two distinctions matter:
+
+- **`ISSUED` is not `ACTIVE`.** An issued card has been printed but not handed over. It
+  occupies its holder's one live-card slot — a card lost between the printer and the counter
+  is exactly as dangerous as one lost afterwards — but it does not verify.
+- **`LOST` and `EXPIRED` never return to `ACTIVE`.** A card reported lost may be in somebody
+  else's pocket, and restoring it would revalidate whatever is out there. A card found again
+  is replaced, not resurrected.
+
+A replacement is a **new card in `DRAFT`** pointing back at the original, which moves to
+`REPLACED`. It still requires approval before it is issued, so `card.replace` cannot mint
+credentials on its own.
+
+---
+
+## 9. Auditing
 
 Create, update, approve, issue, suspend, replace, look up, export, and override all emit
 audit events carrying before and after values, the acting user, and the request identifier.
@@ -222,7 +287,7 @@ committed.
 
 ---
 
-## 9. Data handling obligations for integrators
+## 10. Data handling obligations for integrators
 
 - Responses contain only those fields the caller's disclosure profile permits. Fields are
   selected by projection through the profile, never by retrieving a complete record and
@@ -234,7 +299,7 @@ committed.
 
 ---
 
-## 10. Related documents
+## 11. Related documents
 
 | Document | Contents |
 |---|---|

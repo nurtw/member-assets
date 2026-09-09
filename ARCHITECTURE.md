@@ -409,7 +409,59 @@ test, per PRD §25.2.
 
 ---
 
-## 14. Matters not yet decided
+## 14. Printing
+
+Determined at item 06, which is the first item that produces a physical artifact.
+
+**Decision 14.1 — rendering is `pdf-lib`, and no browser enters the container.**
+Cards, stickers, and the wet-signature form are drawn with `pdf-lib`: pure
+JavaScript, no native dependency, no headless browser, no system fonts. The
+alternative considered and rejected was HTML rendered by headless Chromium, which
+adds roughly 300 MB and a full browser to a container that otherwise runs a Node
+process — a remote-code-execution surface being handed member photographs, to be
+patched on the Union's schedule rather than a browser vendor's. It also makes
+layout depend on a font stack resolved inside the image, so the same HTML renders
+differently after a base-image bump, which is precisely what `template_version`
+exists to prevent.
+
+A card is a fixed-size artifact — ISO/IEC 7810 ID-1, 85.60 × 53.98 mm — with about
+a dozen elements at fixed positions. That is a coordinate problem, not a layout
+problem.
+
+The accepted cost: `pdf-lib` draws text but does not lay it out, so wrapping and
+fitting are hand-written. That is one small module,
+`apps/api/src/pdf/text.ts`, written once and shared by every document.
+
+**Decision 14.2 — a template is a versioned module, not a database row.** The
+`template_version` column promises that a redesign does not invalidate cards
+already issued (§12). That promise holds only if the *old renderer still exists*,
+so each template is a module registered under its version and a card renders
+through the version it records. Removing a template module is a breaking change;
+`registry.spec.ts` names every version ever issued against so that removing one
+fails a test rather than a member at a counter.
+
+This is deliberately not Decision 5.2's "profiles are rows, not code". A
+disclosure profile changes when the Union onboards an organisation and must not
+require a deploy. A card redesign is a print-shop event with weeks of lead time
+that needs the artwork committed and reviewed. Opposite change profiles, opposite
+mechanisms.
+
+**Decision 14.3 — an unissued artifact is visibly unissued.** A card that has not
+reached `ISSUED` renders with no card number and a diagonal `PROOF — NOT ISSUED`
+overprint. Without it, the approval step is decorative: an officer could print
+the draft, laminate it, and hand it over. The same treatment applies to stickers
+at item 08.
+
+**Decision 14.4 — fonts are the standard fourteen, until the artwork arrives.**
+Layout is deterministic because `pdf-lib` computes positions from built-in
+metrics, but glyph rasterisation is the viewer's. Embedding a licensed typeface
+is deferred to the version cut against the Union's official artwork
+(QUESTIONS.md **CARD-05**), which is when the typefaces are specified anyway.
+Recorded so it is a decision rather than an oversight.
+
+---
+
+## 15. Matters not yet decided
 
 All business and policy questions were determined on 9 September 2026 and are recorded at
 PRD §23. What remains are engineering choices, to be made at the item that first requires
@@ -421,12 +473,11 @@ them.
 | Object storage provider for photographs and signatures | Item 05 |
 | Package manager and monorepo tooling | Item 01 |
 | Whether the officer portal is a route within the dashboard or a separate deployment | Item 10 |
-| Print-rendering approach for cards, stickers, and the wet-signature form | Item 06 |
 | Secret-management mechanism for the QR signing key, including rotation procedure | Item 08 |
 
 ---
 
-## 15. Determinations affecting this document
+## 16. Determinations affecting this document
 
 The following were settled on 9 September 2026 and are reflected in the decisions above.
 They are listed here so that a reader need not diff the document to find what changed.

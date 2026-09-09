@@ -55,15 +55,20 @@ thing a year later.
 | Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
 | **Total** | **26** | **43** | **1** | **70** |
 
-### Blocking delivery right now
+### Blocking production use right now
 
-Two questions, both required before roadmap item 05 (membership registration) can place a
-member into a real unit:
+Four questions. None blocks *delivery* — all the surrounding work is built and tested — but
+each stops the System being used for real in a specific way.
 
-| ID | Question |
-|---|---|
-| **ORG-05** | The Union's actual zones, branches, and units |
-| **ORG-06** | The approved list of member designations |
+| ID | Question | What it stops |
+|---|---|---|
+| **ORG-05** | The Union's actual zones, branches, and units | Members can only be registered into the placeholder `Unassigned Zone / Branch / Unit` |
+| **ORG-06** | The approved list of member designations | The designation prints blank on every card |
+| **CARD-05** | The official card artwork at print resolution | Cards render from a template reconstructed from a photograph, which prints `PROVISIONAL TEMPLATE — ARTWORK PENDING` across its foot and must not be issued to a member |
+| **CARD-07** | The signing officers and their signature images | Cards issue with blank President and General Secretary signature lines. Each such issuance is recorded in the audit trail, so they can be found and replaced afterwards — see `docs/reference/OPERATIONS.md` |
+
+**CARD-04** (validity period) is a near neighbour: without it no card expires, which is a
+supported configuration rather than a defect, so it does not appear above.
 
 Everything else is either answered, or needed later and not yet obstructing work.
 
@@ -645,3 +650,4 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 | Date | Change |
 |---|---|
 | 9 September 2026 | Register created. 26 answered, 43 awaiting, 1 deferred. ORG-05 and ORG-06 identified as blocking item 05. |
+| 9 September 2026 | Item 06 delivered. CARD-05 and CARD-07 added to the blocking list: neither blocked the build, both block printing a card for a member. CARD-04, CARD-06, and CARD-08 confirmed as configuration or authority questions that the built mechanism already accommodates. |

@@ -409,6 +409,42 @@ That is sound: `details` describes the request the caller just sent, never the r
   carries script and would be stored XSS. Bytes are served only through a link signed over
   the id *and* an expiry; every failure answers 404.
 
+### Membership cards and printing (item 06)
+
+- **A card number is allocated on issuance, never earlier.** `cardNumber` is nullable, same
+  reasoning as the membership number: a cancelled draft was never printed and is in nobody's
+  pocket, so a number against it would name an artifact that does not exist.
+- **An unissued card renders as a proof** — no number, and a diagonal `PROOF — NOT ISSUED`
+  overprint. Without it the approval step is decorative: an officer could print the draft,
+  laminate it, and hand it over.
+- **The printed values are a snapshot on the `card` row**, taken at issuance and never
+  recomputed. A card is a physical object; re-deriving its contents would produce a
+  different card bearing the same number, and verification compares the article in the
+  officer's hand against what the System says.
+- **The card module never joins `member_contact`, `next_of_kin`, or `guarantor`.** The
+  printed address is officer-composed and lives on the card row. Keep it that way — the
+  separation is structural, not query discipline.
+- **`card.issue` prepares; `card.approve` issues.** Separate, like `member.create` and
+  `application.decide`. Recording collection (`ISSUED → ACTIVE`) is part of issuing and has
+  its own route, because a route decorator names one permission and the guard refuses before
+  the service is reached — "it depends on the transition" cannot be expressed there.
+- **Templates are versioned modules, not rows** (`apps/api/src/card/templates/`). A card
+  renders through the version it records. **Never delete a template module**; `registry.spec.ts`
+  names every version ever issued and fails if one disappears.
+- **`v1-provisional` is provisional and says so on the card.** The palette is inferred from
+  a daylight photograph (`DESIGN.md` §2). When CARD-05 arrives, cut a **v2** — do not edit v1.
+- **Printing is `pdf-lib`, and no browser goes in the container** (Decision 14.1). Write
+  templates in millimetres from the top-left; `apps/api/src/pdf/geometry.ts` does the one
+  conversion to PDF's bottom-left points.
+
+### Returning a file from a controller
+
+**Return a `StreamableFile`, never a bare `Buffer`.** Nest serialises a returned object, and
+a Buffer is an object — so a bare return produces `{"type":"Buffer","data":[...]}` under a
+200, with whatever `Content-Type` you set still attached. It reads as a working endpoint
+until somebody opens the file. This is why the media route's success path now asserts the
+bytes and not merely the headers.
+
 ### The `.env` trap that cost real time
 
 **`nest start` does not load `.env`.** `main.ts` therefore does `import 'dotenv/config'` on
@@ -428,6 +464,11 @@ read in one place, `apps/web/src/lib/api.ts`, which supplies the development def
 **throws in production** rather than silently pointing at localhost.
 
 `apps/web/.env.local` is required for local development and is gitignored.
+
+**The same trap had a third half in the test harness.** `vitest` does not read `.env`
+either, so the end-to-end suite passed only on a machine where `DATABASE_URL` happened to be
+exported in the shell. `apps/api/test/setup-env.ts` now loads it, wired in through
+`setupFiles`.
 
 ### The partial index Prisma does not know about
 

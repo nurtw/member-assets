@@ -33,7 +33,7 @@ Each item is independently completable and independently testable. Status values
 | 03 | auth-and-permissions | §16, §17 | **done** | `plans/03-auth-and-permissions.md` |
 | 04 | org-hierarchy | §6 | **done** | `plans/04-org-hierarchy.md` |
 | 05 | membership-application | §7 | **done** | `plans/05-membership-application.md` |
-| 06 | membership-card-issuance | §8 | not-started | `plans/06-membership-card-issuance.md` |
+| 06 | membership-card-issuance | §8 | complete | `plans/06-membership-card-issuance.md` |
 | 07 | vehicle-declaration | §9 | not-started | `plans/07-vehicle-declaration.md` |
 | 08 | sticker-inventory-qr | §10 | not-started | `plans/08-sticker-inventory-qr.md` |
 | 09 | legacy-data-migration | §25 | not-started | `plans/09-legacy-data-migration.md` |
@@ -92,7 +92,14 @@ item 06, which needs the same PDF pipeline for cards.
 
 **06 — membership-card-issuance.** Card templates carrying a version, card-number
 generation, the issuance and replacement workflow, and the nine-state card lifecycle.
-Validity and numbering determinations at PRD §23.5, §23.6, §23.7. Unblocked.
+Validity and numbering determinations at PRD §23.5, §23.6, §23.7.
+
+Delivered with the print pipeline item 05 deferred here, so the wet-signature registration
+form lands in the same item. A card number is allocated on issuance and not before; an
+unissued card renders overprinted `PROOF — NOT ISSUED`; the printed values are snapshotted
+on the card row so a card re-renders exactly as it was printed. Print rendering is `pdf-lib`
+with no browser in the container (Decision 14.1). The launch template is marked provisional
+until the Union supplies its artwork (CARD-05).
 
 **07 — vehicle-declaration.** Declaration records, plate normalisation, duplicate and
 conflict detection, the six-state declaration lifecycle, and preservation of historical

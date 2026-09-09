@@ -150,6 +150,52 @@ export const api = {
     return payload as T;
   },
 
+  /**
+   * Fetches a document and hands it to the browser as a download.
+   *
+   * Deliberately not a plain `<a href>` to the API. The session cookie belongs
+   * to the API's origin, and in production the dashboard and the API are
+   * different sites — a `SameSite=Lax` cookie is not sent on a cross-site
+   * navigation, so the link would answer 401 and the officer would see a login
+   * page where they expected a card. Fetching with `credentials: 'include'` and
+   * saving the blob works the same way in development and in production.
+   *
+   * The filename comes from the API's `Content-Disposition`, so the naming rule
+   * — issued cards by card number, proofs by nothing identifying — lives in one
+   * place rather than being restated here.
+   */
+  async download(path: string, fallbackName: string): Promise<void> {
+    const response = await fetch(`${BASE_URL}${path}`, {
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: { message?: string; requestId?: string } }
+        | null;
+      throw new ApiError(
+        response.status,
+        payload?.error?.message ?? "The document could not be produced.",
+        payload?.error?.requestId,
+      );
+    }
+
+    const disposition = response.headers.get("content-disposition") ?? "";
+    const named = /filename="([^"]+)"/.exec(disposition);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = named?.[1] ?? fallbackName;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    // Released on the next tick: revoking synchronously can cancel the download
+    // in some browsers before it has started reading the blob.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  },
+
   /** Resolves a signed media path returned by the API into a full URL. */
   mediaUrl: (signedPath: string) =>
     `${BASE_URL.replace(/\/api\/v1$/, "")}${signedPath}`,

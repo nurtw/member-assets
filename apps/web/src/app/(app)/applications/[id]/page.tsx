@@ -1,6 +1,6 @@
 "use client";
 
-import type { ApplicationDetail } from "@nurtw/contracts";
+import type { ApplicationDetail, CardSummary } from "@nurtw/contracts";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -13,6 +13,7 @@ import {
   Section,
   StatusChip,
   TextArea,
+  TextInput,
 } from "@/components/ui";
 import { ApiError, api, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -53,6 +54,7 @@ export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
   const { holds } = useSession();
   const [reason, setReason] = useState("");
+  const [cardAddress, setCardAddress] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiError | null>(null);
 
@@ -70,6 +72,22 @@ export default function ApplicationDetailPage() {
   const application = data?.application ?? null;
   const loadError = error instanceof ApiError ? error : null;
   const loading = isLoading;
+
+  /**
+   * The member's cards.
+   *
+   * Keyed on the member, and not requested at all until the application has
+   * loaded — SWR treats a null key as "nothing to fetch", which is how a
+   * dependent request is expressed without an effect.
+   */
+  const memberId = application?.member.id ?? null;
+  const { data: cardData, mutate: mutateCards } = useSWR<{
+    cards: CardSummary[];
+  }>(memberId ? `/cards?memberId=${memberId}` : null, fetcher);
+  const cards = cardData?.cards ?? [];
+  const liveCard = cards.find((card) =>
+    ["DRAFT", "PENDING_APPROVAL", "ISSUED", "ACTIVE"].includes(card.status),
+  );
 
   async function act(action: () => Promise<unknown>) {
     setBusy(true);
@@ -249,6 +267,112 @@ export default function ApplicationDetailPage() {
           ) : null}
         </dl>
       </Section>
+
+      {/*
+        The print-ready form for wet signature (PRD §23.16).
+
+        Offered only to an officer holding `member_sensitive.read`, because the
+        document carries next of kin, guarantor, telephone, and address — seeing
+        that an application exists does not entitle somebody to print all of it.
+      */}
+      {holds("member_sensitive.read") ? (
+        <Section
+          title="Registration form"
+          description="The Union’s form, filled in from this record, for physical signature."
+        >
+          <div>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() =>
+                void act(() =>
+                  api.download(
+                    `/applications/${application.id}/form`,
+                    "nurtw-registration.pdf",
+                  ),
+                )
+              }
+            >
+              Download form for signature
+            </Button>
+          </div>
+        </Section>
+      ) : null}
+
+      {/*
+        Cards. Only an active member may hold one, so this appears once the
+        application has been approved.
+      */}
+      {member.status === "ACTIVE" && holds("card.read") ? (
+        <Section
+          title="Membership card"
+          description="A member holds one card at a time. A replacement supersedes the original rather than overwriting it."
+        >
+          {cards.length > 0 ? (
+            <ul className="grid gap-2">
+              {cards.map((card) => (
+                <li
+                  key={card.id}
+                  className="flex flex-wrap items-center gap-3 rounded-md border border-[var(--border-subtle)] px-3 py-2"
+                >
+                  <StatusChip status={card.status} />
+                  <span className="font-mono text-xs text-black/70">
+                    {card.cardNumber ?? (
+                      <span className="font-sans italic text-black/40">
+                        Not yet issued
+                      </span>
+                    )}
+                  </span>
+                  <Link
+                    href={`/cards/${card.id}`}
+                    className="ml-auto text-sm underline underline-offset-2"
+                  >
+                    Open
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-black/55">No card has been prepared.</p>
+          )}
+
+          {!liveCard && holds("card.issue") ? (
+            <div className="grid gap-4 border-t border-[var(--border-subtle)] pt-4">
+              <Field
+                label="Address as printed on the card"
+                htmlFor="cardAddress"
+                hint="May be shorter than the residential address — the card has limited space."
+                required
+              >
+                <TextInput
+                  id="cardAddress"
+                  value={cardAddress}
+                  onChange={(event) => setCardAddress(event.target.value)}
+                />
+              </Field>
+              <div>
+                <Button
+                  type="button"
+                  disabled={busy || cardAddress.trim().length < 4}
+                  onClick={() =>
+                    void act(async () => {
+                      await api.post("/cards", {
+                        memberId: member.id,
+                        printedAddress: cardAddress.trim(),
+                      });
+                      setCardAddress("");
+                      await mutateCards();
+                    })
+                  }
+                >
+                  Prepare a card
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </Section>
+      ) : null}
 
       {isDraft && holds("member.create") ? (
         <Section
