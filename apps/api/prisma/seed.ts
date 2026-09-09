@@ -1,6 +1,9 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import {
+  ANAMBRA_LGA_SEED,
+  ANAMBRA_STATE_NAME,
+  DESIGNATION_SEED,
   LEGACY_VEHICLE_CATEGORY_SEED,
   PERMISSIONS,
   SYSTEM_ROLES,
@@ -174,6 +177,60 @@ async function seedVehicleCategories(): Promise<void> {
 }
 
 /**
+ * The twenty-one local government areas of Anambra State.
+ *
+ * Public administrative geography, not personal data, and cross-checked against
+ * the legacy export, which carries these same areas across the vehicles that
+ * record one. Seeded because the registration form of PRD §7 cannot be completed
+ * without it and item 09's reconciliation matches against it.
+ *
+ * `stateName` is stored per row rather than assumed, so a second state council
+ * can be onboarded without a migration (§23.2).
+ */
+async function seedLgas(): Promise<void> {
+  for (const lga of ANAMBRA_LGA_SEED) {
+    await prisma.lga.upsert({
+      where: { code: lga.code },
+      create: { code: lga.code, name: lga.name, stateName: ANAMBRA_STATE_NAME },
+      update: {},
+    });
+  }
+  console.log(`  local government areas: ${ANAMBRA_LGA_SEED.length}`);
+}
+
+/**
+ * Designations, of which there are deliberately none.
+ *
+ * PRD §23.4 directs that master data be seeded from the legacy export. The export
+ * carries no designation list — `owner_account_role` holds the previous software's
+ * *account* roles, not a member's approved NURTW designation — so there is nothing
+ * to seed. Inventing a list would place values carrying the appearance of Union
+ * authority in front of an administrator without it.
+ *
+ * The loop stays so that the moment the Union supplies a list, it seeds through
+ * the same idempotent path as every other collection rather than through a
+ * one-off script.
+ */
+async function seedDesignations(): Promise<void> {
+  for (const [index, designation] of DESIGNATION_SEED.entries()) {
+    await prisma.designation.upsert({
+      where: { code: designation.code },
+      create: {
+        code: designation.code,
+        label: designation.label,
+        sortOrder: index,
+      },
+      update: {},
+    });
+  }
+  console.log(
+    DESIGNATION_SEED.length === 0
+      ? '  designations: none (created by the Union through the interface, PRD §23.4)'
+      : `  designations: ${DESIGNATION_SEED.length}`,
+  );
+}
+
+/**
  * PRD Requirement 14.1 and 13.3 — limits and thresholds must be adjustable by an
  * administrator at runtime. These rows are the initial values, not the authority:
  * once set, the Union owns them, so the seed must never overwrite them.
@@ -268,6 +325,8 @@ async function main(): Promise<void> {
   await seedRoles();
   await seedOrganisation();
   await seedVehicleCategories();
+  await seedDesignations();
+  await seedLgas();
   await seedSystemSettings();
 
   await seedAdministrator();

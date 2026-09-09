@@ -1,6 +1,7 @@
 import { Controller, Get, HttpCode, HttpStatus, Res } from '@nestjs/common';
 import type { Response } from 'express';
 
+import { Documented } from '../docs/documented.decorator.js';
 import { Public } from '../auth/require-permission.decorator.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
@@ -37,6 +38,15 @@ export class HealthController {
   @Public()
   @Get()
   @HttpCode(HttpStatus.OK)
+  @Documented({
+    summary: 'Report service health.',
+    description:
+      'Deliberately minimal, and reachable without authentication. It carries no version ' +
+      'string, hostname, dependency name, uptime, or build identifier, because anything ' +
+      'disclosed here is disclosed to everyone. The database is checked but never described: ' +
+      'a caller learns that the service is degraded, not which component failed. Answers 503 ' +
+      'when degraded, which is the signal a load balancer needs.',
+  })
   async check(
     @Res({ passthrough: true }) response: Response,
   ): Promise<HealthResponse> {

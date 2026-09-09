@@ -9,20 +9,18 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
+import { loginSchema, type LoginInput } from '@nurtw/contracts';
 import type { Response } from 'express';
 
+import { Documented } from '../docs/documented.decorator.js';
 import { AuthService } from './auth.service.js';
 import {
   SESSION_COOKIE_NAME,
   type AuthenticatedRequest,
 } from './authorisation.guard.js';
 import { PermissionService } from './permission.service.js';
+import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { Public, RequirePermission } from './require-permission.decorator.js';
-
-interface LoginBody {
-  email?: unknown;
-  password?: unknown;
-}
 
 @Controller('auth')
 export class AuthController {
@@ -54,15 +52,22 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @Documented({
+    summary: 'Open a session.',
+    description:
+      'On success an opaque session token is set as an `httpOnly` cookie and is never returned ' +
+      'in the body, so it cannot be recovered from a logged response or an XHR trace. ' +
+      'An unknown account and an incorrect password produce byte-identical responses, and both ' +
+      'take comparable time, so neither existence nor near-misses can be inferred.',
+    body: loginSchema,
+    responses: { 401: 'The credentials were not accepted.' },
+  })
   async login(
-    @Body() body: LoginBody,
+    @Body(new ZodValidationPipe(loginSchema)) body: LoginInput,
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ): Promise<{ status: 'ok' }> {
     const { email, password } = body;
-    if (typeof email !== 'string' || typeof password !== 'string') {
-      throw new BadRequestException();
-    }
 
     const session = await this.auth.login(email, password, {
       ipAddress: request.ip,
@@ -83,6 +88,13 @@ export class AuthController {
   @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
+  @Documented({
+    summary: 'Close the current session.',
+    description:
+      'Deletes the session server-side, so revocation takes effect on the **next** request. ' +
+      'That property is why sessions were chosen over signed tokens. Answers 200 whether or ' +
+      'not a valid session was presented.',
+  })
   async logout(
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
@@ -110,6 +122,14 @@ export class AuthController {
    */
   @RequirePermission('organisation.read')
   @Get('me')
+  @Documented({
+    summary: 'Describe the signed-in user and their effective permissions.',
+    description:
+      'Returns each permission with the organisational scope in which it is held, so the ' +
+      'dashboard can hide controls the user cannot use. Hiding a control is never the control ' +
+      'itself — the guard remains the authority. Requires only `organisation.read`, which every ' +
+      'internal role holds; this is a "who am I" endpoint, not a privileged one.',
+  })
   async me(@Req() request: AuthenticatedRequest) {
     const user = request.user;
     if (!user) {
@@ -131,6 +151,22 @@ export class AuthController {
    */
   @RequirePermission('permission.read')
   @Get('holders')
+  @Documented({
+    summary: 'List who currently holds a permission, and in what scope.',
+    description:
+      'Answers across role bundles, per-user grants, and per-user revocations, with revocations ' +
+      'applied. It exists because `vehicle.declare` is held so narrowly that it is worthless as ' +
+      'a control if establishing who holds it requires reasoning through those three layers by ' +
+      'hand.',
+    query: [
+      {
+        name: 'permission',
+        description: 'The permission code to enquire about, for example `vehicle.declare`.',
+        required: true,
+      },
+    ],
+    responses: { 400: 'No permission code was supplied.' },
+  })
   async holders(@Req() request: AuthenticatedRequest) {
     const permission = request.query.permission;
     if (typeof permission !== 'string' || permission.length === 0) {

@@ -38,3 +38,22 @@ export {
   type PermissionQuery,
   type ScopedPermission,
 } from './permissions/effective-permissions.js';
+
+export {
+  InvalidHierarchyError,
+  ORGANISATION_LEVELS,
+  assertMoveIsAcyclic,
+  assertValidPlacement,
+  canContain,
+  childLevelOf,
+  childPath,
+  idFromPath,
+  isMoveAcyclic,
+  isOrganisationLevel,
+  levelDepth,
+  outermostScopes,
+  parentLevelOf,
+  parentPathOf,
+  rewriteDescendantPath,
+  type OrganisationLevel,
+} from './organisation/hierarchy.js';

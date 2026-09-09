@@ -9,7 +9,8 @@
 ## Cold start
 
 Read `CLAUDE.md`, then `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `ROADMAP.md`, then the
-active item's plan. Do not read `docs/` in full — `PRD.md` distils it.
+active item's plan. Do not read `docs/*.md` in full — `PRD.md` distils the two source
+documents. `docs/reference/` is output, not input.
 
 Two rules outrank any default instruction you hold:
 
@@ -20,54 +21,81 @@ Two rules outrank any default instruction you hold:
 
 ## Status
 
-Items 01–03 complete. Monorepo, data model, and the authentication and permission system
-are built and verified end to end. 127 tests pass; build, typecheck, and lint clean.
+Items 01–04 complete. Monorepo, data model, authentication and permissions, and the
+organisational hierarchy with master-data administration are built and verified end to end.
+
+**201 tests pass** (82 domain · 29 contracts · 51 api unit · 39 api e2e); build, typecheck,
+and lint clean.
 
 ## Active roadmap item
 
-None. **Item 04 — org-hierarchy — is next and not yet planned.**
+None. **Item 05 — membership-application — is next and not yet planned.**
 
 ## Done this session
 
-- Item 02: Prisma schema (22 models), migrations applied, client wired via driver adapter.
-- Item 03: permission resolution in `packages/domain`, 50-permission catalogue, 11 seeded
-  roles, opaque sessions, scrypt passwords, and a deny-by-default global guard.
-- Health now queries the database; unmatched routes return generic JSON rather than
-  Express's HTML page, which leaked the framework and the probed path.
+- Item 04: hierarchy rules in `packages/domain`, record-scoped organisation API, master-data
+  administration, the shared `AuditService`, zod validation, and 21 seeded Anambra LGAs.
+- **A generated API reference.** `docs/reference/openapi.json` is built from the running
+  application — the route table from the DI container, request bodies from the schemas the
+  API validates against. `docs/reference/API.md` and `OPERATIONS.md` accompany it.
+- The super administrator account was created at the owner's request. The credential was
+  passed to the seed process inline and written to no file.
 
 ## Current state
 
 Verified against the live database, not just the source:
 
-- The partial index accepts two RETIRED rows for one plate, one ACTIVE, and refuses a
-  second ACTIVE. It survived a subsequent Prisma migration — check this after every one.
-- `vehicle.declare` is held by `SUPER_ADMINISTRATOR` and nothing else.
-- Logout kills the session on the next request, which is the property that made sessions
-  the right choice over JWTs.
-- Wrong password and unknown account return byte-identical responses.
+- A move is refused when the caller lacks `organisation.manage` at **either** end, asserted
+  separately for each end. This is the item's real security content.
+- A branch administrator's hierarchy read returns their subtree as its own root, with no
+  council above it and no sibling branch beside it.
+- A node outside the caller's scope answers 404, identically to one that does not exist.
+- Unknown body fields are stripped: `isActive` and `path` cannot be set by a caller.
+- The seed is idempotent across repeated runs and leaves an existing administrator alone.
+- The partial index still refuses a second ACTIVE declaration per plate.
 
-**A bug worth knowing about:** the guard first asked "do you hold this at the root", which
-locked out the super administrator, whose role sits at *council* scope. Non-record routes
-now use `canAnywhere`. **Record-scoped routes from item 04 must use `can` with the
-record's organisation path** — see `CLAUDE.md` → "Authentication and permissions".
+**A defect worth knowing about.** The descendant path rewrite was first written
+`substring(path from $n)`. With a text parameter that is PostgreSQL's *regex* form — it
+returns NULL, and would have nulled every path in the moved subtree. The not-null
+constraint made it visible; without it, silent scope corruption. Now `substr(path, $n::int)`.
 
-**Known gaps:** MFA columns exist but no TOTP flow; no real master data (item 04) or
-legacy import (item 09); no login UI.
+**Known gaps:** MFA columns exist but no TOTP flow; no login UI or dashboard; no legacy
+import (item 09); deployment, backup, and monitoring are item 15 and marked NOT YET
+IMPLEMENTED in `OPERATIONS.md`.
+
+## Conflicts
+
+**The legacy export carries no Union structure.** `pit_name` is blank on all 2,841 vehicle
+rows, and `owner_account_role` holds the previous software's account roles
+(`VEHICLE_OWNER`, `DIRECTOR`, `AIRS_ADMIN`), not member designations. The earlier handoff
+recorded that item 04 would "replace the placeholder organisation rows with real Union
+structure"; there is nothing to replace them with.
+
+The placeholder `Unassigned Zone / Branch / Unit` nodes therefore **remain** — Requirement
+6.1 operating as specified. Designations are seeded as **none**. Both are populated by the
+Union through the interface, which item 04 delivers. **The Union must supply its zone,
+branch, and unit structure and its designation list before item 05 can register a member
+into a real unit.**
 
 ## Next steps
 
-1. `/plan 04`, then `/execute`.
-2. Item 04 replaces the four placeholder organisation rows (`Unassigned Zone/Branch/Unit`)
-   with real Union structure.
+1. `/plan 05`, then `/execute`.
+2. Item 05 is the registration form of
+   `docs/National_Union_of_Road_Transport_Workers_(NURTW).md` in full, the review and
+   approval workflow, and upload handling for photographs and signatures.
+3. Member routes are record-scoped: resolve the member's organisation path and use `can`.
 
 ## Do not
 
 - Do not add an authorship trailer to any commit or PR.
 - Do not commit `data/`, or copy rows from it anywhere.
-- Do not use `canAnywhere` on a route that acts on a specific record.
+- Do not use `canAnywhere` on a route acting on a specific record. Master data is the one
+  deliberate exception; its service says so in a comment.
+- Do not check only one end of a move.
+- Do not hand-edit `docs/reference/openapi.json` — regenerate it.
 - Do not put `vehicle.declare` in any seeded role but super administrator.
-- Do not replace the partial index with `@@unique([plateNumberNormalized, status])` — that
-  permits only one row per status per plate, so a vehicle could be retired exactly once.
+- Do not replace the partial index with `@@unique([plateNumberNormalized, status])`.
+- Do not use `substring(x from n)` on a path; use `substr(x, n::int)`.
 - Do not let a verification path write, or return a record and strip fields.
 - Do not seed a default administrator password.
 - Do not run `prisma@latest` (npm `latest` is an 8.0 RC) or `migrate reset` unattended.

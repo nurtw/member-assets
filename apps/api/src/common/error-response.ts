@@ -14,7 +14,23 @@ export interface ErrorResponse {
     readonly code: string;
     readonly message: string;
     readonly requestId: string;
+    /**
+     * Field-level validation failures, present only on a rejected request body.
+     *
+     * This does not weaken PRD Requirement 14.3. That requirement forbids a
+     * response disclosing anything about the *record set* — whether an
+     * identifier exists, or nearly exists. These entries describe only the
+     * request the caller has just sent, which the caller already holds. Nothing
+     * derived from the database ever reaches this field.
+     */
+    readonly details?: readonly ValidationIssue[];
   };
+}
+
+export interface ValidationIssue {
+  /** Dotted path to the offending field, empty for the body as a whole. */
+  readonly field: string;
+  readonly message: string;
 }
 
 /** Messages returned to callers. Deliberately uninformative. */
@@ -50,12 +66,14 @@ export function resolveRequestId(supplied: string | undefined): string {
 export function buildErrorResponse(
   status: number,
   requestId: string,
+  details?: readonly ValidationIssue[],
 ): ErrorResponse {
   return {
     error: {
       code: HttpStatus[status] ?? 'ERROR',
       message: GENERIC_MESSAGES[status] ?? FALLBACK_MESSAGE,
       requestId,
+      ...(details && details.length > 0 ? { details } : {}),
     },
   };
 }

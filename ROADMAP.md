@@ -31,7 +31,7 @@ Each item is independently completable and independently testable. Status values
 | 01 | monorepo-scaffold | §20 | **done** | `plans/01-monorepo-scaffold.md` |
 | 02 | core-data-model | §24, §7–10 | **done** | `plans/02-core-data-model.md` |
 | 03 | auth-and-permissions | §16, §17 | **done** | `plans/03-auth-and-permissions.md` |
-| 04 | org-hierarchy | §6 | not-started | `plans/04-org-hierarchy.md` |
+| 04 | org-hierarchy | §6 | **done** | `plans/04-org-hierarchy.md` |
 | 05 | membership-application | §7 | not-started | `plans/05-membership-application.md` |
 | 06 | membership-card-issuance | §8 | not-started | `plans/06-membership-card-issuance.md` |
 | 07 | vehicle-declaration | §9 | not-started | `plans/07-vehicle-declaration.md` |
@@ -67,7 +67,17 @@ within what scope (Decision 9.7.1). External client authentication is deliberate
 excluded and belongs to item 11.
 
 **04 — org-hierarchy.** Council, zone, branch, and unit, together with the master-data
-administration interface. Hierarchy and master-data determinations at PRD §23.1, §23.3, §23.4. Unblocked.
+administration interface. Hierarchy and master-data determinations at PRD §23.1, §23.3,
+§23.4. Delivered with record-scoped authorisation on every route, a move authorised at both
+origin and destination, deactivation in place of deletion, and the generated API reference
+at `docs/reference/`.
+
+The legacy export was found to carry **no** zones, branches, units, or designations —
+`pit_name` is blank on all 2,841 rows, and `owner_account_role` holds the previous
+software's account roles rather than member designations. Local government areas are the
+only master data the export supplies, and they are seeded. The Union's structure is
+therefore built through the interface, and the placeholder nodes remain as the Requirement
+6.1 default until it is.
 
 **05 — membership-application.** The registration form of
 `docs/National_Union_of_Road_Transport_Workers_(NURTW).md` in full, the review and approval

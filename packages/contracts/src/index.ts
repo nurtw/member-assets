@@ -5,9 +5,10 @@
  * by the web application, so that a change to a response shape produces a compile
  * error rather than a runtime defect.
  *
- * Zod schemas belong here too (ARCHITECTURE.md §3) but are deferred to roadmap
- * item 02, when there are concrete DTOs to validate. Adding the dependency before
- * there is anything to validate would be premature.
+ * Zod schemas live here too (ARCHITECTURE.md §3), introduced at item 04 where the
+ * first request bodies large enough to warrant them appear. The API validates
+ * against them and the dashboard reuses them for forms, so one definition governs
+ * both sides of every request.
  */
 
 export {
@@ -22,11 +23,42 @@ export {
 } from './statuses.js';
 
 export {
+  ANAMBRA_LGA_SEED,
+  ANAMBRA_STATE_NAME,
+  DESIGNATION_SEED,
   LEGACY_VEHICLE_CATEGORY_SEED,
   ORGANISATION_LEVELS,
   type MasterDataSeedEntry,
   type OrganisationLevel,
 } from './master-data.js';
+
+export { loginSchema, type LoginInput } from './auth.js';
+
+export {
+  MASTER_DATA_COLLECTIONS,
+  createLgaSchema,
+  createMasterDataSchema,
+  createOrganisationSchema,
+  moveOrganisationSchema,
+  organisationLevelSchema,
+  setOrganisationActiveSchema,
+  updateLgaSchema,
+  updateMasterDataSchema,
+  updateOrganisationSchema,
+  type CreateLgaInput,
+  type CreateMasterDataInput,
+  type CreateOrganisationInput,
+  type LgaEntry,
+  type MasterDataCollection,
+  type MasterDataEntry,
+  type MoveOrganisationInput,
+  type OrganisationNode,
+  type OrganisationTreeNode,
+  type SetOrganisationActiveInput,
+  type UpdateLgaInput,
+  type UpdateMasterDataInput,
+  type UpdateOrganisationInput,
+} from './organisation.js';
 
 export {
   AGGREGATE_FILTERED_SCOPE,

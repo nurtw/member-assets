@@ -50,6 +50,9 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2
+      zod:
+        specifier: ^4.5.4
+        version: 4.5.4
     devDependencies:
       '@nestjs/cli':
         specifier: ^12.0.0
@@ -148,6 +151,9 @@ importers:
       '@nurtw/domain':
         specifier: workspace:*
         version: link:../domain
+      zod:
+        specifier: ^4.5.4
+        version: 4.5.4
     devDependencies:
       oxlint:
         specifier: ^1.58.0

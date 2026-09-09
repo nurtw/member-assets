@@ -9,6 +9,7 @@ import {
 import type { Request, Response } from 'express';
 
 import { buildErrorResponse, resolveRequestId } from './error-response.js';
+import { ValidationException } from './zod-validation.pipe.js';
 
 /**
  * Turns every exception raised inside the Nest pipeline into the shared generic
@@ -26,6 +27,11 @@ import { buildErrorResponse, resolveRequestId } from './error-response.js';
  * PRD §17 — the full error is logged server-side against a request id; the
  * caller receives the id and nothing else, so support can correlate the two
  * without the response ever carrying detail.
+ *
+ * The single exception is a rejected request body, whose field-level failures
+ * are returned. Those describe the request the caller has just sent and disclose
+ * nothing about the record set, so Requirement 14.3 is untouched — see
+ * `ValidationException`.
  */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -60,6 +66,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
       );
     }
 
-    response.status(status).json(buildErrorResponse(status, requestId));
+    const details =
+      exception instanceof ValidationException ? exception.issues : undefined;
+
+    response.status(status).json(buildErrorResponse(status, requestId, details));
   }
 }
