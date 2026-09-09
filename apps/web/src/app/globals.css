@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/**
+ * NURTW design tokens — see DESIGN.md.
+ *
+ * Palette values are PROVISIONAL. They are inferred from a daylight photograph of
+ * the physical membership card and must be replaced with values sampled from the
+ * Union's official artwork before anything is printed (DESIGN.md §2).
+ *
+ * Because components consume the semantic tokens below rather than raw hex values,
+ * that replacement is a change to this file alone.
+ */
+:root {
+  /* Brand — identity only. Never used as the sole carrier of a verdict. */
+  --nurtw-green: #008751;
+  --nurtw-green-deep: #00603a;
+  --nurtw-red: #c1121f;
+  --nurtw-navy: #1b2a6b;
+  --nurtw-white: #ffffff;
+
+  /* Surfaces */
+  --background: #ffffff;
+  --foreground: #14181f;
+  --surface-muted: #f4f6f5;
+  --border-subtle: #dfe4e2;
+
+  /**
+   * Verdict tokens — deliberately NOT the brand colours.
+   *
+   * DESIGN.md §3: red and green are the brand, and they are also the worst
+   * possible pair for red-green colour vision deficiency. A verdict is carried by
+   * word, shape, AND colour together; these tokens are only the third of those.
+   * They are darker and heavier than the brand tones so a verdict panel reads as
+   * distinct from branded chrome, and survives bright outdoor sunlight.
+   */
+  --verdict-affirm: #0b6b3a;
+  --verdict-affirm-surface: #eaf4ee;
+  --verdict-deny: #8a1220;
+  --verdict-deny-surface: #fbecee;
+  --verdict-caution: #8a5a00;
+  --verdict-caution-surface: #fdf3e2;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface-muted: var(--surface-muted);
+  --color-border-subtle: var(--border-subtle);
+
+  --color-nurtw-green: var(--nurtw-green);
+  --color-nurtw-green-deep: var(--nurtw-green-deep);
+  --color-nurtw-red: var(--nurtw-red);
+  --color-nurtw-navy: var(--nurtw-navy);
+  --color-nurtw-white: var(--nurtw-white);
+
+  --color-verdict-affirm: var(--verdict-affirm);
+  --color-verdict-affirm-surface: var(--verdict-affirm-surface);
+  --color-verdict-deny: var(--verdict-deny);
+  --color-verdict-deny-surface: var(--verdict-deny-surface);
+  --color-verdict-caution: var(--verdict-caution);
+  --color-verdict-caution-surface: var(--verdict-caution-surface);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+/**
+ * Dark mode is deferred (DESIGN.md §6). The primary surfaces are a daylight
+ * roadside portal and an office dashboard, and the card identity is inherently
+ * light. The scaffold's prefers-color-scheme block is removed rather than left
+ * half-implemented, because a partially themed verdict panel is worse than none.
+ */
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}

@@ -1,0 +1,9 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Merged from the create-next-app scaffold, which wrote its own nested
+# workspace file. Nested workspace roots break pnpm resolution.
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver

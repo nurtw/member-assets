@@ -1,0 +1,60 @@
+# ---------------------------------------------------------------------------
+# NURTW Membership & Vehicle Verification System
+# ---------------------------------------------------------------------------
+
+# RESTRICTED: data/ holds a production export containing member personal data —
+# names, telephone numbers, residential addresses, VINs, and bcrypt password
+# hashes (data/users.csv). It must never enter version-control history.
+# Where sample data is required, generate a synthetic fixture.
+data/*
+*.csv
+!data/README.md
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Tooling caches
+.turbo/
+.eslintcache
+.cache/
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+logs/
+
+# Uploads (passport photos, signatures — never version these)
+uploads/
+storage/
