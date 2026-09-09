@@ -112,6 +112,14 @@ enum IdentifierScheme {
   LEGACY
 }
 
+/// PRD §23.7 and the card artwork (DESIGN.md §7.4) — the card carries three
+/// signature lines, of which two are officers of the Union. The third is the
+/// holder's own and comes from their member record, not from here.
+enum OfficerSignaturePosition {
+  PRESIDENT
+  GENERAL_SECRETARY
+}
+
 /// Stored media. Held in object storage, never in the database and never in the
 /// repository (ARCHITECTURE.md Decision 10.2). Rows here hold references only.
 enum MediaKind {
@@ -159,12 +167,12 @@ model Organisation {
   parent   Organisation?  @relation("OrganisationHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
   children Organisation[] @relation("OrganisationHierarchy")
 
-  members            Member[]
-  vehiclesByBranch   Vehicle[]             @relation("VehicleBranch")
-  vehiclesByUnit     Vehicle[]             @relation("VehicleUnit")
-  roleAssignments    UserRoleAssignment[]
-  permissionGrants   UserPermissionGrant[]
-  auditEvents        AuditEvent[]
+  members          Member[]
+  vehiclesByBranch Vehicle[]             @relation("VehicleBranch")
+  vehiclesByUnit   Vehicle[]             @relation("VehicleUnit")
+  roleAssignments  UserRoleAssignment[]
+  permissionGrants UserPermissionGrant[]
+  auditEvents      AuditEvent[]
 
   @@index([parentId])
   @@index([path])
@@ -182,13 +190,13 @@ model Organisation {
 /// PRD §23.17 — the seeded distribution is an opening baseline reflecting what
 /// the previous system held, not a complete picture of the Union's fleet.
 model VehicleCategory {
-  id          String   @id @default(uuid()) @db.Uuid
-  code        String   @unique
-  label       String
-  isActive    Boolean  @default(true) @map("is_active")
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  label     String
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   vehicles Vehicle[]
 
@@ -250,6 +258,10 @@ model MediaAsset {
   passportOf  Member? @relation("MemberPassportPhoto")
   signatureOf Member? @relation("MemberSignature")
 
+  officerSignature   OfficerSignature? @relation("OfficerSignatureAsset")
+  printedOnCards     Card[]            @relation("CardPrintedPhoto")
+  printedSignatureOn Card[]            @relation("CardPrintedSignature")
+
   @@map("media_asset")
 }
 
@@ -285,7 +297,7 @@ model Member {
   firstName  String  @map("first_name")
   middleName String? @map("middle_name")
 
-  organisationId String @map("organisation_id") @db.Uuid
+  organisationId String  @map("organisation_id") @db.Uuid
   designationId  String? @map("designation_id") @db.Uuid
 
   passportPhotoId String? @unique @map("passport_photo_id") @db.Uuid
@@ -375,15 +387,15 @@ model Guarantor {
   firstName  String  @map("first_name")
   middleName String? @map("middle_name")
 
-  address                String
-  area                   String?
-  townCity               String? @map("town_city")
-  relationshipToApplicant String @map("relationship_to_applicant")
-  phone                  String
-  occupation             String?
+  address                 String
+  area                    String?
+  townCity                String? @map("town_city")
+  relationshipToApplicant String  @map("relationship_to_applicant")
+  phone                   String
+  occupation              String?
 
-  hasCollateral      Boolean? @map("has_collateral")
-  collateralDetails  String?  @map("collateral_details")
+  hasCollateral     Boolean? @map("has_collateral")
+  collateralDetails String?  @map("collateral_details")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -402,10 +414,10 @@ model MembershipApplication {
 
   memberId String? @unique @map("member_id") @db.Uuid
 
-  submittedAt     DateTime? @map("submitted_at")
-  reviewedByUserId String?  @map("reviewed_by_user_id") @db.Uuid
-  reviewedAt      DateTime? @map("reviewed_at")
-  rejectionReason String?   @map("rejection_reason")
+  submittedAt      DateTime? @map("submitted_at")
+  reviewedByUserId String?   @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt       DateTime? @map("reviewed_at")
+  rejectionReason  String?   @map("rejection_reason")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -422,8 +434,19 @@ model MembershipApplication {
 // ---------------------------------------------------------------------------
 
 model Card {
-  id         String     @id @default(uuid()) @db.Uuid
-  cardNumber String     @unique @map("card_number")
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Allocated when the card is issued, not when it is drafted (item 06).
+  ///
+  /// Nullable for the same reason `Member.membershipNumber` is: a DRAFT card is a
+  /// proposal to print a card, and a cancelled draft was never printed and is in
+  /// nobody's pocket. A number against it would sit in the register naming an
+  /// artifact that does not exist — and the register is exactly where an officer
+  /// goes to ask whether a card presented to them is real.
+  ///
+  /// Nothing is wasted by allocating late: §26.1 requires the number convey no
+  /// sequence, so there is no counter to advance.
+  cardNumber String?    @unique @map("card_number")
   memberId   String     @map("member_id") @db.Uuid
   status     CardStatus @default(DRAFT)
 
@@ -432,27 +455,121 @@ model Card {
 
   /// PRD §23.5 — validity is configurable per template, so a redesign or a change
   /// of renewal policy does not invalidate cards already issued.
+  ///
+  /// The version selects the template *module* that renders this card, so a card
+  /// issued years ago re-renders exactly as it was printed. Removing a template
+  /// module therefore breaks every card issued under it; the registry test says so.
   templateVersion String @map("template_version")
 
   /// PRD §8 Requirement 8.1 — a replacement preserves its relationship to the
   /// card it supersedes (acceptance criterion 2). History is never overwritten.
   replacementOfCardId String? @unique @map("replacement_of_card_id") @db.Uuid
 
-  issuedByUserId    String? @map("issued_by_user_id") @db.Uuid
-  approvedByUserId  String? @map("approved_by_user_id") @db.Uuid
+  issuedByUserId   String? @map("issued_by_user_id") @db.Uuid
+  approvedByUserId String? @map("approved_by_user_id") @db.Uuid
+
+  // --- What was printed on the card ----------------------------------------
+  //
+  // A snapshot taken at issuance and never recomputed.
+  //
+  // A card is a physical object. The member transfers between branches, a
+  // designation is renamed, a spelling is corrected — and the card in their
+  // pocket still reads what it read on the day it was printed. Re-rendering from
+  // live member data would produce a *different card bearing the same number*,
+  // which defeats verification: the officer at the roadside compares what is in
+  // their hand against what the System says, so the System must say what was
+  // printed.
+  //
+  // `card.membership_number` is in the canonical field catalogue (proposal §24)
+  // as a column on the card, which is the same instinct.
+
+  printedName String? @map("printed_name")
+
+  /// The card-display address (proposal §8), which may be shorter than the
+  /// residential one. Composed by the issuing officer and held here, so the card
+  /// module never joins `member_contact` (Decision 10.1).
+  printedAddress String? @map("printed_address")
+
+  printedDesignation String? @map("printed_designation")
+
+  /// PRD Requirement 8.2 — the issuing council's state, never the member's state
+  /// of origin.
+  printedState String? @map("printed_state")
+
+  printedBranch    String? @map("printed_branch")
+  printedUnit      String? @map("printed_unit")
+  membershipNumber String? @map("membership_number")
+
+  /// The photograph and holder signature as composited, so a reprint of a
+  /// damaged card matches the original even if the member has since uploaded a
+  /// newer photograph.
+  printedPhotoId     String? @map("printed_photo_id") @db.Uuid
+  printedSignatureId String? @map("printed_signature_id") @db.Uuid
+
+  /// The officer signatures as composited (PRD §23.7). Referencing the signature
+  /// record rather than the image carries the officer's name and title along with
+  /// it, so a card issued under a president who has since left office is still
+  /// explicable.
+  presidentSignatureId        String? @map("president_signature_id") @db.Uuid
+  generalSecretarySignatureId String? @map("general_secretary_signature_id") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  member           Member  @relation(fields: [memberId], references: [id], onDelete: Restrict)
-  replacementOf    Card?   @relation("CardReplacement", fields: [replacementOfCardId], references: [id])
-  replacedBy       Card?   @relation("CardReplacement")
-  issuedByUser     User?   @relation("CardIssuedBy", fields: [issuedByUserId], references: [id], onDelete: SetNull)
-  approvedByUser   User?   @relation("CardApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  member         Member @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  replacementOf  Card?  @relation("CardReplacement", fields: [replacementOfCardId], references: [id])
+  replacedBy     Card?  @relation("CardReplacement")
+  issuedByUser   User?  @relation("CardIssuedBy", fields: [issuedByUserId], references: [id], onDelete: SetNull)
+  approvedByUser User?  @relation("CardApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  printedPhoto     MediaAsset? @relation("CardPrintedPhoto", fields: [printedPhotoId], references: [id], onDelete: Restrict)
+  printedSignature MediaAsset? @relation("CardPrintedSignature", fields: [printedSignatureId], references: [id], onDelete: Restrict)
+
+  presidentSignature        OfficerSignature? @relation("CardPresidentSignature", fields: [presidentSignatureId], references: [id], onDelete: Restrict)
+  generalSecretarySignature OfficerSignature? @relation("CardGeneralSecretarySignature", fields: [generalSecretarySignatureId], references: [id], onDelete: Restrict)
 
   @@index([memberId])
   @@index([status])
   @@map("card")
+}
+
+/// A Union officer's signature, held as an asset and composited at print
+/// (PRD §23.7).
+///
+/// Superseded rather than overwritten. An officer leaves office and their
+/// successor's signature becomes active, but every card already issued bearing
+/// the old signature must remain explicable — so the old record stays, inactive,
+/// and the cards referencing it keep resolving.
+///
+/// The whole surface is gated by `card_template.manage` and fully audited: a
+/// forged signature asset would forge every card issued after it.
+model OfficerSignature {
+  id       String                   @id @default(uuid()) @db.Uuid
+  position OfficerSignaturePosition
+
+  /// The officer's name and title **as printed on the card**, which is not
+  /// necessarily how they appear in the user directory.
+  officerName  String @map("officer_name")
+  officerTitle String @map("officer_title")
+
+  mediaAssetId String @unique @map("media_asset_id") @db.Uuid
+
+  /// At most one active signature per position, enforced by a partial unique
+  /// index in the migration — Prisma cannot express one.
+  isActive   Boolean   @default(true) @map("is_active")
+  activeFrom DateTime  @default(now()) @map("active_from")
+  activeTo   DateTime? @map("active_to")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  mediaAsset MediaAsset @relation("OfficerSignatureAsset", fields: [mediaAssetId], references: [id], onDelete: Restrict)
+
+  presidentOnCards        Card[] @relation("CardPresidentSignature")
+  generalSecretaryOnCards Card[] @relation("CardGeneralSecretarySignature")
+
+  @@index([position, isActive])
+  @@map("officer_signature")
 }
 
 // ---------------------------------------------------------------------------
@@ -486,7 +603,7 @@ model Vehicle {
   /// PRD §9.5 — declaration is a manual, permissioned act. The migration is the
   /// sole exception and marks its records so they remain distinguishable in the
   /// audit trail from an operator declaration.
-  isLegacyImport Boolean @map("is_legacy_import") @default(false)
+  isLegacyImport Boolean @default(false) @map("is_legacy_import")
 
   /// Internal operational notes. PRD §9.1 — never exposed through verification.
   notes String?
@@ -577,31 +694,31 @@ model Sticker {
 // ---------------------------------------------------------------------------
 
 model User {
-  id           String  @id @default(uuid()) @db.Uuid
-  email        String  @unique
-  fullName     String  @map("full_name")
-  passwordHash String  @map("password_hash")
+  id           String @id @default(uuid()) @db.Uuid
+  email        String @unique
+  fullName     String @map("full_name")
+  passwordHash String @map("password_hash")
 
   /// PRD Requirement 17.1 — multi-factor authentication is required for
   /// privileged roles. The mechanism is pluggable (Decision 9.3).
-  mfaSecret       String?  @map("mfa_secret")
-  mfaEnabledAt    DateTime? @map("mfa_enabled_at")
+  mfaSecret    String?   @map("mfa_secret")
+  mfaEnabledAt DateTime? @map("mfa_enabled_at")
 
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  roleAssignments      UserRoleAssignment[]
-  permissionGrants     UserPermissionGrant[]     @relation("GrantSubject")
-  grantsIssued         UserPermissionGrant[]     @relation("GrantIssuer")
+  roleAssignments       UserRoleAssignment[]
+  permissionGrants      UserPermissionGrant[]      @relation("GrantSubject")
+  grantsIssued          UserPermissionGrant[]      @relation("GrantIssuer")
   permissionRevocations UserPermissionRevocation[] @relation("RevocationSubject")
-  revocationsIssued    UserPermissionRevocation[] @relation("RevocationIssuer")
-  applicationsReviewed MembershipApplication[]
-  cardsIssued          Card[]                    @relation("CardIssuedBy")
-  cardsApproved        Card[]                    @relation("CardApprovedBy")
-  stickersIssued       Sticker[]
-  auditEvents          AuditEvent[]
-  sessions             UserSession[]
+  revocationsIssued     UserPermissionRevocation[] @relation("RevocationIssuer")
+  applicationsReviewed  MembershipApplication[]
+  cardsIssued           Card[]                     @relation("CardIssuedBy")
+  cardsApproved         Card[]                     @relation("CardApprovedBy")
+  stickersIssued        Sticker[]
+  auditEvents           AuditEvent[]
+  sessions              UserSession[]
 
   @@map("user")
 }
@@ -646,9 +763,9 @@ model UserSession {
 /// whether the actor holds `vehicle.declare`; it never asks whether the actor is
 /// a Vehicle-Record Officer.
 model Permission {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String @id @default(uuid()) @db.Uuid
   /// `resource.action`, e.g. `vehicle.declare`, `card.issue`, `audit.export`.
-  code        String   @unique
+  code        String @unique
   description String
 
   /// Decision 9.7.3 — step-up re-authentication is built and available per
@@ -812,10 +929,10 @@ model ApiClient {
 /// once, at creation or rotation, and never appears in a URL, in browser-delivered
 /// code, in a QR payload, in a log, or in an error message.
 model ApiToken {
-  id        String @id @default(uuid()) @db.Uuid
-  clientId  String @map("client_id") @db.Uuid
+  id       String @id @default(uuid()) @db.Uuid
+  clientId String @map("client_id") @db.Uuid
 
-  tokenHash String  @unique @map("token_hash")
+  tokenHash   String @unique @map("token_hash")
   /// Short non-secret prefix, so a token can be identified in an audit trail
   /// without storing anything that could authenticate a request.
   tokenPrefix String @map("token_prefix")
@@ -885,16 +1002,16 @@ model DisclosureField {
 
 /// PRD §24 `api_request` — usage and audit for external calls.
 model ApiRequestLog {
-  id          String   @id @default(uuid()) @db.Uuid
-  requestId   String   @map("request_id")
-  clientId    String?  @map("client_id") @db.Uuid
+  id          String  @id @default(uuid()) @db.Uuid
+  requestId   String  @map("request_id")
+  clientId    String? @map("client_id") @db.Uuid
   endpoint    String
   scope       String?
   /// Coarse outcome class. PRD Requirement 14.3 — the caller receives a generic
   /// negative; the distinction is recorded here and withheld from them.
-  resultClass String   @map("result_class")
-  statusCode  Int      @map("status_code")
-  rateLimited Boolean  @default(false) @map("rate_limited")
+  resultClass String  @map("result_class")
+  statusCode  Int     @map("status_code")
+  rateLimited Boolean @default(false) @map("rate_limited")
 
   /// PRD §26.4 — which identifier scheme resolved the lookup, so legacy exposure
   /// is measurable rather than assumed.
@@ -928,9 +1045,9 @@ model AuditEvent {
   /// adding an audited action a schema migration.
   action String
 
-  actorUserId    String? @map("actor_user_id") @db.Uuid
+  actorUserId      String? @map("actor_user_id") @db.Uuid
   actorApiClientId String? @map("actor_api_client_id") @db.Uuid
-  organisationId String? @map("organisation_id") @db.Uuid
+  organisationId   String? @map("organisation_id") @db.Uuid
 
   /// Subject of the action, e.g. "vehicle" and its id.
   subjectType String  @map("subject_type")
@@ -965,7 +1082,7 @@ model AuditEvent {
 /// must be adjustable by a Union administrator at runtime, without a deployment.
 /// A code constant would break that promise.
 model SystemSetting {
-  key         String   @id
+  key         String  @id
   value       String
   description String?
 

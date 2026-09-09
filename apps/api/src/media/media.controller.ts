@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   Res,
+  StreamableFile,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -122,19 +123,25 @@ export class MediaController {
     @Res({ passthrough: true }) response: Response,
     @Query('expires') expires?: string,
     @Query('signature') signature?: string,
-  ): Promise<Buffer> {
+  ): Promise<StreamableFile> {
     const { bytes, contentType } = await this.media.readSigned(
       id,
       expires ?? '',
       signature ?? '',
     );
 
-    response.setHeader('Content-Type', contentType);
     // The sniffed type is authoritative; stop the browser second-guessing it.
     response.setHeader('X-Content-Type-Options', 'nosniff');
     // Personal data. Never cached by a proxy shared with anybody else.
     response.setHeader('Cache-Control', 'private, max-age=60');
-    response.setHeader('Content-Disposition', 'inline');
-    return bytes;
+
+    // `StreamableFile`, not a bare `Buffer`. Nest serialises a returned object
+    // as JSON, and a Buffer is an object — so a bare return produces
+    // `{"type":"Buffer","data":[...]}` under a 200, which reads as a working
+    // endpoint until somebody actually opens the image.
+    return new StreamableFile(bytes, {
+      type: contentType,
+      disposition: 'inline',
+    });
   }
 }

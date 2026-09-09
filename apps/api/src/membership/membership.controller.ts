@@ -9,6 +9,8 @@ import {
   Post,
   Query,
   Req,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
 import {
   attachMediaSchema,
@@ -24,6 +26,7 @@ import {
   type UpdateApplicationInput,
   type WithdrawApplicationInput,
 } from '@nurtw/contracts';
+import type { Response } from 'express';
 
 import type { AuthenticatedRequest } from '../auth/authorisation.guard.js';
 import { RequirePermission } from '../auth/require-permission.decorator.js';
@@ -245,6 +248,51 @@ export class MembershipController {
     return {
       application: await this.membership.review(this.actor(request), id, body),
     };
+  }
+
+  /**
+   * The registration form, filled in, for wet signature (PRD §23.16).
+   *
+   * `member_sensitive.read`, not `application.read`: the document carries next
+   * of kin, guarantor, telephone, and residential address — that is what the
+   * form is. An officer who can see that an application exists is not thereby
+   * entitled to print everything on it.
+   */
+  @RequirePermission('member_sensitive.read')
+  @Get(':id/form')
+  @Documented({
+    summary: 'Render the registration form as a PDF for wet signature.',
+    description:
+      'The other half of the hybrid determined at PRD §23.16: data captured digitally, and a ' +
+      'printed form produced where the Union’s process requires a physical signature. ' +
+      'Requires `member_sensitive.read` because the document carries next-of-kin, guarantor, ' +
+      'telephone, and residential address — PRD Requirement 7.1 data that the list and every ' +
+      'card projection deliberately exclude.',
+    responses: {
+      404: 'No such application, or it lies outside the caller’s scope.',
+    },
+  })
+  async form(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StreamableFile> {
+    const actor = this.actor(request);
+    const { bytes, filename } = await this.membership.registrationForm(
+      actor.userId,
+      id,
+    );
+
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    // Registration data. Never held by a shared proxy, and never cached.
+    response.setHeader('Cache-Control', 'no-store');
+
+    // `StreamableFile`, not a bare `Buffer` — Nest serialises a returned object
+    // as JSON, and a Buffer is an object.
+    return new StreamableFile(Buffer.from(bytes), {
+      type: 'application/pdf',
+      disposition: `attachment; filename="${filename}"`,
+    });
   }
 
   private actor(request: AuthenticatedRequest): ActorContext {

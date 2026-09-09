@@ -10,20 +10,19 @@
  * see `./master-data.ts` for the values the Union administers at runtime.
  */
 
-/** PRD §8 — membership card lifecycle. */
-export const CARD_STATUSES = [
-  'DRAFT',
-  'PENDING_APPROVAL',
-  'ISSUED',
-  'ACTIVE',
-  'SUSPENDED',
-  'LOST',
-  'REPLACED',
-  'EXPIRED',
-  'CANCELLED',
-] as const;
-
-export type CardStatus = (typeof CARD_STATUSES)[number];
+/**
+ * PRD §8 — membership card lifecycle.
+ *
+ * Re-exported from `@nurtw/domain` rather than restated here. The domain package
+ * owns the list because it owns the transition table built over it, and two
+ * copies of a status set is how one of them quietly gains a state the other's
+ * transitions do not cover.
+ *
+ * The sticker and declaration sets below are still declared here: no transition
+ * table exists for them yet. They move to the domain package at items 07 and 08,
+ * with their lifecycles.
+ */
+export { CARD_STATUSES, type CardStatus } from '@nurtw/domain';
 
 /** PRD §10 — vehicle sticker lifecycle. Note DAMAGED, absent from the card set. */
 export const STICKER_STATUSES = [

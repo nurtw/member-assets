@@ -94,3 +94,19 @@ export {
   normalizeNigerianPhone,
   tryNormalizeNigerianPhone,
 } from './contact/phone-number.js';
+
+export {
+  CARD_STATUSES,
+  InvalidCardTransitionError,
+  LIVE_CARD_STATUSES,
+  REPLACEABLE_CARD_STATUSES,
+  assertCardTransition,
+  canTransitionCard,
+  expiryDateFor,
+  isCardFinal,
+  isCardIssued,
+  isCardLive,
+  isCardReplaceable,
+  isCardVerifiable,
+  type CardStatus,
+} from './card/status.js';

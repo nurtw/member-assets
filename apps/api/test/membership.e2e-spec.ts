@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
+import type { IncomingMessage } from 'node:http';
 import request from 'supertest';
 
 import { AppModule } from './../src/app.module.js';
@@ -30,6 +31,25 @@ const PNG_BYTES = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
   'base64',
 );
+
+/**
+ * Hands supertest the raw response body.
+ *
+ * Without it supertest parses by content type and an image or a PDF arrives as
+ * a string, which makes a byte-for-byte comparison impossible.
+ */
+function binaryParser(
+  // supertest's typings say `Response` here, but what a parse function actually
+  // receives is the raw `http.IncomingMessage` — the stream has not been read
+  // yet, which is the whole point of supplying a parser.
+  res: request.Response,
+  callback: (error: Error | null, body: Buffer) => void,
+): void {
+  const stream = res as unknown as IncomingMessage;
+  const chunks: Buffer[] = [];
+  stream.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+  stream.on('end', () => callback(null, Buffer.concat(chunks)));
+}
 
 interface Fixture {
   unitAId: string;
@@ -95,7 +115,7 @@ describe('Membership registration (e2e)', () => {
     await cleanUp();
     fixture = await buildFixture();
 
-    for (const who of ['registrar', 'approver', 'otherbranch']) {
+    for (const who of ['registrar', 'approver', 'otherbranch', 'sensitive']) {
       cookies[who] = await login(`${who}.${TAG}@nurtw.test`);
     }
   });
@@ -468,6 +488,48 @@ describe('Membership registration (e2e)', () => {
     });
   });
 
+  // --- The print-ready form (PRD §23.16) -----------------------------------
+
+  describe('the registration form for wet signature', () => {
+    it('renders a PDF for an officer holding member_sensitive.read', async () => {
+      const list = await request(server)
+        .get('/api/v1/applications')
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+
+      const response = await request(server)
+        .get(`/api/v1/applications/${list.body.applications[0].id}/form`)
+        .set('Cookie', cookies.sensitive!)
+        .buffer()
+        .parse(binaryParser)
+        .expect(200);
+
+      const bytes = response.body as Buffer;
+      expect(bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+      expect(response.headers['content-type']).toContain('application/pdf');
+      // Registration data. Never held by a shared cache.
+      expect(response.headers['cache-control']).toBe('no-store');
+      // Named by application number, which conveys nothing about the applicant.
+      expect(response.headers['content-disposition']).toContain(
+        list.body.applications[0].applicationNumber,
+      );
+    });
+
+    it('refuses an officer who may read applications but not sensitive data', async () => {
+      const list = await request(server)
+        .get('/api/v1/applications')
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+
+      // The registrar can see that the application exists. That does not
+      // entitle them to print everything on it.
+      await request(server)
+        .get(`/api/v1/applications/${list.body.applications[0].id}/form`)
+        .set('Cookie', cookies.registrar!)
+        .expect(403);
+    });
+  });
+
   // --- Uploads -------------------------------------------------------------
 
   describe('photographs and signatures', () => {
@@ -481,9 +543,20 @@ describe('Membership registration (e2e)', () => {
       expect(response.body.media.contentType).toBe('image/png');
       expect(response.body.url).toContain('signature=');
 
-      const bytes = await request(server).get(response.body.url).expect(200);
-      expect(bytes.headers['content-type']).toContain('image/png');
-      expect(bytes.headers['x-content-type-options']).toBe('nosniff');
+      const served = await request(server)
+        .get(response.body.url)
+        .buffer()
+        .parse(binaryParser)
+        .expect(200);
+
+      expect(served.headers['content-type']).toContain('image/png');
+      expect(served.headers['x-content-type-options']).toBe('nosniff');
+
+      // The bytes themselves, not merely the headers. Asserting only the
+      // headers would pass while the body was a JSON rendering of the buffer,
+      // which is what a bare `Buffer` return can produce — see the
+      // `StreamableFile` comment on the controller.
+      expect(Buffer.compare(served.body as Buffer, PNG_BYTES)).toBe(0);
     });
 
     it('refuses a file that is not an image, whatever it claims to be', async () => {
@@ -593,6 +666,11 @@ describe('Membership registration (e2e)', () => {
       'application.decide',
       'member.read',
       'member.suspend',
+    ]);
+    await buildUser('sensitive', branchA.id, [
+      'application.read',
+      'member.read',
+      'member_sensitive.read',
     ]);
     await buildUser('otherbranch', branchB.id, [
       'application.read',

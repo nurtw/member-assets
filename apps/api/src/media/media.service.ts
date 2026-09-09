@@ -138,6 +138,42 @@ export class MediaService {
     };
   }
 
+  /**
+   * The bytes, for compositing inside the server.
+   *
+   * **Not reachable from any route.** The signed-link path is how bytes leave
+   * the process; this is how the print pipeline reads a photograph it is about
+   * to draw onto a card, without minting a link and fetching its own URL.
+   *
+   * Authorisation is the caller's responsibility and has already happened by the
+   * time this is reached — the card service has resolved the holder's
+   * organisation path and asked `can` against it. Adding a route that calls this
+   * directly would bypass that, so do not.
+   *
+   * Returns null for an unknown asset rather than throwing: a card whose
+   * photograph has gone missing should still print, with the space blank, rather
+   * than fail at a counter.
+   */
+  async readInternal(
+    assetId: string,
+  ): Promise<{ bytes: Buffer; contentType: string } | null> {
+    const asset = await this.prisma.mediaAsset.findUnique({
+      where: { id: assetId },
+      select: { storageKey: true, contentType: true },
+    });
+    if (!asset) {
+      return null;
+    }
+    try {
+      return {
+        bytes: await this.storage.get(asset.storageKey),
+        contentType: asset.contentType,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   /** Confirms an asset exists and is of the expected kind, before attaching it. */
   async assertKind(assetId: string, kind: MediaKind): Promise<void> {
     const asset = await this.prisma.mediaAsset.findUnique({

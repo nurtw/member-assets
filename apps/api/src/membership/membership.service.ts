@@ -32,12 +32,17 @@ import { PermissionService } from '../auth/permission.service.js';
 import { MediaService } from '../media/media.service.js';
 import type { ActorContext } from '../organisation/organisation.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import {
+  renderRegistrationForm,
+  type FormSection,
+} from './registration-form.js';
 
 const READ = 'application.read';
 const CREATE = 'member.create';
 const DECIDE = 'application.decide';
 const MEMBER_READ = 'member.read';
 const MEMBER_SUSPEND = 'member.suspend';
+const SENSITIVE_READ = 'member_sensitive.read';
 
 /** Attempts before a membership-number collision is treated as a real fault. */
 const IDENTIFIER_ATTEMPTS = 5;
@@ -544,6 +549,178 @@ export class MembershipService {
     });
 
     return updated;
+  }
+
+  // --- The print-ready form (PRD §23.16) -----------------------------------
+
+  /**
+   * The registration form, filled in, for wet signature.
+   *
+   * The other half of the hybrid at PRD §23.16: data captured digitally, and a
+   * printed form produced where the Union's process requires a physical
+   * signature. Item 05 built the capture and deferred this to item 06, which
+   * brings the PDF pipeline.
+   *
+   * **Requires `member_sensitive.read` on top of `application.read`.** The
+   * document carries next of kin, guarantor, telephone, and residential address
+   * — that is what the form is — so it is gated by the permission that governs
+   * those fields rather than by the one that lists applications. An officer who
+   * can see that an application exists is not thereby entitled to print
+   * everything on it.
+   */
+  async registrationForm(
+    userId: string,
+    id: string,
+  ): Promise<{ bytes: Uint8Array; filename: string }> {
+    const application = await this.loadVisible(userId, id);
+    const member = await this.loadMemberWithPath(application.memberId);
+    await this.require(userId, SENSITIVE_READ, member.organisation.path);
+
+    const detail = await this.findOne(userId, id);
+    const contact = detail.contact;
+    const kin = detail.nextOfKin ?? {};
+    const guarantor = detail.guarantor ?? {};
+
+    const str = (source: Record<string, unknown>, key: string): string | null => {
+      const value = source[key];
+      return typeof value === 'string' && value.trim().length > 0 ? value : null;
+    };
+
+    const fullName = [
+      detail.member.firstName,
+      detail.member.middleName,
+      detail.member.surname,
+    ]
+      .filter((part): part is string => Boolean(part?.trim()))
+      .join(' ');
+
+    const sections: FormSection[] = [
+      {
+        title: 'Section A — Personal',
+        fields: [
+          { label: 'Name of operator', value: fullName },
+          { label: 'Telephone', value: contact?.phone ?? null, half: true },
+          {
+            label: 'State of origin',
+            value: contact?.stateOfOrigin ?? null,
+            half: true,
+          },
+          { label: 'Residential address', value: contact?.residentialAddress ?? null },
+          { label: 'Area', value: contact?.area ?? null, half: true },
+          { label: 'Town / City', value: contact?.townCity ?? null, half: true },
+          {
+            label: 'Local government area',
+            value: contact?.lga?.name ?? null,
+            half: true,
+          },
+          {
+            label: 'Designation',
+            // Blank until ORG-06 arrives.
+            value: detail.member.designation?.label ?? null,
+            half: true,
+          },
+        ],
+      },
+      {
+        title: 'Section B — Union placement',
+        fields: [
+          {
+            label: 'Unit / Unity Body',
+            value: detail.member.organisation.name,
+            half: true,
+          },
+          {
+            label: 'Membership number',
+            value: detail.member.membershipNumber,
+            half: true,
+          },
+        ],
+      },
+      {
+        title: 'Section C — Next of Kin',
+        fields: [
+          {
+            label: 'Name',
+            value: [str(kin, 'firstName'), str(kin, 'middleName'), str(kin, 'surname')]
+              .filter((part): part is string => part !== null)
+              .join(' ') || null,
+          },
+          { label: 'Telephone', value: str(kin, 'phone'), half: true },
+          { label: 'Occupation', value: str(kin, 'occupation'), half: true },
+          { label: 'Address', value: str(kin, 'address') },
+        ],
+      },
+      {
+        title: 'Section D — Guarantor',
+        // MEM-08: the exact printed wording of the collateral question, and
+        // whether the vehicle referred to is a tricycle, a motorcycle, or both,
+        // is not legible on the photographed form. What prints here is what the
+        // field specification records.
+        note:
+          'The guarantor undertakes responsibility for the operator named above. ' +
+          'Collateral wording is subject to confirmation by the Union (MEM-08).',
+        fields: [
+          {
+            label: 'Name',
+            value:
+              [
+                str(guarantor, 'firstName'),
+                str(guarantor, 'middleName'),
+                str(guarantor, 'surname'),
+              ]
+                .filter((part): part is string => part !== null)
+                .join(' ') || null,
+          },
+          {
+            label: 'Relationship with operator',
+            value: str(guarantor, 'relationshipToApplicant'),
+            half: true,
+          },
+          { label: 'Telephone', value: str(guarantor, 'phone'), half: true },
+          { label: 'Address', value: str(guarantor, 'address') },
+          {
+            label: 'Occupation',
+            value: str(guarantor, 'occupation'),
+            half: true,
+          },
+          {
+            label: 'Collateral offered',
+            value:
+              guarantor['hasCollateral'] === true
+                ? 'Yes'
+                : guarantor['hasCollateral'] === false
+                  ? 'No'
+                  : null,
+            half: true,
+          },
+          {
+            label: 'Collateral details',
+            value: str(guarantor, 'collateralDetails'),
+          },
+        ],
+      },
+    ];
+
+    const bytes = await renderRegistrationForm({
+      applicationNumber: detail.applicationNumber,
+      membershipNumber: detail.member.membershipNumber,
+      status: detail.status,
+      sections,
+      // MEM-09 — the printed labels beneath the signature lines are not legible
+      // on the photographed form and are believed to be dates. A date line is
+      // printed beneath each signature until the Union confirms.
+      signatureLines: [
+        'Signature of operator',
+        'Signature of next of kin',
+        'Signature of guarantor',
+      ],
+    });
+
+    // Named by application number, which conveys nothing about the applicant.
+    return {
+      bytes,
+      filename: `nurtw-registration-${detail.applicationNumber}.pdf`,
+    };
   }
 
   // --- Internals -----------------------------------------------------------

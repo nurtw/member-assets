@@ -85,7 +85,15 @@ describe('AllExceptionsFilter', () => {
     );
 
     expect(status).toHaveBeenCalledWith(HttpStatus.FORBIDDEN);
-    expect(JSON.stringify(bodyOf())).not.toMatch(/42|branch/);
+
+    // The message and code, deliberately not the whole body. The body also
+    // carries a randomly generated request id, and a UUID contains "42" often
+    // enough that scanning the serialised response made this test fail perhaps
+    // one run in six — on correct code. An assertion that fires on correct code
+    // gets deleted the first time somebody is in a hurry.
+    const body = bodyOf() as { error: { code: string; message: string } };
+    expect(body.error.message).not.toMatch(/42|branch/);
+    expect(body.error.code).toBe('FORBIDDEN');
   });
 
   it('echoes a caller-supplied request id', () => {
