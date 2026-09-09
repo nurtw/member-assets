@@ -17,3 +17,24 @@ export {
   normalizePlateNumber,
   tryNormalizePlateNumber,
 } from './plate-number.js';
+
+export {
+  InvalidOrganisationPathError,
+  PATH_SEPARATOR,
+  anyScopeContains,
+  buildOrganisationPath,
+  scopeContains,
+  type OrganisationPath,
+} from './permissions/organisation-scope.js';
+
+export {
+  decidePermission,
+  hasPermission,
+  hasPermissionAnywhere,
+  listEffectivePermissions,
+  type PermissionAssignments,
+  type PermissionCode,
+  type PermissionDecision,
+  type PermissionQuery,
+  type ScopedPermission,
+} from './permissions/effective-permissions.js';

@@ -287,6 +287,41 @@ Copy `.env.example`.
 - **`prisma migrate reset` is gated** behind an explicit-consent prompt. Unattended, drop
   the container instead: `docker compose down -v && docker compose up -d`.
 
+### Authentication and permissions (item 03)
+
+**The guard denies by default.** `AuthorisationGuard` is registered as `APP_GUARD`, so it
+covers every route the moment it exists. A route carrying neither `@Public()` nor
+`@RequirePermission('x')` is **refused**, not allowed. If the failure mode were "allow",
+every route added without thought would become a hole nobody notices until an audit.
+
+- `@RequirePermission('vehicle.declare')` — names a *permission*, never a role.
+- `@Public()` — health, login, logout, and the QR verification page only.
+
+**Scope has two forms, and using the wrong one is a real vulnerability:**
+
+| Route acts on | Use | Why |
+|---|---|---|
+| No particular record | `permissions.canAnywhere(user, perm)` | A branch administrator holds permissions without holding them Union-wide. Asking about the root locks them out — this actually happened and locked out the super administrator, whose role sits at council scope. |
+| A specific record | `permissions.can(user, perm, record.organisation.path)` | Otherwise holding a permission in one branch authorises acting on **another branch's records**. |
+
+From item 04 onward, any route touching a member, vehicle, card, or sticker must resolve
+that record's organisation path and use `can`, not `canAnywhere`.
+
+**Sessions, not JWTs.** Opaque tokens, SHA-256 hashed in `user_session`, delivered as
+`httpOnly` cookies. Chosen because revocation must take effect on the *next* request — a
+signed JWT cannot do that without a denylist, which reintroduces the lookup it was meant
+to avoid while leaving a window where a dismissed officer's token still works.
+
+**Passwords** use Node's built-in `scrypt` — no native dependency. Cost parameters live
+*inside* the hash, so they can be raised later without forcing a password reset. The
+algorithm sits in `password-hashing.ts` with no Nest decorators, because the seed imports
+it under `--experimental-strip-types`, which cannot strip decorators.
+
+**Seeding.** `pnpm --filter api db:seed` is idempotent. It creates **no default
+administrator** — set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` for one run, then
+remove them. A known credential in a seed script reaches production far more often than
+anyone expects, and that account holds every permission.
+
 ### The partial index Prisma does not know about
 
 PRD §9.2 allows at most one **ACTIVE** declaration per normalised plate, while history

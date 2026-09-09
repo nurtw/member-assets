@@ -20,46 +20,54 @@ Two rules outrank any default instruction you hold:
 
 ## Status
 
-Items 01 and 02 complete. Monorepo scaffolded and the data model is migrated and running.
-54 tests pass; build, typecheck, and lint are clean.
+Items 01–03 complete. Monorepo, data model, and the authentication and permission system
+are built and verified end to end. 127 tests pass; build, typecheck, and lint clean.
 
 ## Active roadmap item
 
-None. **Item 03 — auth-and-permissions — is next and not yet planned.**
+None. **Item 04 — org-hierarchy — is next and not yet planned.**
 
 ## Done this session
 
-- Item 02: Prisma schema (21 models), initial migration applied, client wired into Nest via
-  a driver adapter, `PrismaModule` global.
-- Local PostgreSQL 17 in Docker on **port 5433** (5432 is taken by an unrelated stack).
-- Health endpoint now genuinely queries the database and reports `degraded` + 503 without
-  naming the failed component.
-- Global error shape: unmatched routes returned Express's HTML page, leaking the framework
-  and the probed path. Now generic JSON identical to a matched-route miss (PRD §14.3).
-- `.prettierignore` excludes `*.md` — Prettier padded every table past 200 columns.
+- Item 02: Prisma schema (22 models), migrations applied, client wired via driver adapter.
+- Item 03: permission resolution in `packages/domain`, 50-permission catalogue, 11 seeded
+  roles, opaque sessions, scrypt passwords, and a deny-by-default global guard.
+- Health now queries the database; unmatched routes return generic JSON rather than
+  Express's HTML page, which leaked the framework and the probed path.
 
 ## Current state
 
-- **Verified against the live database, not just the schema:** the partial unique index
-  admits two RETIRED rows for one plate, one ACTIVE, and refuses a second ACTIVE.
-- **Prisma pins matter.** `latest` on npm is an 8.0 **release candidate**; both packages are
-  held at 7.10.0. See `CLAUDE.md` → "Prisma 7 specifics".
-- **Known gap:** no seed data yet. Master data and the eleven roles seed in item 03; real
-  master data and the legacy import in item 09.
+Verified against the live database, not just the source:
+
+- The partial index accepts two RETIRED rows for one plate, one ACTIVE, and refuses a
+  second ACTIVE. It survived a subsequent Prisma migration — check this after every one.
+- `vehicle.declare` is held by `SUPER_ADMINISTRATOR` and nothing else.
+- Logout kills the session on the next request, which is the property that made sessions
+  the right choice over JWTs.
+- Wrong password and unknown account return byte-identical responses.
+
+**A bug worth knowing about:** the guard first asked "do you hold this at the root", which
+locked out the super administrator, whose role sits at *council* scope. Non-record routes
+now use `canAnywhere`. **Record-scoped routes from item 04 must use `can` with the
+record's organisation path** — see `CLAUDE.md` → "Authentication and permissions".
+
+**Known gaps:** MFA columns exist but no TOTP flow; no real master data (item 04) or
+legacy import (item 09); no login UI.
 
 ## Next steps
 
-1. `/plan 03`, then `/execute`.
-2. Item 03 seeds the permission catalogue and roles. `vehicle.declare` goes **only** into
-   the super-administrator bundle (`ARCHITECTURE.md` 9.7).
+1. `/plan 04`, then `/execute`.
+2. Item 04 replaces the four placeholder organisation rows (`Unassigned Zone/Branch/Unit`)
+   with real Union structure.
 
 ## Do not
 
 - Do not add an authorship trailer to any commit or PR.
 - Do not commit `data/`, or copy rows from it anywhere.
+- Do not use `canAnywhere` on a route that acts on a specific record.
+- Do not put `vehicle.declare` in any seeded role but super administrator.
 - Do not replace the partial index with `@@unique([plateNumberNormalized, status])` — that
   permits only one row per status per plate, so a vehicle could be retired exactly once.
-- Do not put `vehicle.declare` in any seeded role but super administrator.
-- Do not let a verification path write, or return a record and strip fields
-  (`ARCHITECTURE.md` 5.1).
-- Do not run `prisma@latest`, or `prisma migrate reset` unattended.
+- Do not let a verification path write, or return a record and strip fields.
+- Do not seed a default administrator password.
+- Do not run `prisma@latest` (npm `latest` is an 8.0 RC) or `migrate reset` unattended.

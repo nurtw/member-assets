@@ -36,3 +36,14 @@ export {
   DEFAULT_TOKEN_EXPIRY_DAYS,
   type ApiScope,
 } from './scopes.js';
+
+export {
+  DECLARE_PERMISSION,
+  PERMISSIONS,
+  PERMISSION_CODES,
+  SYSTEM_ROLES,
+  type PermissionCode,
+  type PermissionDefinition,
+  type RoleDefinition,
+  type SystemRoleCode,
+} from './permissions.js';

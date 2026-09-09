@@ -17,6 +17,11 @@
     "skipLibCheck": true,
     "strict": true,
     "strictPropertyInitialization": false,
+    // prisma/seed.ts runs under `node --experimental-strip-types`, which
+    // resolves the real file and therefore requires a literal `.ts` specifier.
+    // Permitted here because this config only ever type-checks (--noEmit);
+    // tsconfig.build.json, which emits, switches it back off.
+    "allowImportingTsExtensions": true,
     "types": ["vitest/globals", "node"]
   }
 }

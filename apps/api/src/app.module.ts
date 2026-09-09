@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AuthModule } from './auth/auth.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
@@ -15,6 +16,6 @@ import { PrismaModule } from './prisma/prisma.module.js';
  * at the scaffold stage.
  */
 @Module({
-  imports: [PrismaModule, HealthModule],
+  imports: [PrismaModule, AuthModule, HealthModule],
 })
 export class AppModule {}

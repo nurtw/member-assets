@@ -1,6 +1,7 @@
 import { Controller, Get, HttpCode, HttpStatus, Res } from '@nestjs/common';
 import type { Response } from 'express';
 
+import { Public } from '../auth/require-permission.decorator.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 /**
@@ -29,6 +30,11 @@ export interface HealthResponse {
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * PRD §12.3 — reachable without authentication, deliberately. The global
+   * guard denies by default, so this must say so explicitly.
+   */
+  @Public()
   @Get()
   @HttpCode(HttpStatus.OK)
   async check(

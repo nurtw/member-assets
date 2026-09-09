@@ -590,8 +590,42 @@ model User {
   cardsApproved        Card[]                    @relation("CardApprovedBy")
   stickersIssued       Sticker[]
   auditEvents          AuditEvent[]
+  sessions             UserSession[]
 
   @@map("user")
+}
+
+/// Opaque server-side session.
+///
+/// ARCHITECTURE.md Decision 9.1 describes internal access as a *session*, and
+/// this is why that word matters: revocation is a row change and takes effect on
+/// the very next request. A signed JWT cannot offer that without a denylist,
+/// which reintroduces exactly the lookup the JWT was meant to avoid — while
+/// leaving a window in which a dismissed officer's token still works.
+///
+/// The token is stored hashed. A leaked database backup must not yield usable
+/// credentials, on the same reasoning that hashes API tokens at PRD §12.1.
+model UserSession {
+  id        String @id @default(uuid()) @db.Uuid
+  userId    String @map("user_id") @db.Uuid
+  tokenHash String @unique @map("token_hash")
+
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  /// Recorded for the audit trail and for session review (PRD §18). Never
+  /// returned to a caller.
+  ipAddress String? @map("ip_address")
+  userAgent String? @map("user_agent")
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("user_session")
 }
 
 /// The permission catalogue.

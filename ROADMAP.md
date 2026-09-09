@@ -30,7 +30,7 @@ Each item is independently completable and independently testable. Status values
 |---|---|---|---|---|
 | 01 | monorepo-scaffold | §20 | **done** | `plans/01-monorepo-scaffold.md` |
 | 02 | core-data-model | §24, §7–10 | **done** | `plans/02-core-data-model.md` |
-| 03 | auth-and-permissions | §16, §17 | not-started | `plans/03-auth-and-permissions.md` |
+| 03 | auth-and-permissions | §16, §17 | **done** | `plans/03-auth-and-permissions.md` |
 | 04 | org-hierarchy | §6 | not-started | `plans/04-org-hierarchy.md` |
 | 05 | membership-application | §7 | not-started | `plans/05-membership-application.md` |
 | 06 | membership-card-issuance | §8 | not-started | `plans/06-membership-card-issuance.md` |
