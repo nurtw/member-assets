@@ -57,3 +57,40 @@ export {
   rewriteDescendantPath,
   type OrganisationLevel,
 } from './organisation/hierarchy.js';
+
+export {
+  IDENTIFIER_ALPHABET,
+  InvalidIdentifierError,
+  checkSymbol,
+  formatIdentifier,
+  generateIdentifier,
+  isValidIdentifier,
+  normalizeIdentifier,
+  parseIdentifier,
+  type RandomByteSource,
+} from './identifiers/human-identifier.js';
+
+export {
+  APPLICATION_STATUSES,
+  InvalidStatusTransitionError,
+  MEMBER_STATUSES,
+  assertApplicationTransition,
+  assertMemberTransition,
+  canTransitionApplication,
+  canTransitionMember,
+  isApplicationEditable,
+  isApplicationFinal,
+  isMemberFinal,
+  isMemberInGoodStanding,
+  type ApplicationStatus,
+  type MemberStatus,
+} from './membership/status.js';
+
+export {
+  InvalidPhoneNumberError,
+  NIGERIA_COUNTRY_CODE,
+  formatNigerianPhone,
+  isNigerianPhone,
+  normalizeNigerianPhone,
+  tryNormalizeNigerianPhone,
+} from './contact/phone-number.js';

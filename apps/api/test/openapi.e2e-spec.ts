@@ -62,9 +62,16 @@ describe('API reference (e2e)', () => {
       .sort();
 
     // Guarding the exact set makes an accidental @Public() a failing test rather
-    // than a code review someone might wave through.
+    // than a code review someone might wave through. Adding a line here should
+    // require an argument for why the route cannot carry a permission.
+    //
+    // Media content is public in the sense that it requires no session: a browser
+    // rendering <img> sends no cookie to another origin. It is not unprotected —
+    // it requires an HMAC this service minted over both the asset id and an
+    // expiry, valid for five minutes, and every failure answers 404.
     expect(publicRoutes).toEqual([
       'GET /api/v1/health',
+      'GET /api/v1/media/:id/content',
       'POST /api/v1/auth/login',
       'POST /api/v1/auth/logout',
     ]);

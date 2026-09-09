@@ -58,3 +58,7 @@ logs/
 # Uploads (passport photos, signatures — never version these)
 uploads/
 storage/
+
+# Uploaded member photographs and signatures (ARCHITECTURE.md Decision 10.2).
+# Personal data. A photograph committed here would survive in history.
+var/

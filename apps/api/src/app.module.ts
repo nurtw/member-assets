@@ -5,6 +5,8 @@ import { AuthModule } from './auth/auth.module.js';
 import { DocsModule } from './docs/docs.module.js';
 import { HealthModule } from './health/health.module.js';
 import { MasterDataModule } from './master-data/master-data.module.js';
+import { MediaModule } from './media/media.module.js';
+import { MembershipModule } from './membership/membership.module.js';
 import { OrganisationModule } from './organisation/organisation.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
@@ -27,6 +29,8 @@ import { PrismaModule } from './prisma/prisma.module.js';
     HealthModule,
     OrganisationModule,
     MasterDataModule,
+    MembershipModule,
+    MediaModule,
   ],
 })
 export class AppModule {}

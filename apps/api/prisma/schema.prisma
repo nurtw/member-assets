@@ -266,8 +266,19 @@ model MediaAsset {
 ///
 /// PRD Requirement 7.1 and acceptance criterion 12 both depend on that.
 model Member {
-  id               String       @id @default(uuid()) @db.Uuid
-  membershipNumber String       @unique @map("membership_number")
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Allocated on approval, not on application (PRD §26.1, item 05).
+  ///
+  /// Nullable because a pending applicant is not yet a member: issuing a
+  /// membership number to somebody whose application is later refused would put
+  /// a number in the register that an officer could look up and that identifies
+  /// no member. PostgreSQL admits many NULLs under a unique index, so pending
+  /// applicants coexist without collision.
+  ///
+  /// Nothing is wasted by allocating late — §26.1 requires the number convey no
+  /// sequence, so there is no counter to advance.
+  membershipNumber String?      @unique @map("membership_number")
   status           MemberStatus @default(PENDING)
 
   surname    String
