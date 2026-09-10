@@ -168,6 +168,78 @@ describe('Membership cards (e2e)', () => {
 
     });
 
+    it('lets one officer holding both permissions prepare and approve, while the setting is off', async () => {
+      // `otherbranch` holds card.issue AND card.approve. Nothing refuses them
+      // doing both, and the super administrator is in the same position — the
+      // permissions are separate, the people are not.
+      //
+      // This is the shipped default, pending QUESTIONS.md MEM-04: with one
+      // administrator account, enforcing a second officer would make a card
+      // impossible to issue.
+      const created = await request(server)
+        .post('/api/v1/cards')
+        .set('Cookie', cookies.otherbranch!)
+        .send({ memberId: fixture.memberBId, printedAddress: '2 Market Road, Onitsha' })
+        .expect(201);
+
+      await request(server)
+        .post(`/api/v1/cards/${created.body.card.id}/submission`)
+        .set('Cookie', cookies.otherbranch!)
+        .send({})
+        .expect(201);
+
+      const issued = await request(server)
+        .post(`/api/v1/cards/${created.body.card.id}/decision`)
+        .set('Cookie', cookies.otherbranch!)
+        .send({ decision: 'ISSUED' })
+        .expect(201);
+
+      expect(issued.body.card.cardNumber).not.toBeNull();
+    });
+
+    it('refuses the preparer’s own approval once the Union turns the setting on', async () => {
+      const created = await request(server)
+        .post('/api/v1/cards')
+        .set('Cookie', cookies.otherbranch!)
+        .send({ memberId: fixture.memberBId, printedAddress: '2 Market Road, Onitsha' })
+        .expect(201);
+
+      await request(server)
+        .post(`/api/v1/cards/${created.body.card.id}/submission`)
+        .set('Cookie', cookies.otherbranch!)
+        .send({})
+        .expect(201);
+
+      await setSeparateOfficer(true);
+      try {
+        // Same officer: refused.
+        await request(server)
+          .post(`/api/v1/cards/${created.body.card.id}/decision`)
+          .set('Cookie', cookies.otherbranch!)
+          .send({ decision: 'ISSUED' })
+          .expect(409);
+
+        // No number was allocated by the refused attempt.
+        const card = await prisma.card.findUniqueOrThrow({
+          where: { id: created.body.card.id },
+        });
+        expect(card.cardNumber).toBeNull();
+        expect(card.status).toBe('PENDING_APPROVAL');
+
+        // Returning it for amendment is still the preparer's to do — it creates
+        // nothing and grants nobody anything.
+        await request(server)
+          .post(`/api/v1/cards/${created.body.card.id}/decision`)
+          .set('Cookie', cookies.otherbranch!)
+          .send({ decision: 'DRAFT', reason: 'Correcting the address.' })
+          .expect(201);
+      } finally {
+        // Restored whatever the assertions did, so one failure cannot leave the
+        // control on and break every test that follows.
+        await setSeparateOfficer(false);
+      }
+    });
+
     it('answers 404, not 403, for a card outside the caller’s scope', async () => {
       const created = await draft(fixture.memberAId).expect(201);
 
@@ -555,16 +627,28 @@ describe('Membership cards (e2e)', () => {
 
     });
 
-    it('records the preparing officer and the approving officer separately', async () => {
-      // PRD Requirement 8.1 wants both, and they are different people —
-      // `card.issue` prepares and `card.approve` approves. Recording the
-      // approver as both would lose who prepared a card that turned out wrong.
+    it('records the preparing officer and the approving officer as two fields', async () => {
+      // PRD Requirement 8.1 wants both. Recording the approver as both would
+      // lose who prepared a card that turned out wrong.
+      //
+      // Note what this does NOT assert. The two ids differ here because the
+      // fixture uses two officers, not because anything refuses one officer
+      // doing both — a user holding `card.issue` and `card.approve` may prepare
+      // a card and approve it, and the super administrator holds both. An
+      // assertion of inequality here would read as proof of a segregation
+      // control that does not exist. See QUESTIONS.md MEM-04.
       const cardId = await issueCard(fixture.memberAId);
 
       const card = await prisma.card.findUniqueOrThrow({ where: { id: cardId } });
-      expect(card.issuedByUserId).not.toBeNull();
-      expect(card.approvedByUserId).not.toBeNull();
-      expect(card.issuedByUserId).not.toBe(card.approvedByUserId);
+      const preparer = await prisma.user.findUniqueOrThrow({
+        where: { email: `preparer.${TAG}@nurtw.test` },
+      });
+      const approver = await prisma.user.findUniqueOrThrow({
+        where: { email: `approver.${TAG}@nurtw.test` },
+      });
+
+      expect(card.issuedByUserId).toBe(preparer.id);
+      expect(card.approvedByUserId).toBe(approver.id);
     });
 
     it('records every mutation in the audit trail', async () => {
@@ -617,6 +701,14 @@ describe('Membership cards (e2e)', () => {
       .send({ decision: 'ISSUED' })
       .expect(201);
     return created.body.card.id as string;
+  }
+
+  /** Turns the second-officer requirement on or off for one test. */
+  async function setSeparateOfficer(enabled: boolean): Promise<void> {
+    await prisma.systemSetting.update({
+      where: { key: 'approval.require_separate_officer' },
+      data: { value: enabled ? 'true' : 'false' },
+    });
   }
 
   /** Removes every card belonging to a fixture member. */

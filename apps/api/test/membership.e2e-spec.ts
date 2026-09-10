@@ -488,6 +488,121 @@ describe('Membership registration (e2e)', () => {
     });
   });
 
+  // --- Who may decide ------------------------------------------------------
+
+  describe('the second-officer requirement', () => {
+    /** Turns the requirement on or off for one test. */
+    async function setSeparateOfficer(enabled: boolean): Promise<void> {
+      await prisma.systemSetting.update({
+        where: { key: 'approval.require_separate_officer' },
+        data: { value: enabled ? 'true' : 'false' },
+      });
+    }
+
+    /** Registers and submits an application as `otherbranch`, who may also decide. */
+    async function submittedByOtherBranch(surname: string): Promise<string> {
+      const created = await request(server)
+        .post('/api/v1/applications')
+        .set('Cookie', cookies.otherbranch!)
+        .send(applicationBody(fixture.unitBId, fixture.lgaId, surname))
+        .expect(201);
+
+      await request(server)
+        .post(`/api/v1/applications/${created.body.application.id}/submission`)
+        .set('Cookie', cookies.otherbranch!)
+        .send({})
+        .expect(201);
+
+      return created.body.application.id as string;
+    }
+
+    it('records the officer who recorded the application', async () => {
+      const id = await submittedByOtherBranch('Recorded');
+
+      const application = await prisma.membershipApplication.findUniqueOrThrow({
+        where: { id },
+      });
+      const officer = await prisma.user.findUniqueOrThrow({
+        where: { email: `otherbranch.${TAG}@nurtw.test` },
+      });
+
+      expect(application.createdByUserId).toBe(officer.id);
+    });
+
+    it('lets one officer holding both permissions record and decide, while the setting is off', async () => {
+      // The shipped default. `member.create` and `application.decide` are
+      // separate permissions, but that separates the permissions and not the
+      // people — and the super administrator holds both by definition. With one
+      // administrator account, enforcing a second officer would make a
+      // registration impossible to complete. See QUESTIONS.md MEM-04.
+      const id = await submittedByOtherBranch('SelfApproved');
+
+      const decided = await request(server)
+        .post(`/api/v1/applications/${id}/decision`)
+        .set('Cookie', cookies.otherbranch!)
+        .send({ decision: 'APPROVED' })
+        .expect(201);
+
+      expect(decided.body.application.member.membershipNumber).not.toBeNull();
+    });
+
+    it('refuses the recording officer’s own decision once the Union turns the setting on', async () => {
+      const id = await submittedByOtherBranch('NeedsSecondPair');
+
+      await setSeparateOfficer(true);
+      try {
+        await request(server)
+          .post(`/api/v1/applications/${id}/decision`)
+          .set('Cookie', cookies.otherbranch!)
+          .send({ decision: 'APPROVED' })
+          .expect(409);
+
+        // Nothing was allocated by the refused attempt: the member is still
+        // pending and holds no membership number.
+        const application = await prisma.membershipApplication.findUniqueOrThrow({
+          where: { id },
+          include: { member: true },
+        });
+        expect(application.status).toBe('SUBMITTED');
+        expect(application.member?.status).toBe('PENDING');
+        expect(application.member?.membershipNumber).toBeNull();
+      } finally {
+        // Restored even if an assertion fails, so one failure cannot leave the
+        // control on and break every test that follows.
+        await setSeparateOfficer(false);
+      }
+    });
+
+    it('still lets a different officer decide while the setting is on', async () => {
+      const created = await request(server)
+        .post('/api/v1/applications')
+        .set('Cookie', cookies.registrar!)
+        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'SecondPair'))
+        .expect(201);
+
+      await request(server)
+        .post(`/api/v1/applications/${created.body.application.id}/submission`)
+        .set('Cookie', cookies.registrar!)
+        .send({})
+        .expect(201);
+
+      await setSeparateOfficer(true);
+      try {
+        // Recorded by `registrar`, decided by `approver`. The control refuses
+        // one person acting twice, not approval itself.
+        const decided = await request(server)
+          .post(`/api/v1/applications/${created.body.application.id}/decision`)
+          .set('Cookie', cookies.approver!)
+          .send({ decision: 'APPROVED' })
+          .expect(201);
+
+        expect(decided.body.application.status).toBe('APPROVED');
+      } finally {
+        await setSeparateOfficer(false);
+      }
+    });
+  });
+
   // --- The print-ready form (PRD §23.16) -----------------------------------
 
   describe('the registration form for wet signature', () => {

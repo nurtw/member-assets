@@ -169,7 +169,9 @@ export class CardController {
       'because a cancelled draft was never printed and a number against it would name an ' +
       'artifact that does not exist. Only a member in good standing may hold a card. ' +
       'Preparing requires `card.issue`; approving requires `card.approve`, which is a ' +
-      'different permission, so the officer who prepares a card cannot approve it.',
+      'different permission. Note that this separates the permissions and not the people: ' +
+      'a caller holding both may prepare a card and then approve it. Both officers are ' +
+      'recorded, so the trail shows when they were the same person.',
     body: draftCardSchema,
     responses: {
       409: 'The member is not active, or already has a card in preparation or in use.',

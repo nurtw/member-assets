@@ -10,6 +10,7 @@ import { MediaModule } from './media/media.module.js';
 import { MembershipModule } from './membership/membership.module.js';
 import { OrganisationModule } from './organisation/organisation.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { SettingsModule } from './settings/settings.module.js';
 
 /**
  * Root module.
@@ -24,6 +25,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 @Module({
   imports: [
     PrismaModule,
+    SettingsModule,
     AuditModule,
     AuthModule,
     DocsModule,

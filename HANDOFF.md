@@ -26,7 +26,7 @@ Items 01–06 complete. Monorepo, data model, authentication and permissions, th
 organisational hierarchy, membership registration, and membership cards — with
 the print pipeline and the officer-facing screens.
 
-**362 tests pass** (162 domain · 29 contracts · 79 api unit · 92 api e2e); build,
+**368 tests pass** (162 domain · 29 contracts · 79 api unit · 98 api e2e); build,
 typecheck, and lint clean.
 
 ## Active roadmap item
@@ -56,6 +56,8 @@ Verified against the live database and through the API:
 - No contact, next-of-kin, or guarantor data appears in any card projection —
   structurally, because the card module joins none of those tables.
 - `card.issue` prepares and `card.approve` issues; neither confers the other.
+- A second officer can be required to decide, by the runtime setting
+  `approval.require_separate_officer` — **shipped off**, see below.
 - An officer in one branch cannot read, prepare, approve, or issue another
   branch's cards; out-of-scope cards answer 404.
 - An unknown template version is refused rather than falling back to the current one.
@@ -89,6 +91,22 @@ images). None blocked the build. Cards currently print a provisional template
 marked as such, with blank officer signature lines; every issuance under that
 condition is recorded in the audit trail so those cards can be found and
 replaced. `docs/reference/OPERATIONS.md` carries the query and the procedure.
+
+## The separation that is not one
+
+`member.create` does not confer `application.decide`, and `card.issue` does not
+confer `card.approve` — but **that separates the permissions, not the people.**
+One user holding both may do both, and the super administrator holds both by
+definition. Earlier wording in `CLAUDE.md` and two code comments claimed the
+recording officer could not approve their own work; they were corrected.
+
+The control that separates the *people* is now built: the recording officer is
+stored on `membership_application`, backfilled from the audit trail, and the
+runtime setting `approval.require_separate_officer` refuses a self-decision when
+turned on. It **ships off**, because with one administrator account enforcing it
+would make a registration impossible to complete. `QUESTIONS.md` **MEM-04** is
+the question that decides; `docs/reference/OPERATIONS.md` carries the procedure
+and a query showing how often self-approval happens today.
 
 ## Next steps
 

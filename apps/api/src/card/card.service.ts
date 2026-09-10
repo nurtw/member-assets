@@ -33,6 +33,10 @@ import { MediaService } from '../media/media.service.js';
 import type { ActorContext } from '../organisation/organisation.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
+  REQUIRE_SEPARATE_OFFICER,
+  SettingsService,
+} from '../settings/settings.service.js';
+import {
   RENDERABLE_IMAGE_TYPES,
   type CardRenderInput,
   type EmbeddableImage,
@@ -71,6 +75,7 @@ export class CardService {
     private readonly permissions: PermissionService,
     private readonly audit: AuditService,
     private readonly media: MediaService,
+    private readonly settings: SettingsService,
   ) {}
 
   // --- Reads ---------------------------------------------------------------
@@ -151,9 +156,15 @@ export class CardService {
    * Prepares a card for a member.
    *
    * Requires `card.issue`, which prepares. Moving the card to `ISSUED` requires
-   * `card.approve`, which is a different permission held by a different officer
-   * — the same separation as `member.create` and `application.decide` in item
-   * 05. The officer who prepares a card cannot approve their own preparation.
+   * `card.approve` — a different permission, the same separation as
+   * `member.create` and `application.decide` in item 05.
+   *
+   * **That separates the permissions, not the people.** A user holding both may
+   * prepare a card and then approve it, and the super administrator holds both
+   * by definition. The preparer and the approver are each recorded
+   * (`issuedByUserId`, `approvedByUserId`) so the trail shows whether they were
+   * the same person, but nothing refuses it. Whether a second officer must
+   * approve is open at QUESTIONS.md MEM-04.
    */
   async draft(actor: ActorContext, input: DraftCardInput): Promise<CardSummary> {
     const member = await this.loadMember(input.memberId);
@@ -336,6 +347,11 @@ export class CardService {
         reason: input.reason ?? null,
       });
     }
+
+    // Only issuance is gated. Returning a card for amendment creates nothing
+    // and grants nobody anything, so requiring a second officer for it would
+    // stop a preparer correcting their own draft.
+    await this.assertSeparateOfficer(actor.userId, card.id);
 
     // Re-checked at issuance, not merely at preparation: the two can be days
     // apart, and a member suspended in between must not walk away with a card.
@@ -636,6 +652,37 @@ export class CardService {
   }
 
   // --- Internals -----------------------------------------------------------
+
+  /**
+   * Refuses an approval by the officer who prepared the card, when the Union has
+   * asked for a second pair of eyes.
+   *
+   * The mirror of the membership check, on the same setting: `card.issue` and
+   * `card.approve` are separate permissions, but a user holding both may do
+   * both. **Off by default** pending QUESTIONS.md MEM-04.
+   *
+   * An unknown preparer allows the approval, for the same reason as there: the
+   * System cannot prove one person is acting twice.
+   */
+  private async assertSeparateOfficer(
+    actorUserId: string,
+    cardId: string,
+  ): Promise<void> {
+    const card = await this.prisma.card.findUniqueOrThrow({
+      where: { id: cardId },
+      select: { issuedByUserId: true },
+    });
+    if (!card.issuedByUserId || card.issuedByUserId !== actorUserId) {
+      return;
+    }
+    if (!(await this.settings.isEnabled(REQUIRE_SEPARATE_OFFICER))) {
+      return;
+    }
+    throw new ConflictException(
+      'The officer who prepared this card may not approve it. ' +
+        'A second officer must act.',
+    );
+  }
 
   private assertGoodStanding(status: MemberStatus): void {
     if (!isMemberInGoodStanding(status)) {

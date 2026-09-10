@@ -396,8 +396,15 @@ That is sound: `details` describes the request the caller just sent, never the r
   nullable; somebody whose application was refused was never a member, and a number in the
   register that identifies no member states something untrue. Approval is the **only** route
   from `PENDING` to `ACTIVE`, and both happen in one transaction.
-- **`member.create` does not confer `application.decide`.** The officer who records an
-  application cannot approve it. Keep those separate.
+- **`member.create` does not confer `application.decide`**, and `card.issue` does not confer
+  `card.approve`. Keep those separate.
+
+  **This separates the permissions, not the people.** Nothing stops one user who holds both
+  from recording an application and then deciding it — and the super administrator holds
+  both by definition. `membership_application` does not even record who created it, so the
+  check could not be made today. Enforcing four-eyes is open at `QUESTIONS.md` **MEM-04**;
+  until it is answered, do not describe this as a segregation-of-duties control, because it
+  is not one.
 - **Status transitions live in `packages/domain`**, as tables. Do not re-implement "which
   transitions are legal" in a service.
 - **Requirement 7.1 is projection.** The list carries no next-of-kin, guarantor, telephone,

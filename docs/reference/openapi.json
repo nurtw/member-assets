@@ -3104,7 +3104,7 @@
       },
       "post": {
         "summary": "Prepare a card for a member.",
-        "description": "Creates the card in DRAFT. **No card number is allocated** — that happens at issuance, because a cancelled draft was never printed and a number against it would name an artifact that does not exist. Only a member in good standing may hold a card. Preparing requires `card.issue`; approving requires `card.approve`, which is a different permission, so the officer who prepares a card cannot approve it.\n\n**Permission required:** `card.issue`.",
+        "description": "Creates the card in DRAFT. **No card number is allocated** — that happens at issuance, because a cancelled draft was never printed and a number against it would name an artifact that does not exist. Only a member in good standing may hold a card. Preparing requires `card.issue`; approving requires `card.approve`, which is a different permission. Note that this separates the permissions and not the people: a caller holding both may prepare a card and then approve it. Both officers are recorded, so the trail shows when they were the same person.\n\n**Permission required:** `card.issue`.",
         "operationId": "CardController_draft",
         "tags": [
           "Card"

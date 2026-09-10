@@ -134,11 +134,23 @@ cross-checked against the export. This question concerns the two finer-grained f
 ### MEM-04 · Who approves a membership application ⏳
 
 **Question.** Which officer approves a new membership, and at what level — unit, branch,
-zone, or council? Is a second approval required for any category of applicant?
+zone, or council? Is a second approval required for any category of applicant? In
+particular: **may the officer who recorded an application also decide it?**
 
 **Why it is needed.** Approval authority is a permission scoped to a node. "Branch secretary
 approves for their own branch" and "council approves everything" produce materially
 different systems.
+
+**Note.** The System separates `member.create` from `application.decide`, and `card.issue`
+from `card.approve` — but that separates the *permissions*, not the *people*. One user
+holding both may do both, and the super administrator holds both by definition.
+
+A second-officer requirement is **built and shipped off**, as the runtime setting
+`approval.require_separate_officer`. Turning it on is a settings change, not a migration.
+It ships off because with one administrator account, enforcing it would make a registration
+impossible to complete. The officer who recorded each application is now stored, so the
+control can be enforced retrospectively as well as prospectively. See
+`docs/reference/OPERATIONS.md` → "Requiring a second officer to approve".
 
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
@@ -650,4 +662,5 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 | Date | Change |
 |---|---|
 | 9 September 2026 | Register created. 26 answered, 43 awaiting, 1 deferred. ORG-05 and ORG-06 identified as blocking item 05. |
+| 10 September 2026 | MEM-04 extended to ask explicitly whether the recording officer may decide. The control is built and shipped disabled; the question now gates a settings change rather than any development. |
 | 9 September 2026 | Item 06 delivered. CARD-05 and CARD-07 added to the blocking list: neither blocked the build, both block printing a card for a member. CARD-04, CARD-06, and CARD-08 confirmed as configuration or authority questions that the built mechanism already accommodates. |

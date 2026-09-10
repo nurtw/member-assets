@@ -262,6 +262,53 @@ for new records.
 
 ---
 
+### Requiring a second officer to approve
+
+`system_setting` key **`approval.require_separate_officer`**, shipped `false`.
+
+When `true`, the officer who recorded a membership application may not decide it,
+and the officer who prepared a card may not approve it. When `false`, one user
+holding both permissions may do both — and the super administrator holds both by
+definition.
+
+**It ships off deliberately.** `QUESTIONS.md` **MEM-04** asks the Union whether a
+second approval is required, and with a single administrator account on the
+System, enforcing it would make a registration impossible to complete. The control
+is built so that the answer is a settings change rather than a migration.
+
+```sql
+-- Turn it on.
+UPDATE system_setting
+   SET value = 'true', updated_at = now()
+ WHERE key = 'approval.require_separate_officer';
+```
+
+It takes effect on the **next request** — the setting is read per decision and
+not cached, precisely so that turning it on is immediate.
+
+Two things it deliberately does not do. It does not block *returning a card for
+amendment*, which creates nothing and grants nobody anything, so a preparer may
+still correct their own draft. And where the recording officer is unknown — an
+application predating the column whose audit event has been purged — it allows
+the decision, because the System cannot prove one person is acting twice and
+refusing on a suspicion would strand the record.
+
+### Finding work approved by the officer who recorded it
+
+Useful before turning the setting on, to see how often it happens today.
+
+```sql
+SELECT a.application_number, a.status, a.reviewed_at
+  FROM membership_application AS a
+ WHERE a.created_by_user_id IS NOT NULL
+   AND a.created_by_user_id = a.reviewed_by_user_id;
+
+SELECT c.card_number, c.status, c.issue_date
+  FROM card AS c
+ WHERE c.issued_by_user_id IS NOT NULL
+   AND c.issued_by_user_id = c.approved_by_user_id;
+```
+
 ### Preparing the Union's own card artwork
 
 **Before any card is printed for a member**, `QUESTIONS.md` **CARD-05** must be

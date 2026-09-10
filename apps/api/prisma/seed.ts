@@ -253,6 +253,15 @@ async function seedSystemSettings(): Promise<void> {
       value: '12',
       description: 'Internal session lifetime in hours.',
     },
+    {
+      key: 'approval.require_separate_officer',
+      value: 'false',
+      description:
+        'When true, the officer who recorded a membership application may not decide it, ' +
+        'and the officer who prepared a card may not approve it. Off pending QUESTIONS.md ' +
+        'MEM-04: with one administrator account, enforcing it makes a registration ' +
+        'impossible to complete.',
+    },
   ];
 
   for (const setting of settings) {

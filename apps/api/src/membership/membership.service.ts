@@ -33,6 +33,10 @@ import { MediaService } from '../media/media.service.js';
 import type { ActorContext } from '../organisation/organisation.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
+  REQUIRE_SEPARATE_OFFICER,
+  SettingsService,
+} from '../settings/settings.service.js';
+import {
   renderRegistrationForm,
   type FormSection,
 } from './registration-form.js';
@@ -67,6 +71,7 @@ export class MembershipService {
     private readonly permissions: PermissionService,
     private readonly audit: AuditService,
     private readonly media: MediaService,
+    private readonly settings: SettingsService,
   ) {}
 
   // --- Reads ---------------------------------------------------------------
@@ -217,6 +222,9 @@ export class MembershipService {
           applicationNumber: await this.allocateApplicationNumber(tx),
           status: 'DRAFT',
           memberId: member.id,
+          // So that "did one person record this and then approve it" is a
+          // question the database can answer.
+          createdByUserId: actor.userId,
         },
         select: this.summarySelect(),
       });
@@ -446,6 +454,11 @@ export class MembershipService {
     this.assertApplication(
       application.status as ApplicationStatus,
       input.decision,
+    );
+    await this.assertSeparateOfficer(
+      actor.userId,
+      application.createdByUserId,
+      'application',
     );
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -772,6 +785,39 @@ export class MembershipService {
     });
 
     return this.toSummary(updated);
+  }
+
+  /**
+   * Refuses a decision by the officer who recorded the work, when the Union has
+   * asked for a second pair of eyes.
+   *
+   * `member.create` and `application.decide` are separate permissions, but that
+   * separates the *permissions*, not the *people*: one user holding both may do
+   * both, and the super administrator holds both by definition. This is the
+   * control that separates the people, and it is **off by default** pending
+   * QUESTIONS.md MEM-04 — with one administrator account, enforcing it makes a
+   * registration impossible to complete.
+   *
+   * An unknown recorder allows the decision. The System cannot prove the same
+   * person is acting twice, and refusing on a suspicion would strand every
+   * application created before the column existed whose audit event has since
+   * been purged.
+   */
+  private async assertSeparateOfficer(
+    actorUserId: string,
+    recordedByUserId: string | null,
+    noun: string,
+  ): Promise<void> {
+    if (!recordedByUserId || recordedByUserId !== actorUserId) {
+      return;
+    }
+    if (!(await this.settings.isEnabled(REQUIRE_SEPARATE_OFFICER))) {
+      return;
+    }
+    throw new ConflictException(
+      `The officer who recorded this ${noun} may not decide it. ` +
+        'A second officer must act.',
+    );
   }
 
   private assertApplication(from: ApplicationStatus, to: ApplicationStatus): void {
