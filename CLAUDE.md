@@ -431,6 +431,11 @@ That is sound: `details` describes the request the caller just sent, never the r
 - **The card module never joins `member_contact`, `next_of_kin`, or `guarantor`.** The
   printed address is officer-composed and lives on the card row. Keep it that way — the
   separation is structural, not query discipline.
+
+  The registration screen *suggests* a card address with `suggestCardAddress`, shortened to
+  30 characters at a word or comma boundary. That is composed in the browser from an address
+  the officer is already authorised to see, and the API still requires the value to be sent.
+  It is not the card module reading `member_contact`, and it must not become that.
 - **`card.issue` prepares; `card.approve` issues.** Separate, like `member.create` and
   `application.decide`. Recording collection (`ISSUED → ACTIVE`) is part of issuing and has
   its own route, because a route decorator names one permission and the guard refuses before

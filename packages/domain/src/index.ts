@@ -110,3 +110,8 @@ export {
   isCardVerifiable,
   type CardStatus,
 } from './card/status.js';
+
+export {
+  CARD_ADDRESS_LENGTH,
+  suggestCardAddress,
+} from './card/display-address.js';

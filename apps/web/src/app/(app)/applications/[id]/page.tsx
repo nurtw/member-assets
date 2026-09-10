@@ -1,6 +1,7 @@
 "use client";
 
 import type { ApplicationDetail, CardSummary } from "@nurtw/contracts";
+import { suggestCardAddress } from "@nurtw/domain";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -54,7 +55,16 @@ export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
   const { holds } = useSession();
   const [reason, setReason] = useState("");
-  const [cardAddress, setCardAddress] = useState("");
+  /**
+   * The card address, before the officer has touched it.
+   *
+   * `null` means "not yet edited", so the suggested value shows through. Once
+   * the officer types — including clearing the field entirely — the state holds
+   * a string and the suggestion no longer applies. That keeps the default out
+   * of an effect, so nothing races the fetch and nothing overwrites what the
+   * officer has typed when the data revalidates.
+   */
+  const [cardAddress, setCardAddress] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiError | null>(null);
 
@@ -88,6 +98,19 @@ export default function ApplicationDetailPage() {
   const liveCard = cards.find((card) =>
     ["DRAFT", "PENDING_APPROVAL", "ISSUED", "ACTIVE"].includes(card.status),
   );
+
+  /**
+   * What goes in the card-address field.
+   *
+   * Suggested from the residential address the officer is already looking at on
+   * this screen — **not** fetched by the card module, which cannot reach
+   * `member_contact` at all (Decision 10.1). The value travels to the API as an
+   * ordinary field the officer has confirmed.
+   */
+  const suggestedAddress = suggestCardAddress(
+    application?.contact?.residentialAddress,
+  );
+  const printedAddress = cardAddress ?? suggestedAddress;
 
   async function act(action: () => Promise<unknown>) {
     setBusy(true);
@@ -342,26 +365,26 @@ export default function ApplicationDetailPage() {
               <Field
                 label="Address as printed on the card"
                 htmlFor="cardAddress"
-                hint="May be shorter than the residential address — the card has limited space."
+                hint="Suggested from the residential address, shortened to fit the card. Amend it if the Union prints something different."
                 required
               >
                 <TextInput
                   id="cardAddress"
-                  value={cardAddress}
+                  value={printedAddress}
                   onChange={(event) => setCardAddress(event.target.value)}
                 />
               </Field>
               <div>
                 <Button
                   type="button"
-                  disabled={busy || cardAddress.trim().length < 4}
+                  disabled={busy || printedAddress.trim().length < 4}
                   onClick={() =>
                     void act(async () => {
                       await api.post("/cards", {
                         memberId: member.id,
-                        printedAddress: cardAddress.trim(),
+                        printedAddress: printedAddress.trim(),
                       });
-                      setCardAddress("");
+                      setCardAddress(null);
                       await mutateCards();
                     })
                   }
