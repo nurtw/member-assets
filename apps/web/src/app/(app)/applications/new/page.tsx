@@ -6,7 +6,8 @@ import type {
   OrganisationTreeNode,
 } from "@nurtw/contracts";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import useSWR from "swr";
 
 import {
   Button,
@@ -17,7 +18,7 @@ import {
   TextArea,
   TextInput,
 } from "@/components/ui";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api, fetcher } from "@/lib/api";
 
 /**
  * The Union's Membership / Registration / Guarantorship form.
@@ -84,40 +85,41 @@ function collectUnits(
 export default function NewApplicationPage() {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(INITIAL);
-  const [units, setUnits] = useState<{ id: string; name: string }[]>([]);
-  const [lgas, setLgas] = useState<LgaEntry[]>([]);
-  const [designations, setDesignations] = useState<MasterDataEntry[]>([]);
   const [error, setError] = useState<ApiError | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    const controller = new AbortController();
+  /**
+   * The reference data the form offers.
+   *
+   * Through SWR rather than a hand-written effect, as on every other screen.
+   * The effect this replaced held an `AbortController` whose cleanup fired on
+   * Strict Mode's second invocation, cancelling the very requests it had just
+   * issued — and the client reported that cancellation as "the service could
+   * not be reached". SWR owns request lifetime, deduplicates across screens,
+   * and keeps the fetch out of an effect body, which is what the React compiler
+   * asks for.
+   */
+  const { data: tree, error: treeError } = useSWR<{
+    organisations: OrganisationTreeNode[];
+  }>("/organisations", fetcher);
+  const { data: lgaList, error: lgaError } = useSWR<{ lgas: LgaEntry[] }>(
+    "/master-data/lgas",
+    fetcher,
+  );
+  const { data: designationList, error: designationError } = useSWR<{
+    entries: MasterDataEntry[];
+  }>("/master-data/designations", fetcher);
 
-    void (async () => {
-      try {
-        const [tree, lgaList, designationList] = await Promise.all([
-          api.get<{ organisations: OrganisationTreeNode[] }>(
-            "/organisations",
-            controller.signal,
-          ),
-          api.get<{ lgas: LgaEntry[] }>("/master-data/lgas", controller.signal),
-          api.get<{ entries: MasterDataEntry[] }>(
-            "/master-data/designations",
-            controller.signal,
-          ),
-        ]);
-        setUnits(collectUnits(tree.organisations));
-        setLgas(lgaList.lgas);
-        setDesignations(designationList.entries);
-      } catch (caught) {
-        if (caught instanceof ApiError) {
-          setError(caught);
-        }
-      }
-    })();
+  const units = collectUnits(tree?.organisations ?? []);
+  const lgas = lgaList?.lgas ?? [];
+  const designations = designationList?.entries ?? [];
 
-    return () => controller.abort();
-  }, []);
+  // A submission failure takes precedence: it is the one the officer just
+  // caused and the one they can act on.
+  const loadError = [treeError, lgaError, designationError].find(
+    (candidate): candidate is ApiError => candidate instanceof ApiError,
+  );
+  const shown = error ?? loadError ?? null;
 
   const set = (key: string) => (value: string | boolean) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -212,14 +214,14 @@ export default function NewApplicationPage() {
         </p>
       </div>
 
-      {error ? (
+      {shown ? (
         <ErrorNotice
           message={
-            error.details.length > 0
+            shown.details.length > 0
               ? "Some entries need attention. They are marked below."
-              : error.message
+              : shown.message
           }
-          requestId={error.requestId}
+          requestId={shown.requestId}
         />
       ) : null}
 

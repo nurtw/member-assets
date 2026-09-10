@@ -84,10 +84,23 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       body: options.body ? JSON.stringify(options.body) : undefined,
       signal: options.signal,
     });
-  } catch {
-    // A network failure is not an API error and must not be reported as one:
-    // "the request could not be processed" would send the user looking for a
-    // problem with their data.
+  } catch (caught) {
+    // A cancelled request is not a failure and must never be reported as one.
+    //
+    // React Strict Mode double-invokes effects in development, so the first
+    // run's cleanup aborts requests the second run immediately reissues.
+    // Swallowing that into "the service could not be reached" told an officer
+    // the System was down while it was working perfectly — and it did so on the
+    // registration screen, which is the one screen that must be trustworthy.
+    // Rethrown as-is, so `caught instanceof ApiError` is false and callers
+    // render nothing.
+    if (caught instanceof DOMException && caught.name === "AbortError") {
+      throw caught;
+    }
+
+    // A genuine network failure is not an API error and must not be reported as
+    // one: "the request could not be processed" would send the user looking for
+    // a problem with their data.
     throw new ApiError(0, "The service could not be reached.", undefined, []);
   }
 
