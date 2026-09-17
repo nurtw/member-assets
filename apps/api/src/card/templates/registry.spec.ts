@@ -73,12 +73,11 @@ describe('the launch template', () => {
     expect(template.provisional).toBe(true);
   });
 
-  it('carries no validity, because CARD-04 is unanswered', () => {
-    // DESIGN.md §7.1 observes the physical card prints a year, which suggests
-    // annual re-issuance. An observation is not an answer, and a guessed
-    // twelve months would be indistinguishable from a period the Union asked
-    // for.
-    expect(template.validityMonths).toBeNull();
+  it('is valid for twelve months, per CARD-04', () => {
+    // Answered 14 September 2026: cards are renewed every year, confirming
+    // the observation at DESIGN.md §7.1 that the physical card prints a year
+    // at the same scale as the Union's name.
+    expect(template.validityMonths).toBe(12);
   });
 });
 

@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.0
-**Last revised:** 9 September 2026
+**Document version:** 1.1
+**Last revised:** 14 September 2026
 
 ---
 
@@ -47,13 +47,13 @@ thing a year later.
 | Group | Answered | Awaiting | Deferred | Total |
 |---|---|---|---|---|
 | Structure and master data (ORG) | 4 | 3 | — | 7 |
-| Membership and registration (MEM) | 3 | 11 | — | 14 |
-| Cards (CARD) | 3 | 5 | — | 8 |
-| Vehicles and stickers (VEH) | 5 | 6 | — | 11 |
+| Membership and registration (MEM) | 4 | 10 | — | 14 |
+| Cards (CARD) | 4 | 4 | — | 8 |
+| Vehicles and stickers (VEH) | 6 | 6 | — | 12 |
 | Legacy migration (MIG) | 3 | 3 | — | 6 |
 | External organisations (EXT) | 4 | 5 | — | 9 |
 | Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
-| **Total** | **26** | **43** | **1** | **70** |
+| **Total** | **29** | **41** | **1** | **71** |
 
 ### Blocking production use right now
 
@@ -67,9 +67,6 @@ each stops the System being used for real in a specific way.
 | **CARD-05** | The official card artwork at print resolution | Cards render from a template reconstructed from a photograph, which prints `PROVISIONAL TEMPLATE — ARTWORK PENDING` across its foot and must not be issued to a member |
 | **CARD-07** | The signing officers and their signature images | Cards issue with blank President and General Secretary signature lines. Each such issuance is recorded in the audit trail, so they can be found and replaced afterwards — see `docs/reference/OPERATIONS.md` |
 
-**CARD-04** (validity period) is a near neighbour: without it no card expires, which is a
-supported configuration rather than a defect, so it does not appear above.
-
 Everything else is either answered, or needed later and not yet obstructing work.
 
 ---
@@ -79,7 +76,7 @@ Everything else is either answered, or needed later and not yet obstructing work
 > These block roadmap item 05. Until they are answered, members can only be registered into
 > the placeholder `Unassigned Zone / Branch / Unit` nodes.
 
-### ORG-05 · The Union's organisational structure ⏳
+### ORG-05 · The Union's organisational structure ⏳ (partly answered)
 
 **Question.** Please provide the Union's zones; for each zone its branches; and for each
 branch its units (unity bodies). Names as they should appear on a membership card.
@@ -93,8 +90,14 @@ rows, so there is nothing to import and nothing to infer. A partial list is usef
 structure is editable through the interface afterwards, and units can be added as they are
 confirmed.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer (partial).** The **21 Anambra LGAs are the zones** — the zone list is therefore the
+LGA list already seeded (ORG-07 context), not a separate name set to be supplied. The **unit**
+field is **hand-filled free text** at registration, not a controlled list. **Still
+outstanding: the branch list** for each zone — nothing has been said about branches, and the
+hierarchy (Council → Zone → Branch → Unit) still needs one per zone before real registration
+can use it.
+**Answered on.** 14 September 2026. **Answered by.** Mr Timothy, Head of Operations.
+**Recorded at.** —
 
 ### ORG-06 · Member designations ⏳
 
@@ -155,7 +158,7 @@ control can be enforced retrospectively as well as prospectively. See
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
-### MEM-05 · Existing membership numbers ⏳
+### MEM-05 · Existing membership numbers ✅
 
 **Question.** Do current members already hold membership numbers printed on cards in the
 field? If so, must those be preserved, or will every member be issued a new number at
@@ -165,10 +168,14 @@ migration?
 did not design and guarantee uniqueness across both schemes. Issuing fresh numbers is
 cleaner but invalidates what members are carrying.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **Every member is issued a new, System-generated number.** No legacy number is
+preserved or imported. This matches how the System already works — `membershipNumber` is
+allocated on approval by the System, never accepted as input — so no change was needed to
+honour this answer.
+**Answered on.** 14 September 2026. **Answered by.** Mr Timothy, Head of Operations.
+**Recorded at.** —
 
-### MEM-06 · Guarantor requirements ⏳
+### MEM-06 · Guarantor requirements ⏳ (partly answered)
 
 **Question.** Is **one** guarantor sufficient? Must a guarantor be an existing NURTW member
 in good standing, and may one person guarantee more than one applicant?
@@ -177,8 +184,13 @@ in good standing, and may one person guarantee more than one applicant?
 guarantor record; if not, guarantor details are free-standing personal data about a
 non-member, which changes both the storage and the retention obligation.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer (partial).** **The guarantor section is optional, not compulsory** — an application
+may be submitted with no guarantor at all. **Still outstanding:** whether a guarantor, when
+supplied, must be an existing member, and whether one guarantor may cover more than one
+applicant. The registration form must therefore treat every guarantor field as optional, not
+required.
+**Answered on.** 14 September 2026. **Answered by.** Mr Timothy, Head of Operations.
+**Recorded at.** —
 
 ### MEM-07 · Guarantor relationship values ⏳
 
@@ -256,7 +268,7 @@ recency, or an existing photographer arrangement?
 
 ## 6. Open — membership cards (item 06)
 
-### CARD-04 · Card validity period at launch ⏳
+### CARD-04 · Card validity period at launch ✅
 
 **Question.** What validity period should the launch card template carry? The supplied card
 prints **2026** vertically at the same scale as the Union's name, which suggests annual
@@ -266,8 +278,10 @@ re-issuance is existing practice — please confirm.
 a configuration value, not a design change. The year must be rendered as a prominent element
 rather than small print, so it needs to be known before the template is cut.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **Confirmed: cards are renewed every year.** `v1-provisional.validityMonths` is
+now `12`; a card issued today expires twelve months from its issue date.
+**Answered on.** 14 September 2026. **Answered by.** Mr Timothy, Head of Operations.
+**Recorded at.** `apps/api/src/card/templates/v1-provisional.ts`
 
 ### CARD-05 · Official card artwork ⏳
 
@@ -294,7 +308,7 @@ the article members hold.
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
-### CARD-07 · Signing officers ⏳
+### CARD-07 · Signing officers ⏳ (partly answered)
 
 **Question.** Which officers sign the membership card, and what are their names and titles as
 printed? The card carries three signature lines: President, General Secretary, and Holder's
@@ -303,8 +317,16 @@ Signature. Please supply the two officers' signature images.
 **Why it is needed.** PRD §23.7 determined signatures are stored assets composited at print.
 The assets themselves are still required, and replacing one is an audited, permissioned act.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer (partial).** **The signing officers are the State Chairman and the Secretary** — not
+President and General Secretary as this question and the card's two internal signature slots
+(`PRESIDENT`, `GENERAL_SECRETARY`) are named. No schema change is needed for this: the printed
+title is a free-text `officerTitle` supplied when a signature is registered
+(`docs/reference/OPERATIONS.md` → registering an officer signature), so the two existing slots
+should be registered with `officerTitle: "State Chairman"` and `officerTitle: "Secretary"`
+respectively when the images arrive. **Still outstanding:** the two officers' names and their
+signature images, which is what actually unblocks issuing a real card.
+**Answered on.** 14 September 2026. **Answered by.** Mr Timothy, Head of Operations.
+**Recorded at.** —
 
 ### CARD-08 · Card replacement ⏳
 
@@ -374,6 +396,41 @@ windscreen is replaced?
 
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
+
+### VEH-12 · Vehicle onboarding and binding pre-existing stickers ✅
+
+**Question.** (Not previously asked as a formal question — direction volunteered ahead of
+items 07–08 being planned.) How should vehicles already in the field, and the stickers
+already on their windscreens, enter the System?
+
+**Answer.** **Vehicles are onboarded afresh, not trusted as migrated.** Existing vehicles are
+*updated* through the System rather than treated as already-declared; an officer binds a
+pre-existing sticker to its vehicle record by **scanning it**, not by relying on the migrated
+row alone.
+
+**Pre-existing stickers use a different URL scheme, from a separate prior application**
+(`transpaytms.com`), in two observed forms:
+
+```text
+https://www.transpaytms.com/v/status1772628860933
+https://www.transpaytms.com/v/status/1772628860933
+```
+
+The trailing digits are the identifier to extract and search on — a millisecond epoch
+timestamp, consistent with the legacy barcode scheme already determined at **CARD-03**
+(PRD §26.4: legacy codes are millisecond timestamps, forgeable by inspection, honoured
+read-only). A plate number is an equally valid way to find the vehicle where the sticker
+cannot be read. **This is not yet built** — items 07 (vehicle declaration) and 08 (stickers)
+are unplanned — but the URL shape and the extraction rule belong in that item's plan rather
+than being re-derived or re-asked for later.
+
+**Why it matters for MIG-04 and MIG-06.** This is a lean toward *not* over-investing in
+migration reconciliation: rather than resolving every legacy owner/driver record
+automatically, the operator re-registers or confirms the vehicle through the System, and the
+old sticker is carried across by scan. MIG-04 and MIG-06 remain open on the specifics, but
+"just create the system" was the direction given when those were raised.
+**Answered on.** 14 September 2026. **Answered by.** Mr Timothy, Head of Operations.
+**Recorded at.** —
 
 ---
 
@@ -661,6 +718,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 14 September 2026 | Answers received from Mr Timothy, Head of Operations. MEM-05 and CARD-04 answered in full; ORG-05, MEM-06, and CARD-07 partly answered; new VEH-12 recorded (vehicle onboarding and legacy-sticker rebinding) with the pre-existing sticker URL format for items 07–08. Card template `v1-provisional` now carries a twelve-month validity; guarantor is no longer required to register an application. |
 | 9 September 2026 | Register created. 26 answered, 43 awaiting, 1 deferred. ORG-05 and ORG-06 identified as blocking item 05. |
 | 10 September 2026 | MEM-04 extended to ask explicitly whether the recording officer may decide. The control is built and shipped disabled; the question now gates a settings change rather than any development. |
 | 9 September 2026 | Item 06 delivered. CARD-05 and CARD-07 added to the blocking list: neither blocked the build, both block printing a card for a member. CARD-04, CARD-06, and CARD-08 confirmed as configuration or authority questions that the built mechanism already accommodates. |

@@ -143,6 +143,25 @@ describe('Membership registration (e2e)', () => {
       expect(member.membershipNumber).toBeNull();
     });
 
+    it('registers an applicant with no guarantor at all (MEM-06)', async () => {
+      const body = applicationBody(fixture.unitAId, fixture.lgaId, 'NoGuarantor');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (body as any).guarantor;
+
+      const created = await request(server)
+        .post('/api/v1/applications')
+        .set('Cookie', cookies.registrar!)
+        .send(body)
+        .expect(201);
+
+      const detail = await request(server)
+        .get(`/api/v1/applications/${created.body.application.id}`)
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+
+      expect(detail.body.application.guarantor).toBeNull();
+    });
+
     it('normalises every telephone number to one canonical form', async () => {
       const body = applicationBody(fixture.unitAId, fixture.lgaId, 'Phone');
       body.applicant.phone = '0803 123 4567';

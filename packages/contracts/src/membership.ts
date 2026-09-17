@@ -214,7 +214,8 @@ export const createApplicationSchema = z.object({
   applicant: applicantSchema,
   assignment: organisationalAssignmentSchema,
   nextOfKin: nextOfKinSchema,
-  guarantor: guarantorSchema,
+  // MEM-06: a guarantor is not compulsory.
+  guarantor: guarantorSchema.optional(),
 });
 
 export type CreateApplicationInput = z.infer<typeof createApplicationSchema>;

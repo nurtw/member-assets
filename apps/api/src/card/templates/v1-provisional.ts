@@ -108,14 +108,11 @@ export const v1Provisional: CardTemplate = {
   label: 'Provisional card — reconstructed from photograph',
 
   /**
-   * No validity, pending **CARD-04**.
-   *
-   * `DESIGN.md` §7.1 observes that the physical card prints 2026 vertically at
-   * the same scale as the Union's name, which strongly suggests annual
-   * re-issuance is existing practice. That is an observation, not an answer, and
-   * QUESTIONS.md exists precisely so an observation does not quietly become one.
+   * Twelve months. **CARD-04**, answered 14 September 2026: cards are renewed
+   * every year, confirming the observation at `DESIGN.md` §7.1 that the physical
+   * card prints the year vertically at the same scale as the Union's name.
    */
-  validityMonths: null,
+  validityMonths: 12,
 
   provisional: true,
 

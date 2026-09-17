@@ -171,18 +171,22 @@ export default function NewApplicationPage() {
             phone: form.nokPhone,
             occupation: optional("nokOccupation"),
           },
-          guarantor: {
-            surname: form.gSurname,
-            firstName: form.gFirstName,
-            middleName: optional("gMiddleName"),
-            address: form.gAddress,
-            townCity: optional("gTownCity"),
-            relationshipToApplicant: form.gRelationship,
-            phone: form.gPhone,
-            occupation: optional("gOccupation"),
-            hasCollateral: form.gHasCollateral as boolean,
-            collateralDetails: optional("gCollateralDetails"),
-          },
+          // MEM-06: a guarantor is not compulsory. Omit the section entirely
+          // unless the officer has actually started filling it in.
+          guarantor: optional("gSurname")
+            ? {
+                surname: form.gSurname,
+                firstName: form.gFirstName,
+                middleName: optional("gMiddleName"),
+                address: form.gAddress,
+                townCity: optional("gTownCity"),
+                relationshipToApplicant: form.gRelationship,
+                phone: form.gPhone,
+                occupation: optional("gOccupation"),
+                hasCollateral: form.gHasCollateral as boolean,
+                collateralDetails: optional("gCollateralDetails"),
+              }
+            : undefined,
         },
       );
       router.push(`/applications/${response.application.id}`);
@@ -374,20 +378,23 @@ export default function NewApplicationPage() {
       </Section>
 
       <Section title="Section D — Guarantor">
+        <p className="text-xs text-black/50">
+          Optional. Leave every field blank if this application has no guarantor.
+        </p>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Surname" htmlFor="gSurname" required error={fieldError("guarantor.surname")}>
-            <TextInput id="gSurname" required {...text("gSurname")} />
+          <Field label="Surname" htmlFor="gSurname" error={fieldError("guarantor.surname")}>
+            <TextInput id="gSurname" {...text("gSurname")} />
           </Field>
-          <Field label="First name" htmlFor="gFirstName" required error={fieldError("guarantor.firstName")}>
-            <TextInput id="gFirstName" required {...text("gFirstName")} />
+          <Field label="First name" htmlFor="gFirstName" error={fieldError("guarantor.firstName")}>
+            <TextInput id="gFirstName" {...text("gFirstName")} />
           </Field>
           <Field label="Middle name" htmlFor="gMiddleName">
             <TextInput id="gMiddleName" {...text("gMiddleName")} />
           </Field>
         </div>
 
-        <Field label="Address" htmlFor="gAddress" required error={fieldError("guarantor.address")}>
-          <TextArea id="gAddress" required {...text("gAddress")} />
+        <Field label="Address" htmlFor="gAddress" error={fieldError("guarantor.address")}>
+          <TextArea id="gAddress" {...text("gAddress")} />
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -397,18 +404,16 @@ export default function NewApplicationPage() {
           <Field
             label="Relationship with Operator / Applicant"
             htmlFor="gRelationship"
-            required
             error={fieldError("guarantor.relationshipToApplicant")}
           >
-            <TextInput id="gRelationship" required {...text("gRelationship")} />
+            <TextInput id="gRelationship" {...text("gRelationship")} />
           </Field>
           <Field
             label="Tel. No. of Guarantor"
             htmlFor="gPhone"
-            required
             error={fieldError("guarantor.phone")}
           >
-            <TextInput id="gPhone" type="tel" required {...text("gPhone")} />
+            <TextInput id="gPhone" type="tel" {...text("gPhone")} />
           </Field>
           <Field label="Occupation of Guarantor" htmlFor="gOccupation">
             <TextInput id="gOccupation" {...text("gOccupation")} />

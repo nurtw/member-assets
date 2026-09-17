@@ -1,6 +1,6 @@
 # Session Handoff
 
-**Last revised:** 9 September 2026
+**Last revised:** 14 September 2026
 
 > Cold-start contract. Written so a different Claude, on a different account,
 > holding no prior context, can resume without re-reading the repository.
@@ -26,8 +26,8 @@ Items 01–06 complete. Monorepo, data model, authentication and permissions, th
 organisational hierarchy, membership registration, and membership cards — with
 the print pipeline and the officer-facing screens.
 
-**368 tests pass** (162 domain · 29 contracts · 79 api unit · 98 api e2e); build,
-typecheck, and lint clean.
+**381 tests pass** (174 domain · 12 domain display-address · 29 contracts · 80 api
+unit · 100 api e2e); build, typecheck, and lint clean.
 
 ## Active roadmap item
 
@@ -35,9 +35,36 @@ None. **Item 07 — vehicle-declaration — is next and not yet planned.**
 
 ## Done this session
 
-- Item 06: the nine-state card lifecycle, card-number allocation on issuance,
-  approval and replacement workflows, versioned card templates, officer signature
-  assets, and the PDF pipeline.
+- Address auto-suggestion for the card's printed address field
+  (`suggestCardAddress`, `packages/domain/src/card/display-address.ts`).
+- Answers received from the Union (Mr Timothy, Head of Operations,
+  14 September 2026) — see `QUESTIONS.md` change log for the full list. The two
+  that changed shipped behaviour:
+  - **MEM-06 answered: a guarantor is optional, not compulsory.** Fixed a real
+    gap — `createApplicationSchema.guarantor` was required, so no application
+    could previously be registered without one. Now optional throughout: schema,
+    the `member.guarantor` nested create, the update path (switched `update` to
+    `upsert`, since an application may now reach amendment with no guarantor row
+    yet), and the registration form UI (Section D marked optional, omitted from
+    the payload unless the officer starts filling it in).
+  - **CARD-04 answered: cards are valid for 12 months.**
+    `v1-provisional.validityMonths` changed from `null` to `12`.
+  - Partial answers recorded but not yet actionable: **ORG-05** (zones are the 21
+    LGAs; units are hand-filled free text; branches still unknown), **CARD-07**
+    (signing officers are the State Chairman and Secretary — printed via the
+    existing free-text `officerTitle`, no schema change needed; names and
+    signature images still outstanding).
+  - New **VEH-12**: vehicles are onboarded afresh and existing ones updated
+    in place; pre-existing stickers (a different prior application,
+    `transpaytms.com`) are rebound by scan. The URL formats and the
+    millisecond-timestamp extraction rule are recorded for whoever plans item 07/08
+    — nothing built yet.
+
+## Done in the previous session (item 06)
+
+- The nine-state card lifecycle, card-number allocation on issuance, approval and
+  replacement workflows, versioned card templates, officer signature assets, and
+  the PDF pipeline.
 - The wet-signature registration form (§23.16), deferred here from item 05.
 - Print rendering decided and recorded as `ARCHITECTURE.md` §14: `pdf-lib`, with
   no browser in the container.
@@ -85,12 +112,14 @@ and monitoring are item 15 and marked NOT YET IMPLEMENTED in
 
 ## Awaiting the Union
 
-`QUESTIONS.md` §3 lists the four questions that now block **production use** —
-ORG-05, ORG-06, **CARD-05** (official artwork), and **CARD-07** (signature
-images). None blocked the build. Cards currently print a provisional template
-marked as such, with blank officer signature lines; every issuance under that
-condition is recorded in the audit trail so those cards can be found and
-replaced. `docs/reference/OPERATIONS.md` carries the query and the procedure.
+`QUESTIONS.md` §3 lists the four questions that still block **production use** —
+ORG-05 (branches, specifically — zones and units are now answered),
+ORG-06, **CARD-05** (official artwork), and **CARD-07** (still needs the two
+officers' names and signature images; who they are is now answered). None
+blocked the build. Cards currently print a provisional template marked as such,
+with blank officer signature lines; every issuance under that condition is
+recorded in the audit trail so those cards can be found and replaced.
+`docs/reference/OPERATIONS.md` carries the query and the procedure.
 
 ## The separation that is not one
 

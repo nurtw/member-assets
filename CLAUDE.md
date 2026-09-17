@@ -401,10 +401,15 @@ That is sound: `details` describes the request the caller just sent, never the r
 
   **This separates the permissions, not the people.** Nothing stops one user who holds both
   from recording an application and then deciding it — and the super administrator holds
-  both by definition. `membership_application` does not even record who created it, so the
-  check could not be made today. Enforcing four-eyes is open at `QUESTIONS.md` **MEM-04**;
-  until it is answered, do not describe this as a segregation-of-duties control, because it
-  is not one.
+  both by definition. `membership_application.createdByUserId` records who recorded it, and a
+  runtime setting (`approval.require_separate_officer`) can refuse a decision by that same
+  person — but it ships **off**, pending `QUESTIONS.md` **MEM-04**. Until it is turned on, do
+  not describe this as a segregation-of-duties control, because it is not one.
+- **A guarantor is optional, not compulsory** (`QUESTIONS.md` **MEM-06**, answered). The
+  `createApplicationSchema.guarantor` field is optional; `Member.guarantor` is an optional
+  1:1 relation and the create path omits the nested `create` entirely when none is supplied.
+  The update path uses `upsert`, not `update`, for the same reason — an application may reach
+  amendment with no guarantor row yet.
 - **Status transitions live in `packages/domain`**, as tables. Do not re-implement "which
   transitions are legal" in a service.
 - **Requirement 7.1 is projection.** The list carries no next-of-kin, guarantor, telephone,
@@ -445,6 +450,9 @@ That is sound: `details` describes the request the caller just sent, never the r
   names every version ever issued and fails if one disappears.
 - **`v1-provisional` is provisional and says so on the card.** The palette is inferred from
   a daylight photograph (`DESIGN.md` §2). When CARD-05 arrives, cut a **v2** — do not edit v1.
+  Its validity (`CARD-04`, answered) is **12 months**; the signing-officer titles (`CARD-07`,
+  partly answered) are **State Chairman** and **Secretary** — set as the free-text
+  `officerTitle` when registering each signature, not as an enum change.
 - **Printing is `pdf-lib`, and no browser goes in the container** (Decision 14.1). Write
   templates in millimetres from the top-left; `apps/api/src/pdf/geometry.ts` does the one
   conversion to PDF's bottom-left points.

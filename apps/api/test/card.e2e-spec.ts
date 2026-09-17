@@ -294,9 +294,8 @@ describe('Membership cards (e2e)', () => {
         /^[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]$/,
       );
       expect(issued.body.card.issueDate).not.toBeNull();
-      // CARD-04 is open, so the template carries no validity and no card expires.
-      expect(issued.body.card.expiryDate).toBeNull();
-
+      // CARD-04: cards are valid for twelve months from issuance.
+      expect(issued.body.card.expiryDate).not.toBeNull();
     });
 
     it('returns a card for amendment without allocating a number', async () => {
@@ -488,8 +487,8 @@ describe('Membership cards (e2e)', () => {
         (entry: { version: string }) => entry.version === 'v1-provisional',
       );
       expect(template.provisional).toBe(true);
-      // CARD-04 unanswered: no validity is guessed.
-      expect(template.validityMonths).toBeNull();
+      // CARD-04: twelve months.
+      expect(template.validityMonths).toBe(12);
     });
   });
 

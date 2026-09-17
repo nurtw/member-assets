@@ -213,7 +213,10 @@ export class MembershipService {
           designationId: input.assignment.designationId ?? null,
           contact: { create: this.contactData(input.applicant) },
           nextOfKin: { create: this.nextOfKinData(input.nextOfKin) },
-          guarantor: { create: this.guarantorData(input.guarantor) },
+          // MEM-06: a guarantor is not compulsory.
+          guarantor: input.guarantor
+            ? { create: this.guarantorData(input.guarantor) }
+            : undefined,
         },
       });
 
@@ -320,9 +323,12 @@ export class MembershipService {
         });
       }
       if (input.guarantor) {
-        await tx.guarantor.update({
+        // Guarantor is optional at creation (MEM-06), so this section may not
+        // have a row yet — upsert rather than update.
+        await tx.guarantor.upsert({
           where: { memberId: member.id },
-          data: this.guarantorData(input.guarantor),
+          create: { memberId: member.id, ...this.guarantorData(input.guarantor) },
+          update: this.guarantorData(input.guarantor),
         });
       }
 
@@ -1010,7 +1016,7 @@ export class MembershipService {
     };
   }
 
-  private guarantorData(guarantor: CreateApplicationInput['guarantor']) {
+  private guarantorData(guarantor: NonNullable<CreateApplicationInput['guarantor']>) {
     return {
       surname: guarantor.surname,
       firstName: guarantor.firstName,
