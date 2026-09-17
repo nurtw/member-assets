@@ -1,0 +1,43 @@
+name: Keep API warm
+
+# Render's free tier spins a web service down after about 15 minutes with no
+# inbound HTTP traffic, and the next real request then pays a cold-start
+# penalty while the container reboots. This pings the API's public health
+# endpoint often enough that Render never sees that gap.
+#
+# GET /api/v1/health is deliberately unauthenticated and minimal (see
+# apps/api/src/health/health.controller.ts) — built for exactly this, so no
+# credential needs to live in this workflow.
+#
+# Set the repository variable API_HEALTH_URL (Settings -> Secrets and
+# variables -> Actions -> Variables) to the deployed health endpoint, e.g.
+# https://nurtw-api.onrender.com/api/v1/health, once the Render service
+# exists. Until then this workflow runs but has nothing to ping.
+
+on:
+  schedule:
+    # Every 10 minutes - leaves a margin under Render's 15-minute idle
+    # timeout, since GitHub's scheduler can lag a few minutes under load.
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the health endpoint
+        run: |
+          if [ -z "${API_HEALTH_URL:-}" ]; then
+            echo "API_HEALTH_URL is not set (repo variable) - nothing to ping yet."
+            exit 0
+          fi
+          status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$API_HEALTH_URL")
+          echo "Health endpoint responded $status"
+          # 200 (ok) and 503 (degraded, but awake) both mean Render is not
+          # asleep. Anything else, or no response, fails the run so it shows
+          # up as a red check rather than a silent gap.
+          if [ "$status" != "200" ] && [ "$status" != "503" ]; then
+            exit 1
+          fi
+        env:
+          API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
