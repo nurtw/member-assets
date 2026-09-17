@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import {
@@ -158,6 +160,150 @@ async function seedOrganisation(): Promise<string> {
 
   console.log('  organisation: council + 3 placeholder levels');
   return council.id;
+}
+
+/** A stable id derived from its inputs, so re-running the seed upserts the same row. */
+function stableId(...parts: string[]): string {
+  const hex = createHash('sha256').update(parts.join('|')).digest('hex');
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `4${hex.slice(13, 16)}`,
+    ((parseInt(hex[16]!, 16) & 0x3) | 0x8).toString(16) + hex.slice(17, 20),
+    hex.slice(20, 32),
+  ].join('-');
+}
+
+/**
+ * The Union's zones, answered as **ORG-05** on 14 September 2026: the 21 LGAs
+ * *are* the zones. Unlike branches and units, this part of ORG-05 is a real
+ * Union answer, not a placeholder — seeded unconditionally, the same way the
+ * LGA list itself is.
+ *
+ * Branches within each zone remain unanswered. These zone nodes carry no
+ * branch until one is added — through the interface, or by
+ * `seedDemoOrganisation` below when a demo needs one.
+ */
+async function seedZones(councilId: string): Promise<void> {
+  const council = await prisma.organisation.findUniqueOrThrow({
+    where: { id: councilId },
+  });
+
+  for (const lga of ANAMBRA_LGA_SEED) {
+    const id = stableId('zone', lga.code);
+    await prisma.organisation.upsert({
+      where: { id },
+      create: {
+        id,
+        name: lga.name,
+        level: 'ZONE',
+        parentId: council.id,
+        path: `${council.path}${id}/`,
+      },
+      update: {},
+    });
+  }
+  console.log(`  zones: ${ANAMBRA_LGA_SEED.length} (the LGAs, per ORG-05)`);
+}
+
+/**
+ * One demo branch and unit under every zone, so a demo deployment can
+ * complete a registration without waiting on the Union's real branch list.
+ *
+ * **Not a Union answer.** Names are marked "(demo)" so nobody mistakes them
+ * for real structure the way the old "Unassigned" placeholder was marked —
+ * see the module comment on `seedOrganisation`. Runs only when
+ * `SEED_DEMO_DATA=true`, so a production deployment never gets invented
+ * branches by default.
+ */
+async function seedDemoOrganisation(): Promise<void> {
+  if (process.env.SEED_DEMO_DATA !== 'true') {
+    console.log(
+      '  demo branches/units: skipped (set SEED_DEMO_DATA=true for a demo deployment)',
+    );
+    return;
+  }
+
+  for (const lga of ANAMBRA_LGA_SEED) {
+    const zoneId = stableId('zone', lga.code);
+    const zone = await prisma.organisation.findUniqueOrThrow({
+      where: { id: zoneId },
+    });
+
+    const branchId = stableId('branch', lga.code);
+    const branchPath = `${zone.path}${branchId}/`;
+    await prisma.organisation.upsert({
+      where: { id: branchId },
+      create: {
+        id: branchId,
+        name: `${lga.name} Branch (demo)`,
+        level: 'BRANCH',
+        parentId: zone.id,
+        path: branchPath,
+      },
+      update: {},
+    });
+
+    const unitId = stableId('unit', lga.code);
+    await prisma.organisation.upsert({
+      where: { id: unitId },
+      create: {
+        id: unitId,
+        name: `${lga.name} Unit (demo)`,
+        level: 'UNIT',
+        parentId: branchId,
+        path: `${branchPath}${unitId}/`,
+      },
+      update: {},
+    });
+  }
+  console.log(
+    `  demo branches/units: 1 each under all ${ANAMBRA_LGA_SEED.length} zones`,
+  );
+}
+
+/**
+ * A plausible designation list for a demo deployment, standing in for
+ * **ORG-06** until the Union supplies the approved one.
+ *
+ * Deliberately kept out of `DESIGNATION_SEED` in `@nurtw/contracts` — that
+ * list is empty on purpose (see its own comment) because inventing values
+ * there would place them in front of every seed run, demo or not. These codes
+ * are prefixed `DEMO_` so they are easy to find and remove once ORG-06 is
+ * answered; the printed *label* is left clean, because it is meant to look
+ * right on a demo card, not to announce itself as a placeholder.
+ */
+const DEMO_DESIGNATIONS = [
+  { code: 'DEMO_CHAIRMAN', label: 'Chairman' },
+  { code: 'DEMO_SECRETARY', label: 'Secretary' },
+  { code: 'DEMO_TREASURER', label: 'Treasurer' },
+  { code: 'DEMO_FINANCIAL_SECRETARY', label: 'Financial Secretary' },
+  { code: 'DEMO_PRO', label: 'Public Relations Officer' },
+  { code: 'DEMO_AUDITOR', label: 'Auditor' },
+  { code: 'DEMO_DRIVER', label: 'Driver' },
+  { code: 'DEMO_CONDUCTOR', label: 'Conductor' },
+] as const;
+
+async function seedDemoDesignations(): Promise<void> {
+  if (process.env.SEED_DEMO_DATA !== 'true') {
+    console.log(
+      '  demo designations: skipped (set SEED_DEMO_DATA=true for a demo deployment)',
+    );
+    return;
+  }
+
+  for (const [index, designation] of DEMO_DESIGNATIONS.entries()) {
+    await prisma.designation.upsert({
+      where: { code: designation.code },
+      create: {
+        code: designation.code,
+        label: designation.label,
+        sortOrder: index,
+      },
+      update: {},
+    });
+  }
+  console.log(`  demo designations: ${DEMO_DESIGNATIONS.length}`);
 }
 
 /**
@@ -332,10 +478,13 @@ async function main(): Promise<void> {
   console.log('Seeding:');
   await seedPermissions();
   await seedRoles();
-  await seedOrganisation();
+  const councilId = await seedOrganisation();
   await seedVehicleCategories();
   await seedDesignations();
   await seedLgas();
+  await seedZones(councilId);
+  await seedDemoOrganisation();
+  await seedDemoDesignations();
   await seedSystemSettings();
 
   await seedAdministrator();

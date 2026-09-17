@@ -16,12 +16,15 @@
  * artwork arrives — as a new version, `v2`, so that anything printed in the
  * meantime remains explicable.
  *
- * **Two things are absent rather than approximated:** the Union emblem and the
- * Nigerian coat of arms. Both are on the physical card. Neither can be
- * reconstructed from a photograph at print resolution, and a hand-drawn
- * approximation of a coat of arms is worse than a reserved space, because it
- * looks finished.
+ * **One thing is still absent rather than approximated:** the Nigerian coat of
+ * arms. It is on the physical card, upper right. It cannot be reconstructed
+ * from a photograph at print resolution, and a hand-drawn approximation is
+ * worse than a reserved space, because it looks finished. The Union emblem
+ * itself is no longer absent — see `EMBLEM_BYTES` below.
  */
+
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { PDFDocument, StandardFonts, degrees, rgb } from 'pdf-lib';
 
@@ -57,18 +60,19 @@ const PALETTE = {
 /**
  * The strings printed on the card.
  *
- * Held here as configuration rather than inline in the drawing code, because
- * **CARD-06** is open: the emblem reads "Motto: Safety & Unity" and the header
- * beneath it reads "MOTTO: UNITY & SAFETY", on the same physical card. That is
- * to be reproduced, not corrected — a template that "fixes" one would differ
- * visibly from the article members already hold. When the Union confirms the
- * official artwork, two strings change here.
+ * Held here as configuration rather than inline in the drawing code.
+ *
+ * **CARD-06, answered 17 September 2026: "Safety and Unity."** The source
+ * photograph showed the wording two ways on one physical card ("Safety &
+ * Unity" on the emblem, "Unity & Safety" beneath it); the Union has now
+ * confirmed the single official wording, printed consistently here in both
+ * places.
  */
 const STRINGS = {
   organisation: 'NATIONAL UNION OF ROAD TRANSPORT WORKERS',
   headquarters: 'NATIONAL HEADQUARTERS, ABUJA',
   mottoLabel: 'MOTTO:',
-  mottoValue: 'UNITY & SAFETY',
+  mottoValue: 'SAFETY AND UNITY',
   banner: 'MEMBERSHIP CARD',
   bandWord: 'NURTW',
   provisional: 'PROVISIONAL TEMPLATE — ARTWORK PENDING',
@@ -90,6 +94,22 @@ const LAYOUT = {
 
 /** The six fields confirmed against the artwork at `DESIGN.md` §7.4. */
 type FieldRow = readonly [label: string, value: string];
+
+/**
+ * The Union emblem, supplied 17 September 2026 and bundled as a template
+ * asset — not user-uploaded, not a member's document, so it is read once at
+ * module load rather than fetched per render. `nest-cli.json` copies the
+ * `assets/` folder alongside the compiled template so this path resolves the
+ * same way in `ts-node` and in `dist`.
+ *
+ * Drawn as a faint watermark behind the field area (DESIGN.md's "faint
+ * watermark" treatment), not as a sharp badge — its exact position and size
+ * on the official card is still unconfirmed (CARD-05), and a faint mark is
+ * forgiving of being wrong about that in a way a prominent one would not be.
+ */
+const EMBLEM_BYTES = readFileSync(
+  fileURLToPath(new URL('./assets/nurtw-emblem.png', import.meta.url)),
+);
 
 async function embed(
   document: PDFDocument,
@@ -286,6 +306,29 @@ export const v1Provisional: CardTemplate = {
         y: mm(ID1_HEIGHT_MM - LAYOUT.photo.y - LAYOUT.photo.height),
         width: mm(LAYOUT.photo.width),
         height: mm(LAYOUT.photo.height),
+      });
+    }
+
+    // --- Emblem watermark ----------------------------------------------------
+    //
+    // Faint, behind the field area, drawn before the field text so the text
+    // stays legible on top of it. See `EMBLEM_BYTES` above for why a watermark
+    // rather than a sharp badge.
+    {
+      const emblem = await document.embedPng(EMBLEM_BYTES);
+      const maxWidth = mm(34);
+      const maxHeight = mm(33);
+      const scale = Math.min(maxWidth / emblem.width, maxHeight / emblem.height);
+      const width = emblem.width * scale;
+      const height = emblem.height * scale;
+      const centreX = (LAYOUT.contentLeft + LAYOUT.fields.valueRight) / 2;
+      const centreTop = (LAYOUT.fields.top + LAYOUT.signatures.lineY) / 2;
+      page.drawImage(emblem, {
+        x: mm(centreX) - width / 2,
+        y: mm(ID1_HEIGHT_MM - centreTop) - height / 2,
+        width,
+        height,
+        opacity: 0.12,
       });
     }
 

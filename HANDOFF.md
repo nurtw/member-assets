@@ -1,6 +1,6 @@
 # Session Handoff
 
-**Last revised:** 14 September 2026
+**Last revised:** 17 September 2026
 
 > Cold-start contract. Written so a different Claude, on a different account,
 > holding no prior context, can resume without re-reading the repository.
@@ -33,7 +33,34 @@ unit · 100 api e2e); build, typecheck, and lint clean.
 
 None. **Item 07 — vehicle-declaration — is next and not yet planned.**
 
-## Done this session
+## Done this session (17 September 2026) — demo readiness
+
+The owner supplied the motto wording and the Union emblem, and asked for the
+remaining blockers to be handled with reasonable defaults so a demo could ship.
+
+- **CARD-06 answered: "Safety and Unity."** Applied to the template — one
+  wording, printed consistently (the source photograph had shown two).
+- **The Union emblem is embedded** (`apps/web/public/logo.png`, copied into
+  `apps/api/src/card/templates/assets/nurtw-emblem.png`, copied into `dist` by
+  `nest-cli.json`'s new `assets` config) as a faint watermark behind the card's
+  field area. Partly answers CARD-05 — the full artwork and coat of arms are
+  still outstanding.
+- **`SEED_DEMO_DATA=true`** (`apps/api/prisma/seed.ts`), new, gated the same
+  way as `SEED_ADMIN_EMAIL`: seeds one branch and unit under each of the 21
+  real zones (unconditional zone seeding was added too — real, per ORG-05, not
+  demo), and an 8-entry designation list (`DEMO_`-prefixed codes). **This is
+  placeholder content for a demo, not a Union answer** — it does not run by
+  default and is documented as such in `QUESTIONS.md` §3. Verified idempotent
+  and end-to-end (99 e2e tests still pass; a fresh DB seeded twice with the
+  flag produces the same 22 zone / 22 branch / 22 unit counts both times).
+- **Deliberately not stood in for:** CARD-07 (the two officers' real names and
+  signature images) and the rest of CARD-05 (full print-resolution artwork,
+  coat of arms). A fabricated signature or emblem misrepresents a real person
+  or the Union itself; invented organisational names do not carry that risk in
+  the same way. Cards demo fine with blank signature lines — that was already
+  built, and is not a new gap.
+
+## Done in the previous session (14 September 2026)
 
 - Address auto-suggestion for the card's printed address field
   (`suggestCardAddress`, `packages/domain/src/card/display-address.ts`).
@@ -113,13 +140,24 @@ and monitoring are item 15 and marked NOT YET IMPLEMENTED in
 ## Awaiting the Union
 
 `QUESTIONS.md` §3 lists the four questions that still block **production use** —
-ORG-05 (branches, specifically — zones and units are now answered),
-ORG-06, **CARD-05** (official artwork), and **CARD-07** (still needs the two
-officers' names and signature images; who they are is now answered). None
-blocked the build. Cards currently print a provisional template marked as such,
-with blank officer signature lines; every issuance under that condition is
-recorded in the audit trail so those cards can be found and replaced.
-`docs/reference/OPERATIONS.md` carries the query and the procedure.
+ORG-05 (branches, specifically), ORG-06, CARD-05 (the artwork beyond the
+emblem), and CARD-07 (the two officers' real names and signature images). None
+blocked the build, and none blocks a **demo**: `SEED_DEMO_DATA=true` covers
+ORG-05/ORG-06 for that purpose, and cards render fine with blank signature
+lines under the provisional template. Every card issued under these
+conditions is recorded in the audit trail so it can be found and replaced once
+real answers arrive. `docs/reference/OPERATIONS.md` carries the query and the
+procedure.
+
+## Deploying the demo
+
+Code is deploy-ready; hosting is not yet provisioned (item 15, and GOV-08
+domain names are unanswered). To stand up a demo: set `DATABASE_URL`,
+`CORS_ORIGINS`, `NEXT_PUBLIC_API_BASE_URL`; run `db:deploy` then `db:seed` with
+`SEED_DEMO_DATA=true` and `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` set for one
+run to get a login. Nothing in `docs/reference/OPERATIONS.md`'s deployment
+section is implemented yet — it is still marked NOT YET IMPLEMENTED — so this
+is a manual deploy, not a pipeline.
 
 ## The separation that is not one
 
@@ -163,5 +201,7 @@ and a query showing how often self-approval happens today.
 - Do not use `substring(x from n)` on a path; use `substr(x, n::int)`.
 - Do not let a verification path write, or return a record and strip fields.
 - Do not seed a default administrator password.
-- Do not answer a `QUESTIONS.md` question on the Union's behalf.
+- Do not answer a `QUESTIONS.md` question on the Union's behalf — including for a
+  demo. `SEED_DEMO_DATA` is the one deliberate, clearly-marked exception, and
+  it never stands in for a signature image or the card artwork.
 - Do not run `prisma@latest` (npm `latest` is an 8.0 RC) or `migrate reset` unattended.

@@ -450,9 +450,21 @@ That is sound: `details` describes the request the caller just sent, never the r
   names every version ever issued and fails if one disappears.
 - **`v1-provisional` is provisional and says so on the card.** The palette is inferred from
   a daylight photograph (`DESIGN.md` §2). When CARD-05 arrives, cut a **v2** — do not edit v1.
-  Its validity (`CARD-04`, answered) is **12 months**; the signing-officer titles (`CARD-07`,
-  partly answered) are **State Chairman** and **Secretary** — set as the free-text
-  `officerTitle` when registering each signature, not as an enum change.
+  Its validity (`CARD-04`, answered) is **12 months**; the motto (`CARD-06`, answered) is
+  **"Safety and Unity"**; the signing-officer titles (`CARD-07`, partly answered) are
+  **State Chairman** and **Secretary** — set as the free-text `officerTitle` when registering
+  each signature, not as an enum change. The Union emblem (`apps/web/public/logo.png`,
+  bundled into the template as `card/templates/assets/nurtw-emblem.png`) is embedded as a
+  faint watermark, read once at module load — see `EMBLEM_BYTES` in `v1-provisional.ts`.
+  `nest-cli.json` copies `card/templates/assets/**/*` into `dist`; adding another template
+  asset needs no further build config.
+- **`SEED_DEMO_DATA=true` seeds placeholder demo content**, gated the same way as
+  `SEED_ADMIN_EMAIL`: one branch and unit under each of the 21 real zones, and an 8-entry
+  designation list (codes prefixed `DEMO_`). This is **not a Union answer** to ORG-05 or
+  ORG-06 — it exists so a demo deployment can complete a registration and issue a card without
+  waiting on the Union's real branch and designation lists. Never invent content this way for
+  CARD-05 (artwork) or CARD-07 (signatures): a fabricated signature or emblem misrepresents a
+  real person or the Union itself, which invented organisational names do not.
 - **Printing is `pdf-lib`, and no browser goes in the container** (Decision 14.1). Write
   templates in millimetres from the top-left; `apps/api/src/pdf/geometry.ts` does the one
   conversion to PDF's bottom-left points.

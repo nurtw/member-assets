@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.1
-**Last revised:** 14 September 2026
+**Document version:** 1.2
+**Last revised:** 17 September 2026
 
 ---
 
@@ -48,12 +48,12 @@ thing a year later.
 |---|---|---|---|---|
 | Structure and master data (ORG) | 4 | 3 | — | 7 |
 | Membership and registration (MEM) | 4 | 10 | — | 14 |
-| Cards (CARD) | 4 | 4 | — | 8 |
+| Cards (CARD) | 5 | 3 | — | 8 |
 | Vehicles and stickers (VEH) | 6 | 6 | — | 12 |
 | Legacy migration (MIG) | 3 | 3 | — | 6 |
 | External organisations (EXT) | 4 | 5 | — | 9 |
 | Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
-| **Total** | **29** | **41** | **1** | **71** |
+| **Total** | **30** | **40** | **1** | **71** |
 
 ### Blocking production use right now
 
@@ -62,10 +62,20 @@ each stops the System being used for real in a specific way.
 
 | ID | Question | What it stops |
 |---|---|---|
-| **ORG-05** | The Union's actual zones, branches, and units | Members can only be registered into the placeholder `Unassigned Zone / Branch / Unit` |
-| **ORG-06** | The approved list of member designations | The designation prints blank on every card |
-| **CARD-05** | The official card artwork at print resolution | Cards render from a template reconstructed from a photograph, which prints `PROVISIONAL TEMPLATE — ARTWORK PENDING` across its foot and must not be issued to a member |
-| **CARD-07** | The signing officers and their signature images | Cards issue with blank President and General Secretary signature lines. Each such issuance is recorded in the audit trail, so they can be found and replaced afterwards — see `docs/reference/OPERATIONS.md` |
+| **ORG-05** | The Union's real branches (zones and units are now answered) | Below zone level, members can only be registered into the placeholder `Unassigned Branch / Unit`, or a demo branch/unit — see below |
+| **ORG-06** | The approved list of member designations | The designation prints blank on every card, unless demo designations are seeded — see below |
+| **CARD-05** | The full print-resolution card artwork (the emblem itself is now supplied — see above) | Cards render from a template reconstructed from a photograph and print `PROVISIONAL TEMPLATE — ARTWORK PENDING` across the foot; must not be issued to a member |
+| **CARD-07** | The signing officers' real names and signature images (the titles are now known) | Cards issue with blank signature lines. Each such issuance is recorded in the audit trail, so they can be found and replaced afterwards — see `docs/reference/OPERATIONS.md` |
+
+**For a demo deployment**, `SEED_DEMO_DATA=true` (`apps/api/prisma/seed.ts`) creates one
+branch and unit under each of the 21 real zones, and an 8-entry designation list, so a full
+registration and card issuance can be demonstrated end to end. **This is placeholder content
+the project owner asked for to unblock a demo, not a Union answer** — it is clearly marked
+"(demo)" in the organisation tree and its designation codes are prefixed `DEMO_`, and it must
+not be mistaken for ORG-05 or ORG-06 being answered. It does not run by default. Signature
+images (CARD-07) and the full card artwork (CARD-05) are not stood in for this way: a
+fabricated signature or emblem would misrepresent a real person or the Union's actual
+artwork, so those stay genuinely blank/provisional even in a demo.
 
 Everything else is either answered, or needed later and not yet obstructing work.
 
@@ -283,7 +293,7 @@ now `12`; a card issued today expires twelve months from its issue date.
 **Answered on.** 14 September 2026. **Answered by.** Mr Timothy, Head of Operations.
 **Recorded at.** `apps/api/src/card/templates/v1-provisional.ts`
 
-### CARD-05 · Official card artwork ⏳
+### CARD-05 · Official card artwork ⏳ (partly answered)
 
 **Question.** Please supply the official card artwork at print resolution, together with the
 Union emblem and wordmark.
@@ -291,10 +301,17 @@ Union emblem and wordmark.
 **Why it is needed.** Cards must be visually indistinguishable from those already in
 circulation. A reconstruction from a photograph will differ in ways members notice.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer (partial).** **The Union emblem itself has been supplied** (`apps/web/public/logo.png`)
+and is now embedded on the card, as a faint watermark behind the field area rather than a
+sharp badge — its exact size and position on the official card are still unconfirmed, and a
+faint mark is forgiving of being wrong about that in a way a prominent one would not be.
+**Still outstanding:** the full print-resolution card background/artwork, the Nigerian coat
+of arms, and colour values sampled from the official artwork rather than inferred from a
+photograph. The template remains marked provisional for these reasons.
+**Answered on.** 17 September 2026. **Answered by.** The project owner.
+**Recorded at.** `apps/api/src/card/templates/v1-provisional.ts`
 
-### CARD-06 · The motto wording ⏳
+### CARD-06 · The motto wording ✅
 
 **Question.** The supplied card shows the motto **twice, worded differently**: the emblem
 reads *"Motto: Safety & Unity"* and the header beneath reads *"MOTTO: UNITY & SAFETY"*. The
@@ -305,8 +322,11 @@ position on the official artwork.
 reproduced, not corrected — a template that "fixes" one of them would differ visibly from
 the article members hold.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **"Safety and Unity."** One official wording, printed consistently — not the two
+different orderings the source photograph showed. `v1-provisional.STRINGS.mottoValue` is now
+`SAFETY AND UNITY`.
+**Answered on.** 17 September 2026. **Answered by.** The project owner.
+**Recorded at.** `apps/api/src/card/templates/v1-provisional.ts`
 
 ### CARD-07 · Signing officers ⏳ (partly answered)
 
@@ -718,6 +738,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 17 September 2026 | CARD-06 answered ("Safety and Unity") and applied to the template. CARD-05 partly answered: the Union emblem supplied and embedded as a card watermark. Added `SEED_DEMO_DATA=true` to `apps/api/prisma/seed.ts`: real zones for all 21 LGAs (unconditional, per ORG-05), plus a demo branch/unit under each and an 8-entry demo designation list (both gated behind the flag, clearly marked as placeholder, not a Union answer) — so a demo deployment can complete a registration and issue a card. CARD-07 (signature images) and the rest of CARD-05 (full artwork) were deliberately not stood in for; see §3. |
 | 14 September 2026 | Answers received from Mr Timothy, Head of Operations. MEM-05 and CARD-04 answered in full; ORG-05, MEM-06, and CARD-07 partly answered; new VEH-12 recorded (vehicle onboarding and legacy-sticker rebinding) with the pre-existing sticker URL format for items 07–08. Card template `v1-provisional` now carries a twelve-month validity; guarantor is no longer required to register an application. |
 | 9 September 2026 | Register created. 26 answered, 43 awaiting, 1 deferred. ORG-05 and ORG-06 identified as blocking item 05. |
 | 10 September 2026 | MEM-04 extended to ask explicitly whether the recording officer may decide. The control is built and shipped disabled; the question now gates a settings change rather than any development. |
