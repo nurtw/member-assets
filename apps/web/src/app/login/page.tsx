@@ -19,6 +19,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -45,10 +46,12 @@ export default function LoginPage() {
     <main className="flex min-h-full flex-1 items-center justify-center bg-[var(--surface-muted)] px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          {/* The Union's identity, in the Union's colours. */}
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--nurtw-green)] text-lg font-bold tracking-tight text-white">
-            NU
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- a small, static public asset; next/image's build-time optimisation buys nothing here. */}
+          <img
+            src="/logo.png"
+            alt="NURTW emblem"
+            className="mx-auto mb-4 h-14 w-14 object-contain"
+          />
           <h1 className="text-xl font-semibold tracking-tight">
             NURTW Membership System
           </h1>
@@ -83,15 +86,28 @@ export default function LoginPage() {
           </Field>
 
           <Field label="Password" htmlFor="password" required>
-            <TextInput
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
+            <div className="relative">
+              <TextInput
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                tabIndex={-1}
+                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-black/45 hover:text-black/70"
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </div>
           </Field>
 
           <Button type="submit" disabled={submitting}>
@@ -105,5 +121,34 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="h-4.5 w-4.5" aria-hidden>
+      <path
+        d="M1.5 10S4.5 4 10 4s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="h-4.5 w-4.5" aria-hidden>
+      <path
+        d="M1.5 10S4.5 4 10 4s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M3 17 17 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
   );
 }

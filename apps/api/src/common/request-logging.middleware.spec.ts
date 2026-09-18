@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { EventEmitter } from 'node:events';
-import type { Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedRequest } from '../auth/authorisation.guard.js';
@@ -17,7 +17,11 @@ describe('requestLoggingMiddleware', () => {
   let request: AuthenticatedRequest;
   let response: Response;
   let responseHeaders: Record<string, string>;
-  let next: ReturnType<typeof vi.fn>;
+  // A workspace-root `tsc` run resolves a different `@types/express` copy
+  // than a package-scoped one, under which `vi.fn()`'s inferred type is not
+  // structurally assignable to `NextFunction`. Cast once here rather than at
+  // every call site below.
+  let next: NextFunction;
 
   const finish = () => (response as unknown as EventEmitter).emit('finish');
 
@@ -48,7 +52,7 @@ describe('requestLoggingMiddleware', () => {
       getHeader: (name: string) => responseHeaders[name],
     }) as unknown as Response;
 
-    next = vi.fn();
+    next = vi.fn() as unknown as NextFunction;
 
     vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
     vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);

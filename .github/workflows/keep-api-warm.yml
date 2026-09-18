@@ -31,7 +31,12 @@ jobs:
             echo "API_HEALTH_URL is not set (repo variable) - nothing to ping yet."
             exit 0
           fi
-          status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$API_HEALTH_URL")
+          # 90s, not 20s: a cold Render free-tier instance can take 30-60s to
+          # boot, and this ping is exactly the request that wakes it up. At
+          # 20s curl was hitting its own timeout (exit 28) on almost every
+          # scheduled run, before Render ever answered — a false failure, not
+          # a real outage.
+          status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "$API_HEALTH_URL")
           echo "Health endpoint responded $status"
           # 200 (ok) and 503 (degraded, but awake) both mean Render is not
           # asleep. Anything else, or no response, fails the run so it shows

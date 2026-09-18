@@ -19,6 +19,7 @@ import {
   TextInput,
 } from "@/components/ui";
 import { ApiError, api, fetcher } from "@/lib/api";
+import { NIGERIAN_STATES } from "@/lib/nigerian-states";
 
 /**
  * The Union's Membership / Registration / Guarantorship form.
@@ -123,6 +124,23 @@ export default function NewApplicationPage() {
 
   const set = (key: string) => (value: string | boolean) =>
     setForm((current) => ({ ...current, [key]: value }));
+
+  /**
+   * "Same as applicant's address" for the next-of-kin section. A one-time
+   * copy, not a live link: the officer can still edit the next-of-kin fields
+   * afterward (a next of kin sharing a household today may not always), and
+   * re-ticking the box copies again from whatever the applicant fields hold
+   * at that moment.
+   */
+  function copyApplicantAddressToNextOfKin() {
+    setForm((current) => ({
+      ...current,
+      nokAddress: current.residentialAddress,
+      nokTownCity: current.townCity,
+      nokLgaId: current.residentialLgaId,
+      nokStateOfOrigin: current.stateOfOrigin,
+    }));
+  }
 
   const text = (key: string) => ({
     value: form[key] as string,
@@ -273,7 +291,14 @@ export default function NewApplicationPage() {
             htmlFor="stateOfOrigin"
             hint="Where the applicant is from. Not the same as where they live."
           >
-            <TextInput id="stateOfOrigin" {...text("stateOfOrigin")} />
+            <Select id="stateOfOrigin" {...text("stateOfOrigin")}>
+              <option value="">Not stated</option>
+              {NIGERIAN_STATES.map((state) => (
+                <option key={state} value={state}>
+                  {state}
+                </option>
+              ))}
+            </Select>
           </Field>
         </div>
 
@@ -341,6 +366,19 @@ export default function NewApplicationPage() {
           </Field>
         </div>
 
+        <label className="flex items-center gap-2 text-sm text-black/70">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-[var(--border-subtle)] accent-[var(--nurtw-green)]"
+            onChange={(event) => {
+              if (event.target.checked) {
+                copyApplicantAddressToNextOfKin();
+              }
+            }}
+          />
+          Same as applicant&apos;s address
+        </label>
+
         <Field label="Address" htmlFor="nokAddress" required error={fieldError("nextOfKin.address")}>
           <TextArea id="nokAddress" required {...text("nokAddress")} />
         </Field>
@@ -360,7 +398,14 @@ export default function NewApplicationPage() {
             </Select>
           </Field>
           <Field label="State of origin" htmlFor="nokStateOfOrigin">
-            <TextInput id="nokStateOfOrigin" {...text("nokStateOfOrigin")} />
+            <Select id="nokStateOfOrigin" {...text("nokStateOfOrigin")}>
+              <option value="">Not stated</option>
+              {NIGERIAN_STATES.map((state) => (
+                <option key={state} value={state}>
+                  {state}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field
             label="Tel. No. of Next of Kin"

@@ -40,6 +40,18 @@ async function bootstrap(): Promise<void> {
   });
 
   /**
+   * Render terminates TLS at its own edge and forwards to this container over
+   * a loopback connection, carrying the real client address only in
+   * `X-Forwarded-For`. Without this, Express's `request.ip` reports that
+   * loopback address for every request — the access log, the login-failure
+   * log, and `AuditService.ipAddress` all showed `::1` regardless of who
+   * actually connected. `1` trusts exactly one hop (Render's edge), not an
+   * arbitrary chain a client could forge by sending its own
+   * `X-Forwarded-For`.
+   */
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
+  /**
    * Access log. Added before anything else in the chain — including
    * `setGlobalPrefix` and CORS below — so every request is logged with its
    * outcome, even one CORS or the guard refuses before a controller runs.
