@@ -11,6 +11,7 @@ import { MembershipModule } from './membership/membership.module.js';
 import { OrganisationModule } from './organisation/organisation.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { SettingsModule } from './settings/settings.module.js';
+import { VehicleModule } from './vehicle/vehicle.module.js';
 
 /**
  * Root module.
@@ -35,6 +36,7 @@ import { SettingsModule } from './settings/settings.module.js';
     MembershipModule,
     CardModule,
     MediaModule,
+    VehicleModule,
   ],
 })
 export class AppModule {}

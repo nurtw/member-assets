@@ -48,6 +48,7 @@ function Shell({ children }: { children: ReactNode }) {
   const links = [
     { href: "/applications", label: "Applications", permission: "application.read" },
     { href: "/cards", label: "Cards", permission: "card.read" },
+    { href: "/vehicles", label: "Vehicles", permission: "vehicle.read" },
   ].filter((link) => holds(link.permission));
 
   return (

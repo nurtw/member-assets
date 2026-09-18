@@ -116,6 +116,13 @@ export function StatusChip({ status }: { status: string }) {
     SUSPENDED: "bg-[var(--verdict-deny-surface)] text-[var(--verdict-deny)] border-[var(--verdict-deny)]/30",
     WITHDRAWN: "bg-[var(--surface-muted)] text-black/70 border-[var(--border-subtle)]",
     PENDING: "bg-[var(--surface-muted)] text-black/70 border-[var(--border-subtle)]",
+    // Vehicle declaration (PRD §9) — RETIRED and ARCHIVED are terminal but
+    // not a refusal, so they read as WITHDRAWN/CANCELLED do: closed, not
+    // denied. DISPUTED is neither affirmed nor denied yet — an unresolved
+    // conflict reads as caution, the same tone as SUBMITTED/UNDER_REVIEW.
+    RETIRED: "bg-[var(--surface-muted)] text-black/70 border-[var(--border-subtle)]",
+    ARCHIVED: "bg-[var(--surface-muted)] text-black/70 border-[var(--border-subtle)]",
+    DISPUTED: "bg-[var(--verdict-caution-surface)] text-[var(--verdict-caution)] border-[var(--verdict-caution)]/30",
   };
 
   return (

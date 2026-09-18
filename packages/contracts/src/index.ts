@@ -127,3 +127,17 @@ export {
   type SetCardStatusInput,
   type UpdateCardInput,
 } from './card.js';
+
+export {
+  SETTABLE_DECLARATION_STATUSES,
+  declareVehicleSchema,
+  dismissDisputeSchema,
+  setDeclarationStatusSchema,
+  updateVehicleSchema,
+  type DeclareVehicleInput,
+  type DismissDisputeInput,
+  type SetDeclarationStatusInput,
+  type UpdateVehicleInput,
+  type VehicleDetail,
+  type VehicleSummary,
+} from './vehicle.js';

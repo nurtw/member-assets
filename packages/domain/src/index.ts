@@ -115,3 +115,13 @@ export {
   CARD_ADDRESS_LENGTH,
   suggestCardAddress,
 } from './card/display-address.js';
+
+export {
+  DECLARATION_STATUSES,
+  InvalidDeclarationTransitionError,
+  assertDeclarationTransition,
+  canTransitionDeclaration,
+  isDeclarationFinal,
+  isDeclarationLive,
+  type DeclarationStatus,
+} from './vehicle/status.js';

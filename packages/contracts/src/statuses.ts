@@ -11,18 +11,26 @@
  */
 
 /**
- * PRD §8 — membership card lifecycle.
+ * PRD §8 — membership card lifecycle, and PRD §9 — vehicle declaration
+ * lifecycle, as of item 07.
  *
- * Re-exported from `@nurtw/domain` rather than restated here. The domain package
- * owns the list because it owns the transition table built over it, and two
- * copies of a status set is how one of them quietly gains a state the other's
- * transitions do not cover.
+ * Both re-exported from `@nurtw/domain` rather than restated here. The
+ * domain package owns each list because it owns the transition table built
+ * over it, and two copies of a status set is how one of them quietly gains a
+ * state the other's transitions do not cover.
  *
- * The sticker and declaration sets below are still declared here: no transition
- * table exists for them yet. They move to the domain package at items 07 and 08,
- * with their lifecycles.
+ * The sticker set below is still declared here: no transition table exists
+ * for it yet. It moves to the domain package at item 08, with its lifecycle.
  */
 export { CARD_STATUSES, type CardStatus } from '@nurtw/domain';
+export {
+  DECLARATION_STATUSES,
+  isDeclarationLive,
+  type DeclarationStatus,
+} from '@nurtw/domain';
+
+import { DECLARATION_STATUSES, isDeclarationLive } from '@nurtw/domain';
+import type { DeclarationStatus } from '@nurtw/domain';
 
 /** PRD §10 — vehicle sticker lifecycle. Note DAMAGED, absent from the card set. */
 export const STICKER_STATUSES = [
@@ -39,18 +47,6 @@ export const STICKER_STATUSES = [
 
 export type StickerStatus = (typeof STICKER_STATUSES)[number];
 
-/** PRD §9 — vehicle declaration lifecycle. */
-export const DECLARATION_STATUSES = [
-  'PENDING',
-  'ACTIVE',
-  'SUSPENDED',
-  'RETIRED',
-  'DISPUTED',
-  'ARCHIVED',
-] as const;
-
-export type DeclarationStatus = (typeof DECLARATION_STATUSES)[number];
-
 /**
  * Statuses that permit a positive verification result.
  *
@@ -61,6 +57,9 @@ export type DeclarationStatus = (typeof DECLARATION_STATUSES)[number];
  */
 export const VERIFIABLE_STICKER_STATUSES: readonly StickerStatus[] = ['ACTIVE'];
 
-export const VERIFIABLE_DECLARATION_STATUSES: readonly DeclarationStatus[] = [
-  'ACTIVE',
-];
+/**
+ * Derived from `isDeclarationLive`, not restated — the same reason
+ * `VERIFIABLE_STICKER_STATUSES` above is not.
+ */
+export const VERIFIABLE_DECLARATION_STATUSES: readonly DeclarationStatus[] =
+  DECLARATION_STATUSES.filter(isDeclarationLive);

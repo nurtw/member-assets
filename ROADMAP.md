@@ -34,7 +34,7 @@ Each item is independently completable and independently testable. Status values
 | 04 | org-hierarchy | §6 | **done** | `plans/04-org-hierarchy.md` |
 | 05 | membership-application | §7 | **done** | `plans/05-membership-application.md` |
 | 06 | membership-card-issuance | §8 | complete | `plans/06-membership-card-issuance.md` |
-| 07 | vehicle-declaration | §9 | not-started | `plans/07-vehicle-declaration.md` |
+| 07 | vehicle-declaration | §9 | complete | `plans/07-vehicle-declaration.md` |
 | 08 | sticker-inventory-qr | §10 | not-started | `plans/08-sticker-inventory-qr.md` |
 | 09 | legacy-data-migration | §25 | not-started | `plans/09-legacy-data-migration.md` |
 | 10 | internal-verification | §11 | not-started | `plans/10-internal-verification.md` |
