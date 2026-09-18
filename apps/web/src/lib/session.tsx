@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 
 import { ApiError, api, fetcher } from "./api";
 
@@ -85,6 +85,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         permissions.some((entry) => entry.permission === permission),
       signOut: async () => {
         await api.post("/auth/logout").catch(() => undefined);
+        // Same reasoning as the login page's `mutate` call, in reverse: leave
+        // no stale authenticated `/auth/me` in the shared SWR cache for the
+        // next sign-in to flash before its own revalidation lands.
+        await mutate("/auth/me", undefined, { revalidate: false });
         router.replace("/login");
       },
     };

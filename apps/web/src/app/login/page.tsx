@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { mutate } from "swr";
 
 import { Button, ErrorNotice, Field, TextInput } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
@@ -30,6 +31,15 @@ export default function LoginPage() {
 
     try {
       await api.post("/auth/login", { email, password });
+      // `/auth/me` is a global SWR cache key: whoever last mounted the
+      // authenticated shell (typically the pre-login redirect through
+      // `/applications`) left a cached 401 there. `SessionProvider` would
+      // serve that stale error the instant it remounts and bounce straight
+      // back here before its own revalidation finished — which read as "the
+      // first sign-in just refreshed the page." Revalidating the key here,
+      // before navigating, means the shell mounts onto fresh, authenticated
+      // data instead.
+      await mutate("/auth/me");
       router.replace("/applications");
     } catch (caught) {
       setError(
