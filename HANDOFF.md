@@ -35,6 +35,57 @@ build, typecheck, and lint clean.
 
 None. **Item 07 — vehicle-declaration — is next and not yet planned.**
 
+## Done this session (18 September 2026) — Cloudinary storage adapter
+
+The local-filesystem media adapter doesn't survive a Render redeploy — its
+disk is ephemeral, so every uploaded passport photo and signature was being
+silently lost on each release. The owner added `CLOUDINARY_URL` to
+`apps/api/.env` and asked to switch storage backends.
+
+- **`CloudinaryStorage extends StoragePort`** (`storage.service.ts`) —
+  `media.module.ts` selects it over `LocalFilesystemStorage` purely from
+  `CLOUDINARY_URL`'s presence; no other module changed (Decision 12.1). Every
+  asset uploads as `type: 'authenticated'`, never Cloudinary's public
+  default — `get()` mints a fresh Cloudinary-signed URL per read rather than
+  ever handing one to a caller, so the existing signed-link model in
+  `media.controller.ts` is untouched and still the only way bytes leave the
+  process.
+- **Hand-verified against the real account** (a scratch script outside the
+  repo, not committed): upload, signed read-back, and delete all round-trip
+  correctly.
+- **Found and fixed by that verification, not by inspection:** `destroy()`
+  needs `invalidate: true`, or a URL this adapter had already fetched once
+  (e.g., an officer's preview) kept serving cached bytes from Cloudinary's
+  CDN edge after the origin copy was already gone. Even with it, Cloudinary
+  documents invalidation as best-effort, up to an hour to fully propagate —
+  not a real exposure here, since that URL is Cloudinary's own signed
+  delivery URL, minted fresh inside this adapter and never returned to any
+  caller; a browser only ever holds this API's *own* signed link, which
+  404s the instant the database row is gone, regardless of Cloudinary's
+  cache state. See the comment on `CloudinaryStorage.delete`.
+- **Deletion capability added — it didn't exist before.** `StoragePort` had
+  always declared `delete()`, but nothing in `MediaService` ever called it.
+  Added `MediaService.discard(assetId)` and `DELETE /media/:id`
+  (`member.create`, same as upload — it's that upload's undo button),
+  refusing once the asset is attached to a member, card, or officer
+  signature (domain rule 5 — history is never deleted). Database row deleted
+  before the storage bytes, so a stale row can never outlive its bytes.
+- `docs/reference/openapi.json` regenerated; `docs/reference/OPERATIONS.md`
+  gained rows for `CLOUDINARY_URL`, `MEDIA_STORAGE_DIR`, and
+  `MEDIA_URL_SIGNING_SECRET` (the latter two were already real variables,
+  undocumented before now).
+- **Side effect worth knowing:** `membership.e2e-spec.ts` uploads real files
+  through `/api/v1/media`. With `CLOUDINARY_URL` now in `.env`, running
+  `test:e2e` locally uploads (tiny, harmless) test images to the real
+  Cloudinary account, not a local temp directory. Not worked around —
+  flagging it rather than building test-environment isolation nobody asked
+  for.
+- **Not done:** Cloudinary transformations/optimised delivery to the officer
+  portal — the only change is the storage backend. The signed-link proxy
+  still streams original bytes through the API exactly as before;
+  transformation-based thumbnails would be a separate, later change to
+  `media.controller.ts` if wanted.
+
 ## Done this session (18 September 2026) — deployment bug sweep
 
 The owner reported a batch of issues from the live Render+Vercel deployment.

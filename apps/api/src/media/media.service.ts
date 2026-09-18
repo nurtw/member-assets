@@ -174,6 +174,50 @@ export class MediaService {
     }
   }
 
+  /**
+   * Discards an upload that was never attached to anything — an officer's
+   * undo button for the wrong file, not a general delete.
+   *
+   * Refuses once the asset is referenced by a member, a card, or an officer
+   * signature: those are history (domain rule 5 — never silently overwritten
+   * or deleted), and this is the only route in the media module with any
+   * write capability at all. Deleting the database row first, then the
+   * bytes: a row surviving with no bytes behind it fails loudly the next time
+   * something reads it; bytes surviving with no row is merely an orphan a
+   * storage adapter can reclaim later.
+   */
+  async discard(assetId: string): Promise<void> {
+    const asset = await this.prisma.mediaAsset.findUnique({
+      where: { id: assetId },
+      select: {
+        storageKey: true,
+        passportOf: { select: { id: true } },
+        signatureOf: { select: { id: true } },
+        officerSignature: { select: { mediaAssetId: true } },
+        printedOnCards: { select: { id: true }, take: 1 },
+        printedSignatureOn: { select: { id: true }, take: 1 },
+      },
+    });
+    if (!asset) {
+      throw new NotFoundException();
+    }
+
+    const attached =
+      asset.passportOf !== null ||
+      asset.signatureOf !== null ||
+      asset.officerSignature !== null ||
+      asset.printedOnCards.length > 0 ||
+      asset.printedSignatureOn.length > 0;
+    if (attached) {
+      throw new BadRequestException(
+        'This file is already attached to a record and cannot be deleted.',
+      );
+    }
+
+    await this.prisma.mediaAsset.delete({ where: { id: assetId } });
+    await this.storage.delete(asset.storageKey);
+  }
+
   /** Confirms an asset exists and is of the expected kind, before attaching it. */
   async assertKind(assetId: string, kind: MediaKind): Promise<void> {
     const asset = await this.prisma.mediaAsset.findUnique({

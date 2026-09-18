@@ -169,6 +169,9 @@ start.
 | `NODE_ENV` | No | `production` enables `secure` cookies |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | No | One run only, then remove |
 | `STICKER_SIGNING_SECRET` / `STICKER_SIGNING_KEY_ID` | From item 08 | Never reaches the web application or a QR payload |
+| `CLOUDINARY_URL` | No | Selects `CloudinaryStorage` over the local-filesystem adapter for uploaded media (`media.module.ts`). Unset in development stores under `MEDIA_STORAGE_DIR` on disk instead — set this in production, since a container's filesystem does not survive a redeploy. |
+| `MEDIA_STORAGE_DIR` | No | Local-filesystem adapter only; ignored once `CLOUDINARY_URL` is set. Default `var/media` |
+| `MEDIA_URL_SIGNING_SECRET` | No | Falls back to a value generated at startup, which invalidates outstanding signed media links on restart |
 
 ### Secrets that must never be logged or exported
 

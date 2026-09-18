@@ -1,7 +1,10 @@
 import {
   BadRequestException,
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Post,
@@ -93,6 +96,32 @@ export class MediaController {
 
     const stored = await this.media.upload(file.buffer, match);
     return { media: stored, ...this.media.signUrl(stored.id) };
+  }
+
+  /**
+   * Undo — discards an upload before it was attached to anything.
+   *
+   * Same permission as upload, because that is exactly what this reverses.
+   * Refuses once the file is attached to a member, card, or officer
+   * signature: those are history and this module has no route that deletes
+   * one, ever (domain rule 5).
+   */
+  @RequirePermission('member.create')
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Documented({
+    summary: 'Discard an uploaded file that was never attached to a record.',
+    description:
+      'For an officer who uploaded the wrong file and wants to replace it before submitting. ' +
+      'Refuses once the file is attached to a member, card, or officer signature — those are ' +
+      'history and nothing in this module ever deletes one.',
+    responses: {
+      400: 'The file is already attached to a record.',
+      404: 'No such uploaded file.',
+    },
+  })
+  async discard(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    await this.media.discard(id);
   }
 
   /**
