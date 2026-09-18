@@ -1,6 +1,6 @@
 # Session Handoff
 
-**Last revised:** 17 September 2026
+**Last revised:** 18 September 2026
 
 > Cold-start contract. Written so a different Claude, on a different account,
 > holding no prior context, can resume without re-reading the repository.
@@ -26,12 +26,69 @@ Items 01–06 complete. Monorepo, data model, authentication and permissions, th
 organisational hierarchy, membership registration, and membership cards — with
 the print pipeline and the officer-facing screens.
 
-**381 tests pass** (174 domain · 12 domain display-address · 29 contracts · 80 api
-unit · 100 api e2e); build, typecheck, and lint clean.
+**390 tests pass** (174 domain · 12 domain display-address · 29 contracts · 89 api
+unit · 100 api e2e — e2e last verified 17 September against the local Docker
+database; not re-run this session, which used the live Neon branch instead);
+build, typecheck, and lint clean.
 
 ## Active roadmap item
 
 None. **Item 07 — vehicle-declaration — is next and not yet planned.**
+
+## Done this session (18 September 2026) — deployment bug sweep
+
+The owner reported a batch of issues from the live Render+Vercel deployment.
+Fixed:
+
+- **`ip=::1` on every log line.** Render terminates TLS at its own edge and
+  forwards over loopback, carrying the real client address only in
+  `X-Forwarded-For`. Added `app.getHttpAdapter().getInstance().set('trust
+  proxy', 1)` in `main.ts` — trusts exactly one hop, not an arbitrary
+  client-forgeable chain.
+- **"Keep API warm" failing on nearly every scheduled run.** `curl --max-time
+  20` was hitting its own timeout (exit 28) before Render's free-tier cold
+  start (documented at ~1 minute) ever answered. Raised to 90s.
+- **Nav and login page showed an "NU" placeholder**, not the real emblem —
+  swapped for `apps/web/public/logo.png` in both places.
+- **State of origin was free text** — now a `<Select>` from the 36 states +
+  FCT (`apps/web/src/lib/nigerian-states.ts`). Not master data: it is a fixed
+  national list, not Union-supplied content, and unrelated to the `lga` table
+  (Anambra's 22 LGAs only).
+- Added a "same as applicant's address" checkbox to the next-of-kin section
+  (one-time copy, not a live link — the officer can still edit afterward).
+- Added a show/hide toggle on the login password field.
+- **Nav overflowed on narrow screens** — links, officer name, and sign-out now
+  collapse into a hamburger menu below `sm`.
+
+**Diagnosed but not yet fixed — needs a decision, not a quick patch:** a
+second officer's login on the deployed site silently redirected back to
+`/login` with no error, on Chrome/Firefox/Edge, not just Safari. Sequence:
+`POST /auth/login` succeeds and sets the session cookie
+(`SameSite=None; Secure`, since web is Vercel and the API is Render — see
+`auth.controller.ts` `cookieOptions`), the app navigates to `/applications`,
+`SessionProvider` calls `/auth/me`, and if the browser dropped the
+cross-site cookie (Chrome has been rolling out third-party-cookie blocking
+by default; Firefox/Edge strict tracking-protection modes do the same), that
+call 401s and bounces silently back to `/login` — a session-check failure,
+not a login-form failure, so the login screen's own error state never fires.
+**Proposed fix, not yet built:** a Next.js `rewrites()` proxy so the browser
+only ever talks to the web app's own origin (`/api/v1/*` proxied
+server-side to Render) — makes the cookie genuinely first-party, letting
+`sameSite` simplify from `none` back to `lax`. Requires an env var for the
+rewrite destination and a Vercel redeploy to verify; carries real blast
+radius if misconfigured (breaks login for every browser, not just the
+affected ones), so it needs sign-off before implementation, not a silent
+patch.
+
+**Also raised, not code bugs — expected gaps in the roadmap:**
+
+- "How do I see previous [legacy] data" — item 09 (legacy import) is not
+  built; there is nothing to see yet.
+- No vehicles screen — item 07 (vehicle-declaration) is next and not yet
+  planned (see Active roadmap item, unchanged by this session).
+- "Failed login for unknown account" in the log was a real outcome, not a
+  bug: email lookup is already case-insensitive; the address tried simply
+  has no account.
 
 ## Done this session (18 September 2026) — request access logging
 
