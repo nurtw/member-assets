@@ -2,40 +2,30 @@
  * The API client.
  *
  * Every request carries `credentials: 'include'`, because the session is an
- * opaque token in an `httpOnly` cookie set by the API's own origin. The browser
- * holds it; this code never sees it, and cannot — which is the property that
- * makes a stolen script unable to exfiltrate a session.
+ * opaque token in an `httpOnly` cookie. The browser holds it; this code
+ * never sees it, and cannot — which is the property that makes a stolen
+ * script unable to exfiltrate a session.
  *
- * That also decides the rendering strategy. The cookie belongs to the API's
- * origin, so a Next server component cannot read or forward it, and these screens
- * are client components fetching directly. Server-side rendering of authenticated
- * data would require a second session mechanism on the web origin — two places to
+ * That also decides the rendering strategy. A Next server component cannot
+ * read or forward this cookie, so these screens are client components
+ * fetching directly. Server-side rendering of authenticated data would
+ * require a second session mechanism on the web origin — two places to
  * revoke, and one of them forgotten.
  */
 
 /**
- * Where the API lives.
- *
- * `||`, not `??`. The build injects an empty string when the variable is unset,
- * and `"" ?? fallback` is `""` — which silently turns every call into a relative
- * request against the web origin, where Next answers 404 for routes it has never
- * heard of. That failure looks like a broken API rather than missing
- * configuration, which is exactly the wrong place to send someone debugging.
- *
- * In production a missing value throws instead of falling back. A deployed build
- * quietly pointing at localhost would appear to work in review and fail for every
- * real user.
+ * Every path is relative, resolved by the browser against this application's
+ * own origin — never a cross-origin URL. `next.config.ts`'s `rewrites()`
+ * forwards `/api/v1/*` to the real API server-side, invisibly to the
+ * browser, so the session cookie is set and read back as first-party
+ * regardless of what domain the API actually runs on. See that file's
+ * comment: the previous cross-origin `fetch` (`NEXT_PUBLIC_API_BASE_URL`
+ * pointed straight at the API) needed `SameSite=None` on the cookie, which a
+ * browser blocking third-party cookies by default would silently drop,
+ * bouncing a successfully-logged-in officer straight back to `/login` with
+ * no error.
  */
-const CONFIGURED_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
-
-if (!CONFIGURED_BASE_URL && process.env.NODE_ENV === "production") {
-  throw new Error(
-    "NEXT_PUBLIC_API_BASE_URL is required in production. Set it to the API's " +
-      "public origin, including the /api/v1 prefix.",
-  );
-}
-
-const BASE_URL = CONFIGURED_BASE_URL || "http://localhost:3001/api/v1";
+const BASE_URL = "/api/v1";
 
 /** A field-level validation failure, as returned for a rejected body. */
 export interface FieldError {
@@ -209,9 +199,13 @@ export const api = {
     setTimeout(() => URL.revokeObjectURL(url), 0);
   },
 
-  /** Resolves a signed media path returned by the API into a full URL. */
-  mediaUrl: (signedPath: string) =>
-    `${BASE_URL.replace(/\/api\/v1$/, "")}${signedPath}`,
+  /**
+   * A signed media path, already relative (`/api/v1/media/...` — see
+   * `MediaService.signUrl`), used as-is now that every request is relative
+   * to this application's own origin. Kept as a named call rather than
+   * inlined at each `<img src>` so callers don't need to know that.
+   */
+  mediaUrl: (signedPath: string) => signedPath,
 };
 
 /**

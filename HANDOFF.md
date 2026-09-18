@@ -111,25 +111,36 @@ Fixed:
 - **Nav overflowed on narrow screens** — links, officer name, and sign-out now
   collapse into a hamburger menu below `sm`.
 
-**Diagnosed but not yet fixed — needs a decision, not a quick patch:** a
-second officer's login on the deployed site silently redirected back to
-`/login` with no error, on Chrome/Firefox/Edge, not just Safari. Sequence:
-`POST /auth/login` succeeds and sets the session cookie
-(`SameSite=None; Secure`, since web is Vercel and the API is Render — see
-`auth.controller.ts` `cookieOptions`), the app navigates to `/applications`,
-`SessionProvider` calls `/auth/me`, and if the browser dropped the
-cross-site cookie (Chrome has been rolling out third-party-cookie blocking
-by default; Firefox/Edge strict tracking-protection modes do the same), that
-call 401s and bounces silently back to `/login` — a session-check failure,
-not a login-form failure, so the login screen's own error state never fires.
-**Proposed fix, not yet built:** a Next.js `rewrites()` proxy so the browser
-only ever talks to the web app's own origin (`/api/v1/*` proxied
-server-side to Render) — makes the cookie genuinely first-party, letting
-`sameSite` simplify from `none` back to `lax`. Requires an env var for the
-rewrite destination and a Vercel redeploy to verify; carries real blast
-radius if misconfigured (breaks login for every browser, not just the
-affected ones), so it needs sign-off before implementation, not a silent
-patch.
+**Fixed later the same session, with sign-off:** a second officer's login on
+the deployed site silently redirected back to `/login` with no error, on
+Chrome/Firefox/Edge, not just Safari. Cause: `POST /auth/login` succeeded and
+set the session cookie `SameSite=None; Secure` (web is Vercel, the API is
+Render — genuinely different domains), the app navigated to `/applications`,
+`SessionProvider` called `/auth/me`, and a browser blocking third-party
+cookies by default (Chrome's ongoing rollout; Firefox/Safari tracking
+protections do the same) had silently dropped it — that call 401s and
+bounces back to `/login` with no error, since it's a session-check failure,
+not a login-form failure.
+
+**Fix:** `apps/web/next.config.ts` now proxies `/api/v1/*` to the API
+server-side (`rewrites()`), so the browser only ever talks to its own
+origin — `src/lib/api.ts`'s `BASE_URL` is now the constant `/api/v1`, not
+`NEXT_PUBLIC_API_BASE_URL` read client-side (that variable still exists, but
+is now read only in `next.config.ts`, server-side, as the rewrite
+destination — same name, kept for continuity with existing Vercel config,
+no longer sent to the browser bundle). `auth.controller.ts`'s
+`cookieOptions` simplified from `sameSite: isProduction ? 'none' : 'lax'` to
+always `'lax'`, since the cookie is now set and read back as first-party
+regardless of environment. Hand-verified: built both apps, ran the compiled
+API and `next dev` locally, confirmed `curl localhost:3000/api/v1/health`
+and a `POST /api/v1/auth/login` both proxy through correctly with headers,
+body, and status intact.
+
+**Still open:** this was verified against local dev only. The Vercel
+deployment needs `NEXT_PUBLIC_API_BASE_URL` set to the API's real origin
+(it already should be, from before) and a redeploy to pick up
+`next.config.ts` — the fix takes effect on Vercel only after that redeploy
+ships.
 
 **Also raised, not code bugs — expected gaps in the roadmap:**
 

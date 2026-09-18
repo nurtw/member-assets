@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { SessionProvider, useSession } from "@/lib/session";
 
@@ -20,10 +20,16 @@ function Shell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   // A route change is a navigation the officer just chose; leaving the menu
-  // open over the new page would cover it.
-  useEffect(() => {
+  // open over the new page would cover it. Adjusted during render, not an
+  // effect — React docs' "adjusting state when a prop changes" pattern:
+  // comparing against a value tracked in state lets this reset happen before
+  // the menu-open paint commits, rather than flashing open-then-closed
+  // across two renders the way a `useEffect` would.
+  const [menuClosedFor, setMenuClosedFor] = useState(pathname);
+  if (pathname !== menuClosedFor) {
+    setMenuClosedFor(pathname);
     setMenuOpen(false);
-  }, [pathname]);
+  }
 
   if (loading) {
     return (

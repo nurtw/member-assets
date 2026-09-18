@@ -33,17 +33,27 @@ export class AuthController {
    * The session cookie.
    *
    * `httpOnly` so script cannot read it — the single most effective mitigation
-   * against a stolen session via XSS. `secure` outside development. `sameSite:
-   * none` is required because the dashboard (Vercel) and the API (DigitalOcean)
-   * are different origins; `secure` is mandatory alongside it, which is why the
-   * pair is set together rather than independently.
+   * against a stolen session via XSS. `secure` outside development, since a
+   * cookie without it also travels over plain HTTP.
+   *
+   * `sameSite: 'lax'`, not `'none'`. This API (Render) and the web application
+   * (Vercel) are genuinely different domains, but the browser never talks to
+   * this one directly: `apps/web/next.config.ts` rewrites `/api/v1/*` to here
+   * server-side, so every browser request targets the web app's own origin and
+   * this cookie is set, and read back, as first-party. `'none'` used to be
+   * required for exactly the opposite reason, and it was the cause of a real
+   * bug: a browser blocking third-party cookies by default (Chrome's ongoing
+   * rollout; Firefox and Safari's tracking protections do the same) silently
+   * dropped it — login would succeed, the very next request would look
+   * unauthenticated, and the officer was bounced back to the login screen with
+   * no error at all.
    */
   private cookieOptions(expiresAt: Date) {
     const isProduction = process.env.NODE_ENV === 'production';
     return {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? ('none' as const) : ('lax' as const),
+      sameSite: 'lax' as const,
       expires: expiresAt,
       path: '/',
     };
