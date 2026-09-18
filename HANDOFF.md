@@ -28,7 +28,11 @@ owner (member) association, which the original delivery wrongly deferred.
 
 ## Active roadmap item
 
-None. **Item 08 — sticker-inventory-qr — is next and not yet planned.**
+**09 — legacy-data-migration — planned, not started.** See
+`plans/09-legacy-data-migration.md`. Note it jumps ahead of item 08 in the
+roadmap's stated order — the user asked for it directly. Its member/vehicle
+scope does not depend on item 08; the sticker-request portion of PRD §25.1
+does, and is explicitly deferred there as "Phase 2."
 
 ## Done this session
 
@@ -79,7 +83,10 @@ None. **Item 08 — sticker-inventory-qr — is next and not yet planned.**
 
 ## Next steps
 
-Run `/plan 08`, then `/execute`. Depends on item 07 (done).
+Run `/execute` for item 09 — the plan is written. Before executing, be aware
+it stands up a placeholder "Legacy Import" organisation subtree because
+ORG-05 (the Union's real branch/unit list) is still open; that's a
+deliberate, documented choice in the plan, not an oversight to fix first.
 
 ## Do NOT
 
