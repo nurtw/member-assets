@@ -9,6 +9,7 @@ import type {
   ApplicationSummary,
   AttachMediaInput,
   CreateApplicationInput,
+  MemberSearchResult,
   ReviewApplicationInput,
   SetMemberStatusInput,
   UpdateApplicationInput,
@@ -112,6 +113,65 @@ export class MembershipService {
     });
 
     return rows.map((row) => this.toSummary(row));
+  }
+
+  /**
+   * A name/membership-number lookup for pickers elsewhere in the System —
+   * vehicle declaration's owner field is the first caller. Scoped by
+   * `member.read`, not `application.read`: a picker only needs to find the
+   * person, never their application history, and gating it on the narrower
+   * permission lets a role that can read members but not applications (there
+   * is none today, but nothing should assume that stays true) use it too.
+   */
+  async searchMembers(
+    userId: string,
+    filters: { q?: string; organisationId?: string },
+  ): Promise<MemberSearchResult[]> {
+    const scopes = await this.readableScopes(userId, MEMBER_READ);
+    if (scopes.length === 0) {
+      return [];
+    }
+
+    const q = filters.q?.trim();
+    const rows = await this.prisma.member.findMany({
+      where: {
+        AND: [
+          { OR: scopes.map((path) => ({ organisation: { path: { startsWith: path } } })) },
+          ...(filters.organisationId
+            ? [{ organisationId: filters.organisationId }]
+            : []),
+          ...(q
+            ? [
+                {
+                  OR: [
+                    { surname: { contains: q, mode: 'insensitive' as const } },
+                    { firstName: { contains: q, mode: 'insensitive' as const } },
+                    {
+                      membershipNumber: {
+                        contains: q,
+                        mode: 'insensitive' as const,
+                      },
+                    },
+                  ],
+                },
+              ]
+            : []),
+        ],
+      },
+      select: {
+        id: true,
+        surname: true,
+        firstName: true,
+        middleName: true,
+        status: true,
+        membershipNumber: true,
+        organisation: { select: { id: true, name: true, level: true } },
+      },
+      orderBy: { surname: 'asc' },
+      take: 20,
+    });
+
+    return rows;
   }
 
   /** The full record, including the data Requirement 7.1 keeps separate. */
@@ -837,11 +897,14 @@ export class MembershipService {
     }
   }
 
-  private async readableScopes(userId: string): Promise<string[]> {
+  private async readableScopes(
+    userId: string,
+    permission: string = READ,
+  ): Promise<string[]> {
     const held = await this.permissions.listFor(userId);
     return outermostScopes(
       held
-        .filter((entry) => entry.permission === READ)
+        .filter((entry) => entry.permission === permission)
         .map((entry) => entry.scopePath),
     );
   }

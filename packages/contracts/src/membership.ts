@@ -330,3 +330,20 @@ export interface ApplicationDetail extends ApplicationSummary {
   passportPhotoId: string | null;
   signatureId: string | null;
 }
+
+/**
+ * One row of a member search — the minimum needed to let an officer pick the
+ * right person out of a name list, nothing more. Used by pickers elsewhere in
+ * the System (vehicle declaration's owner field, for one) that need to find a
+ * member without holding `application.read` or seeing next-of-kin, guarantor,
+ * or contact data.
+ */
+export interface MemberSearchResult {
+  id: string;
+  surname: string;
+  firstName: string;
+  middleName: string | null;
+  status: string;
+  membershipNumber: string | null;
+  organisation: { id: string; name: string; level: string };
+}

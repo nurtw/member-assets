@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import useSWR from "swr";
 
+import { MemberPicker } from "@/components/member-picker";
 import {
   Button,
   ErrorNotice,
@@ -49,6 +50,11 @@ export default function VehicleDetailPage() {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiError | null>(null);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [ownerLabel, setOwnerLabel] = useState<string | null>(null);
+  const [ownerSyncedFor, setOwnerSyncedFor] = useState<string | undefined>(
+    undefined,
+  );
 
   const { data, error, isLoading, mutate } = useSWR<{ vehicle: VehicleDetail }>(
     `/vehicles/${params.id}`,
@@ -57,6 +63,21 @@ export default function VehicleDetailPage() {
 
   const vehicle = data?.vehicle ?? null;
   const loadError = error instanceof ApiError ? error : null;
+
+  // The owner picker's state tracks the loaded record, not the other way
+  // around — reset whenever a different (or freshly reloaded) declaration
+  // arrives, the same "adjust state during render" pattern the app shell
+  // uses for the mobile nav, rather than an effect that would flash the
+  // previous vehicle's owner for one frame.
+  if (vehicle && ownerSyncedFor !== vehicle.id) {
+    setOwnerSyncedFor(vehicle.id);
+    setOwnerId(vehicle.declaredByMember?.id ?? null);
+    setOwnerLabel(
+      vehicle.declaredByMember
+        ? `${vehicle.declaredByMember.surname}, ${vehicle.declaredByMember.firstName}`
+        : null,
+    );
+  }
 
   async function act(action: () => Promise<unknown>) {
     setBusy(true);
@@ -173,6 +194,44 @@ export default function VehicleDetailPage() {
           </div>
         ) : null}
       </Section>
+
+      {holds("vehicle.update") ? (
+        <Section
+          title="Owner"
+          description="The member this vehicle is declared under. May be left unset — a declaration is valid against a branch or unit alone — and changed here at any time, independent of a status change."
+        >
+          <MemberPicker
+            label="Member"
+            htmlFor="ownerId"
+            selectedId={ownerId}
+            selectedLabel={ownerLabel}
+            onSelect={(member) => {
+              setOwnerId(member.id);
+              setOwnerLabel(member.label);
+            }}
+            onClear={() => {
+              setOwnerId(null);
+              setOwnerLabel(null);
+            }}
+          />
+          <div>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy || ownerId === (vehicle.declaredByMember?.id ?? null)}
+              onClick={() =>
+                void act(() =>
+                  api.patch(`/vehicles/${vehicle.id}`, {
+                    declaredByMemberId: ownerId,
+                  }),
+                )
+              }
+            >
+              Save owner
+            </Button>
+          </div>
+        </Section>
+      ) : null}
 
       {isDisputed && holds("vehicle.resolve_dispute") ? (
         <Section

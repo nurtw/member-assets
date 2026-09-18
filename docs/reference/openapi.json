@@ -7055,6 +7055,149 @@
         "security": []
       }
     },
+    "/api/v1/members": {
+      "get": {
+        "summary": "Search members by name or membership number.",
+        "description": "A minimal lookup for pickers elsewhere in the System — vehicle declaration’s owner field, for one — not a directory. Returns no next-of-kin, guarantor, contact, or application data, and only the branch/unit subtrees the caller holds `member.read` in.\n\n**Permission required:** `member.read`.",
+        "operationId": "MemberController_searchMembers",
+        "tags": [
+          "Member"
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Matches surname, first name, or membership number.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "organisationId",
+            "in": "query",
+            "required": false,
+            "description": "Filter to one unit.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold member.read in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/members/{id}/status": {
       "patch": {
         "summary": "Suspend, restore, or cancel a member.",
@@ -9518,6 +9661,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Matches the plate number, normalised the same way it is stored.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -9680,6 +9832,11 @@
                     "type": "string",
                     "maxLength": 120
                   },
+                  "declaredByMemberId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
                   "notes": {
                     "type": "string",
                     "maxLength": 1000
@@ -9806,7 +9963,7 @@
             }
           },
           "404": {
-            "description": "No such organisation.",
+            "description": "No such organisation, or no such member (`declaredByMemberId`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -10105,7 +10262,7 @@
       },
       "patch": {
         "summary": "Amend a declaration’s record-keeping fields.",
-        "description": "Never changes `status` — see the status route, a distinct, separately-audited act. Moving a declaration to a different branch or unit requires `vehicle.update` at both the current and destination organisation’s path.\n\n**Permission required:** `vehicle.update`.",
+        "description": "Never changes `status` — see the status route, a distinct, separately-audited act. Moving a declaration to a different branch or unit requires `vehicle.update` at both the current and destination organisation’s path. `declaredByMemberId` attaches, changes, or (sent as `null`) clears the member the vehicle is associated with — the route a migrated or previously unit-only declaration is reconciled to an operator through.\n\n**Permission required:** `vehicle.update`.",
         "operationId": "VehicleController_update",
         "tags": [
           "Vehicle"
@@ -10166,6 +10323,18 @@
                   "chassisVinRestricted": {
                     "type": "string",
                     "maxLength": 120
+                  },
+                  "declaredByMemberId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "notes": {
                     "type": "string",
@@ -10289,7 +10458,7 @@
             }
           },
           "404": {
-            "description": "No such declaration, or destination organisation.",
+            "description": "No such declaration, destination organisation, or member (`declaredByMemberId`).",
             "content": {
               "application/json": {
                 "schema": {

@@ -29,6 +29,7 @@ interface Fixture {
   branchAId: string;
   unitAId: string;
   branchBId: string;
+  memberId: string;
 }
 
 describe('Vehicle declaration (e2e)', () => {
@@ -211,6 +212,45 @@ describe('Vehicle declaration (e2e)', () => {
     });
   });
 
+  describe('owner (member) association', () => {
+    it('declares a vehicle already attached to a member', async () => {
+      const response = await declare({
+        plateNumberDisplay: plate('MM1'),
+        declaredByMemberId: fixture.memberId,
+      }).expect(201);
+
+      expect(response.body.vehicle.declaredByMember.id).toBe(fixture.memberId);
+    });
+
+    it('attaches, then clears, a member on an existing declaration', async () => {
+      const created = await declare({ plateNumberDisplay: plate('MM2') }).expect(
+        201,
+      );
+      expect(created.body.vehicle.declaredByMember).toBeNull();
+
+      const attached = await request(server)
+        .patch(`/api/v1/vehicles/${created.body.vehicle.id}`)
+        .set('Cookie', cookies.declarer!)
+        .send({ declaredByMemberId: fixture.memberId })
+        .expect(200);
+      expect(attached.body.vehicle.declaredByMember.id).toBe(fixture.memberId);
+
+      const cleared = await request(server)
+        .patch(`/api/v1/vehicles/${created.body.vehicle.id}`)
+        .set('Cookie', cookies.declarer!)
+        .send({ declaredByMemberId: null })
+        .expect(200);
+      expect(cleared.body.vehicle.declaredByMember).toBeNull();
+    });
+
+    it('refuses attaching a non-existent member', async () => {
+      await declare({
+        plateNumberDisplay: plate('MM3'),
+        declaredByMemberId: '00000000-0000-0000-0000-000000000000',
+      }).expect(404);
+    });
+  });
+
   describe('status lifecycle', () => {
     it('moves ACTIVE -> SUSPENDED -> ACTIVE -> RETIRED', async () => {
       const created = await declare({ plateNumberDisplay: plate('II9') }).expect(
@@ -284,7 +324,10 @@ describe('Vehicle declaration (e2e)', () => {
         .post(`/api/v1/vehicles/${disputed.body.vehicle.id}/dismiss-dispute`)
         .set('Cookie', cookies.declarer!)
         .send({ reason: 'e2e: duplicate claim dismissed' })
-        .expect(200)
+        // Nest defaults an undecorated @Post to 201, the same convention
+        // every other action-style POST in this System follows (card
+        // decision/submission/activation, none of which override it either).
+        .expect(201)
         .expect((res) => expect(res.body.vehicle.status).toBe('ARCHIVED'));
     });
 
@@ -344,10 +387,20 @@ describe('Vehicle declaration (e2e)', () => {
     ]);
     await buildUser('reader', branchA.id, ['vehicle.read']);
 
+    const member = await prisma.member.create({
+      data: {
+        surname: `Owner ${TAG}`,
+        firstName: 'Fixture',
+        status: 'ACTIVE',
+        organisationId: branchA.id,
+      },
+    });
+
     return {
       branchAId: branchA.id,
       unitAId: unitA.id,
       branchBId: branchB.id,
+      memberId: member.id,
     };
   }
 
@@ -421,6 +474,9 @@ describe('Vehicle declaration (e2e)', () => {
     await prisma.vehicle.deleteMany({
       where: { id: { in: vehicles.map((v) => v.id) } },
     });
+    // Restricted by both Vehicle.declaredByMemberId and Member.organisationId
+    // — must go after the vehicles above and before the organisations below.
+    await prisma.member.deleteMany({ where: { surname: { contains: TAG } } });
     await prisma.userPermissionGrant.deleteMany({
       where: { organisationId: { in: orgIds } },
     });

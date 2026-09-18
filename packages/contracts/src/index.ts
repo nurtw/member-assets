@@ -99,6 +99,7 @@ export {
   type AttachMediaInput,
   type CreateApplicationInput,
   type GuarantorInput,
+  type MemberSearchResult,
   type NextOfKinInput,
   type OrganisationalAssignmentInput,
   type ReviewApplicationInput,

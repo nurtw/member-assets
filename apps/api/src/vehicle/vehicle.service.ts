@@ -106,16 +106,29 @@ export class VehicleService {
    */
   async list(
     userId: string,
-    filters: { status?: string; organisationId?: string },
+    filters: { status?: string; organisationId?: string; q?: string },
   ): Promise<VehicleSummary[]> {
     const scopes = await this.readableScopes(userId);
     if (scopes.length === 0) {
       return [];
     }
 
+    // A search box takes partial input as the officer types — "AB", "AB1" —
+    // which is shorter than `normalizePlateNumber` accepts for a plate being
+    // *stored* (PRD Requirement 9.1's bounds exist to reject junk at that
+    // boundary, not to constrain what a search may match against). Folded
+    // the same way, without those bounds, so a search still only ever
+    // matches the normalised form.
+    const q = filters.q
+      ?.trim()
+      .normalize('NFKD')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '');
+
     const rows = await this.prisma.vehicle.findMany({
       where: {
         ...(filters.status ? { status: filters.status as never } : {}),
+        ...(q ? { plateNumberNormalized: { contains: q } } : {}),
         AND: [
           {
             OR: scopes.flatMap((scope) => [
@@ -205,6 +218,10 @@ export class VehicleService {
       ? 'DISPUTED'
       : 'ACTIVE';
 
+    if (input.declaredByMemberId) {
+      await this.requireMemberExists(input.declaredByMemberId);
+    }
+
     const created = await this.createDeclaration(
       actor,
       input,
@@ -235,6 +252,7 @@ export class VehicleService {
             color: input.color ?? null,
             chassisVinRestricted: input.chassisVinRestricted ?? null,
             notes: input.notes ?? null,
+            declaredByMemberId: input.declaredByMemberId ?? null,
             branchId: organisation.branchId,
             unitId: organisation.unitId,
             status,
@@ -303,6 +321,10 @@ export class VehicleService {
       ? normalizePlateNumber(input.plateNumberDisplay)
       : undefined;
 
+    if (input.declaredByMemberId) {
+      await this.requireMemberExists(input.declaredByMemberId);
+    }
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.vehicle.update({
         where: { id },
@@ -323,6 +345,9 @@ export class VehicleService {
             ? { chassisVinRestricted: input.chassisVinRestricted }
             : {}),
           ...(input.notes !== undefined ? { notes: input.notes } : {}),
+          ...(input.declaredByMemberId !== undefined
+            ? { declaredByMemberId: input.declaredByMemberId }
+            : {}),
           ...(destination
             ? { branchId: destination.branchId, unitId: destination.unitId }
             : {}),
@@ -510,6 +535,23 @@ export class VehicleService {
     throw new ConflictException(
       `A vehicle is declared against a branch or unit, not a ${organisation.level.toLowerCase()}.`,
     );
+  }
+
+  /**
+   * A declaring officer need not hold `member.read` in the member's own
+   * scope to attach them — the officer is recording who operates the
+   * vehicle in their own branch or unit, not reading that member's file.
+   * Existence is all that is checked; a non-existent id answers 404 rather
+   * than silently writing a dangling foreign key.
+   */
+  private async requireMemberExists(memberId: string): Promise<void> {
+    const member = await this.prisma.member.findUnique({
+      where: { id: memberId },
+      select: { id: true },
+    });
+    if (!member) {
+      throw new NotFoundException('No such member.');
+    }
   }
 
   private async require(

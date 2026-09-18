@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import useSWR from "swr";
 
+import { MemberPicker } from "@/components/member-picker";
 import { Button, ErrorNotice, Field, Section, Select, TextArea, TextInput } from "@/components/ui";
 import { ApiError, api, fetcher } from "@/lib/api";
 
@@ -43,6 +44,8 @@ export default function DeclareVehiclePage() {
   const [color, setColor] = useState("");
   const [chassisVinRestricted, setChassisVinRestricted] = useState("");
   const [notes, setNotes] = useState("");
+  const [memberId, setMemberId] = useState<string | null>(null);
+  const [memberLabel, setMemberLabel] = useState<string | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [disputed, setDisputed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -78,6 +81,7 @@ export default function DeclareVehiclePage() {
           model: model.trim() || undefined,
           color: color.trim() || undefined,
           chassisVinRestricted: chassisVinRestricted.trim() || undefined,
+          declaredByMemberId: memberId ?? undefined,
           notes: notes.trim() || undefined,
         },
       );
@@ -157,6 +161,22 @@ export default function DeclareVehiclePage() {
               ))}
             </Select>
           </Field>
+
+          <MemberPicker
+            label="Operator (member)"
+            htmlFor="declaredByMemberId"
+            hint="A vehicle may be declared against a branch or unit alone — this may be left blank and attached to a member later."
+            selectedId={memberId}
+            selectedLabel={memberLabel}
+            onSelect={(member) => {
+              setMemberId(member.id);
+              setMemberLabel(member.label);
+            }}
+            onClear={() => {
+              setMemberId(null);
+              setMemberLabel(null);
+            }}
+          />
 
           <Field label="Vehicle category" htmlFor="vehicleCategoryId">
             <Select

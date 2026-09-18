@@ -507,6 +507,33 @@ describe('Membership registration (e2e)', () => {
     });
   });
 
+  describe('member search', () => {
+    it('finds a member by partial surname, scoped to the caller’s branch', async () => {
+      await request(server)
+        .post('/api/v1/applications')
+        .set('Cookie', cookies.registrar!)
+        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'Searchable'))
+        .expect(201);
+
+      const found = await request(server)
+        .get('/api/v1/members?q=searchab')
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+      expect(
+        found.body.members.some((m: { surname: string }) => m.surname === 'Searchable'),
+      ).toBe(true);
+
+      // `otherbranch` holds `member.read` in branch B only — a name scoped to
+      // branch A must not surface there, the same 404-not-403 discipline the
+      // rest of this System applies to enumeration.
+      const outOfScope = await request(server)
+        .get('/api/v1/members?q=searchab')
+        .set('Cookie', cookies.otherbranch!)
+        .expect(200);
+      expect(outOfScope.body.members).toHaveLength(0);
+    });
+  });
+
   // --- Who may decide ------------------------------------------------------
 
   describe('the second-officer requirement', () => {

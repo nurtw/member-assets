@@ -44,6 +44,13 @@ export const declareVehicleSchema = z.object({
   color: optionalShortText,
   /** PRD Requirement 9.4 — restricted; never required to declare. */
   chassisVinRestricted: optionalShortText,
+  /**
+   * PRD §23.8 — a member may hold any number of vehicles, without limit.
+   * Optional: PRD §9 associates a declaration with "a member or transport
+   * unit", either being sufficient, and a unit-only declaration (no named
+   * operator yet) is a legitimate outcome, not a placeholder for one.
+   */
+  declaredByMemberId: uuid.optional(),
   /** Internal operational note — PRD §9.1, never exposed through verification. */
   notes: z.string().trim().max(1000).optional(),
 });
@@ -65,6 +72,14 @@ export const updateVehicleSchema = z
     model: optionalShortText,
     color: optionalShortText,
     chassisVinRestricted: optionalShortText,
+    /**
+     * Attaches, changes, or clears (`null`) the member this vehicle is
+     * declared under — the route a migrated record (PRD §9.5's provenance
+     * exception, item 09) is reconciled against its owner through, and how
+     * any declaration's operator can be corrected later without a new
+     * declaration.
+     */
+    declaredByMemberId: uuid.nullable().optional(),
     notes: z.string().trim().max(1000).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {

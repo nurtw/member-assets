@@ -22,8 +22,9 @@ Two rules outrank any default instruction you hold:
 
 ## Status
 
-Items 01–07 complete. This session: a deployment bug sweep (logging, cookie/CORS,
-Cloudinary storage) plus item 07, vehicle declaration, end to end.
+Items 01–07 complete. This session: a deployment bug sweep, a login-cookie fix,
+item 07 (vehicle declaration) end to end, then a correction to it — vehicle
+owner (member) association, which the original delivery wrongly deferred.
 
 ## Active roadmap item
 
@@ -31,36 +32,50 @@ None. **Item 08 — sticker-inventory-qr — is next and not yet planned.**
 
 ## Done this session
 
-- Request access logging (`request-logging.middleware.ts`); `trust proxy`
-  fix for `ip=::1`; Keep-API-warm timeout fix; several UI fixes (logo,
-  state-of-origin select, mobile nav, password toggle, NOK address checkbox).
-- **Cloudinary storage adapter** (`CloudinaryStorage`, `storage.service.ts`) —
-  selected via `CLOUDINARY_URL`; fixes photos being lost on every Render
-  redeploy. Added `MediaService.discard()` / `DELETE /media/:id`, which
-  never existed before.
-- **Login redirect bug fixed**: `next.config.ts` now proxies `/api/v1/*`
-  server-side so the session cookie is first-party, immune to browsers
-  blocking third-party cookies. `cookieOptions.sameSite` simplified to `'lax'`.
-- **Item 07 — vehicle-declaration**, per `plans/07-vehicle-declaration.md`:
-  domain transition table, contracts, `apps/api/src/vehicle/*`, and
-  `apps/web/.../vehicles/*` screens. See that plan's Definition of Done for
-  what's verified and what isn't.
+- Request access logging, `trust proxy` fix, Keep-API-warm timeout fix,
+  several UI fixes (logo, state-of-origin select, mobile nav, password
+  toggle, NOK address checkbox).
+- **Cloudinary storage adapter**, selected via `CLOUDINARY_URL`; added
+  `MediaService.discard()` / `DELETE /media/:id`.
+- **Login redirect bug fixed** (cross-site cookie): `next.config.ts` proxies
+  `/api/v1/*` server-side; `cookieOptions.sameSite` simplified to `'lax'`.
+- **Login-twice bug fixed**: `/auth/me` is a global SWR cache key untied to
+  `SessionProvider`'s mount lifecycle — a stale cached 401 from the
+  pre-login redirect was served instantly on the post-login remount, before
+  revalidation landed. Fixed with `mutate("/auth/me")` around login and
+  logout (`login/page.tsx`, `lib/session.tsx`).
+- **Item 07 — vehicle-declaration** built, then corrected (see plan's
+  Definition of Done): declare/list/detail/update/suspend/retire/
+  dismiss-dispute, each record-scoped and audited.
+- **Correction: vehicle owner association.** The original delivery deferred
+  `declaredByMemberId` entirely, reasoning VEH-06/08 blocked it — wrong,
+  those questions are about evidence and transfer process, not whether an
+  officer may name the operator at declare time (PRD §23.8 assumes this is
+  routine). Now: settable on declare and on update (attach/change/clear,
+  404 if the member doesn't exist), a plate-number search on the vehicle
+  list (`?q=`), an Owner column, and a new minimal `GET /members?q=`
+  lookup (gated `member.read`, not `application.read`) backing both the
+  declare-form and detail-page member pickers
+  (`apps/web/src/components/member-picker.tsx`).
+- Fixed a pre-existing e2e test bug found while re-running the suite:
+  `dismiss-dispute` asserted `200`; Nest's undecorated `@Post` defaults to
+  `201`, same as every other action-style POST route here. Previously
+  masked by the flakiness below.
 
 ## Current state
 
-- Files touched: too many to list here — see the four commits this session
-  (`git log --oneline -4`) and each plan/HANDOFF entry above.
-- **e2e**: `vehicle.e2e-spec.ts` passes 8/13 consistently; the rest fail on
-  Prisma's 5s transaction timeout and vitest's test timeout against this
-  session's live Neon connection — confirmed pre-existing latency, not a
-  logic defect (git-stash A/B tested against `membership`/`organisation`
-  e2e specs too). `vitest.config.e2e.ts` hook/test timeouts raised to help;
-  did not chase further.
-- Deviation from plan: declarations do **not** associate a member
-  (`declaredByMemberId` stays unset) — PRD §9 allows member-or-unit, and no
-  spec exists for a member-selection step while VEH-06/08 are open. See the
-  plan's Approach §5.
+- **e2e**: `vehicle.e2e-spec.ts` 15/16 on the run that added the new owner-
+  association tests (was 8/13) — the improvement looks like this run simply
+  avoided the network latency, not a fix; treat 8/13 as the floor, not the
+  ceiling. Remaining failures are pre-existing Prisma/vitest timeouts against
+  this session's live Neon connection (git-stash A/B tested against other
+  e2e specs earlier this session — not this item's code).
+  `membership.e2e-spec.ts` gained a `member search` block; not yet confirmed
+  green — check `git log`/rerun before trusting it.
 - Conflicts: none new. VEH-06/07/08 remain open per `QUESTIONS.md`.
+- Still true from the original delivery: dispute resolution is dismissal
+  only; vehicle transfer is retire-then-redeclare, no bespoke endpoint;
+  chassis/VIN evidence fields remain unbuilt (VEH-06).
 
 ## Next steps
 
@@ -71,7 +86,10 @@ Run `/plan 08`, then `/execute`. Depends on item 07 (done).
 - Do not build dispute *resolution* beyond dismissal (`DISPUTED -> ARCHIVED`)
   without an answer to VEH-07 — upholding a claim requires demoting the
   competing `ACTIVE` record, a policy call, not an engineering one.
-- Do not add a member-selection step to vehicle declaration without checking
-  VEH-06/VEH-08 first.
 - Do not chase e2e flakiness against live Neon further without first
   checking whether `docker compose up -d` (local Postgres) sidesteps it.
+- Do not assume `GET /members` is a general member directory — it is a
+  minimal picker lookup (id, name, membership number, organisation only),
+  scoped by `member.read`, with no next-of-kin/guarantor/contact data. Do
+  not widen its projection without re-reading PRD Requirement 7.1's reasoning
+  for why the equivalent application list stays this narrow.

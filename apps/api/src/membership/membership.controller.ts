@@ -307,10 +307,39 @@ export class MembershipController {
   }
 }
 
-/** Member status management, after approval. */
+/** Member lookup and status management, after approval. */
 @Controller('members')
 export class MemberController {
   constructor(private readonly membership: MembershipService) {}
+
+  @RequirePermission('member.read')
+  @Get()
+  @Documented({
+    summary: 'Search members by name or membership number.',
+    description:
+      'A minimal lookup for pickers elsewhere in the System — vehicle declaration’s owner ' +
+      'field, for one — not a directory. Returns no next-of-kin, guarantor, contact, or ' +
+      'application data, and only the branch/unit subtrees the caller holds `member.read` in.',
+    query: [
+      { name: 'q', description: 'Matches surname, first name, or membership number.' },
+      { name: 'organisationId', description: 'Filter to one unit.' },
+    ],
+  })
+  async searchMembers(
+    @Req() request: AuthenticatedRequest,
+    @Query('q') q?: string,
+    @Query('organisationId') organisationId?: string,
+  ) {
+    if (!request.user) {
+      throw new BadRequestException();
+    }
+    return {
+      members: await this.membership.searchMembers(request.user.id, {
+        q,
+        organisationId,
+      }),
+    };
+  }
 
   @RequirePermission('member.suspend')
   @Patch(':id/status')

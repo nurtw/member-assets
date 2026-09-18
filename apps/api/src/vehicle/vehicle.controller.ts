@@ -53,18 +53,21 @@ export class VehicleController {
     query: [
       { name: 'status', description: 'Filter by declaration status.' },
       { name: 'organisationId', description: 'Filter to one branch or unit.' },
+      { name: 'q', description: 'Matches the plate number, normalised the same way it is stored.' },
     ],
   })
   async list(
     @Req() request: AuthenticatedRequest,
     @Query('status') status?: string,
     @Query('organisationId') organisationId?: string,
+    @Query('q') q?: string,
   ) {
     const actor = this.actor(request);
     return {
       vehicles: await this.vehicles.list(actor.userId, {
         status,
         organisationId,
+        q,
       }),
     };
   }
@@ -103,7 +106,7 @@ export class VehicleController {
     body: declareVehicleSchema,
     responses: {
       403: 'The caller may not declare into that organisation.',
-      404: 'No such organisation.',
+      404: 'No such organisation, or no such member (`declaredByMemberId`).',
       409: 'The organisation is inactive, or is a council or zone rather than a branch or unit.',
     },
   })
@@ -123,11 +126,13 @@ export class VehicleController {
     description:
       'Never changes `status` — see the status route, a distinct, separately-audited act. ' +
       'Moving a declaration to a different branch or unit requires `vehicle.update` at both the ' +
-      'current and destination organisation’s path.',
+      'current and destination organisation’s path. `declaredByMemberId` attaches, changes, or ' +
+      '(sent as `null`) clears the member the vehicle is associated with — the route a migrated ' +
+      'or previously unit-only declaration is reconciled to an operator through.',
     body: updateVehicleSchema,
     responses: {
       403: 'The caller may not amend this declaration, or may not move it to that organisation.',
-      404: 'No such declaration, or destination organisation.',
+      404: 'No such declaration, destination organisation, or member (`declaredByMemberId`).',
     },
   })
   async update(
