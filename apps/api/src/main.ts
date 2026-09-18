@@ -26,6 +26,7 @@ import {
   buildErrorResponse,
   resolveRequestId,
 } from './common/error-response.js';
+import { requestLoggingMiddleware } from './common/request-logging.middleware.js';
 import { loadEnvironment } from './config/environment.js';
 
 async function bootstrap(): Promise<void> {
@@ -37,6 +38,14 @@ async function bootstrap(): Promise<void> {
     // for every route, including any added later without thinking about it.
     bodyParser: true,
   });
+
+  /**
+   * Access log. Added before anything else in the chain — including
+   * `setGlobalPrefix` and CORS below — so every request is logged with its
+   * outcome, even one CORS or the guard refuses before a controller runs.
+   * See `request-logging.middleware.ts` for what it does and does not record.
+   */
+  app.use(requestLoggingMiddleware());
 
   /**
    * ARCHITECTURE.md Decision 11.1 — all external routes are prefixed `/api/v1`

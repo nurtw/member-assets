@@ -33,6 +33,26 @@ unit · 100 api e2e); build, typecheck, and lint clean.
 
 None. **Item 07 — vehicle-declaration — is next and not yet planned.**
 
+## Done this session (18 September 2026) — request access logging
+
+Added `apps/api/src/common/request-logging.middleware.ts`, wired in `main.ts`
+via `app.use(...)` before `app.init()` (same reasoning as the terminal
+not-found handler, in reverse: middleware added before `init()` runs ahead of
+Nest's router, so it wraps every request including one a guard refuses or one
+matching no route). One log line per request on `finish`: method, path
+(sensitive query keys — `signature`, `token`, etc. — redacted), status,
+duration, request/response length, IP, authenticated user id, user agent,
+request id. It also stamps `x-request-id` onto the *request* headers, not just
+the response, so `AllExceptionsFilter` (which reads that header) logs and
+returns the same id this line carries.
+
+Deliberately not a body dump — CLAUDE.md forbids logging tokens, signatures,
+guarantor details, and chassis/VIN, which arrive as JSON body fields on
+exactly the routes this wraps. `AuditService` remains the record of *what
+changed*; this is only *which requests hit the API and how they ended*.
+10 new unit tests in `request-logging.middleware.spec.ts`; build/lint/typecheck
+clean, all 89 api unit tests pass.
+
 ## Done this session (17 September 2026) — demo readiness
 
 The owner supplied the motto wording and the Union emblem, and asked for the
