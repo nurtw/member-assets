@@ -33,8 +33,10 @@ the PRD wins** — flag the conflict in HANDOFF.md rather than silently choosing
 The proposal is emphatic about this, and it constrains the schema, the API surface, and
 the wording of every response you write:
 
-- **Not a revenue or levy-collection platform.** The legacy export contains wallets and
-  transactions; they are deliberately out of scope and are not migrated.
+- **Not a revenue platform — but it does collect dues, since PRD revision 1.2.** The
+  onboarding fee, yearly membership fee, and monthly levy are collected through Paystack
+  (PRD §27). The legacy wallets and transactions are still not migrated, and dues status
+  is internal-only: it never reaches an external response.
 - **Not a vehicle-registration authority.** A declaration is not an ownership claim.
 - **Not a public directory.** There is no browsable member or vehicle listing.
 - **Not a source of legal conclusions.** A match proves only that an NURTW record exists
@@ -103,7 +105,11 @@ These come from PRD §4 and are not negotiable design preferences — they are t
    branch or unit administrator. A verification
    enquiry — matched or unmatched, internal or external — must never create, complete, or
    reactivate a declaration. The verification path holds no write capability to
-   declaration, sticker, card, or member tables. See PRD §9.5–9.6.
+   declaration, sticker, card, member, or payment tables. See PRD §9.5–9.6.
+   **On record, onboarded, and declared are three separate facts** (PRD §9A). Legacy
+   vehicles are on record only. The external total counts vehicles both onboarded and
+   declared, and no external response mentions declaration at all (Requirements 12.7,
+   13.5).
 2. **Minimum necessary disclosure.** A response contains only those fields the caller's
    disclosure profile permits. Responses are constructed by *projection through the
    profile*. Retrieving a complete record and subsequently removing fields is not
@@ -147,7 +153,8 @@ blobs (`owner_jsonb`, `identification`, `meta`), camelCase FKs (`vehicleId`, `co
   `company.csv` (1, the Anambra State Council), `vehicle_scans.csv` (12, all
   `ENFORCEMENT`), `by_lga_summary.csv` (22 LGAs; **1,908 of 2,841 vehicles have no LGA**).
 - **Not migrated:** `vehicle_wallets.csv`, `vehicle_transactions.csv`,
-  `company_charges.csv` — revenue data, out of scope per PRD §2.
+  `company_charges.csv` — legacy revenue data (MIG-01). The System keeps its own ledger
+  from onboarding; whether legacy balances are honoured is PAY-04.
 
 Data-quality defects the migration must address explicitly rather than obscure: no local
 government area on approximately 67 per cent of vehicles; `asin_number` recorded as an
@@ -176,10 +183,18 @@ an anomaly in the reconciliation report.
   issuing a query. A valid signature is *necessary but never sufficient*: it proves the code
   was minted by the Union, not that the sticker is on the right vehicle or still valid. See
   PRD §26, which tabulates precisely which control defeats which attack.
-- **Legacy barcodes resolve as fully equivalent, by determination.** They are a millisecond
-  epoch timestamp and are forgeable by inspection; the owner accepted this to preserve
-  2,408 stickers already in the field. Read-only: the issuance path must have no route
-  capable of producing one. Record which scheme resolved each verification. See PRD §26.4.
+- **Legacy barcodes are imported unattached and resolve only once reattached** (PRD §9A,
+  revision 1.2, superseding "fully equivalent" in §26.4). They are millisecond epoch
+  timestamps, forgeable by inspection. Transpay has stopped issuing, so **the register is
+  closed** at the export's 2,408 barcodes, and nothing is ever added to it. Reattachment
+  therefore requires all four of the following, with no override:
+  - the barcode is on the imported register
+  - it is presented for the plate the register records for it
+  - it has never been attached before
+  - it comes with an unused, Paystack-confirmed payment
+
+  Read-only: the issuance path must have no route capable of producing one. Record which
+  scheme resolved each verification.
 - **Authorisation asks for a permission, never a role.** Code checks `vehicle.declare`, not
   "is this user a Vehicle-Record Officer". Roles are administrative bundles. Every
   assignment carries an organisational scope, and revocation always beats grant. See
@@ -200,6 +215,12 @@ than optimised away:
   into its own deployable later without a rewrite.
 - **Disclosure profiles are data, not code.** Adding an external organization type must
   never require a deploy.
+- **Fee types are data, not code** (PRD Requirement 27.1). The same applies to every fee
+  amount and every parameter of the processing-fee rule (Requirement 27.3). Adding a
+  payment type must never require a deploy. The same goes for the **NURTW settlement
+  account**, which is entered and changed in settings (Requirement 27.12). Saving it updates
+  the one Paystack subaccount in place; never create a second, or the dedicated accounts
+  already issued would keep settling to the old one.
 - **Rate limits, quotas, and suppression thresholds are runtime config.** The PRD §14
   values are a starting point NURTW must be able to change without shipping code.
 - **Card and sticker templates carry `template_version`** so a redesign does not

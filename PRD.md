@@ -3,9 +3,10 @@
 ## NURTW Membership and Vehicle Verification System
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
-**Status:** Approved for implementation — all determinations recorded at §23
-**Document version:** 1.1
-**Last revised:** 9 September 2026
+**Status:** Approved for implementation. All determinations are recorded at §23. Revision
+1.2 (§2.3) is approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.2
+**Last revised:** 22 September 2026
 
 ---
 
@@ -52,9 +53,13 @@ them, issued API credentials, and assigned explicit permissions.
 - Vehicle declaration and association with a member or transport unit.
 - Membership card design, issuance, replacement, and status management.
 - Vehicle sticker inventory, QR identifier generation, issuance, and replacement.
+- Vehicle onboarding: reattaching legacy stickers and issuing new ones, gated on payment,
+  and a printable vehicle letter (§9A). *Revision 1.2.*
+- Collection of the onboarding fee, the yearly membership fee, the monthly levy, and further
+  fee types, through Paystack (§27). *Revision 1.2.*
 - Plate-number and sticker-QR verification across four channels.
 - Controlled API access for approved external organisations.
-- Aggregate reporting, including declared-vehicle totals.
+- Aggregate reporting, including the external vehicle total (§13).
 - Audit trails, access monitoring, and abuse prevention.
 
 ### 2.2 Out of scope — determined and confirmed
@@ -65,7 +70,7 @@ each, and their exclusion is a deliberate decision rather than an oversight.
 
 | Excluded | Rationale |
 |---|---|
-| Revenue and levy collection | Proposal §2: the platform is expressly not a revenue-collection platform. `vehicle_wallets`, `vehicle_transactions`, and `company_charges` are therefore not migrated. |
+| Legacy revenue records | Collecting payments is **in scope from revision 1.2** (§27), reversing proposal §2. The legacy `vehicle_wallets`, `vehicle_transactions`, and `company_charges` are still not migrated (`QUESTIONS.md` MIG-01). The System starts its own ledger at onboarding; whether legacy balances are honoured is PAY-04. |
 | Vehicle-registration authority functions | The System records declarations; it does not register vehicles. |
 | Public searchable directory | Verification is permitted; browsing is not. |
 | Statutory or legal certification | The System asserts only the existence of a Union record. |
@@ -74,6 +79,10 @@ each, and their exclusion is a deliberate decision rather than an oversight.
 
 Any addition to §2.1 — in particular any reintroduction of billing — requires a revision
 of this document approved by the Union, not a plan-level decision.
+
+| Revision | Date | Change | Authority |
+|---|---|---|---|
+| 1.2 | 22 September 2026 | Paid onboarding, with legacy stickers unattached until reattached (§9A). Payments through Paystack (§27). An external vehicle total that counts only vehicles both onboarded and declared (§13). | Direction relayed by the project owner from NURTW (`QUESTIONS.md` VEH-13, PAY-01), approved by the project owner on 22 September 2026. No Union official is named (PAY-09). |
 
 ---
 
@@ -107,7 +116,9 @@ operational form.
 1. **The Union owns the record.** External parties consume approved services; they do not
    control source data.
 2. **Declare first, verify second.** A vehicle must hold a declaration or sticker record
-   before the System may return a positive result.
+   before the System may return a positive result. A migrated legacy record is neither a
+   declaration nor an attached sticker, so it never yields a positive result on its own
+   (§9A).
 3. **Minimum necessary disclosure.** A response contains only the fields required for the
    requesting organisation's approved purpose.
 4. **Permission before access.** Every external credential carries an organisation, an
@@ -127,8 +138,15 @@ The controlled vocabulary is defined in the proposal at §5 and is adopted here 
 amendment. Implementations must use these terms in code, interface copy, and
 documentation. Of particular note:
 
-- **Declared vehicle** — a vehicle recorded in the System. Declaration does not establish
-  legal ownership.
+- **Declared vehicle** — a vehicle a holder of `vehicle.declare` has marked declared
+  (§9.5). Declaration does not establish legal ownership. *Revision 1.2 narrows this:* a
+  vehicle that is merely recorded in the System is **on record**, not declared.
+- **Onboarded vehicle** — a vehicle with a sticker attached following a confirmed payment
+  (§9A). *Revision 1.2.*
+- **Attached sticker** — a sticker bound to one vehicle by a recorded attachment event. A
+  legacy sticker is imported **unattached**. *Revision 1.2.*
+- **Fee type** — a kind of payment the System collects, defined as data (§27).
+  *Revision 1.2.*
 - **Unit / Unity Body** — the local organisational unit shown on the registration form and
   card. Determined at §23.3 to be a single entity: *Unit* in code and administration,
   *Unity Body* on the printed form and card. It sits beneath a Branch.
@@ -241,14 +259,73 @@ through the declaration interface. No other route may create a declaration. In p
   exception.
 - A successful verification against an external identifier, a scan, or any third-party
   source does not entitle a vehicle to a declaration record.
-- The legacy migration (item 09) creates declarations under an identified system actor and
-  is the sole exception. Every record it creates is marked with its provenance and is
-  distinguishable in the audit trail from an operator declaration.
+- The legacy migration (item 09) writes vehicle records under an identified system actor.
+  Every record it creates is marked with its provenance and is distinguishable in the audit
+  trail. *Revision 1.2:* those records are **on record only**. The migration creates no
+  declaration and attaches no sticker (Requirement 9A.3).
 
 **Requirement 9.6.** Verification endpoints and services must hold no write capability to
-declaration, sticker, card, or member tables. This is to be enforced structurally — by the
-module boundary and by the database role the verification path executes under — and not by
-convention alone.
+declaration, sticker, card, member, or payment tables. This is to be enforced structurally —
+by the module boundary and by the database role the verification path executes under — and
+not by convention alone.
+
+---
+
+## 9A. Vehicle onboarding *(revision 1.2)*
+
+Determined 22 September 2026; see §23.19 and `QUESTIONS.md` VEH-13 to VEH-22.
+
+**Requirement 9A.1 — three separate facts.** Whether a vehicle is **on record**,
+**onboarded**, and **declared** are recorded independently, each with its actor and time.
+None implies another. The external vehicle total counts only vehicles that are both
+onboarded and declared (Requirement 13.5). Likewise, **the external API and the public page
+return a positive verification only for a vehicle that is both** (`QUESTIONS.md` VEH-22).
+The internal channels show every state.
+
+**Requirement 9A.2 — onboarding.** A vehicle is onboarded when a sticker is attached to it
+following a payment of the onboarding fee that Paystack has confirmed (§27). For a vehicle
+carrying a legacy sticker, that means reattaching it. For one without, it means issuing a new
+signed sticker. Both cost the same at launch (VEH-20) but are separate fee types. Onboarding
+and declaration may happen in either order, and by different users. Attaching a sticker
+requires `sticker.attach`, a permission field officers can hold. `vehicle.declare` keeps the
+restrictions of Requirement 9.5 (VEH-18).
+
+**Requirement 9A.3 — legacy records.** Migrated vehicles are on record only: neither
+onboarded nor declared. Every legacy barcode is imported **unattached**, onto a register that
+binds it to the normalised plate the export records for it.
+
+**Requirement 9A.4 — reattachment controls.** Reattaching a legacy barcode is refused unless
+**all** of the following hold. Each refusal is audited with its reason.
+
+1. The barcode is on the imported Transpay register: the 2,408 in the export. **The register
+   is closed.** Transpay has stopped issuing, and nothing is ever added to the register after
+   the migration (VEH-21). Any other barcode is recorded as unknown rather than as a forgery,
+   because NURTW holds a few printed Transpay stickers that have no digital record and that
+   can therefore never be attached.
+2. It is presented against the normalised plate the register records for it. **There is no
+   override** (VEH-16).
+3. It has never been attached before. A barcode attaches once in its life.
+4. A Paystack-confirmed payment reference accompanies it, and that reference has not been
+   used before.
+
+**Requirement 9A.5 — the Transpay security code.** The export's `security_code` is imported
+as a record only. It is not printed on the sticker (VEH-14), so it plays no part in
+reattachment or verification.
+
+**Requirement 9A.6 — the vehicle letter** (VEH-19). A printable, downloadable letter is
+produced when a vehicle is onboarded, and is available from the vehicle's page thereafter.
+It is rendered through a template carrying `template_version` (launch: `v1`), so that later
+wording does not invalidate letters already issued.
+
+- **Content.** The Union's name and emblem, a letter reference number, the date, the plate,
+  the category, make, model and colour, the sticker number, the member's name and
+  membership number, and the unit. The wording confirms that the vehicle is recorded with
+  the Union, and carries the Requirement 11.1 statement that this is not evidence of
+  ownership, roadworthiness, licensing, or insurance.
+- **Signatories.** The State Chairman and the Secretary, from the card's signature assets.
+  The lines stay blank until CARD-07 supplies them.
+- **No QR code.** A QR carrying the sticker's payload on paper could be photocopied onto a
+  counterfeit sticker, defeating the substrate control of §26.4.
 
 ---
 
@@ -267,6 +344,10 @@ details, or vehicle chassis number.
 **Requirement 10.2.** Sticker QR identifiers must be non-sequential and must not be
 derivable from the plate number, the member record, or the issuance order.
 
+**Requirement 10.3** *(revision 1.2)*. A sticker may exist unattached, and an unattached
+sticker never yields a positive verification result. Attachment is a recorded event. A
+sticker is attached to at most one vehicle in its life (§9A).
+
 ---
 
 ## 11. Verification channels
@@ -283,6 +364,18 @@ derivable from the plate number, the member record, or the issuance order.
 vehicle/sticker record was found under the requested verification criteria."* Interface
 and API copy must not assert certification of legal ownership, roadworthiness, licensing,
 or any external statutory status.
+
+**Requirement 11.2** *(revision 1.2)*. On the internal channels, a legacy barcode that is on
+the Transpay register but unattached reads *"Recognised Transpay sticker — not attached"*,
+followed by the plate the register records for it (VEH-17). It does not say *genuine*: the
+System can confirm that a barcode is on the register, not that the physical article is
+authentic, because a copy scans identically. The recorded plate lets the officer catch a copy
+on the wrong vehicle. The external API and the public page return the generic not-found,
+because telling an outside party that a barcode is on the register would let it enumerate
+the register.
+
+**Requirement 11.3** *(revision 1.2)*. The internal channels show dues status beside the
+result of a scan or search (§27, Requirement 27.8).
 
 ---
 
@@ -310,6 +403,12 @@ proposed. See §13.2.
 
 **Requirement 12.6.** External API tokens expire after **90 days**. Advance rotation
 reminders are issued to the client's registered technical contact. Determined at §23.12.
+
+**Requirement 12.7** *(revision 1.2)*. No external response carries anything relating to
+declaration: no declaration status, no field or record type naming it, and no filter on it.
+This amends the example at proposal §12.5: the verification `record_type` becomes `NURTW_VEHICLE` rather
+than `NURTW_DECLARED_VEHICLE`. No external response carries payment or dues status either
+(Requirement 27.8).
 
 ---
 
@@ -340,6 +439,16 @@ at runtime.
 **Requirement 13.4.** Suppression must be applied to the computed result, never by
 declining to run the query. A caller must not be able to distinguish a suppressed total
 from an unavailable one by response timing or error class.
+
+**Requirement 13.5** *(revision 1.2)*. The external vehicle total, at both tiers, counts
+only vehicles that are **both onboarded and declared**. Legacy records never count until they
+are onboarded and declared. Per Requirement 12.7, this amends proposal §13:
+
+- the endpoint is `GET /api/v1/aggregates/vehicles`, not `.../vehicles/declared`
+- the count field is `vehicle_count`, not `declared_vehicle_count`
+- `declaration_status` is removed from the filter dimensions
+
+Internal reporting may break the three counts of Requirement 9A.1 out separately.
 
 ---
 
@@ -408,6 +517,10 @@ event, never by silent overwrite.
 The fifteen modules listed in the proposal at §19 are adopted as the module boundary for
 implementation. Each is realised as a discrete NestJS module. See `ARCHITECTURE.md`.
 
+*Revision 1.2* adds a **payments** module (§27). It is the only module that talks to
+Paystack, and it exposes payment confirmation to onboarding through an injected interface.
+Onboarding itself belongs to the existing vehicle and sticker modules.
+
 ---
 
 ## 20. Delivery phases
@@ -424,6 +537,10 @@ implementation. Each is realised as a discrete NestJS module. See `ARCHITECTURE.
 
 The foundation phase and the migration interlude are additions to the proposal's five
 phases. They are implementation necessities rather than scope extensions.
+
+*Revision 1.2* adds payments, onboarding, and the vehicle letter (roadmap items 16–18),
+which **are** a scope extension (§2.3). Onboarding must land before the external total
+(item 14) can count anything.
 
 ---
 
@@ -455,6 +572,19 @@ The System is accepted when the following hold. Each is testable.
     residential address, next-of-kin detail, guarantor detail, chassis or VIN value,
     signature, or internal note.
 
+*Added by revision 1.2:*
+
+13. Reattachment is refused for a legacy barcode that is not on the register, is presented
+    against a plate other than its recorded plate, has already been attached, or comes
+    without an unused, Paystack-confirmed payment reference.
+14. A migrated vehicle appears in no external total until it is both onboarded and declared.
+15. No external response carries a declaration status, a payment status, or a dues status.
+16. A payment is marked confirmed only after a webhook with a valid signature, followed by
+    server-side verification of the transaction's amount and currency.
+17. The total charged for any due matches the rule of Requirement 27.3, including the six
+    worked figures at `QUESTIONS.md` PAY-10.
+18. A new fee type can be created, priced, and charged without a deployment.
+
 ---
 
 ## 22. Limitations
@@ -475,7 +605,7 @@ data-as-of value.
 The proposal at §23 posed sixteen questions requiring decision before implementation.
 These were put to the project owner and determined on **9 September 2026**. Two further
 matters, arising from the legacy export rather than the proposal, were determined at the
-same time.
+same time. §23.19 and §23.20 were added by revision 1.2 on **22 September 2026**.
 
 Each determination below is binding. Where an implementation plan appears to require a
 different answer, the discrepancy is to be recorded in `HANDOFF.md` and referred back
@@ -601,6 +731,52 @@ migrate. The approximately 1,908 records lacking an LGA are marked incomplete an
 a staff worklist. **The migration must not infer an LGA** from address text: an inferred
 value would be indistinguishable from a recorded one.
 
+### 23.19 Onboarding and legacy stickers *(revision 1.2)*
+
+Determined 22 September 2026 (`QUESTIONS.md` VEH-13 to VEH-17).
+
+- **Legacy vehicles are not declared.** They migrate on record only, and count toward
+  nothing external until they are onboarded and declared.
+- **Legacy stickers are unattached.** They are reattached through the System, after payment,
+  subject to Requirement 9A.4.
+- **Transpay has stopped issuing.** The register is closed at the export's 2,408 barcodes.
+  The few printed Transpay stickers NURTW still holds have no digital record, so they are
+  not on the register and cannot be attached (VEH-15, VEH-21).
+- **A barcode presented against another plate is refused**, with no override.
+- **No grace period** at go-live. Internally, an unattached registered barcode reads as
+  recognised but not attached (Requirement 11.2).
+- **An external match requires both onboarded and declared** (VEH-22). Onboarding and
+  declaration may happen in either order; attaching needs `sticker.attach` (VEH-18).
+- **The vehicle letter** is produced on onboarding and carries no QR code (VEH-19).
+
+### 23.20 Payments *(revision 1.2)*
+
+Determined 22 September 2026 (`QUESTIONS.md` PAY-01 to PAY-13).
+
+- **Launch fee types:** the sticker fees (reattachment and new sticker), the yearly
+  membership fee, and the monthly levy. Further types are added as data.
+- **Settlement:** sticker fees go to the contractor's Paystack account. The membership fee
+  and the levy settle to an NURTW subaccount. The NURTW bank account is entered, and can
+  later be changed, from settings by the super administrator, with a password re-entry and
+  a full audit trail but no second approver (Requirement 27.12).
+- **The payer bears the cost.** On top of the due, the payer pays Paystack's fee and the
+  contractor's fee of 0.5 per cent, capped at ₦200.
+- **Launch amounts:** stickers ₦2,000 (both kinds), levy ₦5,000 per vehicle per month,
+  and membership ₦30,000 a year (PAY-02). Every amount is an audited setting, and the levy
+  may be set per vehicle category.
+- **Dues schedule:** the levy runs by calendar month, from the month after onboarding. The
+  membership fee covers 12 months from payment. Nothing is owed before those dates, and
+  legacy balances are not honoured (PAY-03, PAY-04).
+- **Refunds and receipts:** refunds only for a failed service, a duplicate, or a
+  wrong-subject payment, excluding the processing fee. A PDF receipt accompanies every
+  payment (PAY-08).
+- **Channels:** NURTW dues are paid by payment link or dedicated virtual account. A sticker
+  fee is **always** paid by payment link. Dedicated-account money splits at Paystack straight
+  to the NURTW subaccount, so the contractor never holds Union funds.
+- **Dedicated-account money** pays the oldest outstanding due first; any remainder is held
+  as credit.
+- **Dues status** is visible internally on scan and search, and never externally.
+
 ---
 
 ## 24. Canonical field names
@@ -680,6 +856,13 @@ and it operates alongside plate-to-QR binding rather than in place of it.
 
 ### 26.4 Legacy identifiers — determined, with recorded risk
 
+> **Superseded in part by revision 1.2 (§9A, §23.19).** A legacy barcode no longer resolves
+> merely because it exists. It is imported unattached and resolves only once it has been
+> reattached, under the controls of Requirement 9A.4. The paragraph below now describes an
+> **attached** legacy sticker. The statement that "nothing presently in the field ceases to
+> work" no longer holds: an unattached Transpay sticker produces no positive result from
+> go-live.
+
 **Determination (§23, additional).** The 2,408 barcodes already issued under the previous
 system **resolve as fully equivalent** to signed identifiers. Nothing presently in the field
 ceases to work, and officers encounter no difference in behaviour.
@@ -699,6 +882,174 @@ identifiers notwithstanding, as they arise from controls required elsewhere:
    failed.
 3. Verifications against legacy identifiers are distinguishable in the audit trail, so that
    the Union may quantify exposure and revisit this determination on evidence.
+4. *(Revision 1.2.)* A legacy barcode can be attached only if it is on the imported
+   register, only to the plate the register records for it, only once, and only against an
+   unused, confirmed payment. A fabricated timestamp is not on the register. A barcode
+   copied from another vehicle fails the plate check, or is already attached. The register
+   is closed (VEH-21), so no later import can add a barcode to it.
 
 **Requirement 26.5.** Newly issued stickers use signed identifiers exclusively. The legacy
 scheme is a read path for existing articles and must never be used to mint a new one.
+
+---
+
+## 27. Payments *(revision 1.2)*
+
+Determined 22 September 2026; see §23.20 and `QUESTIONS.md` PAY-01 to PAY-13. This section
+exists because §2.3 was invoked. The System collects payments; it is still not a
+vehicle-registration authority, and a payment certifies nothing beyond itself.
+
+**Requirement 27.1 — fee types are data.** A fee type carries:
+
+- an immutable code and an editable label
+- an amount, which may vary by vehicle category
+- a recurrence: one-off, monthly, or yearly
+- what it is charged against: a member or a vehicle
+- its settlement: to the contractor alone, or split with the NURTW subaccount
+- whether it is active
+
+Creating, pricing, or retiring a fee type needs no deployment. The launch types are:
+
+| Code | Recurrence | Charged against | Settlement | Channels |
+|---|---|---|---|---|
+| `STICKER_REATTACHMENT` | one-off | vehicle | contractor | payment link only |
+| `STICKER_NEW` | one-off | vehicle | contractor | payment link only |
+| `MEMBERSHIP` | yearly | member | split | link or dedicated account |
+| `LEVY` | monthly | vehicle (PAY-03, pending confirmation) | split, amount per vehicle category | link or dedicated account |
+
+The two sticker fees are separate types that start at the same placeholder amount. Whether a
+vehicle receiving a new sticker pays the same as one having its Transpay sticker reattached
+(VEH-20) is therefore a settings change, not a development task.
+
+**Requirement 27.2 — amounts are settings.** Every amount, and every parameter of
+Requirement 27.3, is runtime configuration, and every change is audited with a mandatory
+reason. The launch amounts are set by the owner (PAY-02) and are not placeholders:
+
+| Fee type | Launch amount |
+|---|---|
+| `STICKER_REATTACHMENT` | ₦2,000 |
+| `STICKER_NEW` | ₦2,000 |
+| `LEVY` | ₦5,000 per vehicle per month, every category, until per-category amounts are set |
+| `MEMBERSHIP` | ₦30,000 per year |
+
+A fee type created later may be marked as a **placeholder**, and in live mode the System
+refuses to charge against a placeholder amount. Test mode is unaffected. Money is held as
+integer kobo, never as a float.
+
+**Requirement 27.3 — the processing fee.** The payer pays the due plus a processing fee,
+shown as its own line, and the due is credited in full. For a due *d*:
+
+- contractor fee *c* = min(0.5% of *d*, ₦200)
+- total *T* = the smallest whole naira for which *T* − *P(T)* ≥ *d* + *c*
+- *P(T)* is Paystack's fee for the channel. For local checkout it is 1.5% of *T* plus ₦100,
+  with the ₦100 waived where *T* is below ₦2,500, capped at ₦2,000.
+
+Rounding *T* up is deliberate: it never leaves the contractor short. The rule must reproduce
+the owner's six worked figures at `QUESTIONS.md` PAY-10 exactly. It is an acceptance test,
+not an illustration.
+
+**Requirement 27.4 — splitting.** A split fee type is initialised with the NURTW subaccount,
+a `transaction_charge` of *T* − *d*, and the main account bearing Paystack's fee. NURTW
+therefore settles exactly *d*, and the contractor receives *c* plus the rounding. A
+contractor-only fee type is initialised without a subaccount.
+
+**Requirement 27.5 — confirmation.** A payment is confirmed only when both of the following
+hold. It is never confirmed on a redirect, a client callback, or anyone's word. Processing is
+idempotent by reference, so a replayed webhook changes nothing.
+
+- a Paystack webhook arrives whose HMAC-SHA512 signature validates against the raw body
+- server-side verification of the transaction matches the reference, the amount, and the
+  currency the System asked for
+
+**Requirement 27.6 — loss detection.** For each payment, Paystack's actual fee from the
+verified transaction is recorded against the expected fee. Any payment where the contractor
+netted less than *c* is flagged in a report. Paystack charges international cards at a higher
+rate, so the Paystack business either has international payments disabled, or carries a
+channel rate that covers them.
+
+**Requirement 27.7 — channels** (PAY-06, PAY-11). A sticker fee is **always** paid by
+payment link. NURTW dues may be paid by payment link or by dedicated virtual account.
+
+A member's dedicated account is assigned with the NURTW subaccount, so its money splits at
+Paystack and settles straight to NURTW. The contractor never holds Union funds. Because the
+payer chooses the amount, Paystack applies the subaccount's **fixed percentage** to
+dedicated-account payments rather than Requirements 27.3–27.4. That percentage is a setting.
+The ₦200 cap and the fee-on-top cannot apply to a transfer the payer initiates. The System
+therefore:
+
+- shows the member the exact amount to send to cover a due
+- credits whatever arrives, net of Paystack's fee and the contractor's percentage
+- allocates it to the **oldest outstanding due first**, holding any remainder as credit
+  against the next due to fall (PAY-12). The order is a setting.
+
+Creating the Paystack customer behind a dedicated account sends Paystack only the fields it
+requires.
+
+**Requirement 27.8 — dues status is internal.** Whether a member's or vehicle's dues are
+paid, owed, or in arrears is shown on internal scan and search results, beside the
+verification result rather than in place of it. It appears in no external API response, on
+no public page, and in no disclosure profile. Dues do not block card renewal; the officer
+issuing a card sees the member's dues status instead (PAY-05).
+
+**Requirement 27.9 — the ledger is append-only.** Payments and dues are never edited or
+deleted. A correction or refund is a reversing entry (§4.8). Whether a due is paid derives
+from the ledger, not from a flag that could be overwritten.
+
+**Requirement 27.10 — secrets and card data.** The Paystack secret key is held only by the
+API, from its environment. It never appears in the web application, a log, an error message,
+or a URL. Card details never reach the System; only Paystack references are stored.
+
+**Requirement 27.11 — audit.** Creating, confirming, failing, or refunding a payment, and
+every change to a fee type, an amount, or the settlement account, emits an audit event with
+before and after values.
+
+**Requirement 27.12 — the NURTW settlement account** (PAY-07). The NURTW bank account is
+entered from settings, not from configuration files, and can be changed at any time after
+it is first set.
+
+- The bank is chosen from Paystack's bank list. The account number is resolved through
+  Paystack, and the account name is shown for confirmation before anything is saved.
+- The first save creates the Paystack subaccount. Every later save **updates that same
+  subaccount in place**, so existing dedicated accounts and outstanding payment links keep
+  settling to NURTW without being reissued. Paystack pays out on its own schedule, so money
+  collected but not yet paid out may settle to the new account.
+- **Changing this account redirects all of the Union's dues.** It is the most valuable
+  single action in the System to an attacker. It therefore requires its own permission,
+  held by the super administrator alone unless expressly granted, and the user must re-enter
+  their password. **No second approver is required** (PAY-13). The control is the audit
+  trail, which must be complete:
+  - every change is audited with its actor, time, IP address, request id, and a **mandatory
+    reason**
+  - before and after values give the bank, the account number, the resolved account name,
+    and the subaccount code
+  - failed attempts are audited too: a wrong password, a refused permission, or an account
+    Paystack rejects
+  - every previous account is kept in an append-only history, shown on the settings page
+    itself, so a change cannot happen unseen
+
+**Requirement 27.13 — the dues schedule** (PAY-03, PAY-04).
+
+- **The levy** falls due per vehicle on the 1st of each calendar month, starting with the
+  month after the vehicle is onboarded, with no proration.
+- **The membership fee** covers the member for 12 months from the date it is paid. It first
+  falls due on approval, or on the go-live date for a member migrated before it.
+- Nothing is owed for any earlier period. Legacy balances are neither honoured nor
+  migrated. Unpaid dues accumulate from the start dates onwards.
+
+**Requirement 27.14 — refunds and receipts** (PAY-08).
+
+- **Refunds** cover only a failed service, a duplicate payment, or a payment against the
+  wrong member or vehicle.
+  - They require a `payment.refund` permission, held by the super administrator alone
+    unless granted, and a mandatory reason.
+  - They are made through Paystack's refund API and recorded as a reversing ledger entry.
+  - The due is refunded; the processing fee is not.
+- **Receipts** are issued for every confirmed payment as a downloadable PDF. Each shows:
+  - a receipt number, the payer, and what was paid (the due and its period)
+  - the due, the processing fee, and the total
+  - the Paystack reference and the date
+
+  Paystack's email receipt goes to the payer where an email address is held. SMS receipts
+  are deferred.
+
+Nothing in §27 remains open.

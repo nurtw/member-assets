@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.2
-**Last revised:** 17 September 2026
+**Document version:** 1.3
+**Last revised:** 22 September 2026
 
 ---
 
@@ -49,11 +49,12 @@ thing a year later.
 | Structure and master data (ORG) | 4 | 3 | — | 7 |
 | Membership and registration (MEM) | 4 | 10 | — | 14 |
 | Cards (CARD) | 5 | 3 | — | 8 |
-| Vehicles and stickers (VEH) | 6 | 6 | — | 12 |
+| Vehicles and stickers (VEH) | 16 | 6 | — | 22 |
 | Legacy migration (MIG) | 3 | 3 | — | 6 |
 | External organisations (EXT) | 4 | 5 | — | 9 |
+| Payments (PAY) | 13 | 0 | — | 13 |
 | Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
-| **Total** | **30** | **40** | **1** | **71** |
+| **Total** | **53** | **40** | **1** | **94** |
 
 ### Blocking production use right now
 
@@ -452,6 +453,199 @@ old sticker is carried across by scan. MIG-04 and MIG-06 remain open on the spec
 **Answered on.** 14 September 2026. **Answered by.** Mr Timothy, Head of Operations.
 **Recorded at.** —
 
+### VEH-13 · Unattached legacy stickers, paid onboarding, and what counts as a vehicle ✅
+
+**Answer — direction as relayed.**
+
+1. Every legacy sticker is **unattached**. A vehicle that has not been re-onboarded does not
+   count as declared at all.
+2. Stickers are reattached through the System. Nobody may be able to generate a barcode and
+   attach it. Transpay-era stickers cannot be told apart from fabricated ones by looking at
+   them.
+3. The vehicle owner (a member) pays to have the sticker reattached, and that payment and
+   reattachment together **are** the onboarding.
+4. There are three separate counts. **On record** includes legacy vehicles. **Onboarded**
+   means a sticker is attached. **Declared** means a holder of `vehicle.declare` has marked
+   the vehicle declared. Only vehicles that are **both onboarded and declared** count in the
+   total shared externally, and no external response says anything about declared status.
+5. A vehicle receives a printable, downloadable letter on registration (VEH-19).
+
+**Supersedes in part.** CARD-03 and PRD §26.4 said legacy barcodes resolve as fully
+equivalent. Under this direction, a legacy barcode resolves only after it has been
+reattached. Item 07's rule that creating the record *is* the declaration no longer holds:
+the record, onboarding, and declaration are now separate. VEH-12 still stands; payment is
+added to it.
+
+**Controls on reattachment**, confirmed by the owner on 22 September 2026:
+
+- **Allow-list.** Only barcodes on the imported Transpay register can be attached. At
+  launch that is the 2,408 in the export. Any other barcode is refused and recorded as
+  unknown. It is not called a forgery, because Transpay still issues stickers (VEH-15).
+- **One-shot.** Each barcode attaches once. A second attempt is refused and flagged.
+- **Plate-bound.** The register ties each barcode to exactly one plate, and there is no
+  override (VEH-16).
+- **Paid.** Nothing is attached without a payment Paystack has confirmed, and each payment
+  reference is used once.
+
+**Answered on.** 22 September 2026. **Answered by.** Relayed by the project owner from a
+conversation with NURTW; the Union official is to be named (PAY-09).
+**Recorded at.** PRD §2.3 (revision 1.2), §9A, §13, §23.19, §26.4.
+
+### VEH-14 · Is the Transpay security code printed on the sticker? ✅
+
+**Question.** The export holds a 5-character `security_code` against nearly every barcoded
+vehicle, and it cannot be derived from the barcode. Is it printed on the physical Transpay
+sticker, either visibly or under a scratch panel?
+
+**Answer.** **No.** The code comes from Transpay and does not appear on the sticker. It is
+adopted as an imported record only and plays no part in reattachment or verification.
+Nothing printed on a Transpay sticker distinguishes a genuine one from a copy, so the
+controls in PRD §9A carry the whole load.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD §9A (Requirement 9A.5), §23.19.
+
+### VEH-15 · Is Transpay still issuing stickers? ✅
+
+**Question.** Can Transpay still issue or print stickers, and does unissued Transpay stock
+exist anywhere?
+
+**Answer.** **No — Transpay has stopped.** The owner first said Transpay was still issuing,
+then clarified the same day. Transpay generates no more stickers. NURTW holds a few printed
+Transpay stickers with no softcopy record, and those are the last of them. None carries the
+security code.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD §23.19.
+
+### VEH-16 · A legacy barcode presented against a different plate ✅
+
+**Question.** The export records which plate each barcode was issued to. If someone presents
+a barcode for a different plate, because the plate changed or the sticker was recorded
+wrongly, should the System refuse it outright, or allow a named officer to override with a
+recorded reason?
+
+**Answer.** **Refuse. There is no override.** The refusal is audited with its reason.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD §9A (Requirement 9A.4), §23.19.
+
+### VEH-17 · Legacy stickers in the field before reattachment ✅
+
+**Question.** From go-live, a Transpay sticker that has not been reattached will not verify
+as a match. On day one, almost every vehicle will therefore scan as not found. Is there a
+grace period? What should an officer see?
+
+**Answer.** **No grace period; not found is acceptable.** The result should tell the officer
+that the sticker is genuine but not attached.
+
+**Applied as.** This is shown on the internal channels only (dashboard and officer portal).
+The copy reads *"Recognised Transpay sticker — not attached"*, followed by the plate the
+register records for it. The System can confirm that a barcode is on Transpay's register and
+which plate it was issued for. It cannot confirm that the physical sticker is genuine,
+because a copy of a real sticker scans identically (VEH-14). Showing the recorded plate lets
+the officer catch a copy on the wrong vehicle. External callers and the public page get the
+generic not-found: telling an outside party that a barcode is on the register is the
+enumeration signal CLAUDE.md rule 7 forbids. Both points were raised with the owner on
+22 September 2026.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 11.2, §23.19.
+
+### VEH-18 · Order and authority of onboarding and declaration ✅
+
+**Question.** Must a vehicle be onboarded before it can be declared, or can either come
+first? Who reattaches the sticker in the field, and is that a different person from whoever
+declares the vehicle?
+
+**Proposed.** Either can come first; the vehicle counts only once both are true.
+Reattachment sits under a new permission, `sticker.attach`, which field officers can hold.
+`vehicle.declare` stays exactly as VEH-04 settled it.
+
+**Answer.** **Either order; a vehicle counts only once both are true.** Attaching a sticker
+sits under a new permission, `sticker.attach`, which field officers can hold.
+`vehicle.declare` stays exactly as VEH-04 settled it.
+**Answered on.** 22 September 2026. **Answered by.** Project owner, adopting the recommendation (“use a recommendation for the others, do not ask me again”).
+**Recorded at.** PRD Requirement 9A.2.
+
+### VEH-19 · The vehicle registration letter ✅
+
+**Question.** What does the letter say, who signs it, and on what letterhead? When is it
+produced: on onboarding, on declaration, or only once both are true? Should it carry a QR
+code? A sample of any letter already in use is the most useful answer.
+
+**Why it is needed.** The letter must not read as a certificate of ownership or of
+registration (PRD §4, Requirement 11.1). It will be a versioned template, like the card, so
+its wording can change later without invalidating letters already issued.
+
+**Answer.** Adopted recommendation:
+
+- **Trigger.** Produced when the vehicle is **onboarded** (paid, with a sticker attached),
+  and downloadable from the vehicle's page at any time afterwards.
+- **Content.** The Union's name and emblem, a letter reference number, the date, the plate
+  number, the vehicle category, make, model and colour, the sticker number, the member's
+  name and membership number, and the unit. Standard wording confirms that the vehicle is
+  recorded with NURTW Anambra State Council, followed by the Requirement 11.1 statement
+  that this is not evidence of ownership, roadworthiness, licensing, or insurance.
+- **Signatories.** The State Chairman and the Secretary, from the same stored signature
+  assets as the card (CARD-07). The lines stay blank until those assets are supplied.
+- **No QR code.** A QR code carrying the sticker's payload on paper could be photocopied
+  onto a fake sticker, which would defeat the destructible substrate (PRD §26.4). The
+  letter reference number is looked up internally instead.
+- **Template** `v1`, versioned like the card.
+**Answered on.** 22 September 2026. **Answered by.** Project owner, adopting the recommendation (“use a recommendation for the others, do not ask me again”).
+**Recorded at.** PRD Requirement 9A.6.
+
+### VEH-20 · Onboarding a vehicle that has no legacy sticker ✅
+
+**Question.** Onboarding happens in one of two ways:
+
+- **Reattachment.** The vehicle already carries a Transpay sticker on the register. The
+  owner pays, and the officer attaches that existing sticker. Nothing new is printed.
+- **New sticker.** The vehicle has no usable Transpay sticker. That covers brand-new
+  vehicles, the 433 in the export with no barcode, and any vehicle carrying one of the
+  unrecorded printed stickers (VEH-21). The owner pays, and a new NURTW sticker is printed
+  and attached.
+
+Should the second cost the same as the first, or more, given that a sticker is printed?
+
+**Note.** The two are separate fee types, `STICKER_REATTACHMENT` and `STICKER_NEW`, which
+start at the same placeholder amount (PRD Requirement 27.1). The answer is a settings
+change and blocks no development.
+
+**Answer.** **The same: ₦2,000 for both** a reattachment and a new sticker. They stay
+separate fee types, so the two can be priced differently later without development.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 27.2.
+
+### VEH-21 · Refreshing the Transpay register ✅
+
+**Question.** Only barcodes on the imported register can be reattached. How would barcodes
+issued after the export get onto it?
+
+**Answer.** **They don't need to. The register is closed.** Transpay has stopped issuing
+(VEH-15), so the export's 2,408 barcodes are the complete register, and nothing is ever
+added after the migration. The few printed Transpay stickers NURTW still holds have no
+digital record. They are not on the register and **can never be attached**. A vehicle that
+would have received one gets a new signed NURTW sticker instead.
+
+**Recommended.** Retire or destroy that printed stock. The System refuses those barcodes
+anyway, but a stack of genuine-looking Transpay stickers is useful to nobody except someone
+trying to pass one off in the field.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 9A.4, §23.19, §26.4.
+
+### VEH-22 · What a positive verification requires ✅
+
+**Question.** Only vehicles that are both onboarded and declared count in the external total
+(VEH-13). Should a plate or QR verification likewise return a match only when both are true?
+
+**Proposed.** Yes, for the external API and the public page. Otherwise a vehicle could
+verify as a match to an outside organisation while being excluded from the total that same
+organisation is shown. The internal channels show every state (on record, onboarded,
+declared, dues) whatever the answer.
+
+**Answer.** **Yes.** The external API and the public page return a match only for a vehicle
+that is both onboarded and declared. The internal channels show every state.
+**Answered on.** 22 September 2026. **Answered by.** Project owner, adopting the recommendation (“use a recommendation for the others, do not ask me again”).
+**Recorded at.** PRD Requirement 9A.1.
+
 ---
 
 ## 8. Open — legacy migration (item 09)
@@ -646,7 +840,262 @@ handles such a request?
 
 ---
 
-## 11. Deferred by the Union
+## 11. Payments (direction of 22 September 2026) — all answered
+
+The System will take payments through Paystack. This reverses the exclusion of revenue and
+levy collection at PRD §2.2. Under §2.3, that requires a Union-approved revision of the PRD
+(see PAY-09). PAY-01 records the direction, and the remaining questions cover what is needed
+to build it.
+
+**Fee types are data, not code** (project owner, 22 September 2026). Further payment types
+will be added over time. A new one is created through administration, with its amount,
+recurrence, what it is charged against, and how it splits, and needs no deploy. This follows
+the same principle as disclosure profiles.
+
+### PAY-01 · Payments direction ✅
+
+**Answer.**
+
+- NURTW charges two dues: a **yearly membership fee** and a **monthly levy**. The **sticker
+  reattachment (onboarding) fee** is a third payment.
+- The connected Paystack account belongs to the **contractor**. The sticker fee goes to that
+  account in full.
+- The membership fee and the levy are **split**. A fixed amount stays with the contractor as
+  its fee, and the rest settles to an **NURTW subaccount**.
+- Further payment types may be added later.
+
+**Refined by PAY-10.** The contractor's fee is 0.5 per cent capped at ₦200, not a fixed
+amount. It is charged to the payer on top of the due, so NURTW settles the full due.
+
+**Answered on.** 22 September 2026. **Answered by.** Relayed by the project owner from a
+conversation with NURTW; the Union official is to be named (PAY-09).
+**Recorded at.** PRD §2.3 (revision 1.2), §27, §23.20.
+
+### PAY-02 · Amounts ✅
+
+**Question.** What is each of the following: the sticker or onboarding fee, the yearly
+membership fee, the monthly levy, and the contractor's fixed amount on each split payment?
+Do any of them vary by vehicle category (bus, shuttle, truck, tricycle)?
+
+**Answer.** Launch amounts, set by the owner and editable in settings, with every change
+audited:
+
+| Fee | Amount |
+|---|---|
+| Sticker — reattachment | ₦2,000 |
+| Sticker — new | ₦2,000 |
+| Monthly levy | ₦5,000 per vehicle per month, for every category until per-category figures are set |
+| Yearly membership | ₦30,000 |
+
+These are **not placeholders**, so live charging is permitted. The contractor's fee is
+settled at PAY-10.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 27.2.
+
+### PAY-03 · What each due is charged against ✅
+
+**Question.** Is the monthly levy charged per vehicle or per member, and is the membership
+fee charged per member? Do dues follow calendar months and years, or run from the date of
+onboarding?
+
+**Note.** The levy varies by vehicle category (PAY-02), which implies it is charged **per
+vehicle**. That is the working assumption, pending confirmation. The calendar question is
+still open.
+
+**Answer.** Adopted recommendation:
+
+- **The levy** is charged per vehicle, per calendar month. It falls due on the 1st, starting
+  with the month **after** the vehicle is onboarded, with no proration.
+- **The membership fee** is charged per member and covers **12 months from the date it is
+  paid**, matching the card's twelve-month validity (CARD-04). It first falls due on
+  approval, or on the go-live date for a member migrated before it.
+**Answered on.** 22 September 2026. **Answered by.** Project owner, adopting the recommendation (“use a recommendation for the others, do not ask me again”).
+**Recorded at.** PRD Requirement 27.13.
+
+### PAY-04 · Arrears and legacy balances ✅
+
+**Question.** Does a member owe levy for months before they were onboarded? The Transpay
+export holds wallet balances and amounts owed. Should those be honoured, or does everyone
+start clean?
+
+**Proposed.** Start clean at onboarding. Legacy wallets stay unmigrated, as MIG-01 decided.
+
+**Answer.** **Everyone starts clean.** Nothing is owed for any period before the dues start
+dates in PAY-03. Legacy wallet balances and amounts owed are neither honoured nor migrated
+(MIG-01). Unpaid dues accumulate from those start dates onwards.
+**Answered on.** 22 September 2026. **Answered by.** Project owner, adopting the recommendation (“use a recommendation for the others, do not ask me again”).
+**Recorded at.** PRD Requirement 27.13.
+
+### PAY-05 · What non-payment does ✅
+
+**Question.** If a member falls behind on the membership fee or the levy, does anything
+change: card status, sticker status, or the verification result?
+
+**Answer.** **Unpaid dues show on an internal scan or search, and nowhere else.** They never
+appear through the external API or the public page; they exist for the System's own users.
+They are shown alongside the verification result, not in place of it.
+
+**Card renewal** (adopted recommendation, 22 September 2026). Renewing a card does not
+require the membership fee to be paid. The officer issuing the card sees the member's dues
+status on the issuance screen instead.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 27.8, §23.20.
+
+### PAY-06 · How members pay ✅
+
+**Question.** Where does a member pay: a payment link, a self-service member page, a POS
+terminal, or a bank transfer?
+
+**Answer.** **Through a dedicated virtual account, or a payment link.** Either way, a payment
+counts only once Paystack confirms it, never on the payer's word. PAY-11 covers how
+dedicated-account money settles.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 27.7, §23.20.
+
+### PAY-07 · Paystack fees and the NURTW subaccount ✅
+
+**Question.** On split payments, who bears Paystack's processing fee: the contractor, the
+NURTW subaccount, or the payer, on top of the amount? Has the NURTW subaccount already been
+created (a code beginning `ACCT_`), or should it be created from NURTW's settlement bank
+details?
+
+**Answer.** **The payer bears it.** The processing fee is added on top of the due (PAY-10).
+**The NURTW account is added from settings**, not supplied in advance, and **stays editable
+after it is set.** The first save creates the Paystack subaccount. Later saves update that
+same subaccount in place, so existing dedicated accounts and payment links keep working.
+Who may make that change is PAY-13.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 27.12.
+
+### PAY-08 · Refunds and receipts ✅
+
+**Question.** Who may approve a refund, and in what circumstances? What does a receipt show,
+and is it sent by SMS or email, or printed?
+
+**Answer.** Adopted recommendation:
+
+- **Refunds** cover only a failed service, a duplicate payment, or a payment made against the
+  wrong member or vehicle.
+  - They are made through Paystack's refund API by a holder of a new `payment.refund`
+    permission, held by the super administrator alone unless granted.
+  - A reason is mandatory, and the refund is recorded as a reversing ledger entry.
+  - The due is refunded; the processing fee is not.
+- **Receipts** are issued for every confirmed payment as a downloadable PDF. Each shows:
+  - a receipt number, the payer, and what was paid for (the due and its period)
+  - the due, the processing fee, and the total
+  - the Paystack reference and the date
+
+  Paystack's own email receipt goes to the payer where an email address is held. SMS
+  receipts are deferred, because no SMS provider is in the stack.
+**Answered on.** 22 September 2026. **Answered by.** Project owner, adopting the recommendation (“use a recommendation for the others, do not ask me again”).
+**Recorded at.** PRD Requirement 27.14.
+
+### PAY-09 · Who gave the 22 September direction ✅
+
+**Question.** Which Union official gave the direction recorded at VEH-13 and PAY-01, and on
+what date?
+
+**Why it is needed.** PRD §2.3 requires any reintroduction of billing to be a revision of
+the PRD approved by the Union. That approval must be recorded with a name and a date.
+
+**Answer.** **Revision 1.2 is approved by the project owner**, who relayed the Union's
+direction and has directed that the work proceed without further questions. No Union
+official is named. The approval stands on the same footing as the determinations of
+9 September 2026, which were also the project owner's.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD §2.3.
+
+### PAY-10 · The processing fee and the contractor's fee ✅
+
+**Question.** (Volunteered by the owner.) How is the contractor paid on each payment, and
+who covers Paystack's charge?
+
+**Answer.** Work out what Paystack will take, add a small contractor fee, and charge the
+payer the total. The payment records exactly the due it pays for, with the fee shown as its
+own line. **The contractor's fee is 0.5 per cent of the due, capped at ₦200**, matching what
+bank-transfer top-ups already charge. The owner's worked figures:
+
+| Due | Payer pays | Fee shown | Paystack takes | Contractor keeps |
+|---|---|---|---|---|
+| ₦1,000 | ₦1,021 | ₦21 | ₦15.31 | ₦5.68 |
+| ₦5,000 | ₦5,204 | ₦204 | ₦178.06 | ₦25.94 |
+| ₦10,000 | ₦10,305 | ₦305 | ₦254.57 | ₦50.42 |
+| ₦50,000 | ₦51,066 | ₦1,066 | ₦865.99 | ₦200.01 |
+| ₦100,000 | ₦101,828 | ₦1,828 | ₦1,627.42 | ₦200.58 |
+| ₦500,000 | ₦502,200 | ₦2,200 | ₦2,000.00 | ₦200.00 |
+
+**Reproduced exactly** by this rule, which is PRD Requirement 27.3:
+
+- contractor fee = min(0.5% of the due, ₦200)
+- total = the smallest whole naira such that (total − Paystack's fee on the total) is at
+  least (due + contractor fee)
+- Paystack's local checkout fee is 1.5% + ₦100, with the ₦100 waived below ₦2,500, capped at
+  ₦2,000
+
+Rounding up to the whole naira is what leaves the contractor a few kobo over its fee. Every
+parameter is a runtime setting, because Paystack changes its pricing.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 27.3, §23.20.
+
+### PAY-11 · How dedicated-virtual-account money settles ✅
+
+**Question.** With a payment link, the System sets the amount and the split on every payment,
+so PAY-10 applies exactly. With a dedicated virtual account, the member sends whatever they
+choose, whenever they choose. Paystack can apply only a **fixed** split to such an account.
+It cannot apply the ₦200 cap, cannot add the fee on top, and cannot tell a sticker fee (all
+to the contractor) from a due (split with NURTW). Which of these should apply?
+
+- **A. Split at Paystack, straight to the NURTW subaccount.** Union money never passes
+  through the contractor. Dedicated-account payments follow a fixed percentage rather than
+  the exact PAY-10 figures. Sticker fees are then paid by payment link only.
+- **B. Settle to the contractor's account.** The System credits the member and pays NURTW's
+  share out by Paystack Transfer on a schedule. PAY-10 applies exactly, to any fee type. The
+  contractor holds Union money between settlement and payout, which needs the Union's
+  written agreement.
+
+**Answer.** **A.** Dedicated-account money splits at Paystack straight to the NURTW
+subaccount at a fixed percentage, and the contractor never holds Union funds. **NURTW dues
+may be paid by dedicated account or by payment link. A sticker fee is always paid by
+payment link.**
+
+**Operational notes.** Dedicated-account pricing must be confirmed from the Paystack
+dashboard, because it is priced separately from checkout. Dedicated accounts must also be
+enabled on the Paystack business, which is done on request.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 27.7, §23.20.
+
+### PAY-12 · Allocating a dedicated-account payment across dues ✅
+
+**Question.** A member sends money to their dedicated account without saying what it is
+for. It may cover their membership fee and the levy on several vehicles. Which dues does it
+pay first?
+
+**Answer.** **Oldest outstanding due first**, with any remainder held as credit against the
+next due to fall, as proposed. The order is a setting.
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 27.7, §23.20.
+
+### PAY-13 · Who may change the NURTW settlement account ✅
+
+**Question.** Changing the NURTW bank account in settings redirects every naira of the
+Union's dues (PAY-07). Who may do it? And once the account has first been set, should any
+later change need a second administrator to approve it?
+
+**Answer.** **A dedicated permission, held by the super administrator alone unless
+expressly granted**, with the password re-entered to make the change, as proposed. **No
+second approver.** The control is proper audit logs instead:
+
+- a mandatory reason on every change
+- full before and after values (bank, account number, account name, subaccount code)
+- actor, IP address, and request id
+- failed attempts recorded as well as successful ones
+- the change history shown on the settings page itself
+**Answered on.** 22 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 27.12, §23.20.
+
+---
+
+## 12. Deferred by the Union
 
 ### GOV-04 · Lawful basis for cross-border transfer 🔒
 
@@ -665,7 +1114,7 @@ rather than an engineering task, and it gates no implementation work.
 
 ---
 
-## 12. Answered
+## 13. Answered
 
 All determined on **9 September 2026** by the project owner unless noted. Each is binding;
 where an implementation plan appears to require a different answer, the discrepancy is
@@ -694,7 +1143,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 |---|---|---|---|
 | CARD-01 | Do cards and stickers expire? | **Configurable validity per template**, which may be *none*. Renewal can be introduced later without a migration. | PRD §23.5 |
 | CARD-02 | What format are the numbers? | **Opaque but memorable, with an authenticity signature.** Human-readable identifiers use a grouped, unambiguous alphabet suitable for dictation; QR payloads additionally carry a cryptographic signature. | PRD §23.6, §26 |
-| CARD-03 | Are the existing QR codes still honoured? | **Yes — resolved as fully equivalent.** Legacy barcodes are millisecond timestamps and forgeable by inspection; the risk was accepted to preserve 2,408 stickers already in the field. Read-only: no route can mint one. Which scheme resolved each verification is recorded. | PRD §26.4 |
+| CARD-03 | Are the existing QR codes still honoured? | **Yes — resolved as fully equivalent.** Legacy barcodes are millisecond timestamps and forgeable by inspection; the risk was accepted to preserve 2,408 stickers already in the field. Read-only: no route can mint one. Which scheme resolved each verification is recorded. **Superseded in part by VEH-13 (22 September 2026):** a legacy barcode now resolves only after it has been reattached; PRD §26.4 revision pending. | PRD §26.4 |
 
 ### Vehicles
 
@@ -734,10 +1183,12 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 ---
 
-## 13. Change log
+## 14. Change log
 
 | Date | Change |
 |---|---|
+| 22 September 2026 (close) | Launch amounts set by the owner: stickers ₦2,000 (both), levy ₦5,000 a month, membership ₦30,000 a year (PAY-02, VEH-20). The owner directed that every remaining question in this thread be settled by recommendation, with no further questions. VEH-18, VEH-19, VEH-22, PAY-03, PAY-04, PAY-08, and PAY-05's renewal point were closed that way, each marked “adopting the recommendation”. PAY-09: revision 1.2 is approved by the project owner. No PAY question remains open. |
+| 22 September 2026 | Direction relayed by the project owner from a conversation with NURTW, covering legacy stickers, onboarding, what counts as a vehicle, and payments. Recorded as **VEH-13** and **PAY-01**. It supersedes CARD-03 in part and reverses PRD §2.2's exclusion of revenue collection, so a PRD revision is required. New questions VEH-14–20 and PAY-02–09. Fee types are to be data, not code, so more can be added without a deploy. Later the same day, the owner answered VEH-14–17, PAY-05 and PAY-06, and parts of PAY-02 and PAY-07. PAY-10 records the contractor-fee formula (0.5 per cent capped at ₦200, payer-borne), checked against the owner's worked table. New questions VEH-21, VEH-22 and PAY-11. PRD revised to 1.2 (§2.3, §9A, §13, §23.19–23.20, §26.4, §27). Then: PAY-11 answered (A — dues by dedicated account or link, stickers by link only); PAY-07 answered (the NURTW account is added and changed from settings); VEH-15 corrected (Transpay has stopped) and VEH-21 answered (the register is closed). VEH-20 reworded in plain terms and made a settings change. New questions PAY-12 and PAY-13, both then answered: oldest due first; the super administrator alone changes the settlement account, with no second approver and a full audit trail. |
 | 17 September 2026 | CARD-06 answered ("Safety and Unity") and applied to the template. CARD-05 partly answered: the Union emblem supplied and embedded as a card watermark. Added `SEED_DEMO_DATA=true` to `apps/api/prisma/seed.ts`: real zones for all 21 LGAs (unconditional, per ORG-05), plus a demo branch/unit under each and an 8-entry demo designation list (both gated behind the flag, clearly marked as placeholder, not a Union answer) — so a demo deployment can complete a registration and issue a card. CARD-07 (signature images) and the rest of CARD-05 (full artwork) were deliberately not stood in for; see §3. |
 | 14 September 2026 | Answers received from Mr Timothy, Head of Operations. MEM-05 and CARD-04 answered in full; ORG-05, MEM-06, and CARD-07 partly answered; new VEH-12 recorded (vehicle onboarding and legacy-sticker rebinding) with the pre-existing sticker URL format for items 07–08. Card template `v1-provisional` now carries a twelve-month validity; guarantor is no longer required to register an application. |
 | 9 September 2026 | Register created. 26 answered, 43 awaiting, 1 deferred. ORG-05 and ORG-06 identified as blocking item 05. |
