@@ -9,6 +9,7 @@ import { MasterDataModule } from './master-data/master-data.module.js';
 import { MediaModule } from './media/media.module.js';
 import { MembershipModule } from './membership/membership.module.js';
 import { OrganisationModule } from './organisation/organisation.module.js';
+import { PaymentsModule } from './payments/payments.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { SettingsModule } from './settings/settings.module.js';
 import { VehicleModule } from './vehicle/vehicle.module.js';
@@ -37,6 +38,7 @@ import { VehicleModule } from './vehicle/vehicle.module.js';
     CardModule,
     MediaModule,
     VehicleModule,
+    PaymentsModule,
   ],
 })
 export class AppModule {}

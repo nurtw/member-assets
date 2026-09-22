@@ -34,12 +34,16 @@ describe('permission catalogue', () => {
     }
   });
 
-  it('enables step-up on nothing yet', () => {
-    // Decision 9.7.3 — the capability is built but not enabled, and
+  it('enables step-up only for changing the NURTW settlement account', () => {
+    // Decision 9.7.3 — the capability is built but almost nothing enables it;
     // vehicle.declare was expressly determined not to require it.
-    for (const permission of PERMISSIONS) {
-      expect(permission).not.toHaveProperty('requiresStepUp', true);
-    }
+    // PAY-13 is the one exception: password re-entry to change the account
+    // every due settles to, in place of a second approver.
+    const stepUpPermissions = PERMISSIONS.filter(
+      (permission) => permission.requiresStepUp === true,
+    ).map((permission) => permission.code);
+
+    expect(stepUpPermissions).toEqual(['payment.manage_settlement']);
   });
 });
 

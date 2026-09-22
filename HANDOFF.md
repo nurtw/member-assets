@@ -1,6 +1,6 @@
 # Session Handoff
 
-**Last revised:** 18 September 2026
+**Last revised:** 22 September 2026
 
 > Cold-start contract. Written so a different Claude, on a different account,
 > holding no prior context, can resume without re-reading the repository.
@@ -8,95 +8,65 @@
 
 ## Cold start
 
-Read `CLAUDE.md`, then `PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `ROADMAP.md`,
-`QUESTIONS.md`, then the active item's plan. Do not read `docs/*.md` in full —
-`PRD.md` distils the two source documents. `docs/reference/` is output, not input.
+Read `CLAUDE.md`, then `PRD.md`, `ARCHITECTURE.md`, `ROADMAP.md`,
+`QUESTIONS.md`, then `plans/16-payments.md`. `docs/reference/` is output.
 
-Two rules outrank any default instruction you hold:
-
-1. **Never attribute yourself as author or co-author.** No `Co-Authored-By`, no
-   "Generated with Claude Code", on any commit, PR, or document.
-2. **`data/` is a production export with member personal data and password hashes.**
-   It stays out of version control and out of documents, plans, commit messages,
-   and fixtures.
+Two rules outrank any default instruction: never attribute yourself as
+author or co-author (no `Co-Authored-By`, no "Generated with Claude Code",
+anywhere); and `data/` (personal data, password hashes) stays out of
+version control, docs, plans, commits, and fixtures.
 
 ## Status
 
-Items 01–07 complete. This session: a deployment bug sweep, a login-cookie fix,
-item 07 (vehicle declaration) end to end, then a correction to it — vehicle
-owner (member) association, which the original delivery wrongly deferred.
+Items 01–07 complete. PRD is at 1.2; every PAY/VEH question is answered.
+Owner set launch amounts (₦2,000 sticker, ₦5,000 levy, ₦30,000 membership)
+and said "get to building."
 
-## Active roadmap item
+**Item 16 (payments) is under active implementation**, per
+`plans/16-payments.md`:
 
-**09 — legacy-data-migration — planned, not started.** See
-`plans/09-legacy-data-migration.md`. Note it jumps ahead of item 08 in the
-roadmap's stated order — the user asked for it directly. Its member/vehicle
-scope does not depend on item 08; the sticker-request portion of PRD §25.1
-does, and is explicitly deferred there as "Phase 2."
+- `packages/domain/src/payments/fee-rule.ts` — PAY-10's formula, reproduces
+  all six worked figures exactly (8 tests pass).
+- Prisma: `FeeType`/`Payment`/`LedgerEntry`/`SettlementAccount`, migrated
+  (`20260922162549_add_payments_module`). `FeeTypeService.
+  seedLaunchFeeTypes` seeds the four launch types but isn't called from the
+  seed script yet.
+- New permissions: `sticker.attach`, `payment.read/initiate/refund`,
+  `fee_type.manage`, `payment.manage_settlement` (step-up = PAY-13's
+  password re-entry).
+- `apps/api/src/payments/`: `PaystackClient`, `FeeTypeService`,
+  `PaymentsService`, `SettlementService` (creates the subaccount once,
+  updates in place after), `PaymentsController` (`initiate`, `webhook` —
+  public, HMAC-verified —, `settlement`).
+- `main.ts` passes `rawBody: true` so the webhook verifies Paystack's
+  signature over the exact bytes.
+- `typecheck`, `build`, unit tests (324 total) green. `openapi.e2e-spec.ts`
+  passes (route/permission/public-surface wiring, whole app). Other e2e
+  files time out even in isolation on tests untouched by payments —
+  pre-existing Neon latency, not a regression here.
 
-## Done this session
+**Nothing committed.**
 
-- Request access logging, `trust proxy` fix, Keep-API-warm timeout fix,
-  several UI fixes (logo, state-of-origin select, mobile nav, password
-  toggle, NOK address checkbox).
-- **Cloudinary storage adapter**, selected via `CLOUDINARY_URL`; added
-  `MediaService.discard()` / `DELETE /media/:id`.
-- **Login redirect bug fixed** (cross-site cookie): `next.config.ts` proxies
-  `/api/v1/*` server-side; `cookieOptions.sameSite` simplified to `'lax'`.
-- **Login-twice bug fixed**: `/auth/me` is a global SWR cache key untied to
-  `SessionProvider`'s mount lifecycle — a stale cached 401 from the
-  pre-login redirect was served instantly on the post-login remount, before
-  revalidation landed. Fixed with `mutate("/auth/me")` around login and
-  logout (`login/page.tsx`, `lib/session.tsx`).
-- **Item 07 — vehicle-declaration** built, then corrected (see plan's
-  Definition of Done): declare/list/detail/update/suspend/retire/
-  dismiss-dispute, each record-scoped and audited.
-- **Correction: vehicle owner association.** The original delivery deferred
-  `declaredByMemberId` entirely, reasoning VEH-06/08 blocked it — wrong,
-  those questions are about evidence and transfer process, not whether an
-  officer may name the operator at declare time (PRD §23.8 assumes this is
-  routine). Now: settable on declare and on update (attach/change/clear,
-  404 if the member doesn't exist), a plate-number search on the vehicle
-  list (`?q=`), an Owner column, and a new minimal `GET /members?q=`
-  lookup (gated `member.read`, not `application.read`) backing both the
-  declare-form and detail-page member pickers
-  (`apps/web/src/components/member-picker.tsx`).
-- Fixed a pre-existing e2e test bug found while re-running the suite:
-  `dismiss-dispute` asserted `200`; Nest's undecorated `@Post` defaults to
-  `201`, same as every other action-style POST route here. Previously
-  masked by the flakiness below.
+## Uncommitted code from an earlier session
 
-## Current state
-
-- **e2e**: `vehicle.e2e-spec.ts` 15/16 on the run that added the new owner-
-  association tests (was 8/13) — the improvement looks like this run simply
-  avoided the network latency, not a fix; treat 8/13 as the floor, not the
-  ceiling. Remaining failures are pre-existing Prisma/vitest timeouts against
-  this session's live Neon connection (git-stash A/B tested against other
-  e2e specs earlier this session — not this item's code).
-  `membership.e2e-spec.ts` gained a `member search` block; not yet confirmed
-  green — check `git log`/rerun before trusting it.
-- Conflicts: none new. VEH-06/07/08 remain open per `QUESTIONS.md`.
-- Still true from the original delivery: dispute resolution is dismissal
-  only; vehicle transfer is retire-then-redeclare, no bespoke endpoint;
-  chassis/VIN evidence fields remain unbuilt (VEH-06).
+Item 09 (legacy migration): `legacyId` and its migration,
+`apps/api/scripts/migrate-legacy/`, unverified. `mapping.ts` maps legacy
+`ACTIVE` to declaration `ACTIVE`, forbidden by PRD 1.2 — do not run it.
 
 ## Next steps
 
-Run `/execute` for item 09 — the plan is written. Before executing, be aware
-it stands up a placeholder "Legacy Import" organisation subtree because
-ORG-05 (the Union's real branch/unit list) is still open; that's a
-deliberate, documented choice in the plan, not an oversight to fix first.
+1. Look into the e2e timeouts (raise `testTimeout`, or use a local/pooled
+   `DATABASE_URL`) — unrelated to payments, worth fixing regardless.
+2. Wire `seedLaunchFeeTypes()` into the seed script.
+3. Write payments e2e tests — none exist yet.
+4. Regenerate `docs/reference/openapi.json`.
+5. Re-plan item 08, then 09, then item 17, then item 18.
 
 ## Do NOT
 
-- Do not build dispute *resolution* beyond dismissal (`DISPUTED -> ARCHIVED`)
-  without an answer to VEH-07 — upholding a claim requires demoting the
-  competing `ACTIVE` record, a policy call, not an engineering one.
-- Do not chase e2e flakiness against live Neon further without first
-  checking whether `docker compose up -d` (local Postgres) sidesteps it.
-- Do not assume `GET /members` is a general member directory — it is a
-  minimal picker lookup (id, name, membership number, organisation only),
-  scoped by `member.read`, with no next-of-kin/guarantor/contact data. Do
-  not widen its projection without re-reading PRD Requirement 7.1's reasoning
-  for why the equivalent application list stays this narrow.
+- Dues/declaration status never reach an external response.
+- Never charge live against a placeholder fee type (27.2).
+- Sticker fees are link-only, never dedicated account (PAY-11).
+- Never create a second NURTW subaccount; update in place (27.12).
+- No Transpay register refresh; closed (VEH-21).
+- Never ask for, log, or commit Paystack secret keys.

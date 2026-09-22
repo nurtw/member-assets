@@ -24,6 +24,15 @@ export interface Environment {
    * runtime; Prisma 7 no longer reads it from the schema.
    */
   readonly databaseUrl: string;
+  /**
+   * Paystack secret key (PRD Requirement 27.10). Held only by the API, read
+   * from the environment, and never logged. `undefined` when payments are
+   * not configured for this deployment — `PaystackClient` fails loudly on
+   * first use rather than at boot, since not every environment runs the
+   * payments module.
+   */
+  readonly paystackSecretKey: string | undefined;
+  readonly paystackBaseUrl: string;
 }
 
 class EnvironmentError extends Error {
@@ -80,6 +89,9 @@ export function loadEnvironment(): Environment {
     corsOrigins: readList('CORS_ORIGINS'),
     maxRequestBodyBytes: 1_000_000,
     databaseUrl: readRequired('DATABASE_URL'),
+    paystackSecretKey: process.env.PAYSTACK_SECRET_KEY?.trim() || undefined,
+    paystackBaseUrl:
+      process.env.PAYSTACK_BASE_URL?.trim() || 'https://api.paystack.co',
   };
 }
 

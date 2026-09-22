@@ -10,6 +10,11 @@ data/*
 *.csv
 !data/README.md
 
+# Legacy migration reconciliation reports (item 09) — generated from a live
+# run against `data/`, carries legacy row ids and plate numbers. Not secret
+# the way `data/` is, but a generated artifact of a specific run, not source.
+.migration-reports/
+
 # Secrets
 .env
 .env.*

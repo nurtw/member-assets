@@ -74,6 +74,7 @@ describe('API reference (e2e)', () => {
       'GET /api/v1/media/:id/content',
       'POST /api/v1/auth/login',
       'POST /api/v1/auth/logout',
+      'POST /api/v1/payments/webhook',
     ]);
   });
 

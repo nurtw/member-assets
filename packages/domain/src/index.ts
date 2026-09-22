@@ -125,3 +125,13 @@ export {
   isDeclarationLive,
   type DeclarationStatus,
 } from './vehicle/status.js';
+
+export {
+  DEFAULT_FEE_SCHEDULES,
+  calculateContractorFee,
+  calculateFees,
+  type ContractorFeeRule,
+  type FeeCalculationInput,
+  type FeeCalculationResult,
+  type PaystackFeeSchedule,
+} from './payments/fee-rule.js';

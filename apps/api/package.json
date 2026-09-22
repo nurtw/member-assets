@@ -13,7 +13,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "oxlint src/ test/",
+    "lint": "oxlint src/ test/ scripts/",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -26,6 +26,7 @@
     "db:status": "prisma migrate status",
     "db:studio": "prisma studio",
     "db:seed": "node --experimental-strip-types --env-file=.env prisma/seed.ts",
+    "migrate:legacy": "node --experimental-strip-types --env-file=.env scripts/migrate-legacy/index.ts",
     "docs:openapi": "nest build && node --env-file=.env dist/docs/generate-openapi.js"
   },
   "dependencies": {
@@ -37,6 +38,7 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "cloudinary": "^2.11.0",
+    "csv-parse": "^7.0.2",
     "dotenv": "^17.4.2",
     "pdf-lib": "^1.17.1",
     "pg": "^8.23.0",

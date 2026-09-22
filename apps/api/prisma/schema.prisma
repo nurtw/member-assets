@@ -303,6 +303,12 @@ model Member {
   passportPhotoId String? @unique @map("passport_photo_id") @db.Uuid
   signatureId     String? @unique @map("signature_id") @db.Uuid
 
+  /// Item 09 — the legacy `drivers.csv` row id this member was migrated
+  /// from. The idempotency key for the migration script: a rerun upserts by
+  /// this rather than creating a duplicate. Null for every member created
+  /// through the registration flow.
+  legacyId String? @unique @map("legacy_id")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -619,6 +625,11 @@ model Vehicle {
   /// audit trail from an operator declaration.
   isLegacyImport Boolean @default(false) @map("is_legacy_import")
 
+  /// The legacy `vehicles_full.csv` row id this declaration was migrated
+  /// from — the migration script's idempotency key, same reasoning as
+  /// `Member.legacyId`. Null for every declaration made through the API.
+  legacyId String? @unique @map("legacy_id")
+
   /// Internal operational notes. PRD §9.1 — never exposed through verification.
   notes String?
 
@@ -734,6 +745,7 @@ model User {
   stickersIssued        Sticker[]
   auditEvents           AuditEvent[]
   sessions              UserSession[]
+  paymentsInitiated     Payment[]
 
   @@map("user")
 }
@@ -1105,4 +1117,185 @@ model SystemSetting {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("system_setting")
+}
+
+// ---------------------------------------------------------------------------
+// Payments (PRD §27, revision 1.2)
+// ---------------------------------------------------------------------------
+
+/// A fee is charged once (a sticker) or on a schedule (levy, membership).
+enum FeeRecurrence {
+  ONE_OFF
+  MONTHLY
+  YEARLY
+}
+
+/// PRD Requirement 27.1 — what the fee is charged against, not who pays it:
+/// the levy is charged per vehicle even though a member's card settles it.
+enum ChargedAgainst {
+  MEMBER
+  VEHICLE
+}
+
+/// PRD Requirement 27.4 — a sticker fee goes wholly to the contractor; a due
+/// splits, part settling to the NURTW subaccount.
+enum FeeSettlement {
+  CONTRACTOR_ONLY
+  SPLIT_WITH_NURTW
+}
+
+/// PRD Requirement 27.7 / PAY-11 — a sticker fee is link-only; NURTW dues may
+/// use either. The channel actually used is recorded on the payment, not
+/// inferred from the fee type, because a Union due can go either way.
+enum PaymentChannel {
+  LINK
+  DEDICATED_ACCOUNT
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  REFUNDED
+}
+
+/// PRD Requirement 27.9 — the ledger is append-only; a refund is a new DEBIT
+/// row, never an edit to the original CREDIT.
+enum LedgerDirection {
+  CREDIT
+  DEBIT
+}
+
+/// Fee types are data, not code (Requirement 27.1). Adding one, or re-pricing
+/// an existing one, is a settings change — never a deployment.
+model FeeType {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Stable machine code, e.g. "STICKER_REATTACHMENT". Referenced by payments;
+  /// never repurposed once issued against a real payment.
+  code  String @unique
+  label String
+
+  /// Requirement 27.2 — the launch amounts are NOT placeholders and may be
+  /// charged live; a later fee type may set `isPlaceholder` to block that.
+  amountKobo Int @map("amount_kobo")
+
+  recurrence     FeeRecurrence
+  chargedAgainst ChargedAgainst @map("charged_against")
+  settlement     FeeSettlement
+
+  active        Boolean @default(true)
+  isPlaceholder Boolean @default(false) @map("is_placeholder")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  payments Payment[]
+
+  @@map("fee_type")
+}
+
+/// A single charge against a member or a vehicle. `subjectType`/`subjectId`
+/// avoid a foreign key to either table directly, because a fee type can be
+/// charged against either (Requirement 27.1) and the set of subjects a fee
+/// can apply to must stay a data question, not a schema one.
+model Payment {
+  id String @id @default(uuid()) @db.Uuid
+
+  feeTypeId   String @map("fee_type_id") @db.Uuid
+  subjectType String @map("subject_type")
+  subjectId   String @map("subject_id") @db.Uuid
+
+  /// The due itself, before any fee (Requirement 27.3). Snapshotted from the
+  /// fee type's amount at initiation, so a later re-price never changes what
+  /// an in-flight payment asked for.
+  dueKobo Int @map("due_kobo")
+
+  /// Requirement 27.3 — the contractor's fee, shown to the payer as its own
+  /// line. Zero for a dedicated-account payment (PAY-11 uses a fixed Paystack
+  /// percentage there, not this formula).
+  contractorFeeKobo Int @map("contractor_fee_kobo")
+
+  /// What the payer was asked to pay. Equal to `dueKobo` for a
+  /// dedicated-account credit, where the member chooses the amount.
+  totalChargedKobo Int @map("total_charged_kobo")
+
+  channel PaymentChannel
+  status  PaymentStatus @default(PENDING)
+
+  /// Paystack's transaction reference. Unique so a webhook retry, or a
+  /// server-side verification race with the webhook, can never confirm the
+  /// same payment twice (Requirement 27.5).
+  paystackReference String @unique @map("paystack_reference")
+
+  /// Recorded once Paystack settles, for the loss-detection check at
+  /// Requirement 27.6 (expected fee vs. what Paystack actually took).
+  paystackFeeKobo Int? @map("paystack_fee_kobo")
+
+  initiatedByUserId String?   @map("initiated_by_user_id") @db.Uuid
+  confirmedAt       DateTime? @map("confirmed_at")
+  refundedAt        DateTime? @map("refunded_at")
+  refundReason      String?   @map("refund_reason")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  feeType         FeeType @relation(fields: [feeTypeId], references: [id], onDelete: Restrict)
+  initiatedByUser User?   @relation(fields: [initiatedByUserId], references: [id], onDelete: SetNull)
+
+  ledgerEntries LedgerEntry[]
+
+  @@index([subjectType, subjectId])
+  @@index([status])
+  @@index([feeTypeId])
+  @@map("payment")
+}
+
+/// Append-only (Requirement 27.9). A correction or a refund is a new DEBIT
+/// row referencing the same payment — never an update or a delete.
+model LedgerEntry {
+  id String @id @default(uuid()) @db.Uuid
+
+  paymentId   String          @map("payment_id") @db.Uuid
+  direction   LedgerDirection
+  amountKobo  Int             @map("amount_kobo")
+  description String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@map("ledger_entry")
+}
+
+/// The NURTW settlement account (Requirement 27.12). A singleton: the row
+/// with `isActive = true` is the one dues currently split to. Saving a
+/// change updates the *same* Paystack subaccount in place — never a second
+/// row's `subaccountCode` — so dedicated accounts and payment links already
+/// issued keep settling correctly. History is not modelled here: it lives in
+/// `AuditEvent` (subjectType "settlement_account"), which already carries
+/// actor, before/after, reason, IP address, and failed attempts.
+model SettlementAccount {
+  id String @id @default(uuid()) @db.Uuid
+
+  bankCode      String @map("bank_code")
+  bankName      String @map("bank_name")
+  accountNumber String @map("account_number")
+
+  /// Resolved from Paystack and shown to the administrator for confirmation
+  /// before saving (Requirement 27.12) — never free-typed.
+  accountName String @map("account_name")
+
+  /// The one Paystack subaccount every NURTW due settles a share to. Created
+  /// on the first save; every later save updates this same code's bank
+  /// details at Paystack rather than minting a new subaccount.
+  subaccountCode String @unique @map("subaccount_code")
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settlement_account")
 }

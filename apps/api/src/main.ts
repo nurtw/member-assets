@@ -37,6 +37,12 @@ async function bootstrap(): Promise<void> {
     // Request bodies are capped per PRD §14.3. Applied at creation so it holds
     // for every route, including any added later without thinking about it.
     bodyParser: true,
+    // Preserves the exact request bytes on `request.rawBody` alongside the
+    // normally parsed `request.body`. The Paystack webhook (Requirement
+    // 27.5) needs the untouched bytes to verify `x-paystack-signature`;
+    // re-serialising the parsed JSON would not reproduce Paystack's own
+    // byte-for-byte encoding and would make every signature check fail.
+    rawBody: true,
   });
 
   /**

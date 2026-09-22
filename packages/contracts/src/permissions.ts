@@ -119,6 +119,42 @@ export const PERMISSIONS = [
     code: 'sticker.manage_stock',
     description: 'Manage sticker stock and identifier generation',
   },
+  /**
+   * PRD §9A.2 / `QUESTIONS.md` VEH-18 — attaching a sticker to a vehicle is
+   * onboarding, and is deliberately distinct from `vehicle.declare`: a
+   * vehicle can be onboarded and declared by different people, in either
+   * order. Seeded into SUPER_ADMINISTRATOR alone, same reasoning as
+   * `vehicle.declare`.
+   */
+  {
+    code: 'sticker.attach',
+    description: 'Attach a sticker to a vehicle (onboarding)',
+  },
+
+  // Payments (PRD §27) ------------------------------------------------------
+  { code: 'payment.read', description: 'View payments and the ledger' },
+  {
+    code: 'payment.initiate',
+    description: 'Start a payment for a fee type (link or dedicated account)',
+  },
+  /** PRD Requirement 27.14 / PAY-08 — refunds are exceptional, not routine. */
+  {
+    code: 'payment.refund',
+    description: 'Refund a failed, duplicate, or wrong-subject payment',
+  },
+  { code: 'fee_type.manage', description: 'Create and amend fee types and their amounts' },
+  /**
+   * PRD Requirement 27.12 / PAY-13 — the single most valuable action in the
+   * System to an attacker, since it redirects every future due. Seeded into
+   * SUPER_ADMINISTRATOR alone. `requiresStepUp` is the password re-entry
+   * PAY-13 asked for; no second approver is required, so the audit trail
+   * (mandatory reason, before/after, failed attempts) is the control instead.
+   */
+  {
+    code: 'payment.manage_settlement',
+    description: 'Add or change the NURTW Paystack settlement account',
+    requiresStepUp: true,
+  },
 
   // Verification ----------------------------------------------------------------
   { code: 'verification.perform', description: 'Verify by plate, QR, or both' },
@@ -198,6 +234,14 @@ export const PERMISSION_CODES: readonly string[] = PERMISSIONS.map(
  * repeating the string, and so a search for it lands here.
  */
 export const DECLARE_PERMISSION = 'vehicle.declare' satisfies PermissionCode;
+
+/** PRD §9A.2 / VEH-18 — onboarding, distinct from `vehicle.declare`. */
+export const ATTACH_STICKER_PERMISSION =
+  'sticker.attach' satisfies PermissionCode;
+
+/** PRD Requirement 27.12 / PAY-13 — the settlement-account change permission. */
+export const MANAGE_SETTLEMENT_PERMISSION =
+  'payment.manage_settlement' satisfies PermissionCode;
 
 export interface RoleDefinition {
   readonly code: string;
@@ -335,6 +379,8 @@ export const SYSTEM_ROLES = [
       'aggregate.read',
       'organisation.read',
       'master_data.read',
+      'payment.read',
+      'payment.initiate',
     ],
   },
   {

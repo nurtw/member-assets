@@ -70,7 +70,9 @@ export {
 } from './scopes.js';
 
 export {
+  ATTACH_STICKER_PERMISSION,
   DECLARE_PERMISSION,
+  MANAGE_SETTLEMENT_PERMISSION,
   PERMISSIONS,
   PERMISSION_CODES,
   SYSTEM_ROLES,
@@ -142,3 +144,12 @@ export {
   type VehicleDetail,
   type VehicleSummary,
 } from './vehicle.js';
+
+export {
+  initiatePaymentSchema,
+  refundPaymentSchema,
+  setSettlementAccountSchema,
+  type InitiatePaymentInput,
+  type RefundPaymentInput,
+  type SetSettlementAccountInput,
+} from './payments.js';
