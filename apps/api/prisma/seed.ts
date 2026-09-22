@@ -12,6 +12,7 @@ import {
 } from '@nurtw/contracts';
 
 import { hashPassword } from '../src/auth/password-hashing.ts';
+import { LAUNCH_FEE_TYPES } from '../src/payments/launch-fee-types.ts';
 
 /**
  * Idempotent seed.
@@ -421,6 +422,22 @@ async function seedSystemSettings(): Promise<void> {
 }
 
 /**
+ * PRD Requirement 27.1/27.2 — fee types are data, and the launch amounts are
+ * not placeholders. Idempotent (`upsert` on `code`): re-running this never
+ * resets an amount a super administrator has since changed in settings.
+ */
+async function seedFeeTypes(): Promise<void> {
+  for (const feeType of LAUNCH_FEE_TYPES) {
+    await prisma.feeType.upsert({
+      where: { code: feeType.code },
+      create: feeType,
+      update: {},
+    });
+  }
+  console.log(`  fee types: ${LAUNCH_FEE_TYPES.length}`);
+}
+
+/**
  * Creates a super administrator, and only when the operator supplies both
  * credentials.
  *
@@ -486,6 +503,7 @@ async function main(): Promise<void> {
   await seedDemoOrganisation();
   await seedDemoDesignations();
   await seedSystemSettings();
+  await seedFeeTypes();
 
   await seedAdministrator();
 
