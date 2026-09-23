@@ -173,7 +173,11 @@ export default function VehicleDetailPage() {
           <Detail label="Colour" value={vehicle.color} />
           <Detail
             label="Declared"
-            value={new Date(vehicle.declaredAt).toLocaleDateString("en-GB")}
+            value={
+              vehicle.declaredAt
+                ? new Date(vehicle.declaredAt).toLocaleDateString("en-GB")
+                : "Not yet declared"
+            }
           />
           {vehicle.declaredByMember ? (
             <Detail

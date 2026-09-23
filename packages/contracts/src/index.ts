@@ -153,3 +153,12 @@ export {
   type RefundPaymentInput,
   type SetSettlementAccountInput,
 } from './payments.js';
+
+export {
+  attachStickerSchema,
+  issueStickerSchema,
+  setStickerStatusSchema,
+  type AttachStickerInput,
+  type IssueStickerInput,
+  type SetStickerStatusInput,
+} from './sticker.js';

@@ -72,7 +72,8 @@ describe('statuses', () => {
   it('matches the lifecycle sizes fixed by the PRD', () => {
     expect(CARD_STATUSES).toHaveLength(9); // PRD §8
     expect(STICKER_STATUSES).toHaveLength(9); // PRD §10
-    expect(DECLARATION_STATUSES).toHaveLength(6); // PRD §9
+    // PRD §9's original six, plus ON_RECORD (revision 1.2, §9A, Decision 6.5).
+    expect(DECLARATION_STATUSES).toHaveLength(7);
   });
 
   it('includes DAMAGED for stickers only', () => {

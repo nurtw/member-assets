@@ -87,6 +87,10 @@ enum StickerStatus {
 
 /// PRD §9 — six states.
 enum DeclarationStatus {
+  /// Revision 1.2, ARCHITECTURE.md Decision 6.5 — a migrated vehicle (item 09)
+  /// starts and stays here until `vehicle.declare` PROMOTES this row to
+  /// ACTIVE. Never created by the API's own declare path.
+  ON_RECORD
   PENDING
   ACTIVE
   SUSPENDED
@@ -618,7 +622,12 @@ model Vehicle {
   branchId           String?           @map("branch_id") @db.Uuid
   unitId             String?           @map("unit_id") @db.Uuid
   status             DeclarationStatus @default(PENDING)
-  declaredAt         DateTime          @default(now()) @map("declared_at")
+  /// Revision 1.2, ARCHITECTURE.md Decision 6.5 — nullable. `null` for an
+  /// `ON_RECORD` row: a migrated vehicle has never been declared, so there
+  /// is no date to record here. Stamped only when `vehicle.declare`
+  /// promotes the row to `ACTIVE` (a fresh declaration still stamps it
+  /// immediately, via the same default).
+  declaredAt DateTime? @default(now()) @map("declared_at")
 
   /// PRD §9.5 — declaration is a manual, permissioned act. The migration is the
   /// sole exception and marks its records so they remain distinguishable in the
@@ -667,8 +676,14 @@ model Vehicle {
 // ---------------------------------------------------------------------------
 
 model Sticker {
-  id        String        @id @default(uuid()) @db.Uuid
-  vehicleId String        @map("vehicle_id") @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Revision 1.2, Requirement 10.3 — nullable. A sticker may exist
+  /// unattached: freshly signed and not yet issued to a vehicle, or a
+  /// legacy barcode sitting on the imported Transpay register. Set exactly
+  /// once, at attachment, and never changed afterward (a sticker attaches
+  /// to at most one vehicle in its life, PRD §9A.4).
+  vehicleId String?       @map("vehicle_id") @db.Uuid
   status    StickerStatus @default(DRAFT)
 
   /// PRD §26.1–26.2 — opaque, non-sequential, carrying no personal data and no
@@ -688,10 +703,31 @@ model Sticker {
   /// 2,408 stickers already in the field.
   legacyBarcode String? @unique @map("legacy_barcode")
 
-  /// Plate recorded at issuance. PRD §26.3 — binding the sticker to a plate is
-  /// what detects a genuine sticker presented against another vehicle, which a
-  /// signature alone cannot do.
-  plateNumberAtIssue String @map("plate_number_at_issue")
+  /// Revision 1.2, Requirement 9A.3–9A.4 — for a legacy barcode only, the
+  /// plate the imported Transpay register binds it to. Set once at import
+  /// (item 09) and read-only thereafter: this is what a reattachment
+  /// attempt is checked against, with no override (VEH-16). `null` for a
+  /// freshly signed sticker, which carries no register entry at all.
+  registeredPlateNormalized String? @map("registered_plate_normalized")
+
+  /// Plate recorded at ATTACHMENT (renamed in meaning, not only in nullability,
+  /// by revision 1.2: previously stamped at issuance, when every sticker was
+  /// born attached). PRD §26.3 — binding the sticker to a plate is what
+  /// detects a genuine sticker presented against another vehicle, which a
+  /// signature alone cannot do. `null` until attached.
+  plateNumberAtIssue String? @map("plate_number_at_issue")
+
+  /// Revision 1.2, Requirement 9A.2/10.3 — when this sticker was attached.
+  /// `null` for an unattached sticker; set once and never cleared, since
+  /// attachment is a one-vehicle-in-its-life event, not a toggle.
+  attachedAt DateTime? @map("attached_at")
+
+  /// The confirmed Paystack payment that funded this attachment (Requirement
+  /// 9A.4's fourth condition). `@unique` so a payment reference can fund at
+  /// most one attachment — the same enforcement Requirement 9A.4 asks for
+  /// ("that reference has not been used before"), expressed as a
+  /// constraint rather than a query a caller could forget to run.
+  attachmentPaymentId String? @unique @map("attachment_payment_id") @db.Uuid
 
   issueDate  DateTime? @map("issue_date")
   expiryDate DateTime? @map("expiry_date")
@@ -704,13 +740,23 @@ model Sticker {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
-  replacementOf Sticker? @relation("StickerReplacement", fields: [replacementOfStickerId], references: [id])
-  replacedBy    Sticker? @relation("StickerReplacement")
-  issuedByUser  User?    @relation(fields: [issuedByUserId], references: [id], onDelete: SetNull)
+  vehicle           Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  attachmentPayment Payment? @relation(fields: [attachmentPaymentId], references: [id], onDelete: Restrict)
+  replacementOf     Sticker? @relation("StickerReplacement", fields: [replacementOfStickerId], references: [id])
+  replacedBy        Sticker? @relation("StickerReplacement")
+  issuedByUser      User?    @relation(fields: [issuedByUserId], references: [id], onDelete: SetNull)
 
+  /// PRD §9A.4 — at most one ATTACHED sticker per vehicle at a time. A
+  /// PARTIAL unique index, same technique as
+  /// `vehicle_one_active_declaration_per_plate`: `SUSPENDED` counts as
+  /// attached (an administrative hold, not a physical removal — see
+  /// `isStickerAttached` in `@nurtw/domain`), so the predicate covers both.
+  ///
+  ///     CREATE UNIQUE INDEX ... ON sticker (vehicle_id)
+  ///     WHERE status IN ('ACTIVE', 'SUSPENDED')
   @@index([vehicleId])
   @@index([status])
+  @@index([registeredPlateNormalized])
   @@map("sticker")
 }
 
@@ -1244,6 +1290,7 @@ model Payment {
   initiatedByUser User?   @relation(fields: [initiatedByUserId], references: [id], onDelete: SetNull)
 
   ledgerEntries LedgerEntry[]
+  fundsAttachment Sticker?
 
   @@index([subjectType, subjectId])
   @@index([status])

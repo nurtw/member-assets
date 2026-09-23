@@ -63,7 +63,7 @@ interface SummaryRow {
   id: string;
   plateNumberDisplay: string;
   status: string;
-  declaredAt: Date;
+  declaredAt: Date | null;
   isLegacyImport: boolean;
   vehicleCategory: { id: string; code: string; label: string } | null;
   branch: { id: string; name: string; level: string } | null;
@@ -575,7 +575,9 @@ export class VehicleService {
       id: row.id,
       plateNumberDisplay: row.plateNumberDisplay,
       status: row.status,
-      declaredAt: row.declaredAt.toISOString(),
+      // ON_RECORD rows carry no declaration date (Decision 6.5) — null,
+      // not a fabricated timestamp.
+      declaredAt: row.declaredAt?.toISOString() ?? null,
       isLegacyImport: row.isLegacyImport,
       vehicleCategory: row.vehicleCategory,
       organisation,

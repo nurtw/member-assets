@@ -145,7 +145,8 @@ export interface VehicleSummary {
   id: string;
   plateNumberDisplay: string;
   status: string;
-  declaredAt: string;
+  /** `null` for an `ON_RECORD` vehicle — never declared (revision 1.2, Decision 6.5). */
+  declaredAt: string | null;
   isLegacyImport: boolean;
   vehicleCategory: { id: string; code: string; label: string } | null;
   organisation: { id: string; name: string; level: string };

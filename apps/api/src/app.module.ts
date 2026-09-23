@@ -12,6 +12,7 @@ import { OrganisationModule } from './organisation/organisation.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { SettingsModule } from './settings/settings.module.js';
+import { StickerModule } from './sticker/sticker.module.js';
 import { VehicleModule } from './vehicle/vehicle.module.js';
 
 /**
@@ -39,6 +40,7 @@ import { VehicleModule } from './vehicle/vehicle.module.js';
     MediaModule,
     VehicleModule,
     PaymentsModule,
+    StickerModule,
   ],
 })
 export class AppModule {}

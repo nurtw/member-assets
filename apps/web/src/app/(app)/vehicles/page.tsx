@@ -152,7 +152,9 @@ export default function VehiclesPage() {
                       : "—"}
                   </td>
                   <td className="px-4 py-3 text-black/70">
-                    {new Date(vehicle.declaredAt).toLocaleDateString("en-GB")}
+                    {vehicle.declaredAt
+                      ? new Date(vehicle.declaredAt).toLocaleDateString("en-GB")
+                      : "Not yet declared"}
                   </td>
                   <td className="px-4 py-3">
                     <StatusChip status={vehicle.status} />

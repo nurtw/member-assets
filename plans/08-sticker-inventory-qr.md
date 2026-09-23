@@ -48,9 +48,22 @@ The Transpay register import itself (item 09). Onboarding orchestration —
 charging the fee and calling `attach()` together (item 17).
 
 ## Definition of done
-- [ ] An unattached sticker (new or legacy) can exist with no vehicle row.
-- [ ] Attach is refused on any of Requirement 9A.4's four conditions, each
+- [x] An unattached sticker (new or legacy) can exist with no vehicle row.
+- [x] Attach is refused on any of Requirement 9A.4's four conditions, each
       audited with its specific reason.
-- [ ] A sticker attaches at most once in its life; re-attachment attempts
+- [x] A sticker attaches at most once in its life; re-attachment attempts
       after that are refused, not silently reassigned.
-- [ ] `pnpm typecheck` and `pnpm --filter api test` pass.
+- [x] `pnpm typecheck` and `pnpm --filter api test` pass (`test/sticker.e2e-spec.ts`,
+      9 tests; domain `sticker/*`, 21 tests, including QR signing and
+      key-rotation coverage not in the original plan).
+
+## Note on scope actually delivered
+
+Replace/suspend/status-transition routes are not built — `attach()` is the
+only mutation this item ships beyond `issue()`. The QR HMAC signing scheme
+(§26.1–26.2), left as "reuse the existing" in the plan above, did not
+actually exist anywhere in the codebase yet; it is now built in
+`packages/domain/src/sticker/qr-signing.ts` plus `StickerService.
+mintQrPayload`/`verifyQrSignature`, gated on `STICKER_SIGNING_SECRET` (see
+`.env.example`) — unset in this dev environment, so minting/verifying a
+real QR will throw until an operator sets it.

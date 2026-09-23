@@ -33,6 +33,15 @@ export interface Environment {
    */
   readonly paystackSecretKey: string | undefined;
   readonly paystackBaseUrl: string;
+  /**
+   * The sticker QR HMAC secret (PRD §26.2, ARCHITECTURE.md Decision 6.2.2).
+   * Held only by the issuing and verification services, never the web app.
+   * Keyed by `stickerSigningKeyId` so a future rotation adds a second entry
+   * rather than replacing this one — old stickers keep verifying under the
+   * key that minted them.
+   */
+  readonly stickerSigningSecret: string | undefined;
+  readonly stickerSigningKeyId: string;
 }
 
 class EnvironmentError extends Error {
@@ -92,6 +101,11 @@ export function loadEnvironment(): Environment {
     paystackSecretKey: process.env.PAYSTACK_SECRET_KEY?.trim() || undefined,
     paystackBaseUrl:
       process.env.PAYSTACK_BASE_URL?.trim() || 'https://api.paystack.co',
+    stickerSigningSecret:
+      process.env.STICKER_SIGNING_SECRET?.trim() || undefined,
+    stickerSigningKeyId:
+      // Matches .env.example's documented default (roadmap item 08).
+      process.env.STICKER_SIGNING_KEY_ID?.trim() || 'k1',
   };
 }
 

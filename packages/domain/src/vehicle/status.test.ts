@@ -16,6 +16,7 @@ import {
  * with itself.
  */
 const LEGAL: readonly [string, string][] = [
+  ['ON_RECORD', 'ACTIVE'],
   ['PENDING', 'ACTIVE'],
   ['PENDING', 'DISPUTED'],
   ['PENDING', 'ARCHIVED'],
@@ -50,6 +51,14 @@ describe('vehicle declaration lifecycle', () => {
     expect(isDeclarationFinal('ARCHIVED')).toBe(true);
     expect(isDeclarationFinal('ACTIVE')).toBe(false);
     expect(isDeclarationFinal('DISPUTED')).toBe(false);
+  });
+
+  it('promotes ON_RECORD only to ACTIVE, never to DISPUTED', () => {
+    // ARCHITECTURE.md Decision 6.5 — a migrated vehicle has no prior ACTIVE
+    // declaration to compete with, so declaring it is always a promotion of
+    // the same row, never a dispute.
+    expect(canTransitionDeclaration('ON_RECORD', 'ACTIVE')).toBe(true);
+    expect(canTransitionDeclaration('ON_RECORD', 'DISPUTED')).toBe(false);
   });
 
   it('never allows a disputed claim to become ACTIVE directly', () => {

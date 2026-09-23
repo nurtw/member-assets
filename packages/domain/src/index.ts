@@ -135,3 +135,28 @@ export {
   type FeeCalculationResult,
   type PaystackFeeSchedule,
 } from './payments/fee-rule.js';
+
+export {
+  InvalidStickerTransitionError,
+  STICKER_STATUSES,
+  assertStickerTransition,
+  canTransitionSticker,
+  isStickerAttached,
+  isStickerFinal,
+  type StickerStatus,
+} from './sticker/status.js';
+
+export {
+  checkAttachment,
+  type AttachmentCheck,
+  type AttachmentContext,
+  type AttachmentRefusalReason,
+} from './sticker/attachment.js';
+
+export {
+  decodeAndVerifyQrPayload,
+  encodeQrPayload,
+  type HmacSigner,
+  type QrPayload,
+  type QrVerificationResult,
+} from './sticker/qr-signing.js';

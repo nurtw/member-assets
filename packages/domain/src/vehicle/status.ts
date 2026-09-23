@@ -3,7 +3,8 @@
  *
  * PRD §9 — six states: Pending, Active, Suspended, Retired, Disputed,
  * Archived. Domain rule 5 — history is preserved: nothing here deletes, and
- * a terminal state is reached rather than erased.
+ * a terminal state is reached rather than erased. Revision 1.2 (§9A) adds a
+ * seventh, `ON_RECORD` — see the note below.
  *
  * Expressed as an explicit transition table, matching `membership/status.ts`
  * and `card/status.ts` — "which transitions are legal" is precisely the rule
@@ -12,6 +13,7 @@
  */
 
 export const DECLARATION_STATUSES = [
+  'ON_RECORD',
   'PENDING',
   'ACTIVE',
   'SUSPENDED',
@@ -52,6 +54,14 @@ export class InvalidDeclarationTransitionError extends Error {
 const DECLARATION_TRANSITIONS: Readonly<
   Record<DeclarationStatus, readonly DeclarationStatus[]>
 > = {
+  // ARCHITECTURE.md Decision 6.5 — a migrated vehicle starts here, never at
+  // ACTIVE. The only way out is `vehicle.declare` PROMOTING this same row
+  // (stamping declaredAt/declaredByMemberId) to ACTIVE — not creating a
+  // second row for the same physical vehicle. No path to DISPUTED: a
+  // migrated record has no prior ACTIVE declaration to compete with by
+  // definition, so a plate match here is always a promotion, never a
+  // conflict.
+  ON_RECORD: ['ACTIVE'],
   PENDING: ['ACTIVE', 'DISPUTED', 'ARCHIVED'],
   ACTIVE: ['SUSPENDED', 'RETIRED'],
   SUSPENDED: ['ACTIVE', 'RETIRED'],
