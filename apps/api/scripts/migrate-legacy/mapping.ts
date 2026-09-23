@@ -34,28 +34,38 @@ export function blankToNull(value: string | undefined | null): string | null {
 }
 
 /**
- * Legacy `status` is `ACTIVE`/`INACTIVE` (CLAUDE.md's catalogue). Mapped
- * conservatively pending QUESTIONS.md MIG-06 (what a legacy INACTIVE or
- * blacklisted record should mean in the new lifecycle): `INACTIVE` or a
- * blacklisted flag becomes `SUSPENDED`, a reversible state — never
- * `RETIRED` or `CANCELLED`, both terminal, which would be a policy decision
- * this migration is not the Union's answer for. Every non-`ACTIVE` mapping
- * is meant to appear in the reconciliation report for staff review.
+ * ARCHITECTURE.md Decision 6.5 (revision 1.2) — every migrated vehicle is
+ * `ON_RECORD`, full stop. There is no `ACTIVE`/`SUSPENDED` distinction to
+ * carry forward at import time: a migrated vehicle is never declared, so
+ * "was it active in the old system" is not yet a fact this System has an
+ * opinion on. That question only starts to matter once a vehicle is
+ * actually declared — a future, deliberate `vehicle.declare` act, not this
+ * script's.
+ *
+ * The legacy status is still surfaced, not discarded: the caller writes it
+ * into `Vehicle.notes` so QUESTIONS.md MIG-06 (what an inactive or
+ * blacklisted legacy record should mean going forward) has something to
+ * act on later without a re-import. `flagged` marks a row worth surfacing
+ * in the reconciliation report — blacklisted, non-`ACTIVE`, or an
+ * unrecognised legacy value, the same set that would have been suspicious
+ * under the pre-1.2 mapping this replaces.
  */
 export function mapDeclarationStatus(
   legacyStatus: string | undefined | null,
   blacklisted: boolean,
-): { status: DeclarationStatus; flagged: boolean } {
-  if (blacklisted) {
-    return { status: 'SUSPENDED', flagged: true };
-  }
+): { status: DeclarationStatus; legacyStatusNote: string; flagged: boolean } {
   const normalised = legacyStatus?.trim().toUpperCase();
-  if (normalised === 'ACTIVE') {
-    return { status: 'ACTIVE', flagged: false };
+  const legacyStatusNote = `Legacy status: ${normalised || 'UNKNOWN'}${blacklisted ? ' (blacklisted)' : ''}.`;
+
+  if (blacklisted) {
+    return { status: 'ON_RECORD', legacyStatusNote, flagged: true };
   }
-  // INACTIVE, empty, or any unrecognised value — flagged either way, since
-  // "unrecognised" must not silently become "active".
-  return { status: 'SUSPENDED', flagged: true };
+  if (normalised === 'ACTIVE') {
+    return { status: 'ON_RECORD', legacyStatusNote, flagged: false };
+  }
+  // INACTIVE, empty, or any unrecognised value — flagged for staff review,
+  // same as before, but never encoded as a declaration state.
+  return { status: 'ON_RECORD', legacyStatusNote, flagged: true };
 }
 
 /** Same reasoning as {@link mapDeclarationStatus}, applied to a member row. */

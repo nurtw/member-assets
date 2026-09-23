@@ -36,41 +36,50 @@ describe('blankToNull', () => {
   });
 });
 
-describe('mapDeclarationStatus / mapMemberStatus', () => {
+describe('mapMemberStatus', () => {
   it('maps a clean ACTIVE record straight across, unflagged', () => {
-    expect(mapDeclarationStatus('ACTIVE', false)).toEqual({
-      status: 'ACTIVE',
-      flagged: false,
-    });
     expect(mapMemberStatus('ACTIVE', false)).toEqual({
       status: 'ACTIVE',
       flagged: false,
     });
   });
+});
 
-  it('maps INACTIVE to the reversible SUSPENDED, flagged for review', () => {
-    expect(mapDeclarationStatus('INACTIVE', false)).toEqual({
-      status: 'SUSPENDED',
-      flagged: true,
-    });
+describe('mapDeclarationStatus (ARCHITECTURE.md Decision 6.5)', () => {
+  it('always maps to ON_RECORD — never ACTIVE, regardless of legacy status', () => {
+    for (const legacyStatus of ['ACTIVE', 'INACTIVE', '', 'WHO_KNOWS', null, undefined]) {
+      expect(mapDeclarationStatus(legacyStatus, false).status).toBe('ON_RECORD');
+      expect(mapDeclarationStatus(legacyStatus, true).status).toBe('ON_RECORD');
+    }
   });
 
-  it('blacklisted always suspends, even over a legacy ACTIVE status', () => {
-    expect(mapDeclarationStatus('ACTIVE', true)).toEqual({
-      status: 'SUSPENDED',
-      flagged: true,
-    });
+  it('leaves a clean legacy ACTIVE, non-blacklisted row unflagged', () => {
+    expect(mapDeclarationStatus('ACTIVE', false).flagged).toBe(false);
   });
 
-  it('never assumes ACTIVE for an unrecognised or blank status', () => {
-    expect(mapDeclarationStatus('', false)).toEqual({
-      status: 'SUSPENDED',
-      flagged: true,
-    });
-    expect(mapDeclarationStatus('WHO_KNOWS', false)).toEqual({
-      status: 'SUSPENDED',
-      flagged: true,
-    });
+  it('flags a legacy INACTIVE row for staff review', () => {
+    expect(mapDeclarationStatus('INACTIVE', false).flagged).toBe(true);
+  });
+
+  it('flags a blacklisted row even over a legacy ACTIVE status', () => {
+    expect(mapDeclarationStatus('ACTIVE', true).flagged).toBe(true);
+  });
+
+  it('flags an unrecognised or blank legacy status, never assuming clean', () => {
+    expect(mapDeclarationStatus('', false).flagged).toBe(true);
+    expect(mapDeclarationStatus('WHO_KNOWS', false).flagged).toBe(true);
+  });
+
+  it('preserves the legacy status as a note, so MIG-06 has something to act on', () => {
+    expect(mapDeclarationStatus('ACTIVE', false).legacyStatusNote).toBe(
+      'Legacy status: ACTIVE.',
+    );
+    expect(mapDeclarationStatus('inactive', true).legacyStatusNote).toBe(
+      'Legacy status: INACTIVE (blacklisted).',
+    );
+    expect(mapDeclarationStatus(null, false).legacyStatusNote).toBe(
+      'Legacy status: UNKNOWN.',
+    );
   });
 });
 

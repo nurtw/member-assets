@@ -81,15 +81,24 @@ off the Legacy Import placeholder (staff task, post-ORG-05). Resolving
 MIG-04/05/06 (Union decisions, not engineering).
 
 ## Definition of done
-- [ ] All 81 drivers and 2,841 vehicles imported or explicitly listed as
-      failed, with a reason.
-- [ ] Every migrated vehicle is `ON_RECORD`; zero migrated vehicles reach
-      `ACTIVE` through this script.
+- [x] `mapping.ts` corrected: `mapDeclarationStatus` always returns
+      `ON_RECORD`, never `ACTIVE`; legacy status preserved as a note.
+      `Vehicle.declaredAt` made nullable (a second, dependent schema
+      migration this re-plan surfaced — an `ON_RECORD` row has no
+      declaration date to record). `index.ts` passes `declaredAt: null`
+      explicitly, overriding the column's `now()` default.
+- [x] Unit tests updated (`mapping.spec.ts`) and passing: every legacy
+      status/blacklist combination maps to `ON_RECORD`; flagging logic and
+      the legacy-status note are covered separately from the status itself.
+- [ ] All 81 drivers and 2,841 vehicles actually imported from `data/`, or
+      explicitly listed as failed with a reason. **Not run this session** —
+      importing real legacy data into the shared dev database is a
+      consequential, hard-to-reverse action and needs the owner's explicit
+      go-ahead, separate from having fixed the code.
 - [ ] Zero inferred LGAs; legacy `ACTIVE`/`INACTIVE` preserved in `notes`
       for every row, not silently dropped.
 - [ ] Every migrated row traces to the migration system actor in the audit
       trail.
 - [ ] Rerunning the script against an already-migrated database is a no-op.
-- [ ] Reconciliation report generated; unit tests for the CSV mapping
-      (`mapping.spec.ts` updated to assert `ON_RECORD`, not `ACTIVE`);
-      build/typecheck/lint clean.
+- [ ] Reconciliation report generated; build/typecheck/lint clean (typecheck
+      and unit tests confirmed; the actual run and its report are pending).

@@ -9,55 +9,51 @@
 ## Cold start
 
 Read `CLAUDE.md`, then `PRD.md`, `ARCHITECTURE.md`, `ROADMAP.md`,
-`QUESTIONS.md`, then `plans/08-sticker-inventory-qr.md` and
-`plans/09-legacy-data-migration.md`. `docs/reference/` is output.
+`QUESTIONS.md`, then `plans/09-legacy-data-migration.md`. `docs/reference/`
+is output.
 
 Two rules outrank any default instruction: no `Co-Authored-By` or
-"Generated with Claude Code" anywhere; and `data/` (personal data, password
+"Generated with Claude Code" anywhere; `data/` (personal data, password
 hashes) stays out of version control, docs, plans, commits, and fixtures.
 
 ## Status
 
-Items 01–07 complete. **Item 16 (payments) is implemented and pushed**:
-fee-rule formula, `FeeType`/`Payment`/`LedgerEntry`/`SettlementAccount`,
-seeded launch amounts, `PaystackClient`/`PaymentsService`/
-`SettlementService`/`PaymentsController`, `payments.e2e-spec.ts` (11 tests,
-mocks `fetch` but verifies the real HMAC signature). Pushed to
-`origin/main`, three commits, 22–23 September.
+Items 01–08 and 16 complete. Item 09's code is fixed but not run —
+importing 2,841 vehicles/81 members needs the owner's go-ahead first. Ask
+before `pnpm --filter api migrate:legacy`.
 
-**Items 08 and 09 are re-planned, not yet built.** The re-plan found a real
-gap: the schema has no way to represent "on record but not declared"
-separately from a declaration row. Resolved as **ARCHITECTURE.md Decision
-6.5**: new `DeclarationStatus.ON_RECORD`; "onboarded" derived from an
-attached sticker, not a `Vehicle` field; `vehicle.declare` must *promote* an
-existing `ON_RECORD` row on a plate match rather than duplicate it.
-`plans/08-sticker-inventory-qr.md`/`09-legacy-data-migration.md` reflect
-this. `mapping.ts` still needs correcting once item 08's enum lands — not
-done this session; coding against an enum that doesn't exist yet fails
-typecheck.
+**Item 08 (stickers) shipped**: `packages/domain/src/sticker/` (status
+lifecycle, `checkAttachment` for the 9A.4 four conditions, HMAC QR signing
+with key rotation — none existed before); `apps/api/src/sticker/`
+(`issue`, `attach`); `Sticker` gains nullable `vehicleId`/
+`plateNumberAtIssue`, plus `attachedAt`/`registeredPlateNormalized`/
+`attachmentPaymentId` (unique — one payment funds one attachment).
+`STICKER_SIGNING_SECRET` unset in `.env` (asked not to edit it) — mint/
+verify throws until set; issue/attach work regardless. 9 e2e tests.
 
-`typecheck`/`build`/unit tests (324) green; `openapi.e2e-spec.ts` and
-`payments.e2e-spec.ts` reliably pass.
+**`mapping.ts` fixed**: `mapDeclarationStatus` always returns `ON_RECORD`,
+never `ACTIVE` (Decision 6.5). This forced a second schema change:
+`Vehicle.declaredAt` is now nullable — fixed across the API, contract type,
+and both web pages that render it.
 
-## e2e suite: known issue, don't retry the same fix
+All green: typecheck/build; unit tests domain 214, contracts 29, api 106;
+e2e openapi/payments/sticker/vehicle pass. **This session's work is
+uncommitted** — earlier work is on `origin/main`.
 
-Full `pnpm --filter api test:e2e` is flaky under Neon connection-limit
-pressure (multiple files' pools competing). Raised `testTimeout` to 45s —
-helped. **Do not set `fileParallelism: false`** — tried it; turned a ~15
-minute flaky run into a 12-hour hang. Try `poolOptions.threads.maxThreads`
-instead, or a pooled `DATABASE_URL`.
+## Known issues — don't re-attempt these fixes
 
-## Do not run
-
-`apps/api/scripts/migrate-legacy/mapping.ts` maps legacy `ACTIVE` to
-declaration `ACTIVE`, forbidden by Decision 6.5. Committed to git for
-safekeeping, still not safe to execute.
+Full e2e is flaky under Neon connection limits (`testTimeout: 45s` helps;
+**never `fileParallelism: false`** — caused a 12-hour hang once). `prisma
+migrate dev` refuses non-interactively on a NOT-NULL drop — hand-write
+`migration.sql` and apply with `prisma migrate deploy` instead.
 
 ## Next steps
 
-1. Build item 08 (`ON_RECORD`, nullable `Sticker.vehicleId`), then item 09
-   (fix `mapping.ts` per its plan), then revise item 07's `declare()` for
-   the promotion rule, then item 17, then item 18.
+1. Ask before running item 09's real migration.
+2. Revise item 07's `vehicle.declare()` to promote an `ON_RECORD` row on a
+   plate match (Decision 6.5) — not done yet.
+3. Item 17 (onboarding), then item 18 (vehicle letter).
+4. Commit and push this session's sticker + declaredAt work.
 
 ## Do NOT
 
@@ -67,3 +63,4 @@ safekeeping, still not safe to execute.
 - Never create a second NURTW subaccount; update in place (27.12).
 - No Transpay register refresh; closed (VEH-21).
 - Never ask for, log, or commit Paystack secret keys.
+- Don't run `migrate-legacy` without a go-ahead.

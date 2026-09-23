@@ -213,7 +213,10 @@ async function importVehicles(
     }
 
     const blacklisted = parseLegacyBoolean(row.blacklisted);
-    const { status, flagged } = mapDeclarationStatus(row.status, blacklisted);
+    const { status, legacyStatusNote, flagged } = mapDeclarationStatus(
+      row.status,
+      blacklisted,
+    );
     if (flagged) {
       report.vehicleStatusFlagged(
         legacyId,
@@ -227,8 +230,6 @@ async function importVehicles(
     const vehicleCategoryId = categoryCode
       ? (categoryByCode.get(categoryCode) ?? null)
       : null;
-
-    const declaredAt = row.created_at ? new Date(row.created_at) : null;
 
     try {
       const vehicle = await prisma.$transaction(async (tx) => {
@@ -247,10 +248,14 @@ async function importVehicles(
             unitId: null,
             status,
             isLegacyImport: true,
-            notes: `Migrated from legacy vehicle record ${legacyId}.`,
-            ...(declaredAt && !Number.isNaN(declaredAt.getTime())
-              ? { declaredAt }
-              : {}),
+            notes: `Migrated from legacy vehicle record ${legacyId}. ${legacyStatusNote}`,
+            // ARCHITECTURE.md Decision 6.5 — explicitly null, overriding the
+            // column's now() default. A migrated vehicle is never declared,
+            // so the legacy row's created_at describes when the OLD system
+            // recorded it, not when this System's declare-first rule was
+            // satisfied. Stamping it here would misrepresent an ON_RECORD
+            // row as if it had been through vehicle.declare.
+            declaredAt: null,
           },
           update: {},
         });
