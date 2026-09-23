@@ -35,7 +35,7 @@ Each item is independently completable and independently testable. Status values
 | 05 | membership-application | §7 | **done** | `plans/05-membership-application.md` |
 | 06 | membership-card-issuance | §8 | complete | `plans/06-membership-card-issuance.md` |
 | 07 | vehicle-declaration | §9 | complete | `plans/07-vehicle-declaration.md` |
-| 08 | sticker-inventory-qr | §10 | not-started | `plans/08-sticker-inventory-qr.md` |
+| 08 | sticker-inventory-qr | §10 | planned | `plans/08-sticker-inventory-qr.md` |
 | 09 | legacy-data-migration | §25, §9A | planned — **re-plan required** (PRD 1.2) | `plans/09-legacy-data-migration.md` |
 | 10 | internal-verification | §11 | not-started | `plans/10-internal-verification.md` |
 | 11 | api-clients-and-scopes | §12.1, §16 | not-started | `plans/11-api-clients-and-scopes.md` |

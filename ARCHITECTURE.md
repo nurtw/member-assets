@@ -183,6 +183,12 @@ identifiers. The owner was advised that the legacy scheme is a millisecond epoch
 deducible from a single genuine sticker and carrying no authenticity proof, and determined
 that field continuity outweighs the residual risk.
 
+> **Superseded in part by revision 1.2 (22 September 2026).** "Resolve as equivalent" no
+> longer means *readable without further action*. A legacy barcode now resolves only once
+> reattached under Requirement 9A.4's four conditions — see Decision 6.5. The residual-risk
+> reasoning above still explains why field continuity was worth preserving at all; it no
+> longer describes the control in effect.
+
 Implementation consequences:
 
 - Legacy identifiers are stored in a distinct, indexed column. They are never generated,
@@ -191,6 +197,41 @@ Implementation consequences:
   exposure over time and revisit the determination on evidence rather than argument.
 - Legacy identifiers remain subject to plate binding and to the status lifecycle. Those
   controls are not relaxed for them.
+
+**Decision 6.5 — on record, onboarded, and declared are three structurally separate facts
+*(revision 1.2)*.** PRD §9A.1 requires each to have its own actor and time, and requires
+that none imply another. This is not achievable by adding a flag to the existing
+declaration row, because the existing row *is* the declaration — a vehicle with no
+declaration cannot be represented by a declaration row carrying a "not really" bit without
+every reader of `Vehicle.status` having to learn a second, silent meaning for it.
+
+Structurally:
+
+- **On record** — `DeclarationStatus` gains `ON_RECORD`, a new terminal-ish starting state
+  distinct from `PENDING` (which item 07 already reserved, unreached by any code path, for
+  a possible future draft-declaration flow — reusing it here would overload one state with
+  two unrelated meanings). A migrated vehicle is created at `ON_RECORD` with `declaredAt:
+  null` and no `declaredByMemberId`. It is a real `Vehicle` row from the first migration
+  run, not a separate staging table — so item 04's existing move/scope machinery, and the
+  eventual declaration, both operate on one continuous row rather than a row that gets
+  replaced.
+- **Declared** — unchanged: `status` reaches `ACTIVE` only via `vehicle.declare` (Decision
+  9.7), which stamps `declaredAt` and (optionally) `declaredByMemberId`. The partial unique
+  index (§9.2) stays scoped to `WHERE status = 'ACTIVE'`, so an `ON_RECORD` row never
+  competes with it.
+- **Onboarded** — not a `Vehicle` field at all. A vehicle is onboarded exactly when it has
+  a `Sticker` row with `attachedAt` set and `vehicleId` pointing to it (item 08,
+  Requirement 10.3). Deriving this from the sticker relation rather than mirroring it onto
+  `Vehicle` avoids a second place the two facts can drift apart.
+
+**Consequence for `vehicle.declare` (item 07's existing code, to be revised):** before
+creating a fresh row, `declare()` must look for an existing row on the normalised plate —
+not only an `ACTIVE` one — and, if it finds one at `ON_RECORD`, promote that same row
+(stamping `declaredAt`, `declaredByMemberId`, branch/unit) rather than creating a second
+row for the same physical vehicle. Only when no row exists at all, or the existing row is
+already `ACTIVE`, does the original create-or-dispute logic apply unchanged. This is what
+"declare-first, on-record-vehicles-excluded-until-declared" actually requires in code: a
+migrated vehicle must become the SAME record once declared, not a duplicate beside it.
 
 ---
 
@@ -495,3 +536,11 @@ They are listed here so that a reader need not diff the document to find what ch
 | Token expiry | 90 days | PRD §12.6 |
 | Data residency | EU region | 10.4 |
 | Retention | Members ongoing · audit 7 years · API logs 12 months | PRD §23.15 |
+
+The following were added by revision 1.2, 22 September 2026:
+
+| Matter | Determination | Decision |
+|---|---|---|
+| Legacy barcodes | Resolve only once reattached under Requirement 9A.4's four conditions; the register is closed | 6.4, 6.5 |
+| On record / onboarded / declared | Three structurally separate facts: a new `ON_RECORD` declaration state, onboarded derived from an attached sticker, never a flag on the declaration row | 6.5 |
+| Payments | Fee types as data, Paystack subaccount split, webhook plus server verification, settlement account editable in settings with no second approver | PRD §27 |
