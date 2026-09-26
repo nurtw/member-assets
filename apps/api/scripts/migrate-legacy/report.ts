@@ -56,6 +56,11 @@ export class ReconciliationReport {
   barcodeFailed(legacyId: string, reason: string): void {
     this.failedBarcodes.push({ legacyId, reason });
   }
+  private registerWasSkipped = false;
+  /** `--no-register` — the register was deliberately left alone this run. */
+  registerSkipped(): void {
+    this.registerWasSkipped = true;
+  }
 
   vehicleImported(): void {
     this.counts.vehicles += 1;
@@ -135,9 +140,13 @@ no name, phone, or address appears here (CLAUDE.md's data-handling rule).
 - Vehicles imported: ${this.counts.vehicles} (already present from an earlier run: ${this.counts.vehiclesAlreadyPresent})
 - Members imported: ${this.counts.members} (already present from an earlier run: ${this.counts.membersAlreadyPresent})
 - Pre-1.2 vehicles corrected to on record with owner details (\`--repair\`): ${this.counts.vehiclesRepaired}
-- Transpay barcodes placed on the register, unattached (Requirement 9A.3): ${this.counts.barcodes} (already present from an earlier run: ${this.counts.barcodesAlreadyPresent})
+${
+  this.registerWasSkipped
+    ? '- Transpay register: **not run** (`--no-register`)'
+    : `- Transpay barcodes placed on the register, unattached (Requirement 9A.3): ${this.counts.barcodes} (already present from an earlier run: ${this.counts.barcodesAlreadyPresent})
 - Vehicle rows with no barcode — onboarded later with a new sticker (VEH-20): ${this.counts.rowsWithoutBarcode}
-- Barcodes that failed to import: ${this.failedBarcodes.length}
+- Barcodes that failed to import: ${this.failedBarcodes.length}`
+}
 - Vehicles with no local government area on record (Requirement 25.3): ${this.noLgaVehicles.length}
 - Vehicles whose owner record lacks a name or phone (Requirement 25.4): ${this.ownerIncompleteVehicles.length}
 - Vehicles with no driver (member) linked (MIG-04): ${this.unattachedVehicles.length}

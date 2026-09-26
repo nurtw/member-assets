@@ -122,15 +122,21 @@ officer-actioned row left alone, a second run a no-op. Nothing depends on the
 Neon rows (no stickers, cards, payments, or duplicate plates; one driver link
 set by an officer, which the repair keeps).
 
-- [ ] Neon: `migrate:legacy -- --repair`. **The owner approved it on 26 September 2026**,
-      and it was started that day. It is slow, a few seconds a row over the network: 402
-      of 2,841 were corrected after the first 40 minutes, each with its audit event and
-      owner row. The pre-repair state was 2,838 `ACTIVE` and 3 `SUSPENDED`, all declared,
-      none with owners, and no declare or status-change audits. It was saved to a JSON
-      file outside the repository. When it is done, expect 2,841 `ON_RECORD`, 2,841
-      `vehicle.migrate_repair` events, and a second run writing nothing. If the run was
-      interrupted, rerunning `--repair` resumes it. **But the current script also loads
-      the Transpay register (item 17)**, which needs its own go-ahead on Neon.
+- [x] Neon: `migrate:legacy -- --repair`, **approved by the owner on 26 September 2026
+      and completed the same day.** The pre-repair state was 2,838 `ACTIVE` and 3
+      `SUSPENDED`, all declared, none with owners, and no declare or status-change
+      audits. It was saved to a JSON file outside the repository.
+      - The first run corrected 724 rows, then died on a dropped connection, leaving none
+        half-done.
+      - The script was made resumable: it skips settled rows, re-reads each row inside its
+        transaction, retries dropped connections, runs five at a time, and takes
+        `--no-register`. This was verified locally against a reproduction; every field
+        of all 2,841 rows matched a fresh derivation from the export.
+      - It was resumed with `--repair --no-register`. Four rows could not start a
+        transaction (P2028, now retried) and were corrected on the next run.
+      - **Result:** 2,841 `ON_RECORD`, none declared, one `vehicle.migrate_repair` event
+        each, 2,841 owner rows, and no missing or doubled notes. The officer's driver link
+        was kept, and a final run wrote nothing. The Transpay register was **not** loaded.
 
 **Transpay register (item 17, 26 September 2026):** now imported by this script.
 Locally, 2,408 barcodes were placed, none failed, and a rerun wrote nothing. See

@@ -401,12 +401,23 @@ are left as they are, and driver links are never touched. A second run writes no
 pnpm --filter api migrate:legacy -- --repair
 ```
 
-The shared Neon database was imported by the pre-1.2 script on 18 September 2026 and needs
-this repair. The owner approved it on 26 September 2026. It is slow over the network, a few
-seconds a row, and safe to interrupt: rerunning `--repair` skips rows already corrected.
+The shared Neon database was imported by the pre-1.2 script on 18 September 2026 and needed
+this repair. The owner approved it on 26 September 2026. The repair is safe to interrupt:
 
-**Any run of the current script also loads the Transpay register.** On Neon that is a
-separate go-ahead (MIG-07): the local report shows 2,408 barcodes placed and none failed.
+- rows already corrected are skipped, from one query at the start;
+- each remaining row is re-read and decided inside its own transaction, so a retry after a
+  dropped connection never writes twice;
+- repairs run five at a time, and a dropped connection is retried.
+
+**Any run of the current script also loads the Transpay register,** unless it is given
+`--no-register`:
+
+```bash
+pnpm --filter api migrate:legacy -- --repair --no-register
+```
+
+Loading the register onto Neon is a separate go-ahead (MIG-07). The local report shows
+2,408 barcodes placed and none failed.
 The register is the only place a legacy barcode is ever written, and nothing in the API can
 add to it. The security code is stored as a record only and appears in no response
 (Requirement 9A.5).

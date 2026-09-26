@@ -65,6 +65,64 @@ const MIGRATION_ACTOR_EMAIL = 'legacy-migration@nurtw.internal';
 /** `pnpm --filter api migrate:legacy -- --repair` — see `repairVehicle`. */
 const REPAIR = process.argv.includes('--repair');
 
+/**
+ * `--no-register` leaves the Transpay register alone (item 17). Loading the
+ * register onto a shared database is its own go-ahead (MIG-07), separate from
+ * a repair that has already been approved.
+ */
+const REGISTER = !process.argv.includes('--no-register');
+
+/** Repairs run a few at a time: each touches one vehicle, so they never contend. */
+const REPAIR_CONCURRENCY = 5;
+
+/**
+ * A dropped connection, not a data error. Neon has dropped this script's
+ * connection mid-run before (26 September 2026), which stopped a repair two
+ * hours in, so these are retried.
+ */
+function isTransient(error: unknown): boolean {
+  const code = (error as { code?: string }).code;
+  return (
+    code === 'P1001' ||
+    code === 'P1017' ||
+    code === 'P2024' ||
+    // No transaction could start in time: the pool was busy over a slow link.
+    // Nothing was written, so it is safe to try again.
+    code === 'P2028' ||
+    /DatabaseNotReachable|ECONNRESET|ETIMEDOUT|Connection terminated|Unable to start a transaction/i.test(
+      String((error as Error)?.message),
+    )
+  );
+}
+
+async function withRetry<T>(work: () => Promise<T>, attempts = 5): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await work();
+    } catch (error) {
+      if (attempt >= attempts || !isTransient(error)) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt));
+    }
+  }
+}
+
+/** Runs `jobs` with at most `limit` in flight. */
+async function runLimited(
+  jobs: readonly (() => Promise<void>)[],
+  limit: number,
+): Promise<void> {
+  let next = 0;
+  const worker = async () => {
+    while (next < jobs.length) {
+      const job = jobs[next++]!;
+      await job();
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, jobs.length) }, worker));
+}
+
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   throw new Error('DATABASE_URL is required to migrate.');
@@ -224,90 +282,136 @@ async function repairVehicle(
   owner: ReturnType<typeof mapLegacyOwner>,
   legacyStatusNote: string,
   actorId: string,
+  officerActed: ReadonlySet<string>,
 ): Promise<void> {
-  const current = await prisma.vehicle.findUniqueOrThrow({
-    where: { id: vehicleId },
-    select: {
-      status: true,
-      declaredAt: true,
-      notes: true,
-      owner: { select: { id: true } },
-    },
-  });
-
-  const officerActedOnStatus =
-    (await prisma.auditEvent.count({
-      where: {
-        subjectType: 'vehicle',
-        subjectId: vehicleId,
-        action: { in: ['vehicle.declare', 'vehicle.status_change'] },
-      },
-    })) > 0;
-
-  const fixStatus =
-    !officerActedOnStatus &&
-    (current.status !== 'ON_RECORD' || current.declaredAt !== null);
-  const addNote = !(current.notes ?? '').includes('Legacy status:');
-  const addOwner = current.owner === null && owner !== null;
-
-  if (!fixStatus && !addOwner) {
-    return;
-  }
+  // An officer's declaration or status change is never undone. Read once for
+  // the whole run (`loadOfficerActedVehicles`): the repair writes neither
+  // action, so the set cannot change under it.
+  const officerActedOnStatus = officerActed.has(vehicleId);
 
   try {
-    await prisma.$transaction(async (tx) => {
-      await tx.vehicle.update({
-        where: { id: vehicleId },
-        data: {
-          ...(fixStatus ? { status: 'ON_RECORD', declaredAt: null } : {}),
-          ...(fixStatus && addNote
-            ? {
-                notes: current.notes
-                  ? `${current.notes} ${legacyStatusNote}`
-                  : legacyStatusNote,
-              }
-            : {}),
-          ...(addOwner
-            ? {
-                owner: {
-                  create: {
-                    ownerName: owner!.ownerName,
-                    ownerPhone: owner!.ownerPhone,
-                    ownerAddress: owner!.ownerAddress,
-                  },
-                },
-              }
-            : {}),
-        },
-      });
+    const repaired = await withRetry(() =>
+      prisma.$transaction(async (tx) => {
+        // Read and decided inside the transaction, so a retry after a dropped
+        // connection re-decides from what is actually there: a commit whose
+        // reply was lost is found finished, not written twice.
+        const current = await tx.vehicle.findUniqueOrThrow({
+          where: { id: vehicleId },
+          select: {
+            status: true,
+            declaredAt: true,
+            notes: true,
+            owner: { select: { id: true } },
+          },
+        });
 
-      await tx.auditEvent.create({
-        data: {
-          action: 'vehicle.migrate_repair',
-          subjectType: 'vehicle',
-          subjectId: vehicleId,
-          actorUserId: actorId,
-          beforeValue: {
-            status: current.status,
-            declared: current.declaredAt !== null,
-            ownerRecorded: current.owner !== null,
+        const fixStatus =
+          !officerActedOnStatus &&
+          (current.status !== 'ON_RECORD' || current.declaredAt !== null);
+        const addNote = !(current.notes ?? '').includes('Legacy status:');
+        const addOwner = current.owner === null && owner !== null;
+
+        if (!fixStatus && !addOwner) {
+          return false;
+        }
+
+        await tx.vehicle.update({
+          where: { id: vehicleId },
+          data: {
+            ...(fixStatus ? { status: 'ON_RECORD', declaredAt: null } : {}),
+            ...(fixStatus && addNote
+              ? {
+                  notes: current.notes
+                    ? `${current.notes} ${legacyStatusNote}`
+                    : legacyStatusNote,
+                }
+              : {}),
+            ...(addOwner
+              ? {
+                  owner: {
+                    create: {
+                      ownerName: owner!.ownerName,
+                      ownerPhone: owner!.ownerPhone,
+                      ownerAddress: owner!.ownerAddress,
+                    },
+                  },
+                }
+              : {}),
           },
-          afterValue: {
-            status: fixStatus ? 'ON_RECORD' : current.status,
-            declared: fixStatus ? false : current.declaredAt !== null,
-            ownerRecorded: current.owner !== null || addOwner,
+        });
+
+        await tx.auditEvent.create({
+          data: {
+            action: 'vehicle.migrate_repair',
+            subjectType: 'vehicle',
+            subjectId: vehicleId,
+            actorUserId: actorId,
+            beforeValue: {
+              status: current.status,
+              declared: current.declaredAt !== null,
+              ownerRecorded: current.owner !== null,
+            },
+            afterValue: {
+              status: fixStatus ? 'ON_RECORD' : current.status,
+              declared: fixStatus ? false : current.declaredAt !== null,
+              ownerRecorded: current.owner !== null || addOwner,
+            },
+            reason:
+              'Correction of a pre-revision-1.2 legacy import: migrated vehicles are on record only, ' +
+              'never declared (ARCHITECTURE.md Decision 6.5), and carry their owner details ' +
+              '(PRD Requirement 25.4). PRD Requirement 18.2 correction event.',
           },
-          reason:
-            'Correction of a pre-revision-1.2 legacy import: migrated vehicles are on record only, ' +
-            'never declared (ARCHITECTURE.md Decision 6.5), and carry their owner details ' +
-            '(PRD Requirement 25.4). PRD Requirement 18.2 correction event.',
-        },
-      });
-    });
-    report.vehicleRepaired();
+        });
+        return true;
+      }),
+    );
+    if (repaired) {
+      report.vehicleRepaired();
+    }
   } catch (error) {
     report.vehicleFailed(vehicleId, `repair failed: ${(error as Error).message}`);
   }
+}
+
+/**
+ * Legacy vehicles an officer has declared or re-statused since the import, in
+ * one query rather than one per row. The repair leaves their status alone.
+ */
+async function loadOfficerActedVehicles(): Promise<Set<string>> {
+  const events = await withRetry(() =>
+    prisma.auditEvent.findMany({
+      where: {
+        subjectType: 'vehicle',
+        action: { in: ['vehicle.declare', 'vehicle.status_change'] },
+      },
+      select: { subjectId: true },
+    }),
+  );
+  return new Set(
+    events.map((event) => event.subjectId).filter((id): id is string => !!id),
+  );
+}
+
+/**
+ * Legacy vehicles that plainly need nothing: on record, no declaration date,
+ * the legacy note present, and an owner row. One query, so a resumed run skips
+ * the rows already corrected without a round trip each. Anything not in this
+ * set is decided inside its own transaction.
+ */
+async function loadSettledVehicles(): Promise<Set<string>> {
+  const rows = await withRetry(() =>
+    prisma.vehicle.findMany({
+      where: {
+        isLegacyImport: true,
+        status: 'ON_RECORD',
+        declaredAt: null,
+        notes: { contains: 'Legacy status:' },
+        owner: { isNot: null },
+      },
+      select: { id: true },
+    }),
+  );
+  return new Set(rows.map((row) => row.id));
 }
 
 async function importVehicles(
@@ -321,6 +425,23 @@ async function importVehicles(
   const categoryByCode = new Map(categories.map((c) => [c.code, c.id]));
 
   const byLegacyId = new Map<string, ImportedVehicle>();
+
+  // Rows from an earlier run, in one query rather than one per row: a rerun
+  // skips them, and over a slow link the per-row lookup was most of the time.
+  const alreadyImported = new Map(
+    (
+      await withRetry(() =>
+        prisma.vehicle.findMany({
+          where: { legacyId: { not: null } },
+          select: { id: true, branchId: true, legacyId: true },
+        }),
+      )
+    ).map((vehicle) => [vehicle.legacyId!, vehicle]),
+  );
+
+  const officerActed = REPAIR ? await loadOfficerActedVehicles() : new Set<string>();
+  const settled = REPAIR ? await loadSettledVehicles() : new Set<string>();
+  const repairs: (() => Promise<void>)[] = [];
 
   for (const row of rows) {
     const legacyId = row.id;
@@ -378,18 +499,17 @@ async function importVehicles(
 
     // Reruns write nothing: an already-migrated row is skipped outright, so no
     // second audit event is written for a row nothing happened to.
-    const existing = await prisma.vehicle.findUnique({
-      where: { legacyId },
-      select: { id: true, branchId: true },
-    });
+    const existing = alreadyImported.get(legacyId);
     if (existing) {
       byLegacyId.set(legacyId, {
         id: existing.id,
         branchId: existing.branchId ?? branchId,
       });
       report.vehicleAlreadyPresent();
-      if (REPAIR) {
-        await repairVehicle(existing.id, owner, legacyStatusNote, actorId);
+      if (REPAIR && !settled.has(existing.id)) {
+        repairs.push(() =>
+          repairVehicle(existing.id, owner, legacyStatusNote, actorId, officerActed),
+        );
       }
       continue;
     }
@@ -482,6 +602,13 @@ async function importVehicles(
     }
   }
 
+  if (repairs.length > 0) {
+    console.log(
+      `  repairing ${repairs.length} vehicles (${settled.size} already correct)`,
+    );
+    await runLimited(repairs, REPAIR_CONCURRENCY);
+  }
+
   return byLegacyId;
 }
 
@@ -523,10 +650,12 @@ async function importRegister(
       continue;
     }
 
-    const existing = await prisma.sticker.findUnique({
-      where: { legacyBarcode: entry.legacyBarcode },
-      select: { id: true },
-    });
+    const existing = await withRetry(() =>
+      prisma.sticker.findUnique({
+        where: { legacyBarcode: entry.legacyBarcode },
+        select: { id: true },
+      }),
+    );
     if (existing) {
       report.barcodeAlreadyPresent();
       continue;
@@ -635,10 +764,12 @@ async function importMembers(
     const address = blankToNull(row.address);
 
     // Reruns write nothing — same reasoning as vehicles.
-    const existing = await prisma.member.findUnique({
-      where: { legacyId },
-      select: { id: true },
-    });
+    const existing = await withRetry(() =>
+      prisma.member.findUnique({
+        where: { legacyId },
+        select: { id: true },
+      }),
+    );
     if (existing) {
       report.memberAlreadyPresent();
       continue;
@@ -725,7 +856,8 @@ async function main(): Promise<void> {
     path.resolve(import.meta.dirname, '../../../../data');
 
   console.log(
-    `Legacy migration — reading from ${dataDir}${REPAIR ? ' (with --repair)' : ''}`,
+    `Legacy migration — reading from ${dataDir}${REPAIR ? ' (with --repair)' : ''}` +
+      (REGISTER ? '' : ' (register skipped: --no-register)'),
   );
 
   const actor = await ensureMigrationActor();
@@ -739,7 +871,11 @@ async function main(): Promise<void> {
 
   const vehiclesByLegacyId = await importVehicles(vehicleRows, actor.id, orgs);
   await importMembers(driverRows, actor.id, orgs, vehiclesByLegacyId);
-  await importRegister(vehicleRows, actor.id);
+  if (REGISTER) {
+    await importRegister(vehicleRows, actor.id);
+  } else {
+    report.registerSkipped();
+  }
 
   // Every row-level write above is individually try/caught and safe to
   // retry (idempotent, keyed by legacyId). This closing query is not a
