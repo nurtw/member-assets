@@ -123,6 +123,9 @@ export function StatusChip({ status }: { status: string }) {
     RETIRED: "bg-[var(--surface-muted)] text-black/70 border-[var(--border-subtle)]",
     ARCHIVED: "bg-[var(--surface-muted)] text-black/70 border-[var(--border-subtle)]",
     DISPUTED: "bg-[var(--verdict-caution-surface)] text-[var(--verdict-caution)] border-[var(--verdict-caution)]/30",
+    // Revision 1.2/1.3 — on record is neither affirmed nor refused: the
+    // vehicle is known, not declared. Neutral, like PENDING; the words carry it.
+    ON_RECORD: "bg-[var(--surface-muted)] text-black/70 border-[var(--border-subtle)]",
   };
 
   return (

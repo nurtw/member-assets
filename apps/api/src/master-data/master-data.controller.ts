@@ -33,6 +33,7 @@ import {
 
 const CODED_COLLECTIONS: readonly CodedCollection[] = [
   'vehicle-categories',
+  'route-types',
   'designations',
 ];
 
@@ -110,7 +111,8 @@ export class MasterDataController {
   @Documented({
     summary: 'List a master-data collection.',
     description:
-      'Collections are `vehicle-categories` and `designations`. Designations are deliberately ' +
+      'Collections are `vehicle-categories`, `route-types` (PRD Requirement 9.9, revision 1.3), and ' +
+      '`designations`. Designations are deliberately ' +
       'empty until the Union supplies them: the legacy export carries no designation list, and ' +
       'inventing one would present values with the appearance of Union authority (PRD §23.4).',
     query: [

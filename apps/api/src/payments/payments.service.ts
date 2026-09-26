@@ -51,7 +51,13 @@ export class PaymentsService {
       );
     }
 
-    const dueKobo = feeType.amountKobo;
+    // Requirement 27.1 / PAY-14 — the levy charges the vehicle's route-type
+    // amount where one is set. Snapshotted onto the payment below, so a later
+    // re-price never changes what this payment asked for.
+    const dueKobo = await this.feeTypes.amountFor(feeType, {
+      type: input.subjectType,
+      id: input.subjectId,
+    });
     const dueNaira = dueKobo / 100;
     const fees = calculateFees({
       due: dueNaira,

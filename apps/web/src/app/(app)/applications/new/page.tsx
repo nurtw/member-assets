@@ -20,6 +20,7 @@ import {
 } from "@/components/ui";
 import { ApiError, api, fetcher } from "@/lib/api";
 import { NIGERIAN_STATES } from "@/lib/nigerian-states";
+import { useSession } from "@/lib/session";
 
 /**
  * The Union's Membership / Registration / Guarantorship form.
@@ -85,6 +86,7 @@ function collectUnits(
 
 export default function NewApplicationPage() {
   const router = useRouter();
+  const { holds } = useSession();
   const [form, setForm] = useState<FormState>(INITIAL);
   const [error, setError] = useState<ApiError | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -207,7 +209,14 @@ export default function NewApplicationPage() {
             : undefined,
         },
       );
-      router.push(`/applications/${response.application.id}`);
+      // PRD Requirement 9.10 (revision 1.3) — registration flows straight on
+      // to the applicant's vehicle, which may be skipped. Only for an officer
+      // who can add one; anyone else lands on the application as before.
+      router.push(
+        holds("vehicle.record") || holds("vehicle.declare")
+          ? `/applications/${response.application.id}/vehicles`
+          : `/applications/${response.application.id}`,
+      );
     } catch (caught) {
       setError(
         caught instanceof ApiError

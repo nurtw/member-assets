@@ -1,27 +1,30 @@
 "use client";
 
-import type { VehicleDetail } from "@nurtw/contracts";
+import type { MasterDataEntry, VehicleDetail } from "@nurtw/contracts";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import useSWR from "swr";
 
 import { MemberPicker } from "@/components/member-picker";
+import { OnboardingSection } from "@/components/onboarding-section";
 import {
   Button,
   ErrorNotice,
   Field,
   Section,
+  Select,
   StatusChip,
   TextArea,
+  TextInput,
 } from "@/components/ui";
 import { ApiError, api, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
 /**
- * One declaration, and the acts available upon it.
+ * One vehicle, and the acts available upon it.
  *
- * The controls offered follow the declaration's status and the officer's
+ * The controls offered follow the vehicle's status and the officer's
  * permissions — a courtesy, not a control: the API's guard refuses
  * regardless, and every service method re-asks the permission question
  * against the record's own organisation.
@@ -50,11 +53,14 @@ export default function VehicleDetailPage() {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiError | null>(null);
-  const [ownerId, setOwnerId] = useState<string | null>(null);
-  const [ownerLabel, setOwnerLabel] = useState<string | null>(null);
-  const [ownerSyncedFor, setOwnerSyncedFor] = useState<string | undefined>(
-    undefined,
-  );
+  const [driverId, setDriverId] = useState<string | null>(null);
+  const [driverLabel, setDriverLabel] = useState<string | null>(null);
+  const [syncedFor, setSyncedFor] = useState<string | undefined>(undefined);
+  // Declaring a vehicle on record — only what the record lacks is asked for.
+  const [declareRouteTypeId, setDeclareRouteTypeId] = useState("");
+  const [declareOwnerName, setDeclareOwnerName] = useState("");
+  const [declareOwnerPhone, setDeclareOwnerPhone] = useState("");
+  const [declareOwnerAddress, setDeclareOwnerAddress] = useState("");
 
   const { data, error, isLoading, mutate } = useSWR<{ vehicle: VehicleDetail }>(
     `/vehicles/${params.id}`,
@@ -63,20 +69,31 @@ export default function VehicleDetailPage() {
 
   const vehicle = data?.vehicle ?? null;
   const loadError = error instanceof ApiError ? error : null;
+  const isOnRecord = vehicle?.status === "ON_RECORD";
+  const canDeclare = isOnRecord && holds("vehicle.declare");
 
-  // The owner picker's state tracks the loaded record, not the other way
-  // around — reset whenever a different (or freshly reloaded) declaration
+  const { data: routeTypeList } = useSWR<{ entries: MasterDataEntry[] }>(
+    canDeclare ? "/master-data/route-types" : null,
+    fetcher,
+  );
+
+  // The driver picker's state tracks the loaded record, not the other way
+  // around — reset whenever a different (or freshly reloaded) vehicle
   // arrives, the same "adjust state during render" pattern the app shell
   // uses for the mobile nav, rather than an effect that would flash the
-  // previous vehicle's owner for one frame.
-  if (vehicle && ownerSyncedFor !== vehicle.id) {
-    setOwnerSyncedFor(vehicle.id);
-    setOwnerId(vehicle.declaredByMember?.id ?? null);
-    setOwnerLabel(
+  // previous vehicle's driver for one frame.
+  if (vehicle && syncedFor !== vehicle.id) {
+    setSyncedFor(vehicle.id);
+    setDriverId(vehicle.declaredByMember?.id ?? null);
+    setDriverLabel(
       vehicle.declaredByMember
         ? `${vehicle.declaredByMember.surname}, ${vehicle.declaredByMember.firstName}`
         : null,
     );
+    setDeclareRouteTypeId(vehicle.routeType?.id ?? "");
+    setDeclareOwnerName(vehicle.owner?.name ?? "");
+    setDeclareOwnerPhone(vehicle.owner?.phone ?? "");
+    setDeclareOwnerAddress(vehicle.owner?.address ?? "");
   }
 
   async function act(action: () => Promise<unknown>) {
@@ -105,8 +122,8 @@ export default function VehicleDetailPage() {
         <ErrorNotice
           message={
             loadError?.status === 404
-              ? "No such declaration, or it is outside your area of responsibility."
-              : (loadError?.message ?? "The declaration could not be loaded.")
+              ? "No such vehicle, or it is outside your area of responsibility."
+              : (loadError?.message ?? "The vehicle could not be loaded.")
           }
           requestId={loadError?.requestId}
         />
@@ -122,6 +139,8 @@ export default function VehicleDetailPage() {
   const isDisputed = vehicle.status === "DISPUTED";
   const canChangeStatus =
     holds("vehicle.suspend") && (isActive || isSuspended);
+  const ownerIncomplete = !vehicle.owner?.name || !vehicle.owner?.phone;
+  const routeTypes = routeTypeList?.entries ?? [];
 
   return (
     <div className="grid max-w-3xl gap-6">
@@ -152,6 +171,17 @@ export default function VehicleDetailPage() {
         />
       ) : null}
 
+      {isOnRecord ? (
+        <div className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 py-3 text-sm">
+          <p className="font-semibold">On record, not declared</p>
+          <p className="mt-1">
+            This vehicle is recorded with the Union but has not been declared.
+            It counts for nothing outside the Union until it is declared and a
+            sticker is attached.
+          </p>
+        </div>
+      ) : null}
+
       {isDisputed ? (
         <div className="rounded-md border border-[var(--verdict-caution)]/30 bg-[var(--verdict-caution-surface)] px-4 py-3 text-sm">
           <p className="font-semibold text-[var(--verdict-caution)]">
@@ -164,9 +194,13 @@ export default function VehicleDetailPage() {
         </div>
       ) : null}
 
-      <Section title="Declaration">
+      <Section title="Vehicle">
         <dl className="grid gap-4 sm:grid-cols-2">
-          <Detail label="Category" value={vehicle.vehicleCategory?.label ?? null} />
+          <Detail label="Route type" value={vehicle.routeType?.label ?? null} />
+          <Detail
+            label="Vehicle type"
+            value={vehicle.vehicleCategory?.label ?? null}
+          />
           <Detail label="Organisation" value={vehicle.organisation.name} />
           <Detail label="Make" value={vehicle.make} />
           <Detail label="Model" value={vehicle.model} />
@@ -179,9 +213,22 @@ export default function VehicleDetailPage() {
                 : "Not yet declared"
             }
           />
+          {/* Requirement 9A.1 — onboarded is its own fact, beside declared. */}
+          <Detail
+            label="Onboarded"
+            value={
+              vehicle.onboarding
+                ? `${new Date(vehicle.onboarding.attachedAt).toLocaleDateString("en-GB")} · ${
+                    vehicle.onboarding.kind === "LEGACY"
+                      ? "Transpay sticker reattached"
+                      : "NURTW sticker"
+                  }${vehicle.onboarding.attachedBy ? ` · by ${vehicle.onboarding.attachedBy}` : ""}`
+                : "Not yet onboarded"
+            }
+          />
           {vehicle.declaredByMember ? (
             <Detail
-              label="Declared by"
+              label="Driver"
               value={`${vehicle.declaredByMember.surname}, ${vehicle.declaredByMember.firstName}`}
             />
           ) : null}
@@ -199,39 +246,137 @@ export default function VehicleDetailPage() {
         ) : null}
       </Section>
 
+      <Section
+        title="Owner"
+        description="Whoever owns the vehicle — not necessarily a member. Private: never shown on a scan or to an outside organisation."
+      >
+        <dl className="grid gap-4 sm:grid-cols-3">
+          <Detail label="Name" value={vehicle.owner?.name ?? null} />
+          <Detail label="Phone" value={vehicle.owner?.phone ?? null} />
+          <Detail label="Address" value={vehicle.owner?.address ?? null} />
+        </dl>
+      </Section>
+
+      {canDeclare ? (
+        <Section
+          title="Declare this vehicle"
+          description="Declares this same record — no second record is created. A route type and the owner's name and phone are required."
+        >
+          <Field label="Route type" htmlFor="declareRouteTypeId" required>
+            <Select
+              id="declareRouteTypeId"
+              value={declareRouteTypeId}
+              onChange={(event) => setDeclareRouteTypeId(event.target.value)}
+            >
+              <option value="">Select a route type</option>
+              {routeTypes.map((routeType) => (
+                <option key={routeType.id} value={routeType.id}>
+                  {routeType.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {ownerIncomplete ? (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Owner's name" htmlFor="declareOwnerName" required>
+                <TextInput
+                  id="declareOwnerName"
+                  value={declareOwnerName}
+                  onChange={(event) => setDeclareOwnerName(event.target.value)}
+                />
+              </Field>
+              <Field label="Owner's phone" htmlFor="declareOwnerPhone" required>
+                <TextInput
+                  id="declareOwnerPhone"
+                  inputMode="tel"
+                  autoComplete="off"
+                  value={declareOwnerPhone}
+                  onChange={(event) => setDeclareOwnerPhone(event.target.value)}
+                />
+              </Field>
+              <Field label="Owner's address" htmlFor="declareOwnerAddress">
+                <TextInput
+                  id="declareOwnerAddress"
+                  value={declareOwnerAddress}
+                  onChange={(event) =>
+                    setDeclareOwnerAddress(event.target.value)
+                  }
+                />
+              </Field>
+            </div>
+          ) : null}
+          <div>
+            <Button
+              type="button"
+              disabled={
+                busy ||
+                !declareRouteTypeId ||
+                (ownerIncomplete && (!declareOwnerName || !declareOwnerPhone))
+              }
+              onClick={() =>
+                void act(() =>
+                  api.post(`/vehicles/${vehicle.id}/declare`, {
+                    ...(declareRouteTypeId !== (vehicle.routeType?.id ?? "")
+                      ? { routeTypeId: declareRouteTypeId }
+                      : {}),
+                    ...(ownerIncomplete
+                      ? {
+                          owner: {
+                            name: declareOwnerName,
+                            phone: declareOwnerPhone,
+                            address: declareOwnerAddress.trim() || undefined,
+                          },
+                        }
+                      : {}),
+                  }),
+                )
+              }
+            >
+              Declare this vehicle
+            </Button>
+          </div>
+        </Section>
+      ) : null}
+
+      {holds("sticker.attach") ? (
+        <OnboardingSection vehicle={vehicle} onChanged={() => mutate()} />
+      ) : null}
+
       {holds("vehicle.update") ? (
         <Section
-          title="Owner"
-          description="The member this vehicle is declared under. May be left unset — a declaration is valid against a branch or unit alone — and changed here at any time, independent of a status change."
+          title="Driver"
+          description="The member who drives this vehicle. May be left unset and changed here at any time, independent of a status change."
         >
           <MemberPicker
             label="Member"
-            htmlFor="ownerId"
-            selectedId={ownerId}
-            selectedLabel={ownerLabel}
+            htmlFor="driverId"
+            selectedId={driverId}
+            selectedLabel={driverLabel}
             onSelect={(member) => {
-              setOwnerId(member.id);
-              setOwnerLabel(member.label);
+              setDriverId(member.id);
+              setDriverLabel(member.label);
             }}
             onClear={() => {
-              setOwnerId(null);
-              setOwnerLabel(null);
+              setDriverId(null);
+              setDriverLabel(null);
             }}
           />
           <div>
             <Button
               type="button"
               variant="secondary"
-              disabled={busy || ownerId === (vehicle.declaredByMember?.id ?? null)}
+              disabled={
+                busy || driverId === (vehicle.declaredByMember?.id ?? null)
+              }
               onClick={() =>
                 void act(() =>
                   api.patch(`/vehicles/${vehicle.id}`, {
-                    declaredByMemberId: ownerId,
+                    declaredByMemberId: driverId,
                   }),
                 )
               }
             >
-              Save owner
+              Save driver
             </Button>
           </div>
         </Section>

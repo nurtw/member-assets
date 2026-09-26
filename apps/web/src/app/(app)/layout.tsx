@@ -49,6 +49,7 @@ function Shell({ children }: { children: ReactNode }) {
     { href: "/applications", label: "Applications", permission: "application.read" },
     { href: "/cards", label: "Cards", permission: "card.read" },
     { href: "/vehicles", label: "Vehicles", permission: "vehicle.read" },
+    { href: "/settings/fees", label: "Fees", permission: "payment.read" },
   ].filter((link) => holds(link.permission));
 
   return (

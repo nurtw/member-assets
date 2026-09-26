@@ -8,16 +8,20 @@ import {
   DESIGNATION_SEED,
   LEGACY_VEHICLE_CATEGORY_SEED,
   PERMISSIONS,
+  ROUTE_TYPE_SEED,
   SYSTEM_ROLES,
 } from '@nurtw/contracts';
 
 import { hashPassword } from '../src/auth/password-hashing.ts';
-import { LAUNCH_FEE_TYPES } from '../src/payments/launch-fee-types.ts';
+import {
+  LAUNCH_FEE_TYPES,
+  LAUNCH_LEVY_ROUTE_PRICES,
+} from '../src/payments/launch-fee-types.ts';
 
 /**
  * Idempotent seed.
  *
- * Establishes the permission catalogue, the eleven system roles of PRD §16, the
+ * Establishes the permission catalogue, the system roles of PRD §16, the
  * organisational root, and the master data the Union administers thereafter.
  * Every write is an upsert, so running it twice is harmless and running it after
  * a schema change tops up rather than duplicating.
@@ -324,6 +328,23 @@ async function seedVehicleCategories(): Promise<void> {
 }
 
 /**
+ * PRD Requirement 9.9 (revision 1.3) — route types. The migration that added
+ * the table inserts these too; this keeps a freshly seeded database identical.
+ * `update: {}` for the same reason as vehicle categories: a label the Union has
+ * since edited must not be reset.
+ */
+async function seedRouteTypes(): Promise<void> {
+  for (const [index, routeType] of ROUTE_TYPE_SEED.entries()) {
+    await prisma.routeType.upsert({
+      where: { code: routeType.code },
+      create: { code: routeType.code, label: routeType.label, sortOrder: index },
+      update: {},
+    });
+  }
+  console.log(`  route types: ${ROUTE_TYPE_SEED.length}`);
+}
+
+/**
  * The twenty-one local government areas of Anambra State.
  *
  * Public administrative geography, not personal data, and cross-checked against
@@ -435,6 +456,27 @@ async function seedFeeTypes(): Promise<void> {
     });
   }
   console.log(`  fee types: ${LAUNCH_FEE_TYPES.length}`);
+
+  // PAY-14 — the levy per route type. First run only (`update: {}`), for the
+  // same reason as the amounts above. Needs the route types seeded earlier.
+  const levy = await prisma.feeType.findUniqueOrThrow({ where: { code: 'LEVY' } });
+  for (const price of LAUNCH_LEVY_ROUTE_PRICES) {
+    const routeType = await prisma.routeType.findUniqueOrThrow({
+      where: { code: price.routeTypeCode },
+    });
+    await prisma.feeTypePrice.upsert({
+      where: {
+        feeTypeId_routeTypeId: { feeTypeId: levy.id, routeTypeId: routeType.id },
+      },
+      create: {
+        feeTypeId: levy.id,
+        routeTypeId: routeType.id,
+        amountKobo: price.amountKobo,
+      },
+      update: {},
+    });
+  }
+  console.log(`  levy route-type prices: ${LAUNCH_LEVY_ROUTE_PRICES.length}`);
 }
 
 /**
@@ -497,6 +539,7 @@ async function main(): Promise<void> {
   await seedRoles();
   const councilId = await seedOrganisation();
   await seedVehicleCategories();
+  await seedRouteTypes();
   await seedDesignations();
   await seedLgas();
   await seedZones(councilId);

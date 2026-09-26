@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.1
-**Last revised:** 9 September 2026
+**Document version:** 1.2
+**Last revised:** 26 September 2026
 **Authority:** Subordinate to `PRD.md`. Where this document and the PRD conflict, the PRD prevails.
 
 ---
@@ -233,6 +233,33 @@ already `ACTIVE`, does the original create-or-dispute logic apply unchanged. Thi
 "declare-first, on-record-vehicles-excluded-until-declared" actually requires in code: a
 migrated vehicle must become the SAME record once declared, not a duplicate beside it.
 
+**Decision 6.6 — recording is a second way into `ON_RECORD` *(revision 1.3)*.** PRD
+Requirement 9.7 adds `vehicle.record`. It creates exactly the row the migration creates:
+`status: ON_RECORD`, `declaredAt: null`. It is not a lesser form of declaration, so it
+never touches the `ACTIVE` partial unique index.
+
+- **Duplicates are refused, not disputed.** Recording checks for a row on the normalised
+  plate in any live state (`ON_RECORD`, `PENDING`, `ACTIVE`, `SUSPENDED`, `DISPUTED`) and
+  refuses with 409 if one exists. `RETIRED` and `ARCHIVED` rows are history and do not
+  block. The caller gets the generic conflict response (Requirement 14.3), which says
+  nothing about where the record is, because the enumerator may not hold read scope over
+  it. The web form explains the 409 in plain words. A partial unique index backs the check against races:
+  `vehicle_one_on_record_per_plate ON vehicle (plate_number_normalized) WHERE status =
+  'ON_RECORD'`. Together with the existing `ACTIVE` index, and the pre-check across the
+  other live states, one physical vehicle cannot gain two live records through recording.
+- **Promotion checks scope at both ends.** Declaring an `ON_RECORD` row, whether from its
+  page (`POST /vehicles/:id/declare`) or from a new declaration on a matching plate, is a
+  declaration *and* potentially a move. The declarer needs `vehicle.declare` over the row's
+  current branch or unit **and** over the destination, the same two-ended rule as moving an
+  organisation node. A matching `ON_RECORD` row outside the declarer's scope refuses the
+  declaration with 409; an administrator must move the record first. It is never silently
+  duplicated beside it. This matters at go-live, because every legacy row
+  sits under the Legacy Import placeholder (plan 09) until staff move it.
+- **Required fields are enforced at the API, not the column.** Route type and owner
+  name/phone are required by the zod contracts for recording and declaring (Requirements
+  9.8–9.9). The columns stay nullable because legacy rows lawfully lack them (Requirement
+  25.4), and a NOT NULL column would force the migration to invent values.
+
 ---
 
 ## 7. Audit
@@ -375,6 +402,12 @@ and takes effect immediately, satisfying acceptance criterion 11.
 telephone, residential address, signature — is held in tables distinct from card-display
 data, with access mediated by the `member-profile` module. The separation is structural,
 not merely a matter of query discipline.
+
+**Decision 10.1.1 — vehicle owner details follow the same rule *(revision 1.3)*.** The
+owner's name, phone, and address (PRD Requirement 9.8) live in `vehicle_owner`, 1:1 with
+`vehicle`, never as columns on `vehicle`. The vehicle list selects no owner field. The
+vehicle detail returns them to a caller who can read that vehicle, as the member detail
+does with contact data. No verification or aggregate path joins `vehicle_owner`.
 
 **Decision 10.2.** Uploaded passport photographs and signatures are held in object storage,
 never in the repository and never in the database. Access is by time-limited signed URL.
@@ -544,3 +577,13 @@ The following were added by revision 1.2, 22 September 2026:
 | Legacy barcodes | Resolve only once reattached under Requirement 9A.4's four conditions; the register is closed | 6.4, 6.5 |
 | On record / onboarded / declared | Three structurally separate facts: a new `ON_RECORD` declaration state, onboarded derived from an attached sticker, never a flag on the declaration row | 6.5 |
 | Payments | Fee types as data, Paystack subaccount split, webhook plus server verification, settlement account editable in settings with no second approver | PRD §27 |
+
+The following were added by revision 1.3, 26 September 2026:
+
+| Matter | Determination | Decision |
+|---|---|---|
+| Recording a vehicle | `vehicle.record` creates an `ON_RECORD` row; duplicates are refused; promotion to `ACTIVE` checks scope at both ends | 6.6 |
+| Field enumerator | A twelfth system role: member registration plus `vehicle.record`, no declaring or attaching | PRD §16 |
+| Vehicle owner details | A separate `vehicle_owner` table, sensitive, never on a verification path | 10.1.1 |
+| Route type | Master data (`route_type`), required at the API for new vehicles, nullable in the column for legacy rows | 6.6 |
+| Levy pricing | `fee_type_price` rows per route type, falling back to the fee type's default amount | PRD §27.1 |

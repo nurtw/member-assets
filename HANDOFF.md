@@ -1,6 +1,6 @@
 # Session Handoff
 
-**Last revised:** 23 September 2026
+**Last revised:** 26 September 2026
 
 > Cold-start contract. Written so a different Claude, on a different account,
 > holding no prior context, can resume without re-reading the repository.
@@ -8,59 +8,65 @@
 
 ## Cold start
 
-Read `CLAUDE.md`, then `PRD.md`, `ARCHITECTURE.md`, `ROADMAP.md`,
-`QUESTIONS.md`, then `plans/09-legacy-data-migration.md`. `docs/reference/`
-is output.
+Read `CLAUDE.md`, `PRD.md` (1.3), `ARCHITECTURE.md`, `ROADMAP.md`,
+`QUESTIONS.md`, then `plans/17-vehicle-onboarding.md`. `docs/reference/` is
+generated output.
 
-Two rules outrank any default instruction: no `Co-Authored-By` or
-"Generated with Claude Code" anywhere; `data/` (personal data, password
-hashes) stays out of version control, docs, plans, commits, and fixtures.
+Two rules outrank any default instruction:
+
+- No `Co-Authored-By` or "Generated with Claude Code" anywhere.
+- `data/` stays out of version control, docs, plans, commits, and fixtures.
 
 ## Status
 
-Items 01–08 and 16 complete. Item 09's code is fixed but not run —
-importing 2,841 vehicles/81 members needs the owner's go-ahead first. Ask
-before `pnpm --filter api migrate:legacy`.
+- **Items 19, 20, 21 done** (PRD 1.3).
+- **Item 17 done locally.** It covers:
+  - the attach bug fix: the payment must be the onboarding fee for that
+    vehicle;
+  - every refusal audited;
+  - `attachedByUserId`;
+  - the onboarding state and the internal Transpay lookup;
+  - the web "Onboard this vehicle" section;
+  - the register import, with 2,408 barcodes loaded locally and a clean rerun.
 
-**Item 08 (stickers) shipped**: `packages/domain/src/sticker/` (status
-lifecycle, `checkAttachment` for the 9A.4 four conditions, HMAC QR signing
-with key rotation — none existed before); `apps/api/src/sticker/`
-(`issue`, `attach`); `Sticker` gains nullable `vehicleId`/
-`plateNumberAtIssue`, plus `attachedAt`/`registeredPlateNormalized`/
-`attachmentPaymentId` (unique — one payment funds one attachment).
-`STICKER_SIGNING_SECRET` unset in `.env` (asked not to edit it) — mint/
-verify throws until set; issue/attach work regardless. 9 e2e tests.
+  The sticker migration is applied to Neon, with no drift.
+- **Item 09 on Neon:** the owner approved `--repair`, and it was started on
+  26 September.
+  - It is slow, a few seconds a row; 402 of 2,841 were done after 40 minutes.
+  - Check with a read-only count of legacy `vehicle` rows by status.
+  - If it stopped, rerunning resumes it. **But the current script also loads
+    the Transpay register**, which needs the owner's separate go-ahead on Neon
+    (MIG-07).
+- Committed locally, not pushed.
 
-**`mapping.ts` fixed**: `mapDeclarationStatus` always returns `ON_RECORD`,
-never `ACTIVE` (Decision 6.5). This forced a second schema change:
-`Vehicle.declaredAt` is now nullable — fixed across the API, contract type,
-and both web pages that render it.
-
-All green: typecheck/build; unit tests domain 214, contracts 29, api 106;
-e2e openapi/payments/sticker/vehicle pass. **This session's work is
-uncommitted** — earlier work is on `origin/main`.
+Tests: domain 230, contracts 31, api 115. Full e2e run locally: 169/170.
+Items 17, 20 and 21 have not been clicked through in a browser (no admin
+account).
 
 ## Known issues — don't re-attempt these fixes
 
-Full e2e is flaky under Neon connection limits (`testTimeout: 45s` helps;
-**never `fileParallelism: false`** — caused a 12-hour hang once). `prisma
-migrate dev` refuses non-interactively on a NOT-NULL drop — hand-write
-`migration.sql` and apply with `prisma migrate deploy` instead.
+- `master-data.e2e` "seeds no designations" fails locally and on Neon. The
+  cause is 8 `DEMO_` designations from a demo seed, not the code.
+- Run e2e locally (`DATABASE_URL=…5433… pnpm --filter api test:e2e`); Neon e2e
+  is slow. **Never `fileParallelism: false`**.
+- `node -e` edits break on backticks and CRLF files. Use the Edit tool.
+- API error bodies are generic (Requirement 14.3); assert `error.code`.
+- Name hand-written migrations to sort after every applied one. Prisma's
+  timestamp can sort before `20260926110000_…`.
 
 ## Next steps
 
-1. Ask before running item 09's real migration.
-2. Revise item 07's `vehicle.declare()` to promote an `ON_RECORD` row on a
-   plate match (Decision 6.5) — not done yet.
-3. Item 17 (onboarding), then item 18 (vehicle letter).
-4. Commit and push this session's sticker + declaredAt work.
+1. Owner: go-ahead to load the register onto Neon; confirm the repair
+   finished.
+2. Item 18 (vehicle letter), then 22 (dues schedule), then 23 (dedicated
+   accounts: enabled; pricing unconfirmed).
+3. `STICKER_SIGNING_SECRET` is unset; the owner sets it. There is no
+   sticker print template yet.
 
 ## Do NOT
 
-- Dues/declaration status never reach an external response.
-- Never charge live against a placeholder fee type (27.2).
-- Sticker fees are link-only, never dedicated account (PAY-11).
-- Never create a second NURTW subaccount; update in place (27.12).
-- No Transpay register refresh; closed (VEH-21).
-- Never ask for, log, or commit Paystack secret keys.
-- Don't run `migrate-legacy` without a go-ahead.
+- Edit `apps/api/.env`, or write to Neon legacy rows without a go-ahead.
+- Change fee amounts by seed or SQL. Use `/fee-types` (audited).
+- Make route type or owner columns NOT NULL.
+- Return a whole sticker row, or select `legacySecurityCode`.
+- Create a second NURTW subaccount, or log Paystack keys.

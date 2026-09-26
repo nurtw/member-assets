@@ -58,7 +58,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
   signal?: AbortSignal;
 }
@@ -121,6 +121,8 @@ export const api = {
     request<T>(path, { method: "POST", body }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PATCH", body }),
+  put: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: "PUT", body }),
 
   /**
    * Uploads a file as multipart.

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   blankToNull,
   mapDeclarationStatus,
+  mapLegacyOwner,
+  mapLegacyRegisterEntry,
   mapMemberStatus,
   matchLgaByName,
   parseLegacyBoolean,
@@ -126,5 +128,88 @@ describe('matchLgaByName', () => {
 
   it('returns null rather than guess at an unrecognised name', () => {
     expect(matchLgaByName('Made Up LGA', known)).toBeNull();
+  });
+});
+
+describe('mapLegacyOwner (Requirement 25.4)', () => {
+  // Synthetic values only — never rows from data/ (CLAUDE.md).
+  it('copies name, phone, and address exactly as recorded', () => {
+    expect(
+      mapLegacyOwner(
+        JSON.stringify({
+          name: ' Test Owner ',
+          phone: '0803 000 0000',
+          address: '1 Example Road',
+        }),
+      ),
+    ).toEqual({
+      ownerName: 'Test Owner',
+      // Not normalised: an imported phone must not look officer-entered.
+      ownerPhone: '0803 000 0000',
+      ownerAddress: '1 Example Road',
+      missing: [],
+    });
+  });
+
+  it('takes nothing beyond the three fields VEH-25 asks for', () => {
+    const owner = mapLegacyOwner(
+      JSON.stringify({
+        name: 'Test Owner',
+        phone: '08030000000',
+        gender: 'X',
+        marital_status: 'Y',
+        nok_name: 'Z',
+      }),
+    );
+    expect(Object.keys(owner ?? {}).sort()).toEqual(
+      ['missing', 'ownerAddress', 'ownerName', 'ownerPhone'].sort(),
+    );
+  });
+
+  it('reports a missing name or phone rather than filling it in', () => {
+    expect(mapLegacyOwner(JSON.stringify({ name: 'Test Owner', phone: '' })))
+      .toMatchObject({ ownerPhone: null, missing: ['phone'] });
+    expect(mapLegacyOwner(JSON.stringify({ address: 'Somewhere' })))
+      .toMatchObject({ ownerName: null, missing: ['name', 'phone'] });
+  });
+
+  it('ignores non-string values instead of stringifying them', () => {
+    expect(mapLegacyOwner(JSON.stringify({ name: 'A', phone: {} })))
+      .toMatchObject({ ownerPhone: null, missing: ['phone'] });
+  });
+
+  it('returns null for an absent or unparseable blob', () => {
+    expect(mapLegacyOwner('')).toBeNull();
+    expect(mapLegacyOwner(undefined)).toBeNull();
+    expect(mapLegacyOwner('{not json')).toBeNull();
+    expect(mapLegacyOwner('[]')).toBeNull();
+  });
+});
+
+describe('mapLegacyRegisterEntry (Requirements 9A.3, 9A.5)', () => {
+  // Synthetic values only — never rows from data/ (CLAUDE.md).
+  it('copies the barcode and security code as recorded', () => {
+    expect(mapLegacyRegisterEntry('1600000000000', 'AB12C')).toEqual({
+      legacyBarcode: '1600000000000',
+      legacySecurityCode: 'AB12C',
+    });
+  });
+
+  it('keeps a register entry whose security code is blank, with a null code', () => {
+    expect(mapLegacyRegisterEntry('1600000000000', '  ')).toEqual({
+      legacyBarcode: '1600000000000',
+      legacySecurityCode: null,
+    });
+  });
+
+  it('returns null for a row with no barcode — onboarded later with a new sticker', () => {
+    expect(mapLegacyRegisterEntry('', 'AB12C')).toBeNull();
+    expect(mapLegacyRegisterEntry(undefined, undefined)).toBeNull();
+  });
+
+  it('trims surrounding whitespace but never rewrites the barcode itself', () => {
+    expect(mapLegacyRegisterEntry(' 0160000000000 ', null)?.legacyBarcode).toBe(
+      '0160000000000',
+    );
   });
 });

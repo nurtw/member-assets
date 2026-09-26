@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.2
-**Last revised:** 22 September 2026
+**Document version:** 1.3
+**Last revised:** 26 September 2026
 
 ---
 
@@ -36,16 +36,21 @@ Each item is independently completable and independently testable. Status values
 | 06 | membership-card-issuance | §8 | complete | `plans/06-membership-card-issuance.md` |
 | 07 | vehicle-declaration | §9 | complete | `plans/07-vehicle-declaration.md` |
 | 08 | sticker-inventory-qr | §10 | complete | `plans/08-sticker-inventory-qr.md` |
-| 09 | legacy-data-migration | §25, §9A | re-planned, code fixed — **migration run pending owner go-ahead** | `plans/09-legacy-data-migration.md` |
+| 09 | legacy-data-migration | §25, §9A | local run done; Neon `--repair` running (owner approved 26 Sep) | `plans/09-legacy-data-migration.md` |
 | 10 | internal-verification | §11 | not-started | `plans/10-internal-verification.md` |
 | 11 | api-clients-and-scopes | §12.1, §16 | not-started | `plans/11-api-clients-and-scopes.md` |
 | 12 | external-verification-api | §12, §15 | not-started | `plans/12-external-verification-api.md` |
 | 13 | rate-limiting-and-abuse | §14 | not-started | `plans/13-rate-limiting-and-abuse.md` |
 | 14 | aggregate-reporting | §13 | not-started | `plans/14-aggregate-reporting.md` |
 | 15 | go-live-hardening | §17, §21 | not-started | `plans/15-go-live-hardening.md` |
-| 16 | payments | §27 | planned | plans/16-payments.md |
-| 17 | vehicle-onboarding | §9A | not-started | — |
+| 16 | payments | §27 | done (link payments, settlement account) | `plans/16-payments.md` |
+| 17 | vehicle-onboarding | §9A | done locally; register on Neon waits for owner; browser check pending | `plans/17-vehicle-onboarding.md` |
 | 18 | vehicle-letter | §9A.6 | not-started | — |
+| 19 | vehicle-recording | §9.7–9.9 | done | `plans/19-vehicle-recording.md` |
+| 20 | registration-flow | §9.10 | done (browser check pending) | `plans/20-registration-flow.md` |
+| 21 | fee-type-settings | §27.1–27.2 | done (browser check pending) | `plans/21-fee-type-settings.md` |
+| 22 | dues-schedule | §27.8, §27.13 | not-started | — |
+| 23 | dedicated-accounts | §27.7 | not-started | — |
 
 ### Item summaries
 
@@ -171,6 +176,26 @@ vehicles with no legacy sticker by issuing a new signed one. Internal scans show
 onboarding, through a versioned `pdf-lib` template (`v1`) like the card. Its content is settled
 at `QUESTIONS.md` VEH-19. It carries no QR code, and its signature lines stay blank until CARD-07.
 
+**19 — vehicle-recording.** *PRD 1.3, Requirements 9.7–9.9.* `vehicle.record` and the Field
+enumerator role; route type as master data; owner details in a separate sensitive table;
+declaring an on-record vehicle updates the same row (Decisions 6.5–6.6). Also closes item
+07's outstanding promotion fix.
+
+**20 — registration-flow.** *PRD 1.3, Requirement 9.10.* The web flow from saving a member
+straight to recording that member's vehicle, or skipping it. Depends on item 19.
+
+**21 — fee-type-settings.** *PRD 1.3, Requirements 27.1–27.2.* Audited editing of fee-type
+amounts, a levy amount per route type, the levy at ₦7,000, and payment initiation charging
+the vehicle's route-type amount. Depends on item 19.
+
+**22 — dues-schedule.** *Requirements 27.8, 27.13.* Which levy months and membership years
+are owed, derived from the ledger, and dues status on internal screens only. Depends on
+items 17 and 21.
+
+**23 — dedicated-accounts.** *Requirement 27.7, PAY-11, PAY-12, PAY-17.* A Paystack dedicated
+account per member, split to the NURTW subaccount, crediting oldest dues first. Dedicated
+accounts are enabled on the Paystack business. Depends on item 22.
+
 ## Dependencies
 
 ```
@@ -200,6 +225,19 @@ Item 16 (payments) depends only on item 03 and can start at once in Paystack tes
 Real amounts (PAY-02) and the NURTW subaccount (PAY-07) gate going live, not building.
 All item 16-18 questions are
 answered (`QUESTIONS.md` PAY-01-13, VEH-18-22).
+
+*PRD 1.3 additions:*
+
+```text
+19 --+-> 09 (owner details, local run)
+     +-> 20
+     +-> 21 --+
+         17 --+-> 22 -> 23
+```
+
+Order of work: 19, then item 09's local run (so the report can be reviewed while the rest
+proceeds), then 20, 21, 17, 22, 23. Every 1.3 question is answered (`QUESTIONS.md` VEH-23 to
+VEH-26, MIG-04, MIG-07, PAY-14 to PAY-17).
 
 ## Open questions
 
@@ -242,4 +280,6 @@ deferred by the owner:
 |---|---|---|
 | Legacy barcodes are millisecond timestamps, deducible from one genuine sticker and carrying no authenticity proof | **Revised 22 September 2026 (PRD 1.2).** Legacy barcodes import unattached and resolve only once reattached. Reattachment requires the barcode to be on the imported register, bound to its recorded plate (no override), attached only once, and paid for. Transpay has stopped issuing, so the register is closed and cannot be added to (`QUESTIONS.md` VEH-21). | PRD §9A, §26.4, `ARCHITECTURE.md` 6.4 |
 | A hijacked session holding `vehicle.declare` may create declarations, as step-up is not enabled | Accepted, and materially reduced on 9 September 2026 by restricting the permission to the super administrator plus express per-user grants. Bounded further by organisational scope, complete audit trail, and the absence of any other route to create a declaration. Step-up is built and may be enabled by configuration. | `ARCHITECTURE.md` 9.7 |
+| The shared database holds a pre-1.2 legacy import: 2,838 legacy vehicles marked declared, no owner details | Found 26 September 2026. Nothing depends on those rows yet. `migrate:legacy -- --repair` corrects them in place, audited, and was verified locally. The owner approved it the same day, and it is running on Neon. Until it finishes, the shared database overstates declared vehicles. | `plans/09-legacy-data-migration.md` |
+| Item 08's sticker attachment accepted any confirmed payment, whatever its fee type or vehicle | Found and closed 26 September 2026 (item 17). No attachment existed on the shared database, so nothing was funded wrongly. | `plans/17-vehicle-onboarding.md` |
 | Approximately 67 per cent of migrated vehicles will carry no local government area | Accepted. Imported blank and flagged for operational cleanup. Inference from address text is prohibited: an inferred value would be indistinguishable from a recorded one. | PRD §23.18 |

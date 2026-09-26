@@ -17,13 +17,36 @@ import type { ActorContext } from '../organisation/organisation.service.js';
  * The two collections sharing an identical shape. LGAs differ and are handled
  * separately rather than forced into the same signature.
  */
-export type CodedCollection = 'vehicle-categories' | 'designations';
+export type CodedCollection = 'vehicle-categories' | 'route-types' | 'designations';
+
+/**
+ * The operations the coded collections share. Their Prisma delegates have
+ * identical shapes but distinct generated types, so TypeScript cannot call a
+ * union of them; this narrows each to the methods used here. The one cast lives
+ * in `codedDelegate`, where the collection-to-model mapping is fixed.
+ */
+interface CodedDelegate {
+  findMany(args: {
+    where: { isActive?: boolean };
+    orderBy: Prisma.VehicleCategoryOrderByWithRelationInput[];
+  }): Promise<MasterDataEntry[]>;
+  findUnique(args: {
+    where: { id: string } | { code: string };
+  }): Promise<MasterDataEntry | null>;
+  create(args: {
+    data: { code: string; label: string; sortOrder: number };
+  }): Promise<MasterDataEntry>;
+  update(args: {
+    where: { id: string };
+    data: { label?: string; sortOrder?: number; isActive?: boolean };
+  }): Promise<MasterDataEntry>;
+}
 
 /**
  * Master data (PRD §23.4) — the lists the Union administers for itself.
  *
  * **`canAnywhere` is the correct check here, deliberately.** Vehicle categories,
- * designations, and local government areas are Union-wide reference data
+ * route types, designations, and local government areas are Union-wide reference data
  * belonging to no branch, so there is no record path to scope against and the
  * guard's coarse check is the whole check. This is the exception to the
  * item-03 rule that record-touching routes must use `can`; a reader applying
@@ -58,9 +81,10 @@ export class MasterDataService {
       { label: 'asc' },
     ];
 
-    return collection === 'vehicle-categories'
-      ? this.prisma.vehicleCategory.findMany({ where, orderBy })
-      : this.prisma.designation.findMany({ where, orderBy });
+    return this.codedDelegate(this.prisma, collection).findMany({
+      where,
+      orderBy,
+    });
   }
 
   async createCoded(
@@ -77,10 +101,7 @@ export class MasterDataService {
         sortOrder: input.sortOrder ?? 0,
       };
 
-      const row =
-        collection === 'vehicle-categories'
-          ? await tx.vehicleCategory.create({ data })
-          : await tx.designation.create({ data });
+      const row = await this.codedDelegate(tx, collection).create({ data });
 
       await this.audit.record(
         {
@@ -114,10 +135,10 @@ export class MasterDataService {
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
       };
 
-      const row =
-        collection === 'vehicle-categories'
-          ? await tx.vehicleCategory.update({ where: { id }, data })
-          : await tx.designation.update({ where: { id }, data });
+      const row = await this.codedDelegate(tx, collection).update({
+        where: { id },
+        data,
+      });
 
       await this.audit.record(
         {
@@ -237,10 +258,9 @@ export class MasterDataService {
     collection: CodedCollection,
     id: string,
   ): Promise<MasterDataEntry> {
-    const row =
-      collection === 'vehicle-categories'
-        ? await this.prisma.vehicleCategory.findUnique({ where: { id } })
-        : await this.prisma.designation.findUnique({ where: { id } });
+    const row = await this.codedDelegate(this.prisma, collection).findUnique({
+      where: { id },
+    });
 
     if (!row) {
       throw new NotFoundException();
@@ -252,10 +272,10 @@ export class MasterDataService {
     collection: CodedCollection,
     code: string,
   ): Promise<void> {
-    const existing =
-      collection === 'vehicle-categories'
-        ? await this.prisma.vehicleCategory.findUnique({ where: { code } })
-        : await this.prisma.designation.findUnique({ where: { code } });
+    const existing = await this.codedDelegate(
+      this.prisma,
+      collection,
+    ).findUnique({ where: { code } });
 
     if (existing) {
       throw new ConflictException(
@@ -265,9 +285,28 @@ export class MasterDataService {
   }
 
   private subjectType(collection: CodedCollection): string {
-    return collection === 'vehicle-categories'
-      ? 'vehicle_category'
-      : 'designation';
+    switch (collection) {
+      case 'vehicle-categories':
+        return 'vehicle_category';
+      case 'route-types':
+        return 'route_type';
+      case 'designations':
+        return 'designation';
+    }
+  }
+
+  private codedDelegate(
+    client: Prisma.TransactionClient,
+    collection: CodedCollection,
+  ): CodedDelegate {
+    switch (collection) {
+      case 'vehicle-categories':
+        return client.vehicleCategory as unknown as CodedDelegate;
+      case 'route-types':
+        return client.routeType as unknown as CodedDelegate;
+      case 'designations':
+        return client.designation as unknown as CodedDelegate;
+    }
   }
 
   private codedView(row: MasterDataEntry): Prisma.InputJsonObject {

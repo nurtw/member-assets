@@ -201,6 +201,7 @@ export interface LgaEntry {
 /** The master-data collections this item administers. */
 export const MASTER_DATA_COLLECTIONS = [
   'vehicle-categories',
+  'route-types',
   'designations',
   'lgas',
 ] as const;

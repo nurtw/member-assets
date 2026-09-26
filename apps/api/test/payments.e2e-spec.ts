@@ -55,6 +55,8 @@ describe('Payments (e2e)', () => {
   let app: INestApplication;
   let server: ReturnType<INestApplication['getHttpServer']>;
   let orgId: string;
+  let interstateVehicleId: string;
+  let originalInterstateLevyKobo: number | null = null;
   const cookies: Record<string, string> = {};
   const fetchCalls: FetchCall[] = [];
   let verifyAmountKobo = 0;
@@ -75,6 +77,33 @@ describe('Payments (e2e)', () => {
     await buildUser('payer', ['payment.initiate', 'payment.read']);
     await buildUser('settler', ['payment.manage_settlement']);
     await buildUser('bystander', ['payment.read']);
+    await buildUser('feeadmin', ['fee_type.manage', 'payment.read']);
+
+    // A real vehicle for levy payments: the levy is priced by the vehicle's
+    // route type (PAY-14), so it must exist to be priced.
+    const interstate = await prisma.routeType.findUniqueOrThrow({
+      where: { code: 'INTERSTATE' },
+    });
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        plateNumberNormalized: 'E2EPAYLEVY1',
+        plateNumberDisplay: 'E2E-PAY-LEVY1',
+        branchId: council.id,
+        status: 'ON_RECORD',
+        declaredAt: null,
+        routeTypeId: interstate.id,
+      },
+    });
+    interstateVehicleId = vehicle.id;
+
+    // The shared database's own interstate levy price, restored afterwards.
+    const levy = await prisma.feeType.findUniqueOrThrow({
+      where: { code: 'LEVY' },
+      include: { prices: true },
+    });
+    originalInterstateLevyKobo =
+      levy.prices.find((price) => price.routeTypeId === interstate.id)
+        ?.amountKobo ?? null;
 
     vi.stubGlobal(
       'fetch',
@@ -142,13 +171,14 @@ describe('Payments (e2e)', () => {
     await app.init();
     server = app.getHttpServer();
 
-    for (const who of ['payer', 'settler', 'bystander']) {
+    for (const who of ['payer', 'settler', 'bystander', 'feeadmin']) {
       cookies[who] = await login(`${who}.${TAG}@nurtw.test`);
     }
   });
 
   afterAll(async () => {
     vi.unstubAllGlobals();
+    await restoreInterstateLevy();
     await cleanUp();
     await app.close();
     await prisma.$disconnect();
@@ -240,7 +270,7 @@ describe('Payments (e2e)', () => {
         .send({
           feeTypeCode: 'LEVY',
           subjectType: 'vehicle',
-          subjectId: crypto.randomUUID(),
+          subjectId: interstateVehicleId,
           payerEmail: 'owner@nurtw.test',
         })
         .expect(201);
@@ -255,6 +285,81 @@ describe('Payments (e2e)', () => {
       expect(call?.body?.transaction_charge).toBe(
         response.body.totalChargedKobo - response.body.dueKobo,
       );
+    });
+  });
+
+  describe('fee-type settings (Requirements 27.1–27.2, revision 1.3)', () => {
+    it('lists the levy at ₦7,000, priced per route type', async () => {
+      const response = await request(server)
+        .get('/api/v1/fee-types')
+        .set('Cookie', cookies.bystander!)
+        .expect(200);
+
+      const levy = response.body.feeTypes.find(
+        (feeType: { code: string }) => feeType.code === 'LEVY',
+      );
+      expect(levy.amountKobo).toBe(700_000);
+      expect(
+        levy.prices.map((p: { routeType: { code: string } }) => p.routeType.code).sort(),
+      ).toEqual(['INTERCITY', 'INTERSTATE', 'TOWN_SERVICE']);
+    });
+
+    it('refuses an amount change without a reason', async () => {
+      await request(server)
+        .patch(`/api/v1/fee-types/${TAG}-PLACEHOLDER`)
+        .set('Cookie', cookies.feeadmin!)
+        .send({ amountKobo: 150_000 })
+        .expect(400);
+    });
+
+    it('refuses a caller without fee_type.manage', async () => {
+      await request(server)
+        .patch(`/api/v1/fee-types/${TAG}-PLACEHOLDER`)
+        .set('Cookie', cookies.bystander!)
+        .send({ amountKobo: 150_000, reason: 'e2e: should be refused' })
+        .expect(403);
+    });
+
+    it('changes an amount and audits it before and after, with the reason', async () => {
+      // The placeholder fixture from the initiating tests above.
+      const response = await request(server)
+        .patch(`/api/v1/fee-types/${TAG}-PLACEHOLDER`)
+        .set('Cookie', cookies.feeadmin!)
+        .send({ amountKobo: 150_000, reason: 'e2e: re-priced' })
+        .expect(200);
+      expect(response.body.feeType.amountKobo).toBe(150_000);
+
+      const audit = await prisma.auditEvent.findFirst({
+        where: { action: 'fee_type.update', reason: 'e2e: re-priced' },
+      });
+      expect(
+        (audit?.beforeValue as { amountKobo: number } | null)?.amountKobo,
+      ).toBe(100_000);
+      expect(
+        (audit?.afterValue as { amountKobo: number } | null)?.amountKobo,
+      ).toBe(150_000);
+    });
+
+    it("charges a levy at the vehicle's route-type amount", async () => {
+      await request(server)
+        .put('/api/v1/fee-types/LEVY/prices/INTERSTATE')
+        .set('Cookie', cookies.feeadmin!)
+        .send({ amountKobo: 750_000, reason: 'e2e: interstate re-priced' })
+        .expect(200);
+
+      const response = await request(server)
+        .post('/api/v1/payments/initiate')
+        .set('Cookie', cookies.payer!)
+        .send({
+          feeTypeCode: 'LEVY',
+          subjectType: 'vehicle',
+          subjectId: interstateVehicleId,
+          payerEmail: 'owner@nurtw.test',
+        })
+        .expect(201);
+
+      expect(response.body.dueKobo).toBe(750_000);
+      await restoreInterstateLevy();
     });
   });
 
@@ -436,6 +541,27 @@ describe('Payments (e2e)', () => {
     });
   });
 
+  /** Puts the shared database's interstate levy back as it was found. */
+  async function restoreInterstateLevy(): Promise<void> {
+    const [levy, interstate] = await Promise.all([
+      prisma.feeType.findUniqueOrThrow({ where: { code: 'LEVY' } }),
+      prisma.routeType.findUniqueOrThrow({ where: { code: 'INTERSTATE' } }),
+    ]);
+    const where = {
+      feeTypeId_routeTypeId: { feeTypeId: levy.id, routeTypeId: interstate.id },
+    };
+    if (originalInterstateLevyKobo === null) {
+      await prisma.feeTypePrice.deleteMany({
+        where: { feeTypeId: levy.id, routeTypeId: interstate.id },
+      });
+    } else {
+      await prisma.feeTypePrice.update({
+        where,
+        data: { amountKobo: originalInterstateLevyKobo },
+      });
+    }
+  }
+
   function jsonResponse(payload: unknown): Response {
     return new Response(JSON.stringify(payload), {
       status: 200,
@@ -508,6 +634,14 @@ describe('Payments (e2e)', () => {
     });
     await prisma.userSession.deleteMany({ where: { userId: { in: userIds } } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+    const orgs = await prisma.organisation.findMany({
+      where: { name: { contains: TAG } },
+      select: { id: true },
+    });
+    // The levy fixture vehicle hangs off the fixture council.
+    await prisma.vehicle.deleteMany({
+      where: { branchId: { in: orgs.map((org) => org.id) } },
+    });
     await prisma.organisation.deleteMany({
       where: { name: { contains: TAG } },
     });

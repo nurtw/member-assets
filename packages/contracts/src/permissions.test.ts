@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ATTACH_STICKER_PERMISSION,
   DECLARE_PERMISSION,
   PERMISSIONS,
   PERMISSION_CODES,
+  RECORD_VEHICLE_PERMISSION,
   SYSTEM_ROLES,
 } from './permissions.js';
 
@@ -48,8 +50,9 @@ describe('permission catalogue', () => {
 });
 
 describe('system roles', () => {
-  it('defines the eleven roles of PRD §16', () => {
-    expect(SYSTEM_ROLES).toHaveLength(11);
+  it('defines the eleven roles of PRD §16 plus the Field enumerator of revision 1.3', () => {
+    expect(SYSTEM_ROLES).toHaveLength(12);
+    expect(SYSTEM_ROLES.map((role) => role.code)).toContain('FIELD_ENUMERATOR');
   });
 
   it('has no duplicate role codes', () => {
@@ -120,6 +123,28 @@ describe('vehicle.declare containment', () => {
     expect(admin?.permissions as readonly string[]).not.toContain(
       DECLARE_PERMISSION,
     );
+  });
+});
+
+describe('field enumerator records but never declares', () => {
+  /**
+   * PRD Requirement 9.7 / QUESTIONS.md VEH-23 — enumerators capture; somebody
+   * else declares, attaches, and approves. The role exists precisely so that
+   * enumerators need not be granted `vehicle.declare`, so holding it here would
+   * defeat the point of creating the role at all.
+   */
+  const enumerator = SYSTEM_ROLES.find((r) => r.code === 'FIELD_ENUMERATOR');
+  const held = (enumerator?.permissions ?? []) as readonly string[];
+
+  it('can register a member and record a vehicle', () => {
+    expect(held).toContain('member.create');
+    expect(held).toContain(RECORD_VEHICLE_PERMISSION);
+  });
+
+  it('cannot declare, attach a sticker, or decide an application', () => {
+    expect(held).not.toContain(DECLARE_PERMISSION);
+    expect(held).not.toContain(ATTACH_STICKER_PERMISSION);
+    expect(held).not.toContain('application.decide');
   });
 });
 

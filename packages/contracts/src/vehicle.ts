@@ -13,7 +13,10 @@
  * when.
  */
 
+import { isNigerianPhone, normalizeNigerianPhone } from '@nurtw/domain';
 import { z } from 'zod';
+
+import type { VehicleOnboarding } from './sticker.js';
 
 const uuid = z.uuid('A valid identifier is required.');
 
@@ -25,37 +28,107 @@ const plateNumberDisplay = z
   .min(1, 'A plate number is required.')
   .max(20, 'A plate number may not exceed 20 characters.');
 
+/** Normalised to `+234XXXXXXXXXX`, the same rule as a member's phone (`membership.ts`). */
+const phone = z
+  .string()
+  .trim()
+  .refine(isNigerianPhone, 'A valid Nigerian telephone number is required.')
+  .transform(normalizeNigerianPhone);
+
 /**
- * Declares a vehicle under a branch or unit.
- *
- * `organisationId` names the branch or unit the declaration is scoped
- * to — never a council or zone, which carry no vehicles directly. The
- * service resolves whether it names a branch or a unit and stores both
- * `Vehicle.branchId` and `Vehicle.unitId` accordingly, mirroring how a
- * membership application resolves a single `organisationId` into the
- * record it actually needs (`membership.ts`).
+ * The vehicle's owner (PRD Requirement 9.8, revision 1.3, `QUESTIONS.md`
+ * VEH-25). Not necessarily a member — the driver is the member. Name and
+ * phone are required; the address is optional. Sensitive under Requirement
+ * 7.1: stored apart from the vehicle and never reachable through verification.
  */
-export const declareVehicleSchema = z.object({
+export const vehicleOwnerSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "The owner's name is required.")
+    .max(120, "The owner's name may not exceed 120 characters."),
+  phone,
+  address: z.string().trim().max(400).optional(),
+});
+
+export type VehicleOwnerInput = z.infer<typeof vehicleOwnerSchema>;
+
+/**
+ * The fields a vehicle is recorded or declared with, shared by both routes.
+ *
+ * `organisationId` names the branch or unit the vehicle is scoped to — never a
+ * council or zone, which carry no vehicles directly. The service resolves
+ * whether it names a branch or a unit and stores both `Vehicle.branchId` and
+ * `Vehicle.unitId` accordingly, mirroring how a membership application
+ * resolves a single `organisationId` into the record it actually needs
+ * (`membership.ts`).
+ *
+ * `routeTypeId` and `owner` are required from revision 1.3 (Requirements
+ * 9.8–9.9). They are required HERE, at the API boundary, not by the column,
+ * because legacy rows lawfully lack them (Decision 6.6).
+ */
+const vehicleFields = {
   plateNumberDisplay,
   organisationId: uuid,
+  routeTypeId: uuid,
   vehicleCategoryId: uuid.optional(),
   make: optionalShortText,
   model: optionalShortText,
   color: optionalShortText,
-  /** PRD Requirement 9.4 — restricted; never required to declare. */
+  /** PRD Requirement 9.4 — restricted; never required. */
   chassisVinRestricted: optionalShortText,
   /**
    * PRD §23.8 — a member may hold any number of vehicles, without limit.
-   * Optional: PRD §9 associates a declaration with "a member or transport
-   * unit", either being sufficient, and a unit-only declaration (no named
-   * operator yet) is a legitimate outcome, not a placeholder for one.
+   * Optional: PRD §9 associates a vehicle with "a member or transport
+   * unit", either being sufficient. Revision 1.3 (Requirement 9.10): may name
+   * an applicant whose application is still pending.
    */
   declaredByMemberId: uuid.optional(),
+  owner: vehicleOwnerSchema,
   /** Internal operational note — PRD §9.1, never exposed through verification. */
   notes: z.string().trim().max(1000).optional(),
-});
+};
+
+/**
+ * Declares a vehicle under a branch or unit (`vehicle.declare`, PRD §9.5).
+ *
+ * If a vehicle with this plate is already ON RECORD, that same record is
+ * declared rather than a second one created (Decision 6.5), and the fields
+ * supplied here update it.
+ */
+export const declareVehicleSchema = z.object(vehicleFields);
 
 export type DeclareVehicleInput = z.infer<typeof declareVehicleSchema>;
+
+/**
+ * Records a vehicle ON RECORD (`vehicle.record`, PRD Requirement 9.7,
+ * revision 1.3). The same fields as a declaration; the difference is entirely
+ * in what the service does with them — nothing here is a declaration.
+ */
+export const recordVehicleSchema = z.object(vehicleFields);
+
+export type RecordVehicleInput = z.infer<typeof recordVehicleSchema>;
+
+/**
+ * Declares a vehicle already on record, from its own page
+ * (`POST /vehicles/:id/declare`, Decision 6.6).
+ *
+ * Everything is optional because the record may already carry it. Whatever the
+ * record lacks must be supplied here — a legacy row has no route type and may
+ * have no owner phone — and the service refuses the declaration until the
+ * result satisfies Requirements 9.8–9.9. `organisationId`, when given, moves
+ * the record as it is declared, checked at both ends.
+ */
+export const declareRecordedVehicleSchema = z.object({
+  organisationId: uuid.optional(),
+  routeTypeId: uuid.optional(),
+  declaredByMemberId: uuid.optional(),
+  owner: vehicleOwnerSchema.optional(),
+});
+
+export type DeclareRecordedVehicleInput = z.infer<
+  typeof declareRecordedVehicleSchema
+>;
 
 /**
  * Amends a declaration's record-keeping fields, and optionally moves it to a
@@ -67,6 +140,8 @@ export const updateVehicleSchema = z
   .object({
     plateNumberDisplay: plateNumberDisplay.optional(),
     organisationId: uuid.optional(),
+    /** Set, not cleared: a vehicle that has a route type keeps one (Requirement 9.9). */
+    routeTypeId: uuid.optional(),
     vehicleCategoryId: uuid.nullable().optional(),
     make: optionalShortText,
     model: optionalShortText,
@@ -80,6 +155,12 @@ export const updateVehicleSchema = z
      * declaration.
      */
     declaredByMemberId: uuid.nullable().optional(),
+    /**
+     * Replaces the owner details as a whole. Name and phone stay required, so
+     * a correction cannot leave a record short of Requirement 9.8; this is
+     * also how a legacy record's gaps are filled in.
+     */
+    owner: vehicleOwnerSchema.optional(),
     notes: z.string().trim().max(1000).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
@@ -149,8 +230,21 @@ export interface VehicleSummary {
   declaredAt: string | null;
   isLegacyImport: boolean;
   vehicleCategory: { id: string; code: string; label: string } | null;
+  /** `null` only for a legacy record not yet given one (Requirement 9.9). */
+  routeType: { id: string; code: string; label: string } | null;
   organisation: { id: string; name: string; level: string };
   declaredByMember: { id: string; surname: string; firstName: string } | null;
+}
+
+/**
+ * Owner details as stored. Every field nullable because a legacy record
+ * carries whatever the export held (Requirement 25.4). Detail response only —
+ * never in a list, never on a verification path (Decision 10.1.1).
+ */
+export interface VehicleOwnerDetail {
+  name: string | null;
+  phone: string | null;
+  address: string | null;
 }
 
 /**
@@ -164,4 +258,12 @@ export interface VehicleDetail extends VehicleSummary {
   color: string | null;
   notes: string | null;
   chassisVinRestricted?: string | null;
+  /** `null` when no owner has been recorded (possible only on a legacy record). */
+  owner: VehicleOwnerDetail | null;
+  /**
+   * `null` until a sticker has been attached (Requirement 9A.1). On record,
+   * onboarded, and declared are read from three different places — `status`
+   * holds only the first and last (Decision 6.5).
+   */
+  onboarding: VehicleOnboarding | null;
 }

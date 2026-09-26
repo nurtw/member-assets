@@ -4,6 +4,7 @@ import {
   DECLARATION_STATUSES,
   InvalidDeclarationTransitionError,
   assertDeclarationTransition,
+  blocksNewRecord,
   canTransitionDeclaration,
   isDeclarationFinal,
   isDeclarationLive,
@@ -107,5 +108,16 @@ describe('vehicle declaration lifecycle', () => {
     expect(() =>
       assertDeclarationTransition('ACTIVE', 'SUSPENDED'),
     ).not.toThrow();
+  });
+
+  it('lets a retired or archived record be recorded afresh, and nothing else', () => {
+    // Decision 6.6 — history does not block; a standing record does.
+    expect(blocksNewRecord('RETIRED')).toBe(false);
+    expect(blocksNewRecord('ARCHIVED')).toBe(false);
+    for (const status of DECLARATION_STATUSES.filter(
+      (s) => s !== 'RETIRED' && s !== 'ARCHIVED',
+    )) {
+      expect(blocksNewRecord(status)).toBe(true);
+    }
   });
 });

@@ -28,6 +28,7 @@ export {
   DESIGNATION_SEED,
   LEGACY_VEHICLE_CATEGORY_SEED,
   ORGANISATION_LEVELS,
+  ROUTE_TYPE_SEED,
   type MasterDataSeedEntry,
   type OrganisationLevel,
 } from './master-data.js';
@@ -73,6 +74,7 @@ export {
   ATTACH_STICKER_PERMISSION,
   DECLARE_PERMISSION,
   MANAGE_SETTLEMENT_PERMISSION,
+  RECORD_VEHICLE_PERMISSION,
   PERMISSIONS,
   PERMISSION_CODES,
   SYSTEM_ROLES,
@@ -133,32 +135,49 @@ export {
 
 export {
   SETTABLE_DECLARATION_STATUSES,
+  declareRecordedVehicleSchema,
   declareVehicleSchema,
   dismissDisputeSchema,
+  recordVehicleSchema,
   setDeclarationStatusSchema,
   updateVehicleSchema,
+  vehicleOwnerSchema,
+  type DeclareRecordedVehicleInput,
   type DeclareVehicleInput,
   type DismissDisputeInput,
+  type RecordVehicleInput,
   type SetDeclarationStatusInput,
   type UpdateVehicleInput,
   type VehicleDetail,
+  type VehicleOwnerDetail,
+  type VehicleOwnerInput,
   type VehicleSummary,
 } from './vehicle.js';
 
 export {
   initiatePaymentSchema,
   refundPaymentSchema,
+  setFeeTypePriceSchema,
   setSettlementAccountSchema,
+  updateFeeTypeSchema,
+  type FeeTypeSummary,
   type InitiatePaymentInput,
   type RefundPaymentInput,
+  type SetFeeTypePriceInput,
   type SetSettlementAccountInput,
+  type UpdateFeeTypeInput,
 } from './payments.js';
 
 export {
   attachStickerSchema,
   issueStickerSchema,
+  legacyBarcodeLookupSchema,
   setStickerStatusSchema,
   type AttachStickerInput,
+  type EligibleOnboardingPayment,
   type IssueStickerInput,
+  type LegacyBarcodeLookupInput,
+  type OnboardingState,
   type SetStickerStatusInput,
+  type VehicleOnboarding,
 } from './sticker.js';

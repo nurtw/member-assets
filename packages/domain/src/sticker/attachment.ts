@@ -6,13 +6,51 @@
  * re-deriving it. All four conditions must hold, with no override
  * (Requirement 9A.4 / VEH-16); each refusal names which one failed, so the
  * caller can audit the specific reason.
+ *
+ * The fourth condition, a confirmed and unused payment, is read with
+ * Requirement 9A.2: the payment must be the onboarding fee, paid for this
+ * vehicle. Item 08 checked only that it was confirmed and unused, so any
+ * confirmed payment could fund an attachment — a membership fee, or a levy
+ * paid for another vehicle. Found and closed in item 17.
+ *
+ * A barcode with no register row at all never reaches this function (there
+ * is no sticker to pass in); the caller refuses it as `UNKNOWN_BARCODE` itself.
  */
 
+/**
+ * Every reason an attachment can be refused. `checkAttachment` produces most
+ * of them; three are decided before it can run, by the caller, because the
+ * row it would need is missing: `UNKNOWN_BARCODE` (no register row),
+ * `PAYMENT_NOT_CONFIRMED` (no confirmed payment), and
+ * `VEHICLE_ALREADY_HAS_STICKER` (replacing one is `sticker.replace`'s act).
+ */
 export type AttachmentRefusalReason =
   | 'UNKNOWN_BARCODE'
   | 'PLATE_MISMATCH'
   | 'ALREADY_ATTACHED'
-  | 'PAYMENT_REFERENCE_REUSED';
+  | 'PAYMENT_REFERENCE_REUSED'
+  | 'PAYMENT_NOT_CONFIRMED'
+  | 'PAYMENT_WRONG_FEE_TYPE'
+  | 'PAYMENT_WRONG_VEHICLE'
+  | 'VEHICLE_ALREADY_HAS_STICKER';
+
+/**
+ * The onboarding fee each kind of attachment must be paid with (Requirement
+ * 9A.2, `QUESTIONS.md` VEH-20). Two fee types, even while they cost the same,
+ * so either can be re-priced without a deploy.
+ */
+export const ONBOARDING_FEE_TYPE_CODES = {
+  legacy: 'STICKER_REATTACHMENT',
+  signed: 'STICKER_NEW',
+} as const;
+
+export function requiredOnboardingFeeType(
+  isLegacyBarcode: boolean,
+): (typeof ONBOARDING_FEE_TYPE_CODES)[keyof typeof ONBOARDING_FEE_TYPE_CODES] {
+  return isLegacyBarcode
+    ? ONBOARDING_FEE_TYPE_CODES.legacy
+    : ONBOARDING_FEE_TYPE_CODES.signed;
+}
 
 export interface AttachmentContext {
   /**
@@ -36,6 +74,16 @@ export interface AttachmentContext {
   previouslyAttachedAt: Date | null;
   /** Whether the accompanying Paystack payment reference has been used before. */
   paymentReferenceAlreadyUsed: boolean;
+  /**
+   * The fee type the payment was made for. A reattachment must be paid as
+   * `STICKER_REATTACHMENT`, a new sticker as `STICKER_NEW`: a membership fee
+   * or a levy is not an onboarding payment (Requirement 9A.2).
+   */
+  paymentFeeTypeCode: string;
+  /** What the payment was made for, as recorded on it at initiation. */
+  paymentSubject: { type: string; id: string };
+  /** The vehicle being onboarded. The payment must have been made for it. */
+  targetVehicleId: string;
 }
 
 export type AttachmentCheck =
@@ -48,6 +96,18 @@ export function checkAttachment(context: AttachmentContext): AttachmentCheck {
   }
   if (context.paymentReferenceAlreadyUsed) {
     return { allowed: false, reason: 'PAYMENT_REFERENCE_REUSED' };
+  }
+  if (
+    context.paymentFeeTypeCode !==
+    requiredOnboardingFeeType(context.isLegacyBarcode)
+  ) {
+    return { allowed: false, reason: 'PAYMENT_WRONG_FEE_TYPE' };
+  }
+  if (
+    context.paymentSubject.type !== 'vehicle' ||
+    context.paymentSubject.id !== context.targetVehicleId
+  ) {
+    return { allowed: false, reason: 'PAYMENT_WRONG_VEHICLE' };
   }
   if (context.isLegacyBarcode) {
     if (context.registeredPlateNormalized === null) {

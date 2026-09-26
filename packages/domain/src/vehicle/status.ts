@@ -107,3 +107,25 @@ export function isDeclarationFinal(status: DeclarationStatus): boolean {
 export function isDeclarationLive(status: DeclarationStatus): boolean {
   return status === 'ACTIVE';
 }
+
+/**
+ * Statuses in which a row still stands for the physical vehicle, so that
+ * recording the same plate again would create a second record for one vehicle
+ * (PRD Requirement 9.7, ARCHITECTURE.md Decision 6.6).
+ *
+ * Wider than `isDeclarationLive` on purpose: that asks "is this plate presently
+ * declared", this asks "does a record already stand for it". `RETIRED` and
+ * `ARCHIVED` are history — a retired vehicle returning to service is recorded
+ * afresh, the same reasoning that makes them terminal above.
+ */
+export const RECORD_BLOCKING_STATUSES: readonly DeclarationStatus[] = [
+  'ON_RECORD',
+  'PENDING',
+  'ACTIVE',
+  'SUSPENDED',
+  'DISPUTED',
+];
+
+export function blocksNewRecord(status: DeclarationStatus): boolean {
+  return RECORD_BLOCKING_STATUSES.includes(status);
+}

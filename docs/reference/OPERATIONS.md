@@ -367,6 +367,50 @@ SELECT subject_id, created_at
 Every card in that list was issued before **CARD-07** was answered and will need
 replacing once the signatures are registered.
 
+### Running the legacy import
+
+The script reads `data/` (never committed). It writes three things:
+
+- members;
+- on-record vehicles with their owner details (PRD §25, Requirement 25.4);
+- the closed Transpay register: 2,408 legacy barcodes as unattached stickers, each bound to
+  the plate the export records for it (Requirement 9A.3).
+
+It runs **against a local database first**
+(`QUESTIONS.md` MIG-07). Override `DATABASE_URL` on the command line rather than editing
+`apps/api/.env`; `--env-file` never overrides a variable already set:
+
+```bash
+docker compose up -d
+export LOCAL=postgresql://nurtw:nurtw_local_dev@localhost:5433/nurtw
+DATABASE_URL=$LOCAL pnpm --filter api db:deploy
+DATABASE_URL=$LOCAL pnpm --filter api db:seed
+DATABASE_URL=$LOCAL pnpm --filter api migrate:legacy
+```
+
+The reconciliation report lands in `.migration-reports/` (gitignored). It lists rows by
+legacy id and plate only, with no names, phones, or addresses. A rerun writes nothing.
+
+**`--repair`** corrects rows written by the pre-revision-1.2 script, which marked legacy
+vehicles as declared and recorded no owner. It moves them to on record, clears the
+declaration date, and adds owner details from the export. Each row gets one
+`vehicle.migrate_repair` audit event. Rows an officer has since declared or re-statused
+are left as they are, and driver links are never touched. A second run writes nothing.
+
+```bash
+pnpm --filter api migrate:legacy -- --repair
+```
+
+The shared Neon database was imported by the pre-1.2 script on 18 September 2026 and needs
+this repair. The owner approved it on 26 September 2026. It is slow over the network, a few
+seconds a row, and safe to interrupt: rerunning `--repair` skips rows already corrected.
+
+**Any run of the current script also loads the Transpay register.** On Neon that is a
+separate go-ahead (MIG-07): the local report shows 2,408 barcodes placed and none failed.
+The register is the only place a legacy barcode is ever written, and nothing in the API can
+add to it. The security code is stored as a record only and appears in no response
+(Requirement 9A.5).
+
 ---
 
 ## 11. Regenerating the API reference

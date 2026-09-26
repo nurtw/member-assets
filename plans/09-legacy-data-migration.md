@@ -58,12 +58,22 @@ migrated vehicle is never declared. Step 6 below replaces that function.
    `notes` so MIG-06 has something to act on later without a re-import.
    `declaredAt: null`. This replaces `mapping.ts`'s current
    `mapDeclarationStatus`, which must be corrected before this script runs.
-7. Owner reconciliation (MIG-04's "import as recorded, reconcile
-   afterwards"): `drivers.csv` rows carry `vehicleId` — an explicit FK, not
-   an inference. Where present, set that vehicle's `declaredByMemberId` to
-   the member migrated from that driver row. Everything else (`owner_jsonb`
-   only) stays unattached, for staff to attach via this session's
-   member-picker UI.
+7. Owner reconciliation (MIG-04, **answered 26 September 2026**: the driver
+   is the member, the owner is not): `drivers.csv` rows carry `vehicleId` —
+   an explicit FK, not an inference. Where present, set that vehicle's
+   `declaredByMemberId` to the member migrated from that driver row.
+   **Revision 1.3 (Requirement 25.4):** every vehicle's `owner_jsonb`
+   `name`, `phone`, and `address` go into `vehicle_owner` exactly as
+   recorded — blanks stay null and are listed in the report. No other
+   `owner_jsonb` key (gender, marital status, next of kin) is imported:
+   VEH-25 asks for name, phone, and address only. Route type is left null
+   (VEH-26 — no inference from the legacy category).
+7a. **Reruns write nothing.** An audit event is written only when the row
+   was actually created, not on every rerun (the first draft audited every
+   upsert, which would have broken the no-op DoD line).
+7b. **Where it runs (MIG-07):** locally first (`docker compose up -d`, seed,
+   then the script with `DATABASE_URL` pointed at port 5433). The report goes
+   to the project owner, and the Neon run waits for their go-ahead.
 8. Reconciliation report (markdown, gitignored path outside `data/`):
    no-LGA vehicles, row-level import failures, unattached vehicles,
    blacklisted/inactive vehicles pending MIG-06, and the Legacy Import
@@ -90,15 +100,38 @@ MIG-04/05/06 (Union decisions, not engineering).
 - [x] Unit tests updated (`mapping.spec.ts`) and passing: every legacy
       status/blacklist combination maps to `ON_RECORD`; flagging logic and
       the legacy-status note are covered separately from the status itself.
-- [ ] All 81 drivers and 2,841 vehicles actually imported from `data/`, or
-      explicitly listed as failed with a reason. **Not run this session** —
-      importing real legacy data into the shared dev database is a
-      consequential, hard-to-reverse action and needs the owner's explicit
-      go-ahead, separate from having fixed the code.
-- [ ] Zero inferred LGAs; legacy `ACTIVE`/`INACTIVE` preserved in `notes`
-      for every row, not silently dropped.
-- [ ] Every migrated row traces to the migration system actor in the audit
-      trail.
-- [ ] Rerunning the script against an already-migrated database is a no-op.
-- [ ] Reconciliation report generated; build/typecheck/lint clean (typecheck
-      and unit tests confirmed; the actual run and its report are pending).
+- [x] Owner name, phone, and address copied into `vehicle_owner` as
+      recorded (Requirement 25.4); 77 rows lacking a name or phone listed.
+- [x] All 81 drivers and 2,841 vehicles imported **into the local database**
+      (26 September 2026), none failed; every vehicle `ON_RECORD`, no
+      `declaredAt`, no route type. 1,908 without an LGA; 80 linked to a
+      driver; 3 flagged for MIG-06.
+- [x] Zero inferred LGAs; legacy status kept in `notes`.
+- [x] Every migrated row traces to the migration system actor (2,922 audit
+      events = 2,841 + 81).
+- [x] Rerunning the script is a no-op (0 imported, audit count unchanged).
+- [x] Reconciliation report generated in `.migration-reports/`.
+
+**Found 26 September 2026: the shared Neon database was already imported on
+18 September by the pre-1.2 script** — 2,838 legacy vehicles `ACTIVE`, 3
+`SUSPENDED`, all with `declaredAt`, none with owner details (the earlier
+handoff saying "not run" was wrong). A plain rerun skips existing rows, so
+`--repair` was added (see `repairVehicle` and `docs/reference/OPERATIONS.md`).
+Tested locally against a reproduction of that state: 2,841 corrected, an
+officer-actioned row left alone, a second run a no-op. Nothing depends on the
+Neon rows (no stickers, cards, payments, or duplicate plates; one driver link
+set by an officer, which the repair keeps).
+
+- [ ] Neon: `migrate:legacy -- --repair`. **The owner approved it on 26 September 2026**,
+      and it was started that day. It is slow, a few seconds a row over the network: 402
+      of 2,841 were corrected after the first 40 minutes, each with its audit event and
+      owner row. The pre-repair state was 2,838 `ACTIVE` and 3 `SUSPENDED`, all declared,
+      none with owners, and no declare or status-change audits. It was saved to a JSON
+      file outside the repository. When it is done, expect 2,841 `ON_RECORD`, 2,841
+      `vehicle.migrate_repair` events, and a second run writing nothing. If the run was
+      interrupted, rerunning `--repair` resumes it. **But the current script also loads
+      the Transpay register (item 17)**, which needs its own go-ahead on Neon.
+
+**Transpay register (item 17, 26 September 2026):** now imported by this script.
+Locally, 2,408 barcodes were placed, none failed, and a rerun wrote nothing. See
+`plans/17-vehicle-onboarding.md`. `sticker_requests.csv` is still Phase 2.

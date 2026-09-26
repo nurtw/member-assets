@@ -92,6 +92,17 @@ export const PERMISSIONS = [
    * bundle and no other, reaching anyone else only by express per-user grant.
    */
   { code: 'vehicle.declare', description: 'Create a vehicle declaration' },
+  /**
+   * PRD Requirement 9.7 (revision 1.3, `QUESTIONS.md` VEH-23) — adds a
+   * vehicle ON RECORD only. Not a declaration and never one: the row it
+   * creates counts for nothing externally until a `vehicle.declare` holder
+   * declares it and a sticker is attached. This is what lets field
+   * enumerators add vehicles without widening `vehicle.declare`.
+   */
+  {
+    code: 'vehicle.record',
+    description: 'Add a vehicle on record (not a declaration)',
+  },
   { code: 'vehicle.update', description: 'Amend a vehicle declaration' },
   {
     code: 'vehicle.suspend',
@@ -235,6 +246,10 @@ export const PERMISSION_CODES: readonly string[] = PERMISSIONS.map(
  */
 export const DECLARE_PERMISSION = 'vehicle.declare' satisfies PermissionCode;
 
+/** PRD Requirement 9.7 / VEH-23 — recording on record, distinct from declaring. */
+export const RECORD_VEHICLE_PERMISSION =
+  'vehicle.record' satisfies PermissionCode;
+
 /** PRD §9A.2 / VEH-18 — onboarding, distinct from `vehicle.declare`. */
 export const ATTACH_STICKER_PERMISSION =
   'sticker.attach' satisfies PermissionCode;
@@ -251,7 +266,8 @@ export interface RoleDefinition {
 }
 
 /**
- * The eleven roles of PRD §16, seeded as immutable system roles.
+ * The eleven roles of PRD §16, plus the Field enumerator added by revision 1.3,
+ * seeded as immutable system roles.
  *
  * Decision 9.5 — these cannot be edited or deleted, so a misconfiguration cannot
  * silently broaden a role the Union believes it understands. A super
@@ -355,6 +371,31 @@ export const SYSTEM_ROLES = [
       'vehicle.suspend',
       'vehicle.read_restricted',
       'sticker.read',
+    ],
+  },
+  /**
+   * PRD §16 (revision 1.3, `QUESTIONS.md` VEH-23). Registers members and
+   * records vehicles in the field, within an assigned scope. Deliberately
+   * without `vehicle.declare`, `sticker.attach`, or `application.decide`: an
+   * enumerator captures, and somebody else declares, attaches, and approves —
+   * the separation the reference portal discussed with the Union relies on.
+   *
+   * `member.read` is absent too: the registration flow carries the new
+   * member's id straight into the vehicle step, so an enumerator never needs
+   * to search the member register.
+   */
+  {
+    code: 'FIELD_ENUMERATOR',
+    label: 'Field enumerator',
+    description:
+      'Registers members and records vehicles on record within assigned scope. Cannot declare, attach stickers, or decide applications.',
+    permissions: [
+      'organisation.read',
+      'master_data.read',
+      'application.read',
+      'member.create',
+      'vehicle.read',
+      'vehicle.record',
     ],
   },
   {

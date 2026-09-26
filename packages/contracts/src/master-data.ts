@@ -32,6 +32,21 @@ export const LEGACY_VEHICLE_CATEGORY_SEED = [
   { code: 'TRICYCLE', label: 'Tricycle', legacyCount: 7 },
 ] as const satisfies readonly MasterDataSeedEntry[];
 
+/**
+ * Route types — how a vehicle operates (PRD Requirement 9.9, revision 1.3,
+ * `QUESTIONS.md` VEH-26). The three the Union named on 26 September 2026.
+ * Master data like vehicle categories: the Union may add or relabel one without
+ * a deployment, and the levy is priced per route type (Requirement 27.1).
+ *
+ * The migration inserts these too (`20260926083136_add_vehicle_recording`), so
+ * an environment that migrates before it seeds still has them.
+ */
+export const ROUTE_TYPE_SEED = [
+  { code: 'INTERSTATE', label: 'Interstate' },
+  { code: 'INTERCITY', label: 'Intercity' },
+  { code: 'TOWN_SERVICE', label: 'Town service' },
+] as const satisfies readonly MasterDataSeedEntry[];
+
 export interface MasterDataSeedEntry {
   readonly code: string;
   readonly label: string;

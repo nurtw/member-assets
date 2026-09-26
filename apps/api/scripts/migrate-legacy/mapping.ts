@@ -134,3 +134,72 @@ export function matchLgaByName<T extends { name: string }>(
     ) ?? null
   );
 }
+
+/**
+ * PRD Requirement 25.4 (revision 1.3, `QUESTIONS.md` MIG-04, VEH-25) — the
+ * owner in `owner_jsonb` becomes the vehicle's owner details, copied exactly
+ * as recorded. Only `name`, `phone`, and `address`: VEH-25 asks for those
+ * three and nothing else, so gender, marital status, and next-of-kin keys in
+ * the blob are deliberately left behind (minimum necessary data).
+ *
+ * "As recorded" means no normalisation beyond turning a blank into null — a
+ * phone stays as the old system held it, because rewriting it here would make
+ * an imported value look like one an officer entered and checked. Missing
+ * fields are reported by the caller, never filled in.
+ *
+ * Returns `null` when the blob is absent or unparseable, so the caller can
+ * report it rather than silently create an empty owner row.
+ */
+export function mapLegacyOwner(raw: string | undefined | null): {
+  ownerName: string | null;
+  ownerPhone: string | null;
+  ownerAddress: string | null;
+  missing: ('name' | 'phone')[];
+} | null {
+  if (!blankToNull(raw)) {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw!);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return null;
+  }
+  const blob = parsed as Record<string, unknown>;
+  const text = (key: string): string | null =>
+    typeof blob[key] === 'string' ? blankToNull(blob[key] as string) : null;
+
+  const ownerName = text('name');
+  const ownerPhone = text('phone');
+  const ownerAddress = text('address');
+  const missing: ('name' | 'phone')[] = [];
+  if (!ownerName) missing.push('name');
+  if (!ownerPhone) missing.push('phone');
+
+  return { ownerName, ownerPhone, ownerAddress, missing };
+}
+
+/**
+ * A Transpay register entry (PRD Requirement 9A.3, item 17): the barcode the
+ * export records for a vehicle, with its security code kept as a record only
+ * (Requirement 9A.5 — not printed on the sticker, so it plays no part in
+ * reattachment). `null` for a row with no barcode: 433 of the export's 2,841,
+ * which onboard with a new signed sticker instead (VEH-20).
+ *
+ * The barcode is copied exactly as recorded. It is not normalised: it is
+ * matched character for character when the sticker is scanned, and a
+ * "cleaned" value would never match the article in the field.
+ */
+export function mapLegacyRegisterEntry(
+  barcode: string | undefined | null,
+  securityCode: string | undefined | null,
+): { legacyBarcode: string; legacySecurityCode: string | null } | null {
+  const legacyBarcode = blankToNull(barcode);
+  if (!legacyBarcode) {
+    return null;
+  }
+  return { legacyBarcode, legacySecurityCode: blankToNull(securityCode) };
+}

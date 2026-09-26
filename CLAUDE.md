@@ -110,6 +110,9 @@ These come from PRD §4 and are not negotiable design preferences — they are t
    vehicles are on record only. The external total counts vehicles both onboarded and
    declared, and no external response mentions declaration at all (Requirements 12.7,
    13.5).
+   **Recording is not declaring** (revision 1.3, Requirement 9.7). `vehicle.record` — held
+   by the Field enumerator role — creates an `ON_RECORD` row and nothing more. Declaring a
+   plate already on record promotes that same row, never a second one (Decisions 6.5–6.6).
 2. **Minimum necessary disclosure.** A response contains only those fields the caller's
    disclosure profile permits. Responses are constructed by *projection through the
    profile*. Retrieving a complete record and subsequently removing fields is not
@@ -537,6 +540,48 @@ CREATE UNIQUE INDEX "vehicle_one_active_declaration_per_plate"
 **Preserve it across future migrations.** A plain `@@unique([plateNumberNormalized, status])`
 is not equivalent and is wrong — it permits only one row per status per plate, so a vehicle
 could be retired exactly once and never again.
+
+Revision 1.3 adds a second one, `vehicle_one_on_record_per_plate` (`WHERE status =
+'ON_RECORD'`, migration `20260926083136_add_vehicle_recording`), so two enumerators cannot
+record the same plate at once. Preserve it too.
+
+### Vehicle owners, route types, and fee prices (revision 1.3)
+
+- **Owner details live in `vehicle_owner`, never on `vehicle`** (Decision 10.1.1). Phone and
+  address are sensitive: no list, verification, or aggregate path selects them.
+- **Required at the API, nullable in the column.** Route type and owner name/phone are
+  required by the zod contracts for recording and declaring; the columns stay nullable
+  because legacy rows lawfully lack them. Never make them NOT NULL — the migration would
+  have to invent values.
+- **Route type is master data** (`route_type`, served as `/master-data/route-types`). It is
+  not inferred from the legacy `BUS_INTERSTATE`/`BUS_INTRASTATE` categories.
+- **The levy is priced per route type** in `fee_type_price`, falling back to the fee type's
+  default (`resolveFeeAmountKobo` in `packages/domain`). Amount changes go through
+  `/fee-types`, audited with a mandatory reason — never a hand edit or a seed change, which
+  only applies on first run.
+- **The API's error bodies are generic** (Requirement 14.3): a service's
+  `ConflictException('…')` text never reaches the caller. Where a screen needs to explain a
+  409, the web explains it (see `explainConflict` in `components/vehicle-form.tsx`).
+
+### Onboarding and the Transpay register (item 17)
+
+- **An onboarding payment is the right fee, paid for that vehicle.** `checkAttachment`
+  requires `STICKER_REATTACHMENT` for a legacy barcode and `STICKER_NEW` for a signed
+  sticker, with `subjectType 'vehicle'` and the target's id. Item 08 checked only
+  "confirmed and unused", so a membership fee could fund an attachment. Every refusal is
+  audited with its `AttachmentRefusalReason`, including the three the service decides
+  before the domain function can run.
+- **Only the legacy import writes `legacyBarcode`.** The register is closed (VEH-21), and
+  no API route can add to it.
+- **`legacySecurityCode` is never selected** (Requirement 9A.5). Sticker responses go
+  through `STICKER_RESPONSE` in `sticker.service.ts`, an explicit select. Never return a
+  whole sticker row.
+- **The onboarding state says whether the register holds a barcode for a plate, never
+  which one.** The barcode must come from the sticker on the vehicle, or a reattachment
+  proves nothing.
+- The internal lookup is `POST /stickers/legacy-lookup`: a body, so the barcode stays out
+  of URLs and logs. Item 10 reuses `describeLegacyBarcode` from `@nurtw/domain` for its
+  wording.
 
 ### Notes that will bite you otherwise
 

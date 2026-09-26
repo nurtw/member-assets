@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.3
-**Last revised:** 22 September 2026
+**Document version:** 1.4
+**Last revised:** 26 September 2026
 
 ---
 
@@ -49,12 +49,12 @@ thing a year later.
 | Structure and master data (ORG) | 4 | 3 | — | 7 |
 | Membership and registration (MEM) | 4 | 10 | — | 14 |
 | Cards (CARD) | 5 | 3 | — | 8 |
-| Vehicles and stickers (VEH) | 16 | 6 | — | 22 |
-| Legacy migration (MIG) | 3 | 3 | — | 6 |
+| Vehicles and stickers (VEH) | 20 | 6 | — | 26 |
+| Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 4 | 5 | — | 9 |
-| Payments (PAY) | 13 | 0 | — | 13 |
+| Payments (PAY) | 17 | 0 | — | 17 |
 | Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
-| **Total** | **53** | **40** | **1** | **94** |
+| **Total** | **63** | **39** | **1** | **103** |
 
 ### Blocking production use right now
 
@@ -646,11 +646,84 @@ that is both onboarded and declared. The internal channels show every state.
 **Answered on.** 22 September 2026. **Answered by.** Project owner, adopting the recommendation (“use a recommendation for the others, do not ask me again”).
 **Recorded at.** PRD Requirement 9A.1.
 
+### VEH-23 · How enumerators add vehicles in the field ✅
+
+**Question.** (Raised on a call between the project owner and Mr Timothy.) Enumerators
+register vehicles in the field. At present only a holder of `vehicle.declare` can create a
+vehicle at all, because creating one is declaring it, and that permission belongs to the
+super administrator and to named grantees alone (VEH-04). How should enumerators add
+vehicles?
+
+**Context.** The reference system discussed on the call (a commercial-vehicle registration
+portal) has enumerators capture the vehicle and a separate login generate its number, so
+that enumerators can be checked.
+
+**Answer.** **A new permission, `vehicle.record`.** It adds a vehicle **on record** only.
+A recorded vehicle counts for nothing externally until a holder of `vehicle.declare`
+declares it and a sticker is attached. Declaring stays exactly as VEH-04 settled it.
+Declaring a vehicle already on record updates that same record rather than creating a
+second one (`ARCHITECTURE.md` Decision 6.5).
+
+**Consequence.** No route exists yet to compose a custom role, so a twelfth system role,
+**Field enumerator**, bundles what an enumerator needs: registering a member and recording
+a vehicle, within their assigned scope. It holds neither `vehicle.declare` nor
+`sticker.attach`.
+**Answered on.** 26 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 9.7, §16, §23.21.
+
+### VEH-24 · Adding a vehicle while the member's application is pending ✅
+
+**Question.** In the new registration flow, an enumerator saves a member and goes straight
+to "Add vehicle" for that member, or skips it for a member with no vehicle (leaders who do
+not drive, for example). A new member stays pending until an officer approves the
+application. Can the vehicle be added while the member is still pending?
+
+**Answer.** **Yes.** Both are recorded in one sitting and the vehicle stays linked to the
+applicant. The vehicle is on record only, so nothing counts externally until approval,
+onboarding, and declaration have all happened. If the application is refused, the vehicle
+stays on record and the link shows the refused applicant.
+**Answered on.** 26 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 9.10, §23.21.
+
+### VEH-25 · Vehicle owner details ✅
+
+**Question.** (Raised on the same call.) The driver is the member. The vehicle's owner may
+not be a member, and only the owner's name, address, and phone are needed. Which owner
+details should be recorded?
+
+**Answer.** **Owner name and phone are required on every new vehicle; the address is
+optional.** They are held apart from the vehicle record like other sensitive data and are
+never reachable through any verification path. For legacy vehicles, the owner details in
+the export are copied across exactly as recorded, gaps included.
+**Answered on.** 26 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 9.8, §23.21, Requirement 25.4.
+
+### VEH-26 · Route type and vehicle type ✅
+
+**Question.** (Raised on the same call.) Vehicles are counted by how they operate:
+interstate, intercity, or town service. How should that be captured?
+
+**Answer.** **Route type is required on every new vehicle**, chosen from interstate,
+intercity, and town service. No free-text route is recorded. **Vehicle type** (bus, keke,
+truck, and so on) is a dropdown, and new types can be added. This is the existing vehicle
+category list, which is already administrable master data.
+
+**Consequences.**
+
+- Route type is a list the Union administers, like vehicle categories, because the levy is
+  priced by it (PAY-14).
+- Legacy vehicles import with no route type. Nothing is inferred from the old
+  `BUS_INTERSTATE`/`BUS_INTRASTATE` categories.
+- A vehicle cannot be onboarded until it has a route type, because its levy starts the
+  month after onboarding and cannot be priced without one.
+**Answered on.** 26 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 9.9, 9A.2, §23.21.
+
 ---
 
 ## 8. Open — legacy migration (item 09)
 
-### MIG-04 · Reconciling legacy vehicle owners to members ⏳
+### MIG-04 · Reconciling legacy vehicle owners to members ✅
 
 **Question.** The export holds owner details denormalised inside `owner_jsonb` on each
 vehicle, plus a separate `drivers.csv` of 81 drivers. How should these become member records
@@ -660,8 +733,13 @@ vehicle, plus a separate `drivers.csv` of 81 drivers. How should these become me
 receive cards. The interim position is to import as recorded and reconcile afterwards, which
 is safe but leaves work for staff.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **The driver is the member; the owner is not made one.** Each `drivers.csv` row
+becomes a member, as item 09 already does. The owner in `owner_jsonb` becomes the vehicle's
+owner details (VEH-25), copied exactly as recorded, and no member record is created for
+them. An owner who is also a member is linked by staff afterwards, never by name matching.
+**Answered on.** 26 September 2026. **Answered by.** Project owner, following a call with
+Mr Timothy.
+**Recorded at.** PRD Requirement 25.4, §23.21.
 
 ### MIG-05 · Ownership of the incomplete-record worklist ⏳
 
@@ -682,6 +760,18 @@ Should these migrate as-is, and what should each state mean in the new System?
 
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
+
+### MIG-07 · When and where the legacy import runs ✅
+
+**Question.** The import script (item 09) is ready but has never been run. Owner details
+are being added (VEH-25). When should it run, and against which database?
+
+**Answer.** **After the owner fields exist, so that one import carries the owner details
+across. It runs first against a local database, and the reconciliation report goes to the
+project owner.** It runs against the shared Neon database only once the project owner has
+read that report.
+**Answered on.** 26 September 2026. **Answered by.** Project owner.
+**Recorded at.** `plans/09-legacy-data-migration.md`.
 
 ---
 
@@ -884,12 +974,17 @@ audited:
 |---|---|
 | Sticker — reattachment | ₦2,000 |
 | Sticker — new | ₦2,000 |
-| Monthly levy | ₦5,000 per vehicle per month, for every category until per-category figures are set |
+| Monthly levy | ~~₦5,000~~ **₦7,000** per vehicle per month, for every route type until different figures are set (revised 26 September 2026) |
 | Yearly membership | ₦30,000 |
 
 These are **not placeholders**, so live charging is permitted. The contractor's fee is
 settled at PAY-10.
-**Answered on.** 22 September 2026. **Answered by.** Project owner.
+
+**Revised 26 September 2026.** The levy is ₦7,000, not ₦5,000, matching what drivers
+currently pay (raised on a call with Mr Timothy). It is priced per **route type**, not per
+vehicle category (PAY-14).
+**Answered on.** 22 September 2026; levy revised 26 September 2026. **Answered by.** Project
+owner.
 **Recorded at.** PRD Requirement 27.2.
 
 ### PAY-03 · What each due is charged against ✅
@@ -1093,6 +1188,62 @@ second approver.** The control is proper audit logs instead:
 **Answered on.** 22 September 2026. **Answered by.** Project owner.
 **Recorded at.** PRD Requirement 27.12, §23.20.
 
+### PAY-14 · What sets the levy amount ✅
+
+**Question.** (Raised on a call with Mr Timothy.) The levy can differ by category. Which
+category sets it: route type, vehicle type, both, or one flat rate?
+
+**Answer.** **Route type.** Interstate, intercity, and town service each carry their own
+levy amount, all starting at ₦7,000 until the Union sets different figures. This replaces
+"may vary by vehicle category" in PRD Requirement 27.1. Each amount is an audited setting
+with a mandatory reason, like every other amount.
+**Answered on.** 26 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 27.1, 27.2, §23.20.
+
+### PAY-15 · The processing fee, after the objection that it is too high ✅
+
+**Question.** (Raised on the same call.) Mr Timothy felt the processing fee is too high.
+Under Requirement 27.3, a ₦7,000 levy costs the driver ₦7,244: about ₦209 is Paystack's
+charge and ₦35 is the contractor's 0.5 per cent. A flat ₦20 on top (₦7,020) was floated,
+but it would not cover Paystack's charge, so NURTW would receive less than ₦7,000. What
+should apply?
+
+**Answer.** **Keep the rule as it is.** The driver pays ₦7,244 and NURTW receives the full
+₦7,000. It is to be revisited once the provider comparison (PAY-16) is in. Every figure is
+a setting, so a change needs no release.
+
+**Note.** The call put Paystack's ₦100 waiver below ₦2,000. The rule uses ₦2,500, which
+is Paystack's published threshold and the one the owner's worked figures at PAY-10
+reproduce. It is a setting either way.
+**Answered on.** 26 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 27.3 (unchanged).
+
+### PAY-16 · The payment provider ✅
+
+**Question.** (Raised on the same call.) Mr Timothy is comparing Interswitch, Paystack,
+and Flutterwave charges. Payments are built on Paystack. What happens meanwhile?
+
+**Answer.** **Keep building on Paystack.** Every provider call sits in one client class,
+so switching later touches that class and the webhook, not the ledger, the fee rule, or
+the screens. The provider changes only if the comparison shows a material saving for
+drivers, and then by a PRD revision.
+**Answered on.** 26 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD §23.20.
+
+### PAY-17 · Payment channels for drivers without smartphones ✅
+
+**Question.** (Raised on the same call.) Many drivers use feature phones or pay through POS
+agents, and USSD was mentioned. What should be built next?
+
+**Answer.** **The payment link, plus a dedicated account per driver**, as PAY-06 already
+set. A dedicated account is an ordinary bank account number, so a POS agent or any banking
+app can pay into it without a smartphone or a card. **USSD waits until after launch.**
+Dedicated accounts are **already enabled** on the Paystack business (confirmed by the
+project owner, 26 September 2026). Their pricing still needs confirming from the Paystack
+dashboard (PAY-11).
+**Answered on.** 26 September 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 27.7, §23.20.
+
 ---
 
 ## 12. Deferred by the Union
@@ -1187,6 +1338,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 26 September 2026 | Answers from the project owner after a call with Mr Timothy. New VEH-23 (a `vehicle.record` permission and a Field enumerator role; declaring stays restricted), VEH-24 (a vehicle may be linked to a pending applicant), VEH-25 (owner name and phone required, address optional, held as sensitive data), VEH-26 (route type required: interstate, intercity, town service). MIG-04 answered: the driver is the member, the owner is recorded on the vehicle. New MIG-07: import after the owner fields exist, locally first. PAY-02 revised: levy ₦7,000. New PAY-14 (levy priced by route type), PAY-15 (processing fee unchanged), PAY-16 (stay on Paystack pending the provider comparison), PAY-17 (link plus dedicated account; USSD after launch; dedicated accounts already enabled). PRD revised to 1.3. |
 | 22 September 2026 (close) | Launch amounts set by the owner: stickers ₦2,000 (both), levy ₦5,000 a month, membership ₦30,000 a year (PAY-02, VEH-20). The owner directed that every remaining question in this thread be settled by recommendation, with no further questions. VEH-18, VEH-19, VEH-22, PAY-03, PAY-04, PAY-08, and PAY-05's renewal point were closed that way, each marked “adopting the recommendation”. PAY-09: revision 1.2 is approved by the project owner. No PAY question remains open. |
 | 22 September 2026 | Direction relayed by the project owner from a conversation with NURTW, covering legacy stickers, onboarding, what counts as a vehicle, and payments. Recorded as **VEH-13** and **PAY-01**. It supersedes CARD-03 in part and reverses PRD §2.2's exclusion of revenue collection, so a PRD revision is required. New questions VEH-14–20 and PAY-02–09. Fee types are to be data, not code, so more can be added without a deploy. Later the same day, the owner answered VEH-14–17, PAY-05 and PAY-06, and parts of PAY-02 and PAY-07. PAY-10 records the contractor-fee formula (0.5 per cent capped at ₦200, payer-borne), checked against the owner's worked table. New questions VEH-21, VEH-22 and PAY-11. PRD revised to 1.2 (§2.3, §9A, §13, §23.19–23.20, §26.4, §27). Then: PAY-11 answered (A — dues by dedicated account or link, stickers by link only); PAY-07 answered (the NURTW account is added and changed from settings); VEH-15 corrected (Transpay has stopped) and VEH-21 answered (the register is closed). VEH-20 reworded in plain terms and made a settings change. New questions PAY-12 and PAY-13, both then answered: oldest due first; the super administrator alone changes the settlement account, with no second approver and a full audit trail. |
 | 17 September 2026 | CARD-06 answered ("Safety and Unity") and applied to the template. CARD-05 partly answered: the Union emblem supplied and embedded as a card watermark. Added `SEED_DEMO_DATA=true` to `apps/api/prisma/seed.ts`: real zones for all 21 LGAs (unconditional, per ORG-05), plus a demo branch/unit under each and an 8-entry demo designation list (both gated behind the flag, clearly marked as placeholder, not a Union answer) — so a demo deployment can complete a registration and issue a card. CARD-07 (signature images) and the rest of CARD-05 (full artwork) were deliberately not stood in for; see §3. |

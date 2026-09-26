@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { checkAttachment, type AttachmentContext } from './attachment.js';
+import {
+  checkAttachment,
+  requiredOnboardingFeeType,
+  type AttachmentContext,
+} from './attachment.js';
+
+const VEHICLE_ID = 'vehicle-1';
 
 function context(overrides: Partial<AttachmentContext> = {}): AttachmentContext {
   return {
@@ -9,6 +15,9 @@ function context(overrides: Partial<AttachmentContext> = {}): AttachmentContext 
     targetPlateNormalized: 'AA123XY',
     previouslyAttachedAt: null,
     paymentReferenceAlreadyUsed: false,
+    paymentFeeTypeCode: 'STICKER_REATTACHMENT',
+    paymentSubject: { type: 'vehicle', id: VEHICLE_ID },
+    targetVehicleId: VEHICLE_ID,
     ...overrides,
   };
 }
@@ -58,9 +67,54 @@ describe('checkAttachment (PRD Requirement 9A.4)', () => {
           isLegacyBarcode: false,
           registeredPlateNormalized: null,
           targetPlateNormalized: 'ZZ000ZZ',
+          paymentFeeTypeCode: 'STICKER_NEW',
         }),
       ),
     ).toEqual({ allowed: true });
+  });
+
+  describe('the payment must be the onboarding fee for this vehicle (Requirement 9A.2)', () => {
+    it('names the fee type each kind of attachment is paid with', () => {
+      expect(requiredOnboardingFeeType(true)).toBe('STICKER_REATTACHMENT');
+      expect(requiredOnboardingFeeType(false)).toBe('STICKER_NEW');
+    });
+
+    it.each(['MEMBERSHIP', 'LEVY', 'STICKER_NEW'])(
+      'refuses a reattachment paid as %s',
+      (code) => {
+        expect(
+          checkAttachment(context({ paymentFeeTypeCode: code })),
+        ).toEqual({ allowed: false, reason: 'PAYMENT_WRONG_FEE_TYPE' });
+      },
+    );
+
+    it('refuses a new sticker paid as a reattachment', () => {
+      expect(
+        checkAttachment(
+          context({
+            isLegacyBarcode: false,
+            registeredPlateNormalized: null,
+            paymentFeeTypeCode: 'STICKER_REATTACHMENT',
+          }),
+        ),
+      ).toEqual({ allowed: false, reason: 'PAYMENT_WRONG_FEE_TYPE' });
+    });
+
+    it('refuses a payment made for another vehicle', () => {
+      expect(
+        checkAttachment(
+          context({ paymentSubject: { type: 'vehicle', id: 'vehicle-2' } }),
+        ),
+      ).toEqual({ allowed: false, reason: 'PAYMENT_WRONG_VEHICLE' });
+    });
+
+    it('refuses a payment made for a member, even with a matching id', () => {
+      expect(
+        checkAttachment(
+          context({ paymentSubject: { type: 'member', id: VEHICLE_ID } }),
+        ),
+      ).toEqual({ allowed: false, reason: 'PAYMENT_WRONG_VEHICLE' });
+    });
   });
 
   it('checks one-shot and payment-reuse before the legacy-only checks', () => {

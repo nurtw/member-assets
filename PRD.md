@@ -3,10 +3,10 @@
 ## NURTW Membership and Vehicle Verification System
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
-**Status:** Approved for implementation. All determinations are recorded at §23. Revision
-1.2 (§2.3) is approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.2
-**Last revised:** 22 September 2026
+**Status:** Approved for implementation. All determinations are recorded at §23. Revisions
+1.2 and 1.3 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.3
+**Last revised:** 26 September 2026
 
 ---
 
@@ -83,6 +83,7 @@ of this document approved by the Union, not a plan-level decision.
 | Revision | Date | Change | Authority |
 |---|---|---|---|
 | 1.2 | 22 September 2026 | Paid onboarding, with legacy stickers unattached until reattached (§9A). Payments through Paystack (§27). An external vehicle total that counts only vehicles both onboarded and declared (§13). | Direction relayed by the project owner from NURTW (`QUESTIONS.md` VEH-13, PAY-01), approved by the project owner on 22 September 2026. No Union official is named (PAY-09). |
+| 1.3 | 26 September 2026 | Recording a vehicle on record, separate from declaring it, and a Field enumerator role (Requirement 9.7, §16). Vehicle owner details and route type (Requirements 9.8, 9.9). Registration flows from member to vehicle (Requirement 9.10). The levy rises to ₦7,000 and is priced by route type (§27). | The project owner's answers following a call with Mr Timothy (`QUESTIONS.md` VEH-23 to VEH-26, MIG-04, MIG-07, PAY-14 to PAY-17), approved by the project owner on 26 September 2026. |
 
 ---
 
@@ -147,6 +148,13 @@ documentation. Of particular note:
   legacy sticker is imported **unattached**. *Revision 1.2.*
 - **Fee type** — a kind of payment the System collects, defined as data (§27).
   *Revision 1.2.*
+- **Recorded vehicle** — a vehicle added on record by a holder of `vehicle.record`,
+  neither declared nor onboarded (Requirement 9.7). *Revision 1.3.*
+- **Vehicle owner** — the person recorded as owning a vehicle. Not necessarily a member:
+  the driver is the member (Requirement 9.8). *Revision 1.3.*
+- **Route type** — how a vehicle operates: interstate, intercity, or town service. Distinct
+  from the vehicle category, which is the kind of vehicle (Requirement 9.9).
+  *Revision 1.3.*
 - **Unit / Unity Body** — the local organisational unit shown on the registration form and
   card. Determined at §23.3 to be a single entity: *Unit* in code and administration,
   *Unity Body* on the printed form and card. It sits beneath a Branch.
@@ -263,11 +271,51 @@ through the declaration interface. No other route may create a declaration. In p
   Every record it creates is marked with its provenance and is distinguishable in the audit
   trail. *Revision 1.2:* those records are **on record only**. The migration creates no
   declaration and attaches no sticker (Requirement 9A.3).
+- *Revision 1.3:* recording a vehicle under `vehicle.record` (Requirement 9.7) is not a
+  declaration and creates none.
 
 **Requirement 9.6.** Verification endpoints and services must hold no write capability to
 declaration, sticker, card, member, or payment tables. This is to be enforced structurally —
 by the module boundary and by the database role the verification path executes under — and
 not by convention alone.
+
+**Requirement 9.7 — recording a vehicle** *(revision 1.3, `QUESTIONS.md` VEH-23)*. A holder
+of `vehicle.record` may add a vehicle **on record**. It is neither declared nor onboarded,
+and counts for nothing externally until both have happened (Requirement 9A.1).
+
+- `vehicle.record` is scoped like any other permission: the enumerator records against a
+  branch or unit within their scope.
+- A plate that already has a record in any live state (on record, pending, active,
+  suspended, or disputed) is refused. The officer is told that a record exists, and is not
+  told where. Recording is for adding vehicles, not for claiming them, so a competing
+  claim goes through declaration and the dispute rule of §23.9.
+- Declaring a vehicle already on record updates that same record (`ARCHITECTURE.md`
+  Decision 6.5), whether the declaration starts from the vehicle's page or from a new
+  declaration on a matching plate.
+
+**Requirement 9.8 — vehicle owner details** *(revision 1.3, VEH-25)*. Every vehicle records
+its owner, who need not be a member. The driver is the member (MIG-04).
+
+- The owner's **name and phone are required** on every vehicle recorded or declared from
+  revision 1.3 onwards. The **address is optional**.
+- Owner details are sensitive data under Requirement 7.1. They are stored apart from the
+  vehicle record, never appear in a list, and are never reachable through any verification
+  path or disclosure profile.
+- Legacy vehicles carry the owner details the export holds, exactly as recorded, gaps
+  included (Requirement 25.4).
+
+**Requirement 9.9 — route type** *(revision 1.3, VEH-26)*. Every vehicle recorded or
+declared from revision 1.3 onwards has a route type: **interstate, intercity, or town
+service**. The list is master data the Union administers (§23.4), because the levy is priced
+by it (Requirement 27.1). Legacy vehicles carry none, and none is inferred from their legacy
+category. The vehicle category (bus, keke, truck, and so on) remains a separate,
+administrable list.
+
+**Requirement 9.10 — registration flows from member to vehicle** *(revision 1.3, VEH-24)*.
+After a member's application is saved, the officer goes straight to adding that member's
+vehicle, or skips the step for a member with no vehicle. The vehicle may be linked to an
+applicant whose application is still pending. If the application is refused, the vehicle
+stays on record and the link still names the applicant.
 
 ---
 
@@ -288,7 +336,9 @@ carrying a legacy sticker, that means reattaching it. For one without, it means 
 signed sticker. Both cost the same at launch (VEH-20) but are separate fee types. Onboarding
 and declaration may happen in either order, and by different users. Attaching a sticker
 requires `sticker.attach`, a permission field officers can hold. `vehicle.declare` keeps the
-restrictions of Requirement 9.5 (VEH-18).
+restrictions of Requirement 9.5 (VEH-18). *Revision 1.3:* a vehicle with no route type
+cannot be onboarded, because its levy starts the month after onboarding and is priced by
+route type (VEH-26). A legacy vehicle is given one at onboarding.
 
 **Requirement 9A.3 — legacy records.** Migrated vehicles are on record only: neither
 onboarded nor declared. Every legacy barcode is imported **unattached**, onto a register that
@@ -488,6 +538,11 @@ acceptable implementation, as it fails unsafely when the schema is extended.
 
 The eleven internal roles and the treatment of external organisations are specified in the
 proposal at §16 and adopted here.
+
+*Revision 1.3* adds a twelfth system role, **Field enumerator** (`QUESTIONS.md` VEH-23). It
+registers members and records vehicles within its assigned scope, and holds neither
+`vehicle.declare` nor `sticker.attach`, nor any right to decide an application. It exists
+because enumerators work in the field and no route yet exists to compose a custom role.
 
 **Requirement 16.1.** No external organisation may receive administrator privileges,
 record-editing privileges, issuance privileges, or unrestricted database access.
@@ -761,9 +816,13 @@ Determined 22 September 2026 (`QUESTIONS.md` PAY-01 to PAY-13).
   a full audit trail but no second approver (Requirement 27.12).
 - **The payer bears the cost.** On top of the due, the payer pays Paystack's fee and the
   contractor's fee of 0.5 per cent, capped at ₦200.
-- **Launch amounts:** stickers ₦2,000 (both kinds), levy ₦5,000 per vehicle per month,
-  and membership ₦30,000 a year (PAY-02). Every amount is an audited setting, and the levy
-  may be set per vehicle category.
+- **Launch amounts:** stickers ₦2,000 (both kinds), levy ₦7,000 per vehicle per month
+  (revised from ₦5,000 by revision 1.3), and membership ₦30,000 a year (PAY-02). Every
+  amount is an audited setting, and the levy is set per **route type** (PAY-14), not per
+  vehicle category.
+- **Provider:** Paystack. A comparison with Interswitch and Flutterwave is under way; the
+  provider changes only by a PRD revision, if it shows a material saving for drivers
+  (PAY-16). The processing-fee rule is unchanged (PAY-15).
 - **Dues schedule:** the levy runs by calendar month, from the month after onboarding. The
   membership fee covers 12 months from payment. Nothing is owed before those dates, and
   legacy balances are not honoured (PAY-03, PAY-04).
@@ -772,10 +831,29 @@ Determined 22 September 2026 (`QUESTIONS.md` PAY-01 to PAY-13).
   payment (PAY-08).
 - **Channels:** NURTW dues are paid by payment link or dedicated virtual account. A sticker
   fee is **always** paid by payment link. Dedicated-account money splits at Paystack straight
-  to the NURTW subaccount, so the contractor never holds Union funds.
+  to the NURTW subaccount, so the contractor never holds Union funds. Dedicated accounts are
+  enabled on the Paystack business. USSD follows launch (PAY-17).
 - **Dedicated-account money** pays the oldest outstanding due first; any remainder is held
   as credit.
 - **Dues status** is visible internally on scan and search, and never externally.
+
+### 23.21 Recording, owners, route type, and the registration flow *(revision 1.3)*
+
+Determined 26 September 2026 (`QUESTIONS.md` VEH-23 to VEH-26, MIG-04, MIG-07).
+
+- **Enumerators record; they do not declare.** `vehicle.record` adds a vehicle on record
+  only. Declaring stays with the super administrator and named grantees (Requirement 9.7).
+  A Field enumerator system role bundles recording with member registration (§16).
+- **Owner details** are recorded on every vehicle: name and phone required, address
+  optional, held as sensitive data. The driver is the member; the owner need not be
+  (Requirement 9.8).
+- **Route type** is required on every new vehicle: interstate, intercity, or town service.
+  It is administrable master data and prices the levy (Requirement 9.9).
+- **Registration flows from member to vehicle**, and a vehicle may be linked to a pending
+  applicant (Requirement 9.10).
+- **The legacy import** carries owner details as recorded, runs locally first, and reaches
+  the shared database only after the project owner has read its reconciliation report
+  (Requirement 25.4, MIG-07).
 
 ---
 
@@ -783,6 +861,22 @@ Determined 22 September 2026 (`QUESTIONS.md` PAY-01 to PAY-13).
 
 The field-name catalogue in the proposal at §24 is adopted verbatim as the System's shared
 vocabulary. Implementations must not introduce parallel names for the same concept.
+
+*Revision 1.3* adds the following. The proposal's catalogue has no names for these
+concepts, so they extend it rather than run parallel to it:
+
+```text
+vehicle.route_type_id
+route_type.code
+route_type.label
+vehicle_owner.vehicle_id
+vehicle_owner.owner_name
+vehicle_owner.owner_phone
+vehicle_owner.owner_address
+fee_type_price.fee_type_id
+fee_type_price.route_type_id
+fee_type_price.amount_kobo
+```
 
 ---
 
@@ -802,6 +896,13 @@ messages, or test fixtures.
 **Requirement 25.3.** Approximately 67 per cent of vehicle records carry no local
 government area. The migration must record this deficiency explicitly rather than infer a
 value.
+
+**Requirement 25.4 — legacy owners** *(revision 1.3, `QUESTIONS.md` MIG-04, VEH-25)*. Each
+driver becomes a member. Each vehicle's owner, from `owner_jsonb`, becomes that vehicle's
+owner details, copied exactly as recorded. No member record is created for an owner, and
+no owner is matched to a member by name. A missing owner name or phone is left blank and
+listed in the reconciliation report; the required-field rule of Requirement 9.8 applies to
+vehicles recorded through the System, not to the historical record.
 
 ---
 
@@ -902,7 +1003,9 @@ vehicle-registration authority, and a payment certifies nothing beyond itself.
 **Requirement 27.1 — fee types are data.** A fee type carries:
 
 - an immutable code and an editable label
-- an amount, which may vary by vehicle category
+- an amount, which may vary by **route type** (revision 1.3, PAY-14; previously "by vehicle
+  category"). A route type with no amount of its own is charged the fee type's default
+  amount.
 - a recurrence: one-off, monthly, or yearly
 - what it is charged against: a member or a vehicle
 - its settlement: to the contractor alone, or split with the NURTW subaccount
@@ -915,7 +1018,7 @@ Creating, pricing, or retiring a fee type needs no deployment. The launch types 
 | `STICKER_REATTACHMENT` | one-off | vehicle | contractor | payment link only |
 | `STICKER_NEW` | one-off | vehicle | contractor | payment link only |
 | `MEMBERSHIP` | yearly | member | split | link or dedicated account |
-| `LEVY` | monthly | vehicle (PAY-03, pending confirmation) | split, amount per vehicle category | link or dedicated account |
+| `LEVY` | monthly | vehicle (PAY-03) | split, amount per route type | link or dedicated account |
 
 The two sticker fees are separate types that start at the same placeholder amount. Whether a
 vehicle receiving a new sticker pays the same as one having its Transpay sticker reattached
@@ -929,7 +1032,7 @@ reason. The launch amounts are set by the owner (PAY-02) and are not placeholder
 |---|---|
 | `STICKER_REATTACHMENT` | ₦2,000 |
 | `STICKER_NEW` | ₦2,000 |
-| `LEVY` | ₦5,000 per vehicle per month, every category, until per-category amounts are set |
+| `LEVY` | ₦7,000 per vehicle per month for each route type (interstate, intercity, town service), until different amounts are set. Revised from ₦5,000 by revision 1.3. |
 | `MEMBERSHIP` | ₦30,000 per year |
 
 A fee type created later may be marked as a **placeholder**, and in live mode the System

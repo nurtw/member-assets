@@ -119,7 +119,9 @@ export {
 export {
   DECLARATION_STATUSES,
   InvalidDeclarationTransitionError,
+  RECORD_BLOCKING_STATUSES,
   assertDeclarationTransition,
+  blocksNewRecord,
   canTransitionDeclaration,
   isDeclarationFinal,
   isDeclarationLive,
@@ -136,6 +138,8 @@ export {
   type PaystackFeeSchedule,
 } from './payments/fee-rule.js';
 
+export { resolveFeeAmountKobo } from './payments/fee-amount.js';
+
 export {
   InvalidStickerTransitionError,
   STICKER_STATUSES,
@@ -147,11 +151,21 @@ export {
 } from './sticker/status.js';
 
 export {
+  ONBOARDING_FEE_TYPE_CODES,
   checkAttachment,
+  requiredOnboardingFeeType,
   type AttachmentCheck,
   type AttachmentContext,
   type AttachmentRefusalReason,
 } from './sticker/attachment.js';
+
+export {
+  RECOGNISED_NOT_ATTACHED_COPY,
+  TRANSPAY_ATTACHED_COPY,
+  describeLegacyBarcode,
+  type LegacyBarcodeReading,
+  type LegacyRegisterEntry,
+} from './sticker/legacy-lookup.js';
 
 export {
   decodeAndVerifyQrPayload,

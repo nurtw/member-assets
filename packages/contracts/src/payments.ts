@@ -39,3 +39,69 @@ export const refundPaymentSchema = z.object({
   reason: z.string().trim().min(1, 'A reason is required for a refund.'),
 });
 export type RefundPaymentInput = z.infer<typeof refundPaymentSchema>;
+
+// --- Fee-type settings (Requirements 27.1–27.2, revision 1.3) ---------------
+
+/**
+ * Money is integer kobo end to end (Requirement 27.2). A settings screen
+ * converts naira to kobo before sending; the API never accepts a float.
+ */
+const amountKobo = z
+  .number()
+  .int('An amount must be a whole number of kobo.')
+  .positive('An amount must be greater than zero.')
+  .max(100_000_000_00, 'That amount is implausibly large.');
+
+/** Every change to a fee type is audited with a mandatory reason (27.2). */
+const reason = z
+  .string()
+  .trim()
+  .min(4, 'A reason is required for this change.')
+  .max(1000);
+
+/**
+ * Amends a fee type's default amount, label, or whether it is offered. The
+ * code, recurrence, charged-against, and settlement are fixed once a fee type
+ * exists — changing any of those would silently change the meaning of every
+ * payment already made against it.
+ */
+export const updateFeeTypeSchema = z
+  .object({
+    label: z.string().trim().min(2).max(120).optional(),
+    amountKobo: amountKobo.optional(),
+    active: z.boolean().optional(),
+    reason,
+  })
+  .refine(
+    (value) =>
+      value.label !== undefined ||
+      value.amountKobo !== undefined ||
+      value.active !== undefined,
+    { message: 'Change at least one of the label, the amount, or whether it is active.' },
+  );
+export type UpdateFeeTypeInput = z.infer<typeof updateFeeTypeSchema>;
+
+/**
+ * Sets a fee type's amount for one route type (PRD Requirement 27.1, PAY-14).
+ * The levy is priced this way; a route type without its own amount is charged
+ * the fee type's default.
+ */
+export const setFeeTypePriceSchema = z.object({ amountKobo, reason });
+export type SetFeeTypePriceInput = z.infer<typeof setFeeTypePriceSchema>;
+
+/** A fee type as the settings screen shows it. */
+export interface FeeTypeSummary {
+  code: string;
+  label: string;
+  /** The default amount, charged where no route-type amount applies. */
+  amountKobo: number;
+  recurrence: string;
+  chargedAgainst: string;
+  settlement: string;
+  active: boolean;
+  isPlaceholder: boolean;
+  prices: {
+    routeType: { id: string; code: string; label: string };
+    amountKobo: number;
+  }[];
+}

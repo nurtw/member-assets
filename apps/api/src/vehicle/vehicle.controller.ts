@@ -11,12 +11,16 @@ import {
   Req,
 } from '@nestjs/common';
 import {
+  declareRecordedVehicleSchema,
   declareVehicleSchema,
   dismissDisputeSchema,
+  recordVehicleSchema,
   setDeclarationStatusSchema,
   updateVehicleSchema,
+  type DeclareRecordedVehicleInput,
   type DeclareVehicleInput,
   type DismissDisputeInput,
+  type RecordVehicleInput,
   type SetDeclarationStatusInput,
   type UpdateVehicleInput,
 } from '@nurtw/contracts';
@@ -29,7 +33,7 @@ import type { ActorContext } from '../organisation/organisation.service.js';
 import { VehicleService } from './vehicle.service.js';
 
 /**
- * Vehicle declaration (PRD §9).
+ * Vehicle records and declarations (PRD §9, revision 1.3 Requirements 9.7–9.9).
  *
  * `@RequirePermission` is the coarse gate; the service re-asks against the
  * declaration's own organisation path (or, on create, the declaring branch
@@ -47,13 +51,19 @@ export class VehicleController {
     summary: 'List vehicle declarations.',
     description:
       'Filtered to the organisation subtrees in which the caller holds `vehicle.read`, not ' +
-      'merely ordered by them. Carries no chassis or VIN data — PRD Requirement 9.4 keeps that ' +
-      'restricted, and a list is where an over-generous projection would disclose the most at ' +
-      'once.',
+      'merely ordered by them. Carries no chassis or VIN data and no owner details — PRD ' +
+      'Requirements 9.4 and 9.8 keep those restricted, and a list is where an over-generous ' +
+      'projection would disclose the most at once. Vehicles on record (not yet declared) are ' +
+      'listed after declared ones.',
     query: [
       { name: 'status', description: 'Filter by declaration status.' },
       { name: 'organisationId', description: 'Filter to one branch or unit.' },
       { name: 'q', description: 'Matches the plate number, normalised the same way it is stored.' },
+      {
+        name: 'memberId',
+        description:
+          'Only vehicles driven by this member (or pending applicant). Still limited to the caller’s scope.',
+      },
     ],
   })
   async list(
@@ -61,6 +71,8 @@ export class VehicleController {
     @Query('status') status?: string,
     @Query('organisationId') organisationId?: string,
     @Query('q') q?: string,
+    @Query('memberId', new ParseUUIDPipe({ optional: true }))
+    memberId?: string,
   ) {
     const actor = this.actor(request);
     return {
@@ -68,6 +80,7 @@ export class VehicleController {
         status,
         organisationId,
         q,
+        memberId,
       }),
     };
   }
@@ -79,6 +92,7 @@ export class VehicleController {
     description:
       'Chassis and VIN are present only for a caller holding `vehicle.read_restricted` (PRD ' +
       'Requirement 9.4) — otherwise the field is absent from the response, not merely blank. ' +
+      'Owner details (Requirement 9.8) appear here and on no list or verification response. ' +
       'A declaration outside the caller’s scope answers 404, identically to one that does ' +
       'not exist, so identifiers cannot be enumerated.',
     responses: {
@@ -102,12 +116,15 @@ export class VehicleController {
       'super administrator bundle alone; every other holder reaches it only by express grant. ' +
       'A plate already carrying an `ACTIVE` declaration is not silently merged or rejected: the ' +
       'new declaration is recorded as `DISPUTED` and both are preserved (PRD §23.9). ' +
-      'Authorised against the declaring branch or unit’s path.',
+      'A plate already ON RECORD is declared in place — the same record, not a second one ' +
+      '(ARCHITECTURE.md Decision 6.5). Authorised against the declaring branch or unit’s path, ' +
+      'and, for a record being declared in place, against where that record currently sits.',
     body: declareVehicleSchema,
     responses: {
+      400: 'The route type is not one of the listed route types.',
       403: 'The caller may not declare into that organisation.',
       404: 'No such organisation, or no such member (`declaredByMemberId`).',
-      409: 'The organisation is inactive, or is a council or zone rather than a branch or unit.',
+      409: 'The organisation is inactive or not a branch or unit, or the plate is on record outside the caller’s area.',
     },
   })
   async declare(
@@ -117,6 +134,61 @@ export class VehicleController {
   ) {
     const actor = this.actor(request);
     return { vehicle: await this.vehicles.declare(actor, body) };
+  }
+
+  @RequirePermission('vehicle.record')
+  @Post('record')
+  @Documented({
+    summary: 'Record a vehicle on record (not a declaration).',
+    description:
+      'PRD Requirement 9.7 (revision 1.3). Creates an `ON_RECORD` vehicle: neither declared nor ' +
+      'onboarded, and counted by nothing external until both happen. Route type and the ' +
+      'owner’s name and phone are required (Requirements 9.8–9.9). A plate that already has a ' +
+      'standing record is refused — recording adds vehicles, it does not claim them; a claim is ' +
+      'a declaration. The refusal does not say where that record is. `declaredByMemberId` may ' +
+      'name an applicant whose application is still pending (Requirement 9.10).',
+    body: recordVehicleSchema,
+    responses: {
+      400: 'The body failed validation, or the route type is not one of the listed route types.',
+      403: 'The caller may not record into that organisation.',
+      404: 'No such organisation, or no such member (`declaredByMemberId`).',
+      409: 'The organisation is inactive or not a branch or unit, or a record for this plate already exists.',
+    },
+  })
+  async record(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(recordVehicleSchema))
+    body: RecordVehicleInput,
+  ) {
+    const actor = this.actor(request);
+    return { vehicle: await this.vehicles.record(actor, body) };
+  }
+
+  @RequirePermission('vehicle.declare')
+  @Post(':id/declare')
+  @Documented({
+    summary: 'Declare a vehicle that is on record.',
+    description:
+      'ARCHITECTURE.md Decision 6.6. Promotes this `ON_RECORD` vehicle to `ACTIVE` in place. ' +
+      'Whatever the record lacks — a legacy record has no route type and may have no owner ' +
+      'phone — must be supplied here. `organisationId` moves the record as it is declared, and ' +
+      'then `vehicle.declare` is required at both the current and the destination organisation.',
+    body: declareRecordedVehicleSchema,
+    responses: {
+      400: 'The declared record would lack a route type or the owner’s name and phone.',
+      403: 'The caller may not declare here, or may not move the record to that organisation.',
+      404: 'No such vehicle, or it lies outside the caller’s scope.',
+      409: 'The vehicle is not on record, or the plate already has an active declaration.',
+    },
+  })
+  async declareRecorded(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(declareRecordedVehicleSchema))
+    body: DeclareRecordedVehicleInput,
+  ) {
+    const actor = this.actor(request);
+    return { vehicle: await this.vehicles.declareRecorded(actor, id, body) };
   }
 
   @RequirePermission('vehicle.update')

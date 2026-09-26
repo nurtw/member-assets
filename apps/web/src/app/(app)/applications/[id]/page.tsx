@@ -1,6 +1,10 @@
 "use client";
 
-import type { ApplicationDetail, CardSummary } from "@nurtw/contracts";
+import type {
+  ApplicationDetail,
+  CardSummary,
+  VehicleSummary,
+} from "@nurtw/contracts";
 import { suggestCardAddress } from "@nurtw/domain";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -95,6 +99,19 @@ export default function ApplicationDetailPage() {
     cards: CardSummary[];
   }>(memberId ? `/cards?memberId=${memberId}` : null, fetcher);
   const cards = cardData?.cards ?? [];
+
+  /**
+   * The applicant's vehicles (PRD Requirement 9.10, revision 1.3). Recorded in
+   * the registration flow, possibly while the application is still pending,
+   * so the reviewing officer can see them before deciding.
+   */
+  const canSeeVehicles = holds("vehicle.read");
+  const canAddVehicle = holds("vehicle.record") || holds("vehicle.declare");
+  const { data: vehicleData } = useSWR<{ vehicles: VehicleSummary[] }>(
+    memberId && canSeeVehicles ? `/vehicles?memberId=${memberId}` : null,
+    fetcher,
+  );
+  const vehicles = vehicleData?.vehicles ?? [];
   const liveCard = cards.find((card) =>
     ["DRAFT", "PENDING_APPROVAL", "ISSUED", "ACTIVE"].includes(card.status),
   );
@@ -298,6 +315,46 @@ export default function ApplicationDetailPage() {
         document carries next of kin, guarantor, telephone, and address — seeing
         that an application exists does not entitle somebody to print all of it.
       */}
+      {canSeeVehicles || canAddVehicle ? (
+        <Section
+          title="Vehicles"
+          description="Vehicles this member drives. A vehicle added here is on record only until it is declared and a sticker is attached."
+        >
+          {vehicles.length > 0 ? (
+            <ul className="grid gap-2">
+              {vehicles.map((vehicle) => (
+                <li
+                  key={vehicle.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-2"
+                >
+                  <Link
+                    href={`/vehicles/${vehicle.id}`}
+                    className="font-mono text-sm font-medium text-[var(--nurtw-navy)] underline-offset-2 hover:underline"
+                  >
+                    {vehicle.plateNumberDisplay}
+                  </Link>
+                  <span className="text-sm text-black/60">
+                    {vehicle.routeType?.label ?? "No route type"}
+                  </span>
+                  <StatusChip status={vehicle.status} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-black/55">No vehicle recorded.</p>
+          )}
+          {canAddVehicle ? (
+            <div>
+              <Link href={`/applications/${application.id}/vehicles`}>
+                <Button type="button" variant="secondary">
+                  Add a vehicle
+                </Button>
+              </Link>
+            </div>
+          ) : null}
+        </Section>
+      ) : null}
+
       {holds("member_sensitive.read") ? (
         <Section
           title="Registration form"
