@@ -613,8 +613,10 @@ model OfficerSignature {
 
   mediaAsset MediaAsset @relation("OfficerSignatureAsset", fields: [mediaAssetId], references: [id], onDelete: Restrict)
 
-  presidentOnCards        Card[] @relation("CardPresidentSignature")
-  generalSecretaryOnCards Card[] @relation("CardGeneralSecretarySignature")
+  presidentOnCards        Card[]          @relation("CardPresidentSignature")
+  generalSecretaryOnCards Card[]          @relation("CardGeneralSecretarySignature")
+  presidentOnLetters      VehicleLetter[] @relation("LetterPresidentSignature")
+  generalSecretaryOnLetters VehicleLetter[] @relation("LetterGeneralSecretarySignature")
 
   @@index([position, isActive])
   @@map("officer_signature")
@@ -682,6 +684,7 @@ model Vehicle {
 
   owner    VehicleOwner?
   stickers Sticker[]
+  letters  VehicleLetter[]
 
   /// PRD Requirement 9.2 — at most one ACTIVE declaration per normalised plate.
   ///
@@ -823,6 +826,7 @@ model Sticker {
   attachmentPayment Payment? @relation(fields: [attachmentPaymentId], references: [id], onDelete: Restrict)
   replacementOf     Sticker? @relation("StickerReplacement", fields: [replacementOfStickerId], references: [id])
   replacedBy        Sticker? @relation("StickerReplacement")
+  letters           VehicleLetter[]
   issuedByUser      User?    @relation("StickerIssuedBy", fields: [issuedByUserId], references: [id], onDelete: SetNull)
   attachedByUser    User?    @relation("StickerAttachedBy", fields: [attachedByUserId], references: [id], onDelete: SetNull)
 
@@ -838,6 +842,61 @@ model Sticker {
   @@index([status])
   @@index([registeredPlateNormalized])
   @@map("sticker")
+}
+
+/// The letter produced when a vehicle is onboarded (PRD Requirement 9A.6,
+/// `QUESTIONS.md` VEH-19 — item 18).
+///
+/// Created in the same transaction as the sticker attachment, so a letter
+/// exists exactly when an onboarding does. The printed values are a snapshot
+/// taken then and never recomputed, for the card's reason: a letter is a
+/// document someone carries, and re-deriving it from live data would produce a
+/// different letter bearing the same reference. Reissuing one after a change is
+/// open at VEH-27.
+model VehicleLetter {
+  id        String @id @default(uuid()) @db.Uuid
+  vehicleId String @map("vehicle_id") @db.Uuid
+  stickerId String @map("sticker_id") @db.Uuid
+
+  /// Random, like the card number — printed on the letter and looked up
+  /// internally (VEH-19). Not derivable from the plate or the order of issue.
+  letterReference String @unique @map("letter_reference")
+
+  /// Selects the template module that renders this letter. A template module
+  /// must never be removed while letters reference it.
+  templateVersion String   @map("template_version")
+  issuedAt        DateTime @default(now()) @map("issued_at")
+  issuedByUserId  String?  @map("issued_by_user_id") @db.Uuid
+
+  // --- What the letter prints (snapshot at issue) ------------------------------
+  printedPlate            String  @map("printed_plate")
+  printedCategory         String? @map("printed_category")
+  printedMake             String? @map("printed_make")
+  printedModel            String? @map("printed_model")
+  printedColour           String? @map("printed_colour")
+  printedStickerNumber    String  @map("printed_sticker_number")
+  printedMemberName       String? @map("printed_member_name")
+  printedMembershipNumber String? @map("printed_membership_number")
+  printedUnit             String? @map("printed_unit")
+  printedBranch           String? @map("printed_branch")
+
+  /// The officer signatures active at issue, as on `card`. `null` until CARD-07
+  /// supplies them; the line then prints blank.
+  presidentSignatureId        String? @map("president_signature_id") @db.Uuid
+  generalSecretarySignatureId String? @map("general_secretary_signature_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  vehicle      Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  sticker      Sticker @relation(fields: [stickerId], references: [id], onDelete: Restrict)
+  issuedByUser User?   @relation("VehicleLetterIssuedBy", fields: [issuedByUserId], references: [id], onDelete: SetNull)
+
+  presidentSignature        OfficerSignature? @relation("LetterPresidentSignature", fields: [presidentSignatureId], references: [id], onDelete: Restrict)
+  generalSecretarySignature OfficerSignature? @relation("LetterGeneralSecretarySignature", fields: [generalSecretarySignatureId], references: [id], onDelete: Restrict)
+
+  @@index([vehicleId, issuedAt])
+  @@index([stickerId])
+  @@map("vehicle_letter")
 }
 
 // ---------------------------------------------------------------------------
@@ -870,6 +929,7 @@ model User {
   cardsApproved         Card[]                     @relation("CardApprovedBy")
   stickersIssued        Sticker[]                  @relation("StickerIssuedBy")
   stickersAttached      Sticker[]                  @relation("StickerAttachedBy")
+  lettersIssued         VehicleLetter[]            @relation("VehicleLetterIssuedBy")
   auditEvents           AuditEvent[]
   sessions              UserSession[]
   paymentsInitiated     Payment[]

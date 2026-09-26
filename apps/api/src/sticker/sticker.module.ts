@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { AuditModule } from '../audit/audit.module.js';
 import { AuthModule } from '../auth/auth.module.js';
+import { VehicleLetterModule } from '../vehicle-letter/vehicle-letter.module.js';
 import { StickerController } from './sticker.controller.js';
 import { StickerService } from './sticker.service.js';
 
@@ -10,10 +11,11 @@ import { StickerService } from './sticker.service.js';
  *
  * Imports `AuthModule` for `PermissionService`: `attach()` re-resolves the
  * target vehicle's own organisation path, the same reasoning `VehicleModule`
- * documents.
+ * documents. Imports `VehicleLetterModule`: an attachment issues its letter
+ * in the same transaction (item 18).
  */
 @Module({
-  imports: [AuditModule, AuthModule],
+  imports: [AuditModule, AuthModule, VehicleLetterModule],
   controllers: [StickerController],
   providers: [StickerService],
   exports: [StickerService],

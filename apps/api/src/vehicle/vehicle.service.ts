@@ -234,16 +234,23 @@ export class VehicleService {
     // Requirement 9A.1 / Decision 6.5 — onboarded is read from the attached
     // sticker, never from the vehicle. The barcode is selected only to tell
     // the two kinds apart; the sticker number stays behind `sticker.attach`.
-    const attached = await this.prisma.sticker.findFirst({
-      where: { vehicleId: vehicle.id, attachedAt: { not: null } },
-      orderBy: { attachedAt: 'desc' },
-      select: {
-        legacyBarcode: true,
-        attachedAt: true,
-        status: true,
-        attachedByUser: { select: { fullName: true } },
-      },
-    });
+    const [attached, letter] = await Promise.all([
+      this.prisma.sticker.findFirst({
+        where: { vehicleId: vehicle.id, attachedAt: { not: null } },
+        orderBy: { attachedAt: 'desc' },
+        select: {
+          legacyBarcode: true,
+          attachedAt: true,
+          status: true,
+          attachedByUser: { select: { fullName: true } },
+        },
+      }),
+      this.prisma.vehicleLetter.findFirst({
+        where: { vehicleId: vehicle.id },
+        orderBy: { issuedAt: 'desc' },
+        select: { letterReference: true },
+      }),
+    ]);
 
     return {
       ...this.toSummary(vehicle),
@@ -268,6 +275,7 @@ export class VehicleService {
               attachedAt: attached.attachedAt.toISOString(),
               attachedBy: attached.attachedByUser?.fullName ?? null,
               stickerStatus: attached.status,
+              letterReference: letter?.letterReference ?? null,
             }
           : null,
     };

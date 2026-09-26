@@ -644,7 +644,11 @@ describe('Sticker issuance and attachment (e2e)', () => {
         attachedAt: after.body.onboarding.attachment.attachedAt,
         attachedBy: 'attacher fixture',
         stickerStatus: 'ACTIVE',
+        letterReference: after.body.onboarding.attachment.letterReference,
       });
+      expect(detail.body.vehicle.onboarding.letterReference).toEqual(
+        expect.any(String),
+      );
     });
 
     it('answers 404 for a vehicle outside the caller\'s scope', async () => {
@@ -664,6 +668,154 @@ describe('Sticker issuance and attachment (e2e)', () => {
       await request(server)
         .get(`/api/v1/stickers/onboarding/${vehicle.id}`)
         .set('Cookie', cookies.bystander!)
+        .expect(403);
+    });
+  });
+
+  describe('the vehicle letter (Requirement 9A.6, item 18)', () => {
+    async function onboard(suffix: string) {
+      const vehicle = await prisma.vehicle.update({
+        where: { id: (await declareVehicle(suffix)).id },
+        data: { make: 'Toyota', model: 'Hiace', color: 'White' },
+      });
+      const sticker = await registerBarcode(`letter-${suffix}`, vehicle.plateNumberNormalized);
+      await request(server)
+        .post('/api/v1/stickers/attach')
+        .set('Cookie', cookies.attacher!)
+        .send({
+          legacyBarcode: sticker.legacyBarcode,
+          vehicleId: vehicle.id,
+          paymentId: (await confirmedPayment(vehicle.id, 'STICKER_REATTACHMENT')).id,
+        })
+        .expect(201);
+      return { vehicle, sticker };
+    }
+
+    function pdf(path: string, cookie: string) {
+      return request(server)
+        .get(path)
+        .set('Cookie', cookie)
+        .buffer()
+        .parse((res, callback) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (chunk: Buffer) => chunks.push(chunk));
+          res.on('end', () => callback(null, Buffer.concat(chunks)));
+        });
+    }
+
+    it('is issued with the attachment, once, snapshotting what it prints', async () => {
+      const { vehicle, sticker } = await onboard('LT1');
+
+      const letters = await prisma.vehicleLetter.findMany({
+        where: { vehicleId: vehicle.id },
+        include: { issuedByUser: { select: { email: true } } },
+      });
+      expect(letters).toHaveLength(1);
+      expect(letters[0]).toMatchObject({
+        stickerId: sticker.id,
+        templateVersion: 'v1',
+        printedPlate: vehicle.plateNumberDisplay,
+        printedMake: 'Toyota',
+        printedModel: 'Hiace',
+        printedColour: 'White',
+        printedStickerNumber: sticker.legacyBarcode,
+        printedBranch: `Branch ${TAG}`,
+        printedUnit: null,
+        // No driver linked: printed as not recorded, never guessed.
+        printedMemberName: null,
+        printedMembershipNumber: null,
+        // No officer signature registered here (CARD-07).
+        presidentSignatureId: null,
+        generalSecretarySignatureId: null,
+      });
+      expect(letters[0]!.issuedByUser?.email).toBe(`attacher.${TAG}@nurtw.test`);
+
+      const issued = await prisma.auditEvent.findFirstOrThrow({
+        where: { action: 'vehicle_letter.issue', subjectId: letters[0]!.id },
+      });
+      expect(issued.afterValue).toMatchObject({
+        letterReference: letters[0]!.letterReference,
+      });
+
+      // A later edit to the vehicle does not change the letter already issued.
+      await prisma.vehicle.update({ where: { id: vehicle.id }, data: { color: 'Blue' } });
+      const again = await prisma.vehicleLetter.findUniqueOrThrow({
+        where: { id: letters[0]!.id },
+      });
+      expect(again.printedColour).toBe('White');
+    });
+
+    it('is not issued when the attachment is refused', async () => {
+      const vehicle = await declareVehicle('LT2');
+      const sticker = await registerBarcode('letter-refused', 'E2ESTKNOTTHIS');
+
+      await request(server)
+        .post('/api/v1/stickers/attach')
+        .set('Cookie', cookies.attacher!)
+        .send({
+          legacyBarcode: sticker.legacyBarcode,
+          vehicleId: vehicle.id,
+          paymentId: (await confirmedPayment(vehicle.id, 'STICKER_REATTACHMENT')).id,
+        })
+        .expect(409);
+
+      expect(await prisma.vehicleLetter.count({ where: { vehicleId: vehicle.id } })).toBe(0);
+    });
+
+    it('downloads as a PDF for anyone who can read the vehicle, audited as an export', async () => {
+      const { vehicle } = await onboard('LT3');
+
+      // The bystander holds vehicle.read alone: reading the vehicle includes its letter.
+      const response = await pdf(`/api/v1/vehicles/${vehicle.id}/letter`, cookies.bystander!).expect(200);
+
+      expect(response.headers['content-type']).toContain('application/pdf');
+      expect(response.headers['cache-control']).toBe('no-store');
+      const letter = await prisma.vehicleLetter.findFirstOrThrow({
+        where: { vehicleId: vehicle.id },
+      });
+      // Named by reference, which says nothing about the member or the plate.
+      expect(response.headers['content-disposition']).toContain(letter.letterReference);
+      expect((response.body as Buffer).subarray(0, 5).toString('latin1')).toBe('%PDF-');
+
+      const exported = await prisma.auditEvent.findFirstOrThrow({
+        where: { action: 'vehicle_letter.download', subjectId: letter.id },
+      });
+      expect(exported.afterValue).toMatchObject({ vehicleId: vehicle.id });
+    });
+
+    it('answers 404 for a vehicle with no letter', async () => {
+      const vehicle = await declareVehicle('LT4');
+      await request(server)
+        .get(`/api/v1/vehicles/${vehicle.id}/letter`)
+        .set('Cookie', cookies.bystander!)
+        .expect(404);
+    });
+
+    it("answers 404 for a letter outside the caller's scope, the same as none", async () => {
+      const vehicle = await declareVehicle('LT5', { branchId: fixture.otherBranchId });
+      const sticker = await registerBarcode('letter-out-of-scope', vehicle.plateNumberNormalized);
+      await prisma.vehicleLetter.create({
+        data: {
+          vehicleId: vehicle.id,
+          stickerId: sticker.id,
+          letterReference: `${TAG}-out-of-scope`,
+          templateVersion: 'v1',
+          printedPlate: vehicle.plateNumberDisplay,
+          printedStickerNumber: sticker.legacyBarcode!,
+        },
+      });
+
+      await request(server)
+        .get(`/api/v1/vehicles/${vehicle.id}/letter`)
+        .set('Cookie', cookies.bystander!)
+        .expect(404);
+    });
+
+    it('refuses a caller without vehicle.read', async () => {
+      const { vehicle } = await onboard('LT6');
+      await request(server)
+        .get(`/api/v1/vehicles/${vehicle.id}/letter`)
+        .set('Cookie', cookies.verifier!)
         .expect(403);
     });
   });
@@ -787,6 +939,16 @@ describe('Sticker issuance and attachment (e2e)', () => {
     });
     const vehicleIds = vehicles.map((v) => v.id);
 
+    // Letters first: they reference both the vehicle and the sticker.
+    await prisma.vehicleLetter.deleteMany({
+      where: {
+        OR: [
+          { vehicleId: { in: vehicleIds } },
+          { sticker: { stickerQrId: { contains: TAG } } },
+          { sticker: { issuedByUserId: { in: userIds } } },
+        ],
+      },
+    });
     await prisma.sticker.deleteMany({
       where: {
         OR: [

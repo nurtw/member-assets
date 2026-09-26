@@ -128,3 +128,29 @@ export function wrap(
 
   return lines;
 }
+
+/**
+ * `text` reduced to what `font` can encode.
+ *
+ * The standard PDF fonts encode WinAnsi only, and `pdf-lib` throws on anything
+ * else — an Igbo name spelt with "ọ" or "ụ" would make the whole document fail
+ * to render. A letter with a letter dropped is a defect; a letter that cannot
+ * be produced at all is worse. So each character the font lacks is replaced by
+ * its base letter where decomposition gives one ("ọ" → "o"), and by "?" where
+ * it does not, which at least shows something was there.
+ */
+export function encodable(font: PDFFont, text: string): string {
+  const supported = new Set(font.getCharacterSet());
+  let out = '';
+  for (const char of text) {
+    if (supported.has(char.codePointAt(0)!)) {
+      out += char;
+      continue;
+    }
+    const base = char.normalize('NFKD').replace(/\p{M}/gu, '');
+    out += [...base].every((c) => supported.has(c.codePointAt(0)!)) && base.length > 0
+      ? base
+      : '?';
+  }
+  return out;
+}

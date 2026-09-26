@@ -49,12 +49,12 @@ thing a year later.
 | Structure and master data (ORG) | 4 | 3 | — | 7 |
 | Membership and registration (MEM) | 4 | 10 | — | 14 |
 | Cards (CARD) | 5 | 3 | — | 8 |
-| Vehicles and stickers (VEH) | 20 | 6 | — | 26 |
+| Vehicles and stickers (VEH) | 20 | 7 | — | 27 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 4 | 5 | — | 9 |
 | Payments (PAY) | 17 | 0 | — | 17 |
 | Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
-| **Total** | **63** | **39** | **1** | **103** |
+| **Total** | **63** | **40** | **1** | **104** |
 
 ### Blocking production use right now
 
@@ -719,6 +719,24 @@ category list, which is already administrable master data.
 **Answered on.** 26 September 2026. **Answered by.** Project owner.
 **Recorded at.** PRD Requirement 9.9, 9A.2, §23.21.
 
+### VEH-27 · Reissuing the vehicle letter when its details change ⏳
+
+**Question.** The vehicle letter (VEH-19) is produced at onboarding and prints the member's
+name and membership number and the unit as they stand at that moment. Most legacy vehicles
+have no driver linked yet: 2,761 of the 2,841 in the export. A letter produced for one of
+them prints "Not recorded" in place of the member. If a driver is linked later, or the
+vehicle moves to another unit, should an officer be able to reissue the letter?
+
+**Why it matters.** Like the card, a letter is a document someone carries. Rewriting the
+one already issued would produce a different letter bearing the same reference. Item 18
+therefore keeps each letter exactly as printed.
+
+**Recommended.** Allow a reissue by an officer holding `sticker.attach`, with a recorded
+reason. The new letter gets a new reference, the old one is kept and marked superseded,
+and only the latest can be downloaded.
+**Answered on.** —. **Answered by.** —.
+**Recorded at.** —. Blocks nothing: item 18 issues one letter per onboarding.
+
 ---
 
 ## 8. Open — legacy migration (item 09)
@@ -1338,6 +1356,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 26 September 2026 (item 18) | New VEH-27: whether the vehicle letter can be reissued when its driver or unit changes after onboarding. Open, and it blocks nothing: item 18 issues one letter per onboarding and keeps it as printed. |
 | 26 September 2026 | Answers from the project owner after a call with Mr Timothy. New VEH-23 (a `vehicle.record` permission and a Field enumerator role; declaring stays restricted), VEH-24 (a vehicle may be linked to a pending applicant), VEH-25 (owner name and phone required, address optional, held as sensitive data), VEH-26 (route type required: interstate, intercity, town service). MIG-04 answered: the driver is the member, the owner is recorded on the vehicle. New MIG-07: import after the owner fields exist, locally first. PAY-02 revised: levy ₦7,000. New PAY-14 (levy priced by route type), PAY-15 (processing fee unchanged), PAY-16 (stay on Paystack pending the provider comparison), PAY-17 (link plus dedicated account; USSD after launch; dedicated accounts already enabled). PRD revised to 1.3. |
 | 22 September 2026 (close) | Launch amounts set by the owner: stickers ₦2,000 (both), levy ₦5,000 a month, membership ₦30,000 a year (PAY-02, VEH-20). The owner directed that every remaining question in this thread be settled by recommendation, with no further questions. VEH-18, VEH-19, VEH-22, PAY-03, PAY-04, PAY-08, and PAY-05's renewal point were closed that way, each marked “adopting the recommendation”. PAY-09: revision 1.2 is approved by the project owner. No PAY question remains open. |
 | 22 September 2026 | Direction relayed by the project owner from a conversation with NURTW, covering legacy stickers, onboarding, what counts as a vehicle, and payments. Recorded as **VEH-13** and **PAY-01**. It supersedes CARD-03 in part and reverses PRD §2.2's exclusion of revenue collection, so a PRD revision is required. New questions VEH-14–20 and PAY-02–09. Fee types are to be data, not code, so more can be added without a deploy. Later the same day, the owner answered VEH-14–17, PAY-05 and PAY-06, and parts of PAY-02 and PAY-07. PAY-10 records the contractor-fee formula (0.5 per cent capped at ₦200, payer-borne), checked against the owner's worked table. New questions VEH-21, VEH-22 and PAY-11. PRD revised to 1.2 (§2.3, §9A, §13, §23.19–23.20, §26.4, §27). Then: PAY-11 answered (A — dues by dedicated account or link, stickers by link only); PAY-07 answered (the NURTW account is added and changed from settings); VEH-15 corrected (Transpay has stopped) and VEH-21 answered (the register is closed). VEH-20 reworded in plain terms and made a settings change. New questions PAY-12 and PAY-13, both then answered: oldest due first; the super administrator alone changes the settlement account, with no second approver and a full audit trail. |

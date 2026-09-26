@@ -342,6 +342,32 @@ export default function VehicleDetailPage() {
         <OnboardingSection vehicle={vehicle} onChanged={() => mutate()} />
       ) : null}
 
+      {vehicle.onboarding?.letterReference ? (
+        <Section
+          title="Vehicle letter"
+          description="Produced when the vehicle was onboarded, and printed exactly as issued. It confirms the vehicle is recorded with the Union; it is not evidence of ownership, roadworthiness, licensing, or insurance."
+        >
+          <div className="flex flex-wrap items-center gap-4">
+            <Detail label="Reference" value={vehicle.onboarding.letterReference} />
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() =>
+                void act(() =>
+                  api.download(
+                    `/vehicles/${vehicle.id}/letter`,
+                    "nurtw-vehicle-letter.pdf",
+                  ),
+                )
+              }
+            >
+              Download letter
+            </Button>
+          </div>
+        </Section>
+      ) : null}
+
       {holds("vehicle.update") ? (
         <Section
           title="Driver"

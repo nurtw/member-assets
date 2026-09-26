@@ -14,6 +14,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { SettingsModule } from './settings/settings.module.js';
 import { StickerModule } from './sticker/sticker.module.js';
 import { VehicleModule } from './vehicle/vehicle.module.js';
+import { VehicleLetterModule } from './vehicle-letter/vehicle-letter.module.js';
 
 /**
  * Root module.
@@ -41,6 +42,7 @@ import { VehicleModule } from './vehicle/vehicle.module.js';
     VehicleModule,
     PaymentsModule,
     StickerModule,
+    VehicleLetterModule,
   ],
 })
 export class AppModule {}

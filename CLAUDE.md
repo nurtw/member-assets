@@ -583,6 +583,20 @@ record the same plate at once. Preserve it too.
   of URLs and logs. Item 10 reuses `describeLegacyBarcode` from `@nurtw/domain` for its
   wording.
 
+### The vehicle letter (item 18)
+
+- **Issued inside the attachment's transaction** (`VehicleLetterService.issueInTransaction`,
+  called from `StickerService.attach`). A letter exists exactly when an onboarding does.
+- **Only a snapshot is written at issue.** The PDF is rendered at download, from the
+  `vehicle_letter` row, through the `templateVersion` it records. A rendering fault can
+  never undo an onboarding. Templates live in `vehicle-letter/templates/`, and the
+  registry test names every version; never delete one.
+- **No QR code on the letter** (VEH-19): a printed payload could be copied onto a fake
+  sticker. Signature lines stay blank until CARD-07.
+- Text drawn with the standard fonts goes through `encodable` (`pdf/text.ts`), or a
+  character outside WinAnsi throws. The card template predates it and has the same gap.
+- Reissuing a letter after a change is open at VEH-27. Do not build it before the answer.
+
 ### Notes that will bite you otherwise
 
 - **`pnpm build` before `pnpm --filter web dev`** on a clean checkout — web imports the

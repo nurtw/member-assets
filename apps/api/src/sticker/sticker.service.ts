@@ -29,6 +29,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { PermissionService } from '../auth/permission.service.js';
 import { loadEnvironment } from '../config/environment.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { VehicleLetterService } from '../vehicle-letter/vehicle-letter.service.js';
 
 const ISSUE = 'sticker.issue';
 const ATTACH = 'sticker.attach';
@@ -83,6 +84,7 @@ export class StickerService {
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly audit: AuditService,
+    private readonly letters: VehicleLetterService,
   ) {}
 
   async issue(actorUserId: string, input: IssueStickerInput) {
@@ -268,6 +270,15 @@ export class StickerService {
           },
           tx,
         );
+        // Requirement 9A.6 — onboarding produces the vehicle letter, in this
+        // same transaction: no attachment without its letter, no letter
+        // without its attachment.
+        await this.letters.issueInTransaction(tx, {
+          vehicleId: vehicle.id,
+          stickerId: sticker.id,
+          stickerNumber: sticker.legacyBarcode ?? sticker.stickerQrId,
+          actorUserId,
+        });
         return tx.sticker.findUniqueOrThrow({
           where: { id: sticker.id },
           select: STICKER_RESPONSE,
@@ -324,6 +335,11 @@ export class StickerService {
           attachedAt: true,
           status: true,
           attachedByUser: { select: { fullName: true } },
+          letters: {
+            orderBy: { issuedAt: 'desc' },
+            take: 1,
+            select: { letterReference: true },
+          },
         },
       }),
       this.prisma.sticker.count({
@@ -363,6 +379,7 @@ export class StickerService {
               attachedAt: attached.attachedAt.toISOString(),
               attachedBy: attached.attachedByUser?.fullName ?? null,
               stickerStatus: attached.status,
+              letterReference: attached.letters[0]?.letterReference ?? null,
             }
           : null,
       registerHoldsBarcodeForPlate: registerEntries > 0,

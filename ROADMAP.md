@@ -36,7 +36,7 @@ Each item is independently completable and independently testable. Status values
 | 06 | membership-card-issuance | §8 | complete | `plans/06-membership-card-issuance.md` |
 | 07 | vehicle-declaration | §9 | complete | `plans/07-vehicle-declaration.md` |
 | 08 | sticker-inventory-qr | §10 | complete | `plans/08-sticker-inventory-qr.md` |
-| 09 | legacy-data-migration | §25, §9A | local run done; Neon `--repair` running (owner approved 26 Sep) | `plans/09-legacy-data-migration.md` |
+| 09 | legacy-data-migration | §25, §9A | **done** (Neon repaired 26 Sep; register on Neon waits for owner) | `plans/09-legacy-data-migration.md` |
 | 10 | internal-verification | §11 | not-started | `plans/10-internal-verification.md` |
 | 11 | api-clients-and-scopes | §12.1, §16 | not-started | `plans/11-api-clients-and-scopes.md` |
 | 12 | external-verification-api | §12, §15 | not-started | `plans/12-external-verification-api.md` |
@@ -45,7 +45,7 @@ Each item is independently completable and independently testable. Status values
 | 15 | go-live-hardening | §17, §21 | not-started | `plans/15-go-live-hardening.md` |
 | 16 | payments | §27 | done (link payments, settlement account) | `plans/16-payments.md` |
 | 17 | vehicle-onboarding | §9A | done locally; register on Neon waits for owner; browser check pending | `plans/17-vehicle-onboarding.md` |
-| 18 | vehicle-letter | §9A.6 | not-started | — |
+| 18 | vehicle-letter | §9A.6 | done (not yet viewed by eye) | `plans/18-vehicle-letter.md` |
 | 19 | vehicle-recording | §9.7–9.9 | done | `plans/19-vehicle-recording.md` |
 | 20 | registration-flow | §9.10 | done (browser check pending) | `plans/20-registration-flow.md` |
 | 21 | fee-type-settings | §27.1–27.2 | done (browser check pending) | `plans/21-fee-type-settings.md` |
@@ -280,6 +280,6 @@ deferred by the owner:
 |---|---|---|
 | Legacy barcodes are millisecond timestamps, deducible from one genuine sticker and carrying no authenticity proof | **Revised 22 September 2026 (PRD 1.2).** Legacy barcodes import unattached and resolve only once reattached. Reattachment requires the barcode to be on the imported register, bound to its recorded plate (no override), attached only once, and paid for. Transpay has stopped issuing, so the register is closed and cannot be added to (`QUESTIONS.md` VEH-21). | PRD §9A, §26.4, `ARCHITECTURE.md` 6.4 |
 | A hijacked session holding `vehicle.declare` may create declarations, as step-up is not enabled | Accepted, and materially reduced on 9 September 2026 by restricting the permission to the super administrator plus express per-user grants. Bounded further by organisational scope, complete audit trail, and the absence of any other route to create a declaration. Step-up is built and may be enabled by configuration. | `ARCHITECTURE.md` 9.7 |
-| The shared database holds a pre-1.2 legacy import: 2,838 legacy vehicles marked declared, no owner details | Found 26 September 2026. Nothing depends on those rows yet. `migrate:legacy -- --repair` corrects them in place, audited, and was verified locally. The owner approved it the same day, and it is running on Neon. Until it finishes, the shared database overstates declared vehicles. | `plans/09-legacy-data-migration.md` |
+| The shared database holds a pre-1.2 legacy import: 2,838 legacy vehicles marked declared, no owner details | Found 26 September 2026. Nothing depends on those rows yet. `migrate:legacy -- --repair` corrects them in place, audited, and was verified locally. **Closed 26 September 2026:** approved by the owner and completed. All 2,841 are on record with owner details, with one audit event each. | `plans/09-legacy-data-migration.md` |
 | Item 08's sticker attachment accepted any confirmed payment, whatever its fee type or vehicle | Found and closed 26 September 2026 (item 17). No attachment existed on the shared database, so nothing was funded wrongly. | `plans/17-vehicle-onboarding.md` |
 | Approximately 67 per cent of migrated vehicles will carry no local government area | Accepted. Imported blank and flagged for operational cleanup. Inference from address text is prohibited: an inferred value would be indistinguishable from a recorded one. | PRD §23.18 |

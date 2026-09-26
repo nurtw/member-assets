@@ -75,6 +75,11 @@ export interface VehicleOnboarding {
   /** The attaching officer's name; `null` if that account has since gone. */
   attachedBy: string | null;
   stickerStatus: string;
+  /**
+   * The vehicle letter's reference (Requirement 9A.6, item 18). `null` only for
+   * an attachment made before item 18, which produced no letter.
+   */
+  letterReference: string | null;
 }
 
 /** A confirmed onboarding payment for this vehicle, not yet used. */
