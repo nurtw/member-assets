@@ -81,6 +81,10 @@ screens (item 10). External responses (item 12).
 - Sticker responses use an explicit select. Before this, `attach` returned the whole row,
   which would have carried the security code.
 
-**Pending:** loading the register onto Neon (owner go-ahead, MIG-07). The screens have not
-been clicked through in a browser. Printing new stickers has no template yet: `issue`
+**Register on Neon: loaded 27 September 2026** with the owner's go-ahead. That gave
+2,408 unattached barcodes, none failed, and one audit event each. Its fingerprint is
+identical to the verified local import. The import now runs five at a time, and each
+barcode is one batched transaction that is safe to retry.
+
+**Pending:** the screens have not been clicked through in a browser. Printing new stickers has no template yet: `issue`
 mints the record, and the QR payload needs `STICKER_SIGNING_SECRET`.

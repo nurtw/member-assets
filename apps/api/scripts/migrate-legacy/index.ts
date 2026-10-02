@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomInt } from 'node:crypto';
+import { createHash, randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -72,8 +72,11 @@ const REPAIR = process.argv.includes('--repair');
  */
 const REGISTER = !process.argv.includes('--no-register');
 
-/** Repairs run a few at a time: each touches one vehicle, so they never contend. */
-const REPAIR_CONCURRENCY = 5;
+/**
+ * Repairs and register entries run a few at a time: each touches one row of
+ * its own, so they never contend.
+ */
+const WRITE_CONCURRENCY = 5;
 
 /**
  * A dropped connection, not a data error. Neon has dropped this script's
@@ -606,7 +609,7 @@ async function importVehicles(
     console.log(
       `  repairing ${repairs.length} vehicles (${settled.size} already correct)`,
     );
-    await runLimited(repairs, REPAIR_CONCURRENCY);
+    await runLimited(repairs, WRITE_CONCURRENCY);
   }
 
   return byLegacyId;
@@ -631,6 +634,20 @@ async function importRegister(
   rows: Record<string, string>[],
   actorId: string,
 ): Promise<void> {
+  // Barcodes already on the register, in one query rather than one per row.
+  const present = new Set(
+    (
+      await withRetry(() =>
+        prisma.sticker.findMany({
+          where: { legacyBarcode: { not: null } },
+          select: { legacyBarcode: true },
+        }),
+      )
+    ).map((sticker) => sticker.legacyBarcode!),
+  );
+
+  const placements: (() => Promise<void>)[] = [];
+
   for (const row of rows) {
     const legacyId = row.id ?? 'unknown';
     const entry = mapLegacyRegisterEntry(row.barcode, row.security_code);
@@ -650,72 +667,107 @@ async function importRegister(
       continue;
     }
 
-    const existing = await withRetry(() =>
-      prisma.sticker.findUnique({
-        where: { legacyBarcode: entry.legacyBarcode },
-        select: { id: true },
-      }),
-    );
-    if (existing) {
+    if (present.has(entry.legacyBarcode)) {
       report.barcodeAlreadyPresent();
       continue;
     }
+    // A barcode repeated within the export is placed once; the second
+    // occurrence would otherwise race the first for the unique index.
+    present.add(entry.legacyBarcode);
 
-    try {
-      const stickerQrId = await allocateStickerQrId();
-      await prisma.$transaction(async (tx) => {
-        const created = await tx.sticker.create({
-          data: {
-            stickerQrId,
-            legacyBarcode: entry.legacyBarcode,
-            legacySecurityCode: entry.legacySecurityCode,
-            registeredPlateNormalized,
-            // Printed long ago and never attached through this System
-            // (Requirement 10.3). `ISSUED -> ACTIVE` is attachment.
-            status: 'ISSUED',
-            templateVersion: 'transpay-legacy',
-          },
-          select: { id: true },
-        });
+    placements.push(() =>
+      placeOnRegister(legacyId, entry, registeredPlateNormalized, actorId),
+    );
+  }
 
-        await tx.auditEvent.create({
-          data: {
-            action: 'sticker.legacy_import',
-            subjectType: 'sticker',
-            subjectId: created.id,
-            actorUserId: actorId,
-            // The barcode and its plate are the register entry. The security
-            // code is restricted (Requirement 9A.5), so only its presence is
-            // recorded here.
-            afterValue: {
-              legacyId,
-              legacyBarcode: entry.legacyBarcode,
-              registeredPlateNormalized,
-              securityCodeRecorded: entry.legacySecurityCode !== null,
-            },
-            reason: 'Transpay register import (item 17, PRD Requirement 9A.3).',
-          },
-        });
-      });
-      report.barcodeImported();
-    } catch (error) {
-      report.barcodeFailed(legacyId, (error as Error).message);
-    }
+  if (placements.length > 0) {
+    console.log(`  placing ${placements.length} barcodes on the register`);
+    await runLimited(placements, WRITE_CONCURRENCY);
   }
 }
 
-async function allocateStickerQrId(): Promise<string> {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const candidate = generateIdentifier(() => randomInt(256));
-    const clash = await prisma.sticker.findUnique({
-      where: { stickerQrId: candidate },
+/**
+ * One register entry: the sticker and its audit event, in one transaction.
+ *
+ * Safe to retry. The unique index on `legacyBarcode` means a second write of
+ * the same barcode cannot succeed, so an attempt that fails on it first checks
+ * whether an earlier attempt landed after all (a commit whose reply was lost)
+ * and, if so, counts the entry as placed rather than failed.
+ */
+async function placeOnRegister(
+  legacyId: string,
+  entry: { legacyBarcode: string; legacySecurityCode: string | null },
+  registeredPlateNormalized: string,
+  actorId: string,
+): Promise<void> {
+  const landed = () =>
+    prisma.sticker.findUnique({
+      where: { legacyBarcode: entry.legacyBarcode },
       select: { id: true },
     });
-    if (!clash) {
-      return candidate;
-    }
+
+  try {
+    await withRetry(async () => {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        // The id is chosen here so the audit event can name the sticker
+        // without a round trip between the two writes.
+        const id = randomUUID();
+        try {
+          await prisma.$transaction([
+            prisma.sticker.create({
+              data: {
+                id,
+                stickerQrId: generateIdentifier(() => randomInt(256)),
+                legacyBarcode: entry.legacyBarcode,
+                legacySecurityCode: entry.legacySecurityCode,
+                registeredPlateNormalized,
+                // Printed long ago and never attached through this System
+                // (Requirement 10.3). `ISSUED -> ACTIVE` is attachment.
+                status: 'ISSUED',
+                templateVersion: 'transpay-legacy',
+              },
+            }),
+            prisma.auditEvent.create({
+              data: {
+                action: 'sticker.legacy_import',
+                subjectType: 'sticker',
+                subjectId: id,
+                actorUserId: actorId,
+                // The barcode and its plate are the register entry. The
+                // security code is restricted (Requirement 9A.5), so only its
+                // presence is recorded here.
+                afterValue: {
+                  legacyId,
+                  legacyBarcode: entry.legacyBarcode,
+                  registeredPlateNormalized,
+                  securityCodeRecorded: entry.legacySecurityCode !== null,
+                },
+                reason: 'Transpay register import (item 17, PRD Requirement 9A.3).',
+              },
+            }),
+          ]);
+          return;
+        } catch (error) {
+          if ((error as { code?: string }).code !== 'P2002') {
+            // Not a uniqueness clash. If the connection dropped after the
+            // commit, the entry is there and there is nothing to retry.
+            if (isTransient(error) && (await withRetry(landed))) {
+              return;
+            }
+            throw error;
+          }
+          if (await withRetry(landed)) {
+            return;
+          }
+          // The clash was on the random `stickerQrId`: draw another.
+        }
+      }
+      throw new Error('Could not allocate a sticker identifier after 5 attempts.');
+    });
+    report.barcodeImported();
+  } catch (error) {
+    report.barcodeFailed(legacyId, (error as Error).message);
   }
-  throw new Error('Could not allocate a sticker identifier after 5 attempts.');
 }
 
 async function allocateMembershipNumber(): Promise<string> {
