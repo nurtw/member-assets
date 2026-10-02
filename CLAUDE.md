@@ -597,6 +597,25 @@ record the same plate at once. Preserve it too.
   character outside WinAnsi throws. The card template predates it and has the same gap.
 - Reissuing a letter after a change is open at VEH-27. Do not build it before the answer.
 
+### The dues schedule (item 22)
+
+- **What is owed is computed, never stored.** `DuesService` gathers the facts and the pure
+  functions in `packages/domain/src/payments/dues.ts` apply the rules. There is no "paid"
+  flag. A month is paid because the ledger holds the credit for it (Requirement 27.9).
+- **Amount changes append to `fee_amount_history`**, in the same transaction, through
+  `FeeTypeService`. A past month is priced at the amount in force when it fell due
+  (`resolveFeeAmountAtKobo`). Change an amount any other way and every month after it is
+  priced wrongly. A test that changes a real fee removes its own history rows.
+- **Months are Lagos months** (UTC+1, no daylight saving). The levy starts the month after
+  the first sticker attachment, with no proration.
+- **Dues are internal** (Requirement 27.8). `VehicleDues` and `MemberDues` must never be
+  reachable from an external response, the public page, or a disclosure profile. Item 10
+  shows them beside a scan result through `DuesService`, after its own authorisation.
+- **The go-live date is the `dues.go_live_date` setting**, unset until GOV-11. A migrated
+  member's fee has not started until then. Do not default it.
+- Open and built literally: PAY-18 (membership paid early, or after a gap) and PAY-19
+  (when a levy stops; route-type change).
+
 ### Notes that will bite you otherwise
 
 - **`pnpm build` before `pnpm --filter web dev`** on a clean checkout — web imports the

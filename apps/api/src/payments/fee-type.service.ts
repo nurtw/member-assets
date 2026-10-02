@@ -5,6 +5,7 @@ import type {
   UpdateFeeTypeInput,
 } from '@nurtw/contracts';
 import { resolveFeeAmountKobo } from '@nurtw/domain';
+import type { Prisma } from '@prisma/client';
 
 import { AuditService } from '../audit/audit.service.js';
 import type { ActorContext } from '../organisation/organisation.service.js';
@@ -133,6 +134,19 @@ export class FeeTypeService {
         },
       });
 
+      if (
+        input.amountKobo !== undefined &&
+        input.amountKobo !== before.amountKobo
+      ) {
+        await this.recordAmountChange(tx, {
+          feeTypeId: before.id,
+          routeTypeId: null,
+          previousKobo: before.amountKobo,
+          amountKobo: input.amountKobo,
+          actorUserId: actor.userId,
+        });
+      }
+
       await this.audit.record(
         {
           action: 'fee_type.update',
@@ -202,6 +216,19 @@ export class FeeTypeService {
         update: { amountKobo: input.amountKobo },
       });
 
+      if (existing?.amountKobo !== input.amountKobo) {
+        await this.recordAmountChange(tx, {
+          feeTypeId: feeType.id,
+          routeTypeId: routeType.id,
+          // No baseline when the route type had no amount of its own: until
+          // now the default applied, and `resolveFeeAmountAtKobo` reads the
+          // absence of an earlier row as exactly that.
+          previousKobo: existing?.amountKobo ?? null,
+          amountKobo: input.amountKobo,
+          actorUserId: actor.userId,
+        });
+      }
+
       await this.audit.record(
         {
           action: 'fee_type.price_set',
@@ -229,6 +256,43 @@ export class FeeTypeService {
         },
       });
       return this.toSummary(row);
+    });
+  }
+
+  /**
+   * Appends to `fee_amount_history` (item 22), in the caller's transaction so
+   * a change and its history row commit together or not at all.
+   *
+   * The first change to a key also writes the amount it replaced, effective
+   * from the epoch. That baseline is what lets a past month be priced at the
+   * amount in force when it fell due, however many changes follow.
+   */
+  private async recordAmountChange(
+    tx: Prisma.TransactionClient,
+    change: {
+      feeTypeId: string;
+      routeTypeId: string | null;
+      previousKobo: number | null;
+      amountKobo: number;
+      actorUserId: string;
+    },
+  ): Promise<void> {
+    const key = { feeTypeId: change.feeTypeId, routeTypeId: change.routeTypeId };
+    if (
+      change.previousKobo !== null &&
+      (await tx.feeAmountHistory.count({ where: key })) === 0
+    ) {
+      await tx.feeAmountHistory.create({
+        data: { ...key, amountKobo: change.previousKobo, effectiveFrom: new Date(0) },
+      });
+    }
+    await tx.feeAmountHistory.create({
+      data: {
+        ...key,
+        amountKobo: change.amountKobo,
+        effectiveFrom: new Date(),
+        changedByUserId: change.actorUserId,
+      },
     });
   }
 

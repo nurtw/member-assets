@@ -138,7 +138,23 @@ export {
   type PaystackFeeSchedule,
 } from './payments/fee-rule.js';
 
-export { resolveFeeAmountKobo } from './payments/fee-amount.js';
+export {
+  resolveFeeAmountAtKobo,
+  resolveFeeAmountKobo,
+  type FeeAmountChange,
+} from './payments/fee-amount.js';
+
+export {
+  DUES_STATUSES,
+  addTwelveMonths,
+  lagosMonthLabel,
+  levySchedule,
+  membershipCover,
+  type DuesStatus,
+  type LevyMonth,
+  type LevySchedule,
+  type MembershipCover,
+} from './payments/dues.js';
 
 export {
   InvalidStickerTransitionError,

@@ -296,6 +296,35 @@ application predating the column whose audit event has been purged — it allows
 the decision, because the System cannot prove one person is acting twice and
 refusing on a suspicion would strand the record.
 
+### Setting the go-live date for dues
+
+`system_setting` key **`dues.go_live_date`**, written as `YYYY-MM-DD`. It **ships unset**.
+
+PRD Requirement 27.13: a member migrated from the previous system first owes the
+membership fee on the go-live date. Until the date is set, those members read
+"Not started" on every screen, rather than being charged from a day nobody chose.
+`QUESTIONS.md` **GOV-11** asks the Union for the date.
+
+```sql
+-- Once GOV-11 is answered. Read as the start of that day in Lagos.
+INSERT INTO system_setting (key, value, description, updated_at)
+VALUES ('dues.go_live_date', '2026-11-01',
+        'Go-live date (GOV-11): migrated members first owe the membership fee on it.', now())
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+```
+
+Like every setting, it is read per request, so it takes effect at once. A value
+that is not a `YYYY-MM-DD` date reads as unset.
+
+### Changing a fee amount
+
+Always through the Fees settings page or `/fee-types`, never by editing
+`fee_type` or `fee_type_price` directly. Each change appends to
+`fee_amount_history` in the same transaction, and that history is what prices
+each past month of levy at the amount in force when it fell due (item 22). A
+direct edit leaves no history row, so the System would treat the new amount as
+having applied all along, and every month already paid would show a shortfall.
+
 ### Finding work approved by the officer who recorded it
 
 Useful before turning the setting on, to see how often it happens today.

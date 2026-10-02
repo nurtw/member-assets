@@ -45,7 +45,38 @@ export class SettingsService {
     }
     return fallback;
   }
+
+  /**
+   * A date setting, or `null` when the row is absent or unreadable.
+   *
+   * Written as `YYYY-MM-DD` and read as the start of that day in Lagos
+   * (UTC+1), which is where the Union's calendar runs. `null` rather than a
+   * fallback date: a date the Union has not given must read as "not set", so
+   * that nothing is charged from a day nobody chose.
+   */
+  async getDate(key: string): Promise<Date | null> {
+    const row = await this.prisma.systemSetting.findUnique({
+      where: { key },
+      select: { value: true },
+    });
+    const value = row?.value.trim() ?? '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return null;
+    }
+    const date = new Date(`${value}T00:00:00+01:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
 }
+
+/**
+ * The go-live date (`YYYY-MM-DD`). PRD Requirement 27.13: a member migrated
+ * before go-live first owes the membership fee on this date.
+ *
+ * **Ships unset**, pending QUESTIONS.md **GOV-11**. Until the Union names the
+ * date, a migrated member's fee has not started, and the System says so rather
+ * than counting from a date it made up.
+ */
+export const DUES_GO_LIVE_DATE = 'dues.go_live_date';
 
 /**
  * Whether a second officer must approve.

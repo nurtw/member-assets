@@ -3,7 +3,7 @@
 ## NURTW Membership and Vehicle Verification System
 
 **Document version:** 1.4
-**Last revised:** 26 September 2026
+**Last revised:** 27 September 2026
 
 ---
 
@@ -52,9 +52,9 @@ thing a year later.
 | Vehicles and stickers (VEH) | 20 | 7 | — | 27 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 4 | 5 | — | 9 |
-| Payments (PAY) | 17 | 0 | — | 17 |
+| Payments (PAY) | 17 | 2 | — | 19 |
 | Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
-| **Total** | **63** | **40** | **1** | **104** |
+| **Total** | **63** | **42** | **1** | **106** |
 
 ### Blocking production use right now
 
@@ -948,7 +948,7 @@ handles such a request?
 
 ---
 
-## 11. Payments (direction of 22 September 2026) — all answered
+## 11. Payments (direction of 22 September 2026)
 
 The System will take payments through Paystack. This reverses the exclusion of revenue and
 levy collection at PRD §2.2. Under §2.3, that requires a Union-approved revision of the PRD
@@ -1262,6 +1262,46 @@ dashboard (PAY-11).
 **Answered on.** 26 September 2026. **Answered by.** Project owner.
 **Recorded at.** PRD Requirement 27.7, §23.20.
 
+### PAY-18 · A membership fee paid early, or after a gap ⏳
+
+**Question.** The membership fee covers 12 months from the date it is paid (PAY-03). Two
+cases follow from that rule and are not settled:
+
+1. **Paid early.** A member covered until 1 June pays again on 1 April. Does the new cover
+   run from 1 April, losing two months already paid for, or from 1 June?
+2. **Paid after a gap.** A member whose cover lapsed two years ago pays one fee. Do they
+   owe one fee, or one for each year missed?
+
+**Built as.** Exactly as PAY-03 reads: cover runs 12 months from each payment date, and at
+most one fee is outstanding at a time. An early payment therefore loses the overlap, and a
+gap is never billed.
+
+**Recommended.** For an early payment, run the new cover from the end of the current one,
+so nobody loses what they paid for. For a gap, keep one fee: it matches "12 months from the
+date it is paid".
+**Answered on.** —. **Answered by.** —.
+**Recorded at.** —. Blocks nothing: item 22 applies PAY-03 literally.
+
+### PAY-19 · When a levy stops, and a change of route type ⏳
+
+**Question.** The levy falls due every month from the month after a vehicle is onboarded
+(PAY-03). Two cases are not settled:
+
+1. **Stopping.** Does the levy stop when a vehicle is retired or sold, or when its sticker
+   is lost or cancelled? Nothing says it does.
+2. **A change of route type.** The levy is priced by route type (PAY-14). If a vehicle
+   moves from town service to interstate, are its unpaid earlier months charged at the old
+   route type's amount or the new one's?
+
+**Built as.** The levy never stops by itself. Every month is priced at the route type the
+vehicle has now, using the amount that was in force for that route type on the 1st of the
+month. All three route types cost the same today, so the second case changes nothing yet.
+
+**Recommended.** Stop the levy from the month after a vehicle is retired, and keep each
+month at the route type the vehicle had on the 1st of that month.
+**Answered on.** —. **Answered by.** —.
+**Recorded at.** —. Blocks nothing today.
+
 ---
 
 ## 12. Deferred by the Union
@@ -1356,6 +1396,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 27 September 2026 (item 22) | New PAY-18 (a membership fee paid early or after a gap) and PAY-19 (when a levy stops; re-pricing on a change of route type). Both open, and neither blocks item 22, which applies PAY-03 as written. |
 | 26 September 2026 (item 18) | New VEH-27: whether the vehicle letter can be reissued when its driver or unit changes after onboarding. Open, and it blocks nothing: item 18 issues one letter per onboarding and keeps it as printed. |
 | 26 September 2026 | Answers from the project owner after a call with Mr Timothy. New VEH-23 (a `vehicle.record` permission and a Field enumerator role; declaring stays restricted), VEH-24 (a vehicle may be linked to a pending applicant), VEH-25 (owner name and phone required, address optional, held as sensitive data), VEH-26 (route type required: interstate, intercity, town service). MIG-04 answered: the driver is the member, the owner is recorded on the vehicle. New MIG-07: import after the owner fields exist, locally first. PAY-02 revised: levy ₦7,000. New PAY-14 (levy priced by route type), PAY-15 (processing fee unchanged), PAY-16 (stay on Paystack pending the provider comparison), PAY-17 (link plus dedicated account; USSD after launch; dedicated accounts already enabled). PRD revised to 1.3. |
 | 22 September 2026 (close) | Launch amounts set by the owner: stickers ₦2,000 (both), levy ₦5,000 a month, membership ₦30,000 a year (PAY-02, VEH-20). The owner directed that every remaining question in this thread be settled by recommendation, with no further questions. VEH-18, VEH-19, VEH-22, PAY-03, PAY-04, PAY-08, and PAY-05's renewal point were closed that way, each marked “adopting the recommendation”. PAY-09: revision 1.2 is approved by the project owner. No PAY question remains open. |

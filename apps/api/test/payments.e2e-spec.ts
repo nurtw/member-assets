@@ -560,6 +560,27 @@ describe('Payments (e2e)', () => {
         data: { amountKobo: originalInterstateLevyKobo },
       });
     }
+    // Item 22 — the amount is put back directly, not through the service, so
+    // the history rows this spec's change wrote are taken out with it.
+    // Otherwise the history would say interstate cost the test amount from
+    // that moment on, and price every later month of levy at it.
+    await removeFixtureAmountHistory();
+  }
+
+  async function removeFixtureAmountHistory(): Promise<void> {
+    const users = await prisma.user.findMany({
+      where: { email: { contains: TAG } },
+      select: { id: true },
+    });
+    await prisma.feeAmountHistory.deleteMany({
+      where: {
+        OR: [
+          { changedByUserId: { in: users.map((user) => user.id) } },
+          // A fixture fee type's own rows, its baseline included.
+          { feeType: { code: { contains: TAG } } },
+        ],
+      },
+    });
   }
 
   function jsonResponse(payload: unknown): Response {
@@ -622,6 +643,8 @@ describe('Payments (e2e)', () => {
       where: { paymentId: { in: paymentIds } },
     });
     await prisma.payment.deleteMany({ where: { id: { in: paymentIds } } });
+    // Before the fixture fee types: their history rows reference them.
+    await removeFixtureAmountHistory();
     await prisma.feeType.deleteMany({ where: { code: { contains: TAG } } });
     await prisma.settlementAccount.deleteMany({
       where: { subaccountCode: 'ACCT_e2e_mock' },

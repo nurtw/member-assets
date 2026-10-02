@@ -126,6 +126,12 @@ export function StatusChip({ status }: { status: string }) {
     // Revision 1.2/1.3 — on record is neither affirmed nor refused: the
     // vehicle is known, not declared. Neutral, like PENDING; the words carry it.
     ON_RECORD: "bg-[var(--surface-muted)] text-black/70 border-[var(--border-subtle)]",
+    // Dues (PRD Requirement 27.8, item 22). Owed is the current period unpaid:
+    // a caution. In arrears is an earlier one unpaid. Not due is neutral.
+    PAID: "bg-[var(--verdict-affirm-surface)] text-[var(--verdict-affirm)] border-[var(--verdict-affirm)]/30",
+    OWED: "bg-[var(--verdict-caution-surface)] text-[var(--verdict-caution)] border-[var(--verdict-caution)]/30",
+    IN_ARREARS: "bg-[var(--verdict-deny-surface)] text-[var(--verdict-deny)] border-[var(--verdict-deny)]/30",
+    NOT_DUE: "bg-[var(--surface-muted)] text-black/70 border-[var(--border-subtle)]",
   };
 
   return (

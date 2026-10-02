@@ -105,3 +105,54 @@ export interface FeeTypeSummary {
     amountKobo: number;
   }[];
 }
+
+/**
+ * Dues status (PRD Requirement 27.8, item 22). **Internal only**: it appears
+ * in no external API response, on no public page, and in no disclosure
+ * profile. These types must never be reachable from an external contract.
+ */
+export type DuesStatusCode = 'NOT_DUE' | 'PAID' | 'OWED' | 'IN_ARREARS';
+
+/** One month of levy that is not fully paid. */
+export interface UnpaidLevyMonth {
+  /** `2026-11`. */
+  month: string;
+  dueOn: string;
+  amountKobo: number;
+  paidKobo: number;
+  outstandingKobo: number;
+}
+
+/** `GET /vehicles/:id/dues` — the levy on one vehicle (Requirement 27.13). */
+export interface VehicleDues {
+  vehicleId: string;
+  status: DuesStatusCode;
+  /** When the levy first fell, or will fall, due; `null` until onboarded. */
+  firstDueOn: string | null;
+  /** How many months have fallen due so far. */
+  monthsDue: number;
+  /** The months not fully paid, oldest first. */
+  unpaidMonths: UnpaidLevyMonth[];
+  outstandingKobo: number;
+  /** Paid beyond what has fallen due, held against the next month. */
+  creditKobo: number;
+  nextDueOn: string | null;
+  /** What one month costs this vehicle at today's amounts. */
+  currentAmountKobo: number;
+}
+
+/** `GET /members/:id/dues` — the membership fee (Requirement 27.13). */
+export interface MemberDues {
+  memberId: string;
+  /** Never `IN_ARREARS`: one fee is outstanding at most (PAY-18). */
+  status: DuesStatusCode;
+  firstDueOn: string | null;
+  coveredUntil: string | null;
+  owedSince: string | null;
+  /**
+   * Why nothing is due, when that is not simply "paid up": the member is not
+   * yet approved, or was migrated and no go-live date has been set (GOV-11).
+   */
+  notStartedBecause: 'NOT_APPROVED' | 'NO_GO_LIVE_DATE' | null;
+  currentAmountKobo: number;
+}

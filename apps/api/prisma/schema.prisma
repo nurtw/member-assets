@@ -225,8 +225,9 @@ model RouteType {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  vehicles Vehicle[]
-  prices   FeeTypePrice[]
+  vehicles      Vehicle[]
+  prices        FeeTypePrice[]
+  amountHistory FeeAmountHistory[]
 
   @@map("route_type")
 }
@@ -1377,8 +1378,9 @@ model FeeType {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  payments Payment[]
-  prices   FeeTypePrice[]
+  payments      Payment[]
+  prices        FeeTypePrice[]
+  amountHistory FeeAmountHistory[]
 
   @@map("fee_type")
 }
@@ -1407,6 +1409,38 @@ model FeeTypePrice {
   @@unique([feeTypeId, routeTypeId])
   @@index([routeTypeId])
   @@map("fee_type_price")
+}
+
+/// Every amount a fee type has had, and when it took effect (item 22).
+///
+/// `fee_type.amount_kobo` and `fee_type_price` hold the amount charged *now*.
+/// A monthly levy needs the amount that was in force on the 1st of each past
+/// month: without it, raising the levy would re-price every month already
+/// paid and show a shortfall on each (PRD Requirement 27.13).
+///
+/// Append-only (Requirement 27.9): `FeeTypeService` adds a row in the same
+/// transaction as every amount change, and no row is ever updated or removed.
+/// `routeTypeId` is null for the fee type's default amount. A key with no rows
+/// has never changed, so its current amount has applied from the beginning.
+model FeeAmountHistory {
+  id String @id @default(uuid()) @db.Uuid
+
+  feeTypeId   String  @map("fee_type_id") @db.Uuid
+  routeTypeId String? @map("route_type_id") @db.Uuid
+  amountKobo  Int     @map("amount_kobo")
+
+  /// When this amount started to apply. The first change to a key also writes
+  /// the amount it replaced, effective from the epoch, as the baseline.
+  effectiveFrom DateTime @map("effective_from")
+
+  changedByUserId String?  @map("changed_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  feeType   FeeType    @relation(fields: [feeTypeId], references: [id], onDelete: Restrict)
+  routeType RouteType? @relation(fields: [routeTypeId], references: [id], onDelete: Restrict)
+
+  @@index([feeTypeId, routeTypeId, effectiveFrom])
+  @@map("fee_amount_history")
 }
 
 /// A single charge against a member or a vehicle. `subjectType`/`subjectId`

@@ -36,7 +36,7 @@ Each item is independently completable and independently testable. Status values
 | 06 | membership-card-issuance | §8 | complete | `plans/06-membership-card-issuance.md` |
 | 07 | vehicle-declaration | §9 | complete | `plans/07-vehicle-declaration.md` |
 | 08 | sticker-inventory-qr | §10 | complete | `plans/08-sticker-inventory-qr.md` |
-| 09 | legacy-data-migration | §25, §9A | **done** (Neon repaired 26 Sep; register on Neon waits for owner) | `plans/09-legacy-data-migration.md` |
+| 09 | legacy-data-migration | §25, §9A | **done** (Neon repaired 26 Sep; Transpay register loaded 27 Sep) | `plans/09-legacy-data-migration.md` |
 | 10 | internal-verification | §11 | not-started | `plans/10-internal-verification.md` |
 | 11 | api-clients-and-scopes | §12.1, §16 | not-started | `plans/11-api-clients-and-scopes.md` |
 | 12 | external-verification-api | §12, §15 | not-started | `plans/12-external-verification-api.md` |
@@ -44,12 +44,12 @@ Each item is independently completable and independently testable. Status values
 | 14 | aggregate-reporting | §13 | not-started | `plans/14-aggregate-reporting.md` |
 | 15 | go-live-hardening | §17, §21 | not-started | `plans/15-go-live-hardening.md` |
 | 16 | payments | §27 | done (link payments, settlement account) | `plans/16-payments.md` |
-| 17 | vehicle-onboarding | §9A | done locally; register on Neon waits for owner; browser check pending | `plans/17-vehicle-onboarding.md` |
+| 17 | vehicle-onboarding | §9A | done (register on Neon 27 Sep; browser check pending) | `plans/17-vehicle-onboarding.md` |
 | 18 | vehicle-letter | §9A.6 | done (not yet viewed by eye) | `plans/18-vehicle-letter.md` |
 | 19 | vehicle-recording | §9.7–9.9 | done | `plans/19-vehicle-recording.md` |
 | 20 | registration-flow | §9.10 | done (browser check pending) | `plans/20-registration-flow.md` |
 | 21 | fee-type-settings | §27.1–27.2 | done (browser check pending) | `plans/21-fee-type-settings.md` |
-| 22 | dues-schedule | §27.8, §27.13 | not-started | — |
+| 22 | dues-schedule | §27.8, §27.13 | done (browser check pending) | `plans/22-dues-schedule.md` |
 | 23 | dedicated-accounts | §27.7 | not-started | — |
 
 ### Item summaries

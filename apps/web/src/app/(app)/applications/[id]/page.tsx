@@ -11,6 +11,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import useSWR from "swr";
 
+import { MemberDuesPanel } from "@/components/dues-panel";
 import {
   Button,
   ErrorNotice,
@@ -379,6 +380,9 @@ export default function ApplicationDetailPage() {
           </div>
         </Section>
       ) : null}
+
+      {/* Dues are internal (Requirement 27.8): shown to those who may read members. */}
+      {holds("member.read") ? <MemberDuesPanel memberId={member.id} /> : null}
 
       {/*
         Cards. Only an active member may hold one, so this appears once the

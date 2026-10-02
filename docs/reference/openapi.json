@@ -7767,6 +7767,194 @@
         }
       }
     },
+    "/api/v1/members/{id}/dues": {
+      "get": {
+        "summary": "A member's membership fee: paid, owed, or not yet due.",
+        "description": "PRD Requirement 27.13 — the fee covers 12 months from the date it is paid. It first falls due on approval, or on the go-live date for a member migrated before it; until that date is set, a migrated member’s fee has not started. **Internal only** (Requirement 27.8). Dues do not block card renewal: the issuing officer sees this status instead (PAY-05).\n\n**Permission required:** `member.read`.",
+        "operationId": "DuesController_member",
+        "tags": [
+          "Dues"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold member.read in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such member, or they lie outside the caller’s scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/members/{id}/status": {
       "patch": {
         "summary": "Suspend, restore, or cancel a member.",
@@ -12738,6 +12926,194 @@
           },
           "409": {
             "description": "The declaration is not currently DISPUTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vehicles/{id}/dues": {
+      "get": {
+        "summary": "A vehicle's levy: what has fallen due and what is paid.",
+        "description": "PRD Requirement 27.13 — the levy falls due on the 1st of each calendar month (Lagos time), starting the month after the vehicle is onboarded, with no proration. Each month is priced at the amount in force when it fell due. Derived from the ledger on every read; nothing is stored. **Internal only** (Requirement 27.8): dues appear in no external response.\n\n**Permission required:** `vehicle.read`.",
+        "operationId": "DuesController_vehicle",
+        "tags": [
+          "Dues"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold vehicle.read in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such vehicle, or it lies outside the caller’s scope.",
             "content": {
               "application/json": {
                 "schema": {

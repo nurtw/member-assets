@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import useSWR from "swr";
 
+import { MemberDuesPanel } from "@/components/dues-panel";
 import {
   Button,
   ErrorNotice,
@@ -166,6 +167,12 @@ export default function CardDetailPage() {
           </p>
         </div>
       ) : null}
+
+      {/*
+        PAY-05 — dues do not block a card. The officer preparing, approving, or
+        renewing it sees the member's fee status here and decides.
+      */}
+      {holds("member.read") ? <MemberDuesPanel memberId={card.member.id} /> : null}
 
       <Section
         title="What is printed on this card"

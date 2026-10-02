@@ -160,12 +160,16 @@ export {
   setFeeTypePriceSchema,
   setSettlementAccountSchema,
   updateFeeTypeSchema,
+  type DuesStatusCode,
   type FeeTypeSummary,
   type InitiatePaymentInput,
+  type MemberDues,
   type RefundPaymentInput,
   type SetFeeTypePriceInput,
   type SetSettlementAccountInput,
+  type UnpaidLevyMonth,
   type UpdateFeeTypeInput,
+  type VehicleDues,
 } from './payments.js';
 
 export {

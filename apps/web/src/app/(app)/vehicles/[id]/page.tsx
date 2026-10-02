@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import useSWR from "swr";
 
+import { VehicleDuesPanel } from "@/components/dues-panel";
 import { MemberPicker } from "@/components/member-picker";
 import { OnboardingSection } from "@/components/onboarding-section";
 import {
@@ -341,6 +342,8 @@ export default function VehicleDetailPage() {
       {holds("sticker.attach") ? (
         <OnboardingSection vehicle={vehicle} onChanged={() => mutate()} />
       ) : null}
+
+      <VehicleDuesPanel vehicleId={vehicle.id} />
 
       {vehicle.onboarding?.letterReference ? (
         <Section
