@@ -3,7 +3,7 @@
 ## NURTW Membership and Vehicle Verification System
 
 **Document version:** 1.4
-**Last revised:** 27 September 2026
+**Last revised:** 2 October 2026
 
 ---
 
@@ -52,9 +52,9 @@ thing a year later.
 | Vehicles and stickers (VEH) | 20 | 7 | — | 27 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 4 | 5 | — | 9 |
-| Payments (PAY) | 17 | 2 | — | 19 |
+| Payments (PAY) | 17 | 3 | — | 20 |
 | Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
-| **Total** | **63** | **42** | **1** | **106** |
+| **Total** | **63** | **43** | **1** | **107** |
 
 ### Blocking production use right now
 
@@ -1276,6 +1276,10 @@ cases follow from that rule and are not settled:
 most one fee is outstanding at a time. An early payment therefore loses the overlap, and a
 gap is never billed.
 
+Item 23 adds a third case. Dedicated-account money pays the oldest due first, so part of a
+fee can arrive before the rest. The parts are held, and the 12 months start on the day the
+whole fee has been received.
+
 **Recommended.** For an early payment, run the new cover from the end of the current one,
 so nobody loses what they paid for. For a gap, keep one fee: it matches "12 months from the
 date it is paid".
@@ -1301,6 +1305,28 @@ month. All three route types cost the same today, so the second case changes not
 month at the route type the vehicle had on the 1st of that month.
 **Answered on.** —. **Answered by.** —.
 **Recorded at.** —. Blocks nothing today.
+
+### PAY-20 · If Paystack asks for a member's BVN before opening a dedicated account ⏳
+
+**Question.** Paystack can require a customer's identity to be checked before it opens a
+dedicated account, using their BVN or their own bank account number. Whether it does depends
+on how the Union's Paystack business is set up, which only the dashboard or a first test
+shows. If it does, may the System ask members for their BVN, or a bank account number, and
+pass it to Paystack?
+
+**Why it is needed.** A BVN is among the most sensitive identifiers a Nigerian holds. The
+System collects none today, and adding one is a data-protection decision for the Union, not
+a technical one. Nothing in PRD §27 provides for it.
+
+**Built as.** No BVN is collected. Paystack is sent only the email, names, and phone
+(Requirement 27.7). If Paystack refuses to open an account for want of identification, the
+refusal is audited and the officer is told Paystack did not open it.
+
+**Recommended.** Check first, with a test-mode account and then one live account. Only if
+Paystack refuses, collect the BVN at the moment of assignment, pass it straight to Paystack,
+and do not store it.
+**Answered on.** —. **Answered by.** —.
+**Recorded at.** —. Blocks dedicated accounts only if Paystack requires it.
 
 ---
 
@@ -1396,6 +1422,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 2 October 2026 (item 23) | New PAY-20: whether members' BVNs may be collected if Paystack requires identification before it opens a dedicated account. Open, and it blocks dedicated accounts only if Paystack does require it. PAY-18 notes the case item 23 adds: part of a membership fee arriving before the rest. |
 | 27 September 2026 (item 22) | New PAY-18 (a membership fee paid early or after a gap) and PAY-19 (when a levy stops; re-pricing on a change of route type). Both open, and neither blocks item 22, which applies PAY-03 as written. |
 | 26 September 2026 (item 18) | New VEH-27: whether the vehicle letter can be reissued when its driver or unit changes after onboarding. Open, and it blocks nothing: item 18 issues one letter per onboarding and keeps it as printed. |
 | 26 September 2026 | Answers from the project owner after a call with Mr Timothy. New VEH-23 (a `vehicle.record` permission and a Field enumerator role; declaring stays restricted), VEH-24 (a vehicle may be linked to a pending applicant), VEH-25 (owner name and phone required, address optional, held as sensitive data), VEH-26 (route type required: interstate, intercity, town service). MIG-04 answered: the driver is the member, the owner is recorded on the vehicle. New MIG-07: import after the owner fields exist, locally first. PAY-02 revised: levy ₦7,000. New PAY-14 (levy priced by route type), PAY-15 (processing fee unchanged), PAY-16 (stay on Paystack pending the provider comparison), PAY-17 (link plus dedicated account; USSD after launch; dedicated accounts already enabled). PRD revised to 1.3. |

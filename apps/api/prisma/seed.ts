@@ -430,6 +430,14 @@ async function seedSystemSettings(): Promise<void> {
         'MEM-04: with one administrator account, enforcing it makes a registration ' +
         'impossible to complete.',
     },
+    {
+      key: 'payments.dedicated_account.allocation_order',
+      value: 'OLDEST_FIRST',
+      description:
+        'The order dedicated-account money pays dues in (QUESTIONS.md PAY-12): ' +
+        'OLDEST_FIRST, MEMBER_DUES_FIRST, or VEHICLE_DUES_FIRST. The Union answered ' +
+        'OLDEST_FIRST.',
+    },
   ];
 
   for (const setting of settings) {

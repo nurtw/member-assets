@@ -4,6 +4,7 @@ import {
   levySchedule,
   membershipCover,
   resolveFeeAmountAtKobo,
+  type OutstandingDue,
 } from '@nurtw/domain';
 
 import { PermissionService } from '../auth/permission.service.js';
@@ -17,8 +18,21 @@ const READ_VEHICLE = 'vehicle.read';
 const READ_MEMBER = 'member.read';
 
 /** PRD Requirement 27.13 names these two dues; the launch fee types carry them. */
-const LEVY = 'LEVY';
-const MEMBERSHIP = 'MEMBERSHIP';
+export const LEVY = 'LEVY';
+export const MEMBERSHIP = 'MEMBERSHIP';
+
+/** Everything one member owes now (item 23), and the figures it came from. */
+export interface MemberOutstanding {
+  /** Every due period not fully paid, membership and levy together. */
+  dues: OutstandingDue[];
+  membership: MemberDues;
+  vehicles: { vehicleId: string; plate: string; dues: VehicleDues }[];
+}
+
+/** `2026-11-10`, the Lagos calendar date of an instant. */
+function lagosDate(instant: Date): string {
+  return new Date(instant.getTime() + 60 * 60 * 1000).toISOString().slice(0, 10);
+}
 
 /**
  * What is owed (PRD Requirements 27.8, 27.13 — item 22).
@@ -157,6 +171,7 @@ export class DuesService {
           feeType: { code: MEMBERSHIP },
         },
         select: {
+          createdAt: true,
           confirmedAt: true,
           ledgerEntries: { select: { direction: true, amountKobo: true } },
         },
@@ -181,22 +196,31 @@ export class DuesService {
       notStartedBecause = 'NOT_APPROVED';
     }
 
-    // A payment counts while the ledger still holds it: a refund is a
+    // A payment counts for what the ledger still holds of it: a refund is a
     // reversing entry (Requirement 27.9), and a fully reversed payment covers
-    // nothing.
-    const paidOn = payments
-      .filter(
-        (payment) =>
-          payment.confirmedAt !== null &&
-          payment.ledgerEntries.reduce(
+    // nothing. A dedicated-account allocation may hold part of a fee (item 23).
+    const cover = membershipCover({
+      firstDueOn,
+      now,
+      payments: payments
+        .filter((payment) => payment.confirmedAt !== null)
+        .map((payment) => ({
+          paidOn: payment.confirmedAt!,
+          pricedOn: payment.createdAt,
+          kobo: payment.ledgerEntries.reduce(
             (net, entry) =>
               net + (entry.direction === 'CREDIT' ? entry.amountKobo : -entry.amountKobo),
             0,
-          ) > 0,
-      )
-      .map((payment) => payment.confirmedAt!);
-
-    const cover = membershipCover({ firstDueOn, paidOn, now });
+          ),
+        })),
+      amountAt: (at) =>
+        resolveFeeAmountAtKobo({
+          at,
+          routeTypeId: null,
+          current: { defaultAmountKobo: feeType.amountKobo, prices: [] },
+          history: feeType.amountHistory,
+        }),
+    });
 
     return {
       memberId,
@@ -206,7 +230,62 @@ export class DuesService {
       owedSince: cover.owedSince?.toISOString() ?? null,
       notStartedBecause: cover.status === 'NOT_DUE' ? notStartedBecause : null,
       currentAmountKobo: feeType.amountKobo,
+      heldKobo: cover.heldKobo,
+      outstandingKobo: cover.outstandingKobo,
     };
+  }
+
+  /**
+   * Everything a member owes now: their membership fee, and the levy on every
+   * vehicle linked to them as its driver (Requirement 9.10). What
+   * dedicated-account money is allocated against (item 23). **Not authorised
+   * here**, as above.
+   *
+   * Every linked vehicle counts, whatever its declaration status: a levy
+   * never stops on its own (PAY-19, built as written).
+   */
+  async memberOutstanding(memberId: string, now = new Date()): Promise<MemberOutstanding> {
+    const [membership, linked] = await Promise.all([
+      this.memberDues(memberId, now),
+      this.prisma.vehicle.findMany({
+        where: { declaredByMemberId: memberId },
+        select: { id: true, plateNumberDisplay: true },
+        orderBy: { id: 'asc' },
+      }),
+    ]);
+    const vehicles = await Promise.all(
+      linked.map(async (vehicle) => ({
+        vehicleId: vehicle.id,
+        plate: vehicle.plateNumberDisplay,
+        dues: await this.vehicleDues(vehicle.id, now),
+      })),
+    );
+
+    const dues: OutstandingDue[] = [];
+    if (membership.status === 'OWED' && membership.owedSince && membership.outstandingKobo > 0) {
+      const owedSince = new Date(membership.owedSince);
+      dues.push({
+        subjectType: 'member',
+        subjectId: memberId,
+        feeTypeCode: MEMBERSHIP,
+        period: lagosDate(owedSince),
+        dueOn: owedSince,
+        outstandingKobo: membership.outstandingKobo,
+      });
+    }
+    for (const vehicle of vehicles) {
+      for (const month of vehicle.dues.unpaidMonths) {
+        dues.push({
+          subjectType: 'vehicle',
+          subjectId: vehicle.vehicleId,
+          feeTypeCode: LEVY,
+          period: month.month,
+          dueOn: new Date(month.dueOn),
+          outstandingKobo: month.outstandingKobo,
+        });
+      }
+    }
+    return { dues, membership, vehicles };
   }
 
   /** Read whether or not the fee type is active: a retired fee still has a past. */

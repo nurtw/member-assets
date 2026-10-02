@@ -66,7 +66,65 @@ export class SettingsService {
     const date = new Date(`${value}T00:00:00+01:00`);
     return Number.isNaN(date.getTime()) ? null : date;
   }
+
+  /** A text setting, trimmed, or `null` when absent or blank. */
+  async getString(key: string): Promise<string | null> {
+    const row = await this.prisma.systemSetting.findUnique({
+      where: { key },
+      select: { value: true },
+    });
+    const value = row?.value.trim() ?? '';
+    return value === '' ? null : value;
+  }
+
+  /**
+   * A percentage from 0 to below 100, to two decimal places, or `null` when
+   * absent or unreadable. `null` rather than a fallback, for the reason
+   * `getDate` gives: a rate nobody set must read as "not set".
+   */
+  async getPercentage(key: string): Promise<number | null> {
+    const value = await this.getString(key);
+    if (value === null || !/^\d{1,2}(\.\d{1,2})?$/.test(value)) {
+      return null;
+    }
+    return Number(value);
+  }
+
+  /**
+   * Writes a setting. Callers audit the change themselves, with the reason
+   * the change was made: this method knows neither.
+   */
+  async set(key: string, value: string, actorUserId: string): Promise<void> {
+    await this.prisma.systemSetting.upsert({
+      where: { key },
+      create: { key, value, updatedByUserId: actorUserId },
+      update: { value, updatedByUserId: actorUserId },
+    });
+  }
 }
+
+/**
+ * The contractor's percentage of each dedicated-account transfer, applied by
+ * Paystack as the NURTW subaccount's fixed split (PRD Requirement 27.7,
+ * item 23).
+ *
+ * **Ships unset**, pending the dedicated-account pricing that QUESTIONS.md
+ * **PAY-11** says must be confirmed from the Paystack dashboard. Until it is
+ * set, no dedicated account can be assigned: a member would otherwise send
+ * money that splits at a rate nobody chose. It is changed only through
+ * `PUT /payments/settlement/dedicated-percentage`, which also updates the
+ * subaccount at Paystack; editing this row alone would leave the two apart.
+ */
+export const DEDICATED_CONTRACTOR_PERCENTAGE =
+  'payments.dedicated_account.contractor_percentage';
+
+/**
+ * The order dedicated-account money pays dues in (PAY-12: "the order is a
+ * setting"). Seeded `OLDEST_FIRST`, the Union's answer. An unreadable value
+ * falls back to that, never to another order.
+ */
+export const DEDICATED_ALLOCATION_ORDER =
+  'payments.dedicated_account.allocation_order';
 
 /**
  * The go-live date (`YYYY-MM-DD`). PRD Requirement 27.13: a member migrated

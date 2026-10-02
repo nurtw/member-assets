@@ -2,7 +2,22 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { AuditService } from '../audit/audit.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { PaystackClient } from './paystack/paystack.client.js';
+import {
+  DEDICATED_CONTRACTOR_PERCENTAGE,
+  SettingsService,
+} from '../settings/settings.service.js';
+import {
+  NURTW_BUSINESS_NAME,
+  PaystackClient,
+} from './paystack/paystack.client.js';
+
+export interface SetDedicatedPercentageInput {
+  percentage: number;
+  actorUserId: string;
+  reason: string;
+  ipAddress?: string;
+  requestId?: string;
+}
 
 export interface SetSettlementAccountInput {
   bankCode: string;
@@ -30,6 +45,7 @@ export class SettlementService {
     private readonly prisma: PrismaService,
     private readonly paystack: PaystackClient,
     private readonly audit: AuditService,
+    private readonly settings: SettingsService,
   ) {}
 
   async getActive() {
@@ -93,7 +109,7 @@ export class SettlementService {
     let saved;
     if (existing) {
       await this.paystack.updateSubaccount(existing.subaccountCode, {
-        businessName: 'NURTW Anambra State Council',
+        businessName: NURTW_BUSINESS_NAME,
         bankCode: input.bankCode,
         accountNumber: input.accountNumber,
       });
@@ -108,13 +124,15 @@ export class SettlementService {
       });
     } else {
       const created = await this.paystack.createSubaccount({
-        businessName: 'NURTW Anambra State Council',
+        businessName: NURTW_BUSINESS_NAME,
         bankCode: input.bankCode,
         accountNumber: input.accountNumber,
-        // The percentage is nominal — every real split uses
-        // `transaction_charge` per payment (Requirement 27.4), never this
-        // default percentage.
-        percentageCharge: 0,
+        // A payment link overrides this with its own `transaction_charge`
+        // (Requirement 27.4). A dedicated-account transfer cannot, so the
+        // percentage is the contractor's share of those (Requirement 27.7):
+        // the setting if it has been made, and nothing until then.
+        percentageCharge:
+          (await this.settings.getPercentage(DEDICATED_CONTRACTOR_PERCENTAGE)) ?? 0,
       });
       saved = await this.prisma.settlementAccount.create({
         data: {
@@ -145,5 +163,70 @@ export class SettlementService {
     });
 
     return saved;
+  }
+
+  /**
+   * Sets the contractor's percentage of dedicated-account money (Requirement
+   * 27.7, PAY-11). It decides how much of every transfer reaches the Union,
+   * so it is guarded like the account itself: the controller has checked the
+   * password, and every attempt is audited with its reason.
+   *
+   * Paystack first, then the setting. If Paystack refuses, nothing changes
+   * here, so the setting never claims a split Paystack is not applying.
+   */
+  async setDedicatedPercentage(input: SetDedicatedPercentageInput) {
+    const before = await this.settings.getPercentage(DEDICATED_CONTRACTOR_PERCENTAGE);
+    const auditBase = {
+      action: 'payment.settlement.dedicated_percentage',
+      subjectType: 'settlement_account',
+      actorUserId: input.actorUserId,
+      reason: input.reason,
+      ipAddress: input.ipAddress,
+      requestId: input.requestId,
+      before: { percentage: before },
+    };
+
+    const account = await this.getActive();
+    if (!account) {
+      await this.audit.record({
+        ...auditBase,
+        after: { percentage: input.percentage, outcome: 'REJECTED_NO_SETTLEMENT_ACCOUNT' },
+      });
+      throw new BadRequestException(
+        'Add the NURTW settlement account before setting its percentage.',
+      );
+    }
+
+    try {
+      await this.paystack.updateSubaccountPercentage(
+        account.subaccountCode,
+        input.percentage,
+      );
+    } catch {
+      await this.audit.record({
+        ...auditBase,
+        subjectId: account.id,
+        after: { percentage: input.percentage, outcome: 'REJECTED_BY_PAYSTACK' },
+      });
+      throw new BadRequestException(
+        'Paystack did not accept the percentage. No change was made.',
+      );
+    }
+
+    await this.settings.set(
+      DEDICATED_CONTRACTOR_PERCENTAGE,
+      String(input.percentage),
+      input.actorUserId,
+    );
+    await this.audit.record({
+      ...auditBase,
+      subjectId: account.id,
+      after: {
+        percentage: input.percentage,
+        subaccountCode: account.subaccountCode,
+        outcome: 'APPLIED',
+      },
+    });
+    return { percentage: input.percentage };
   }
 }

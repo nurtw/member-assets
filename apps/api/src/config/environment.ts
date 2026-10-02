@@ -34,6 +34,13 @@ export interface Environment {
   readonly paystackSecretKey: string | undefined;
   readonly paystackBaseUrl: string;
   /**
+   * The bank Paystack opens dedicated accounts with (item 23). `test-bank` in
+   * test mode; `undefined` lets Paystack choose. Deployment configuration
+   * rather than a Union setting, because the valid values depend on whether
+   * the key is a test or a live one.
+   */
+  readonly paystackDvaPreferredBank: string | undefined;
+  /**
    * The sticker QR HMAC secret (PRD §26.2, ARCHITECTURE.md Decision 6.2.2).
    * Held only by the issuing and verification services, never the web app.
    * Keyed by `stickerSigningKeyId` so a future rotation adds a second entry
@@ -101,6 +108,8 @@ export function loadEnvironment(): Environment {
     paystackSecretKey: process.env.PAYSTACK_SECRET_KEY?.trim() || undefined,
     paystackBaseUrl:
       process.env.PAYSTACK_BASE_URL?.trim() || 'https://api.paystack.co',
+    paystackDvaPreferredBank:
+      process.env.PAYSTACK_DVA_PREFERRED_BANK?.trim() || undefined,
     stickerSigningSecret:
       process.env.STICKER_SIGNING_SECRET?.trim() || undefined,
     stickerSigningKeyId:

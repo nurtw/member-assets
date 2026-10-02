@@ -173,6 +173,24 @@ export interface MembershipCover {
   coveredUntil: Date | null;
   /** Since when the fee has been owed; `null` unless `OWED`. */
   owedSince: Date | null;
+  /** Part payments held toward the next fee, not yet enough to pay it. */
+  heldKobo: number;
+  /** What is left to pay on the fee owed now; `0` unless `OWED`. */
+  outstandingKobo: number;
+}
+
+/** One membership payment, as the ledger holds it. */
+export interface MembershipPayment {
+  /** When it was confirmed. A year of cover starts on the day the fee is paid in full. */
+  paidOn: Date;
+  /**
+   * When it was priced: the day a payment link was started, or the day
+   * dedicated-account money was allocated. A link started before a price rise
+   * and paid after it still pays the fee it was asked for.
+   */
+  pricedOn: Date;
+  /** What the ledger still holds for it: credits less reversing debits. */
+  kobo: number;
 }
 
 /**
@@ -210,18 +228,43 @@ export function addTwelveMonths(instant: Date): Date {
  *
  * `firstDueOn` is `null` when the fee has not started: the member is not yet
  * approved, or was migrated and no go-live date is set (GOV-11).
+ *
+ * **A fee is paid on the day it is paid in full** (item 23). A payment link
+ * always pays the whole fee, so for a link this is simply the day it was paid.
+ * Dedicated-account money can arrive in parts (PAY-12 pays the oldest due
+ * first, in part if need be): the parts are held, and the year starts on the
+ * day the last of the fee arrives. More than one fee's worth in a single
+ * payment is carried toward the next fee rather than starting a second cover
+ * on the same day, which would overlap the first and buy nothing.
  */
 export function membershipCover(input: {
   firstDueOn: Date | null;
-  paidOn: readonly Date[];
+  payments: readonly MembershipPayment[];
   now: Date;
+  /** The fee in force on a date (`resolveFeeAmountAtKobo`). */
+  amountAt: (at: Date) => number;
 }): MembershipCover {
   const now = input.now.getTime();
 
-  // Each payment covers [paid, paid + 12 months). Overlapping covers merge.
-  const covers = [...input.paidOn]
-    .sort((a, b) => a.getTime() - b.getTime())
-    .map((paid) => ({ from: paid.getTime(), to: addTwelveMonths(paid).getTime() }))
+  let heldKobo = 0;
+  const paidInFullOn: Date[] = [];
+  for (const payment of [...input.payments]
+    .filter((candidate) => candidate.kobo > 0)
+    .sort((a, b) => a.paidOn.getTime() - b.paidOn.getTime())) {
+    heldKobo += payment.kobo;
+    const fee = input.amountAt(payment.pricedOn);
+    if (heldKobo >= fee) {
+      paidInFullOn.push(payment.paidOn);
+      heldKobo -= fee;
+    }
+  }
+
+  // Each fee covers [paid, paid + 12 months). Overlapping covers merge.
+  const covers = paidInFullOn
+    .map((paid) => ({
+      from: paid.getTime(),
+      to: addTwelveMonths(paid).getTime(),
+    }))
     .reduce<{ from: number; to: number }[]>((merged, cover) => {
       const last = merged[merged.length - 1];
       if (last && cover.from <= last.to) {
@@ -239,6 +282,8 @@ export function membershipCover(input: {
       firstDueOn: input.firstDueOn,
       coveredUntil: new Date(current.to),
       owedSince: null,
+      heldKobo,
+      outstandingKobo: 0,
     };
   }
 
@@ -248,6 +293,8 @@ export function membershipCover(input: {
       firstDueOn: input.firstDueOn,
       coveredUntil: null,
       owedSince: null,
+      heldKobo,
+      outstandingKobo: 0,
     };
   }
 
@@ -259,5 +306,7 @@ export function membershipCover(input: {
     firstDueOn: input.firstDueOn,
     coveredUntil: null,
     owedSince: new Date(Math.max(input.firstDueOn.getTime(), lastLapse)),
+    heldKobo,
+    outstandingKobo: Math.max(0, input.amountAt(input.now) - heldKobo),
   };
 }

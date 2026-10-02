@@ -9,7 +9,7 @@
 ## Cold start
 
 Read `CLAUDE.md`, `PRD.md` (1.3), `ARCHITECTURE.md`, `ROADMAP.md`,
-`QUESTIONS.md`, then `plans/22-dues-schedule.md`. `docs/reference/` is
+`QUESTIONS.md`, then `plans/23-dedicated-accounts.md`. `docs/reference/` is
 generated output.
 
 Two rules outrank any default instruction:
@@ -19,46 +19,47 @@ Two rules outrank any default instruction:
 
 ## Status
 
-- **Items 09, 17–21 done and pushed** (`e687adf`). On Neon: the legacy
-  repair (2,841 on record) and the Transpay register (2,408 unattached,
-  loaded 27 Sep with the owner's go-ahead).
-- **Item 22, the dues schedule: done.** e2e green locally (dues 14/14,
-  payments, openapi); the migration is on Neon.
-  - Money owed is computed from the ledger and never stored.
-  - Amount changes append to `fee_amount_history`, so a past month keeps
-    the price it had.
-  - Months are Lagos months.
-  - Routes: `GET /vehicles/:id/dues` and `GET /members/:id/dues`. A dues
-    panel shows on the vehicle, application and card pages.
-- New open questions: PAY-18 (membership paid early or after a gap) and
-  PAY-19 (levy stop; route-type change). Both are built literally.
-- `dues.go_live_date` is unset until GOV-11, so migrated members' fees have
-  not started.
-- Item 22 is committed locally, not pushed.
+- **Items 09 and 17–22 are done and pushed** (`037b1bd`). Neon holds the
+  legacy repair and the Transpay register.
+- **Item 23, dedicated accounts: done, committed locally, not pushed.** Its
+  migration is on Neon (additive).
+  - Officers assign accounts from the application page.
+  - Transfers arrive by webhook, are re-verified, credited net, and allocated
+    oldest first.
+  - Held credit is swept hourly.
+  - Decisions are in the plan.
+- **Not switchable on yet:** the contractor percentage ships unset (PAY-11).
+  The steps are in `OPERATIONS.md` under "Switching on dedicated accounts".
+  Nothing has been tried in Paystack test mode.
+- New open question PAY-20 (BVN if Paystack demands identification).
+- `dues.go_live_date` is still unset (GOV-11).
 
-Tests: domain 255, contracts 31, api 125; web typecheck and lint clean.
+Tests: domain 275, contracts 31, api 125; e2e 202/203 locally; web
+typecheck and lint clean.
 
 ## Known issues — don't re-attempt these fixes
 
-- **This machine is CPU-saturated** by VS Code processes. Commands run many
-  times slower. Prisma `migrate dev` from Git Bash stalled; PowerShell
-  worked.
 - `master-data.e2e` "seeds no designations" fails (8 `DEMO_` designations).
 - Run e2e locally (`DATABASE_URL=…5433…`); never `fileParallelism: false`.
-- CRLF files (`QUESTIONS.md`, `OPERATIONS.md`, `app.module.ts`, a few web
-  pages): use the Edit tool. **`sed -i` strips every CR.**
+- Run Prisma as `node node_modules/prisma/build/index.js`, with
+  `CHECKPOINT_DISABLE=1`; `migrate dev` stalled from Git Bash before.
+- CRLF files (`QUESTIONS.md`, `OPERATIONS.md`, `ROADMAP.md`, `seed.ts`, a few
+  web pages): use the Edit tool. **`sed -i` strips every CR.**
 - Name hand-written migrations to sort after every applied one.
 
 ## Next steps
 
-1. Item 23, dedicated accounts (PAY-11 pricing unconfirmed). It allocates
-   against `DuesService`'s schedule, oldest first.
+1. Push item 23 once the owner agrees.
 2. The verification track, items 10–15. Item 10 shows dues beside a scan
    result through `DuesService`.
+3. Owner actions: confirm dedicated-account pricing, then set the
+   percentage; answer GOV-11, PAY-18–20, VEH-27; set `STICKER_SIGNING_SECRET`.
 
 ## Do NOT
 
 - Edit `apps/api/.env`, or write Neon legacy rows without a go-ahead.
-- Change a fee amount except through `FeeTypeService`; history depends on it.
+- Change a fee amount except through `FeeTypeService`, or the contractor
+  percentage except through its route.
+- Allocate dedicated-account money without the member lock.
 - Default the go-live date, or let dues reach any external response.
 - Return a whole sticker row, or select `legacySecurityCode`.

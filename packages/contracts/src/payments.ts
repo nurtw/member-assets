@@ -77,7 +77,10 @@ export const updateFeeTypeSchema = z
       value.label !== undefined ||
       value.amountKobo !== undefined ||
       value.active !== undefined,
-    { message: 'Change at least one of the label, the amount, or whether it is active.' },
+    {
+      message:
+        'Change at least one of the label, the amount, or whether it is active.',
+    },
   );
 export type UpdateFeeTypeInput = z.infer<typeof updateFeeTypeSchema>;
 
@@ -155,4 +158,117 @@ export interface MemberDues {
    */
   notStartedBecause: 'NOT_APPROVED' | 'NO_GO_LIVE_DATE' | null;
   currentAmountKobo: number;
+  /**
+   * Dedicated-account money held toward the next fee, not yet enough to pay
+   * it (item 23). The year starts on the day the fee is paid in full.
+   */
+  heldKobo: number;
+  /** What is left to pay on the fee owed now; `0` unless `OWED`. */
+  outstandingKobo: number;
+}
+
+// --- Dedicated accounts (Requirement 27.7, item 23) ---------------------------
+
+/**
+ * Assigning a member a dedicated account. Paystack requires an email for the
+ * customer behind it, and a member need not have one on record, so the
+ * officer gives one, as they do for a payment link.
+ */
+export const assignDedicatedAccountSchema = z.object({
+  email: z.email('A valid email is required.'),
+});
+export type AssignDedicatedAccountInput = z.infer<
+  typeof assignDedicatedAccountSchema
+>;
+
+/**
+ * The contractor's percentage of dedicated-account money (PAY-11), applied
+ * by Paystack as the NURTW subaccount's fixed split. It decides how much of
+ * every transfer reaches the Union, so it is changed like the settlement
+ * account: a password, a reason, and an audit entry either way.
+ */
+export const setDedicatedPercentageSchema = z.object({
+  percentage: z
+    .number()
+    .min(0, 'A percentage cannot be negative.')
+    .lt(100, 'A percentage must be below 100.')
+    .refine(
+      (value) => Math.abs(Math.round(value * 100) - value * 100) < 1e-6,
+      'Give the percentage to at most two decimal places.',
+    ),
+  password: z.string().min(1, 'Your password is required to make this change.'),
+  reason: z
+    .string()
+    .trim()
+    .min(4, 'A reason is required for this change.')
+    .max(1000),
+});
+export type SetDedicatedPercentageInput = z.infer<
+  typeof setDedicatedPercentageSchema
+>;
+
+/** Why a dedicated account cannot be assigned now. The screen explains each. */
+export type DedicatedAccountUnassignableReason =
+  | 'ALREADY_ASSIGNED'
+  | 'NOT_ACTIVE_MEMBER'
+  /** Paystack needs a phone number for the customer behind the account. */
+  | 'NO_PHONE_ON_RECORD'
+  | 'NO_SETTLEMENT_ACCOUNT'
+  | 'NO_CONTRACTOR_PERCENTAGE';
+
+/** One due period a transfer paid, in full or in part. */
+export interface DedicatedAccountAllocation {
+  subjectType: 'member' | 'vehicle';
+  subjectId: string;
+  /** "Membership fee", or the vehicle's plate. */
+  label: string;
+  feeTypeCode: string;
+  /** `2026-11` for a levy month; the date the fee fell due for membership. */
+  period: string;
+  amountKobo: number;
+  allocatedAt: string;
+}
+
+/** Money received into a member's dedicated account. */
+export interface DedicatedAccountTransfer {
+  reference: string;
+  receivedAt: string;
+  /** What the member sent. */
+  amountKobo: number;
+  /** What NURTW received, and so what the member was credited. */
+  creditKobo: number;
+  /** Paystack's own split figure, or the percentage when Paystack gave none. */
+  creditBasis: 'PAYSTACK_SPLIT' | 'PERCENTAGE_SETTING';
+  /** Not yet allocated: held until the next due falls (PAY-12). */
+  heldKobo: number;
+  allocations: DedicatedAccountAllocation[];
+}
+
+/** An amount to cover, and what to send for NURTW to receive it. */
+export interface AmountToSend {
+  creditKobo: number;
+  /** `null` while the contractor percentage is unset (PAY-11). */
+  sendKobo: number | null;
+}
+
+/** `GET /members/:id/dedicated-account`. Internal only, like dues. */
+export interface DedicatedAccountState {
+  memberId: string;
+  account: {
+    accountNumber: string;
+    accountName: string;
+    bankName: string;
+    assignedAt: string;
+  } | null;
+  /** `null` when an account can be assigned now. */
+  unassignableBecause: DedicatedAccountUnassignableReason | null;
+  contractorPercentage: number | null;
+  /** Credit received and not yet allocated, across every transfer. */
+  heldCreditKobo: number;
+  /** Everything owed now, across the membership fee and every vehicle. */
+  owedNow: AmountToSend;
+  /** One month's levy for each of the member's vehicles. */
+  monthlyLevy: (AmountToSend & { vehicleId: string; plate: string })[];
+  /** Most recent first. */
+  transfers: DedicatedAccountTransfer[];
 }

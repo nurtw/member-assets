@@ -154,7 +154,24 @@ export {
   type LevyMonth,
   type LevySchedule,
   type MembershipCover,
+  type MembershipPayment,
 } from './payments/dues.js';
+
+export {
+  ALLOCATION_ORDERS,
+  allocateCredit,
+  parseAllocationOrder,
+  type Allocation,
+  type AllocationOrder,
+  type AllocationResult,
+  type OutstandingDue,
+} from './payments/allocation.js';
+
+export {
+  amountToSendKobo,
+  dedicatedCreditKobo,
+  percentageToBasisPoints,
+} from './payments/dedicated-amount.js';
 
 export {
   InvalidStickerTransitionError,

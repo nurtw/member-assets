@@ -4,7 +4,14 @@ import type { DuesStatusCode, MemberDues, VehicleDues } from "@nurtw/contracts";
 import { useState } from "react";
 import useSWR from "swr";
 
-import { Button, ErrorNotice, Field, Section, StatusChip, TextInput } from "@/components/ui";
+import {
+  Button,
+  ErrorNotice,
+  Field,
+  Section,
+  StatusChip,
+  TextInput,
+} from "@/components/ui";
 import { ApiError, api, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
@@ -44,13 +51,21 @@ function monthName(label: string): string {
 function Figure({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-black/45">{label}</dt>
+      <dt className="text-xs font-medium uppercase tracking-wide text-black/45">
+        {label}
+      </dt>
       <dd className="mt-0.5 text-sm">{value}</dd>
     </div>
   );
 }
 
-function Verdict({ status, children }: { status: DuesStatusCode; children: React.ReactNode }) {
+function Verdict({
+  status,
+  children,
+}: {
+  status: DuesStatusCode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <StatusChip status={status} />
@@ -76,7 +91,9 @@ function PayLink({
 }) {
   const { holds } = useSession();
   const [payerEmail, setPayerEmail] = useState("");
-  const [link, setLink] = useState<{ url: string; totalKobo: number } | null>(null);
+  const [link, setLink] = useState<{ url: string; totalKobo: number } | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
 
@@ -86,7 +103,9 @@ function PayLink({
 
   return (
     <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
-      {error ? <ErrorNotice message={error.message} requestId={error.requestId} /> : null}
+      {error ? (
+        <ErrorNotice message={error.message} requestId={error.requestId} />
+      ) : null}
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1">
           <Field
@@ -121,7 +140,10 @@ function PayLink({
                 payerEmail: payerEmail.trim(),
                 callbackUrl: window.location.href,
               });
-              setLink({ url: response.authorizationUrl, totalKobo: response.totalChargedKobo });
+              setLink({
+                url: response.authorizationUrl,
+                totalKobo: response.totalChargedKobo,
+              });
             } catch (caught) {
               if (caught instanceof ApiError) {
                 setError(
@@ -153,9 +175,13 @@ function PayLink({
           >
             Open the Paystack payment page
           </a>{" "}
-          ({naira(link.totalKobo)} with the processing fee). The due is credited once Paystack
-          confirms the payment.{" "}
-          <button type="button" className="underline underline-offset-2" onClick={onRefresh}>
+          ({naira(link.totalKobo)} with the processing fee). The due is credited
+          once Paystack confirms the payment.{" "}
+          <button
+            type="button"
+            className="underline underline-offset-2"
+            onClick={onRefresh}
+          >
             Refresh
           </button>
         </p>
@@ -194,8 +220,14 @@ export function VehicleDuesPanel({ vehicleId }: { vehicleId: string }) {
 
       {dues.firstDueOn ? (
         <dl className="grid gap-4 sm:grid-cols-3">
-          <Figure label="One month costs" value={naira(dues.currentAmountKobo)} />
-          <Figure label="Next falls due" value={dues.nextDueOn ? day(dues.nextDueOn) : "—"} />
+          <Figure
+            label="One month costs"
+            value={naira(dues.currentAmountKobo)}
+          />
+          <Figure
+            label="Next falls due"
+            value={dues.nextDueOn ? day(dues.nextDueOn) : "—"}
+          />
           <Figure label="Credit held" value={naira(dues.creditKobo)} />
         </dl>
       ) : null}
@@ -212,11 +244,16 @@ export function VehicleDuesPanel({ vehicleId }: { vehicleId: string }) {
           </thead>
           <tbody>
             {dues.unpaidMonths.map((month) => (
-              <tr key={month.month} className="border-t border-[var(--border-subtle)]">
+              <tr
+                key={month.month}
+                className="border-t border-[var(--border-subtle)]"
+              >
                 <td className="py-1.5">{monthName(month.month)}</td>
                 <td className="py-1.5">{naira(month.amountKobo)}</td>
                 <td className="py-1.5">{naira(month.paidKobo)}</td>
-                <td className="py-1.5 font-medium">{naira(month.outstandingKobo)}</td>
+                <td className="py-1.5 font-medium">
+                  {naira(month.outstandingKobo)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -237,7 +274,10 @@ export function VehicleDuesPanel({ vehicleId }: { vehicleId: string }) {
 
 /** The yearly membership fee for one member. */
 export function MemberDuesPanel({ memberId }: { memberId: string }) {
-  const { data, mutate } = useSWR<{ dues: MemberDues }>(`/members/${memberId}/dues`, fetcher);
+  const { data, mutate } = useSWR<{ dues: MemberDues }>(
+    `/members/${memberId}/dues`,
+    fetcher,
+  );
   const dues = data?.dues;
   if (!dues) {
     return null;
@@ -252,7 +292,11 @@ export function MemberDuesPanel({ memberId }: { memberId: string }) {
         {dues.status === "PAID" && dues.coveredUntil
           ? `Paid. Covered until ${day(dues.coveredUntil)}.`
           : dues.status === "OWED" && dues.owedSince
-            ? `Unpaid since ${day(dues.owedSince)}: ${naira(dues.currentAmountKobo)}.`
+            ? `Unpaid since ${day(dues.owedSince)}: ${naira(dues.outstandingKobo)}${
+                dues.heldKobo > 0
+                  ? `, after ${naira(dues.heldKobo)} already received towards it`
+                  : ""
+              }.`
             : dues.notStartedBecause === "NO_GO_LIVE_DATE"
               ? "Not started. This member came from the previous system, and their fee starts on the go-live date, which has not been set."
               : dues.notStartedBecause === "NOT_APPROVED"

@@ -5,6 +5,7 @@ import {
   lagosMonthLabel,
   levySchedule,
   membershipCover,
+  type MembershipPayment,
 } from './dues.js';
 import { resolveFeeAmountAtKobo, type FeeAmountChange } from './fee-amount.js';
 
@@ -146,9 +147,12 @@ describe('levySchedule (PRD Requirement 27.13)', () => {
       onboardedAt: lagos('2026-10-10'),
       now: lagos('2027-01-10'),
       creditKobo: 2 * LEVY,
-      amountForMonth: (dueOn) => (dueOn.getTime() >= rise.getTime() ? 800_000 : LEVY),
+      amountForMonth: (dueOn) =>
+        dueOn.getTime() >= rise.getTime() ? 800_000 : LEVY,
     });
-    expect(schedule.months.map((m) => [m.month, m.amountKobo, m.outstandingKobo])).toEqual([
+    expect(
+      schedule.months.map((m) => [m.month, m.amountKobo, m.outstandingKobo]),
+    ).toEqual([
       ['2026-11', 700_000, 0],
       ['2026-12', 700_000, 0],
       ['2027-01', 800_000, 800_000],
@@ -166,7 +170,12 @@ describe('resolveFeeAmountAtKobo', () => {
 
   it('uses the current amount for a price that has never changed', () => {
     expect(
-      resolveFeeAmountAtKobo({ at: lagos('2026-11-01'), routeTypeId: null, current, history: [] }),
+      resolveFeeAmountAtKobo({
+        at: lagos('2026-11-01'),
+        routeTypeId: null,
+        current,
+        history: [],
+      }),
     ).toBe(800_000);
     expect(
       resolveFeeAmountAtKobo({
@@ -181,10 +190,19 @@ describe('resolveFeeAmountAtKobo', () => {
   it('returns the amount in force on the date, not the latest', () => {
     const history: FeeAmountChange[] = [
       { routeTypeId: null, amountKobo: 700_000, effectiveFrom: epoch },
-      { routeTypeId: null, amountKobo: 800_000, effectiveFrom: lagos('2027-01-01') },
+      {
+        routeTypeId: null,
+        amountKobo: 800_000,
+        effectiveFrom: lagos('2027-01-01'),
+      },
     ];
     const at = (date: string) =>
-      resolveFeeAmountAtKobo({ at: lagos(date), routeTypeId: null, current, history });
+      resolveFeeAmountAtKobo({
+        at: lagos(date),
+        routeTypeId: null,
+        current,
+        history,
+      });
     expect(at('2026-12-01')).toBe(700_000);
     expect(at('2027-01-01')).toBe(800_000);
     expect(at('2027-06-01')).toBe(800_000);
@@ -204,10 +222,19 @@ describe('resolveFeeAmountAtKobo', () => {
   it('charges the default before a route type was first priced separately', () => {
     // Interstate got its own amount on 1 March. Before then the default applied.
     const history: FeeAmountChange[] = [
-      { routeTypeId: 'interstate', amountKobo: 900_000, effectiveFrom: lagos('2027-03-01') },
+      {
+        routeTypeId: 'interstate',
+        amountKobo: 900_000,
+        effectiveFrom: lagos('2027-03-01'),
+      },
     ];
     const at = (date: string) =>
-      resolveFeeAmountAtKobo({ at: lagos(date), routeTypeId: 'interstate', current, history });
+      resolveFeeAmountAtKobo({
+        at: lagos(date),
+        routeTypeId: 'interstate',
+        current,
+        history,
+      });
     expect(at('2027-02-01')).toBe(800_000);
     expect(at('2027-03-01')).toBe(900_000);
   });
@@ -215,9 +242,17 @@ describe('resolveFeeAmountAtKobo', () => {
   it('keeps route history and default history apart', () => {
     const history: FeeAmountChange[] = [
       { routeTypeId: null, amountKobo: 700_000, effectiveFrom: epoch },
-      { routeTypeId: null, amountKobo: 800_000, effectiveFrom: lagos('2027-01-01') },
+      {
+        routeTypeId: null,
+        amountKobo: 800_000,
+        effectiveFrom: lagos('2027-01-01'),
+      },
       { routeTypeId: 'interstate', amountKobo: 750_000, effectiveFrom: epoch },
-      { routeTypeId: 'interstate', amountKobo: 900_000, effectiveFrom: lagos('2027-02-01') },
+      {
+        routeTypeId: 'interstate',
+        amountKobo: 900_000,
+        effectiveFrom: lagos('2027-02-01'),
+      },
     ];
     expect(
       resolveFeeAmountAtKobo({
@@ -232,22 +267,46 @@ describe('resolveFeeAmountAtKobo', () => {
 
 describe('membershipCover (PRD Requirement 27.13, PAY-03)', () => {
   const approved = lagos('2026-11-10', '09:00:00');
+  const FEE = 3_000_000;
+  const fee = () => FEE;
+  /** Each date a payment link paid the whole fee. */
+  const paidInFull = (...dates: Date[]): MembershipPayment[] =>
+    dates.map((date) => ({ paidOn: date, pricedOn: date, kobo: FEE }));
 
   it('has not started for a member with no first due date', () => {
     // Not yet approved, or migrated with no go-live date set (GOV-11).
     expect(
-      membershipCover({ firstDueOn: null, paidOn: [], now: lagos('2027-01-01') }),
-    ).toEqual({ status: 'NOT_DUE', firstDueOn: null, coveredUntil: null, owedSince: null });
+      membershipCover({
+        firstDueOn: null,
+        payments: [],
+        amountAt: fee,
+        now: lagos('2027-01-01'),
+      }),
+    ).toEqual({
+      status: 'NOT_DUE',
+      firstDueOn: null,
+      coveredUntil: null,
+      owedSince: null,
+      heldKobo: 0,
+      outstandingKobo: 0,
+    });
   });
 
   it('is owed from approval until it is paid', () => {
     expect(
-      membershipCover({ firstDueOn: approved, paidOn: [], now: lagos('2026-12-01') }),
+      membershipCover({
+        firstDueOn: approved,
+        payments: [],
+        amountAt: fee,
+        now: lagos('2026-12-01'),
+      }),
     ).toEqual({
       status: 'OWED',
       firstDueOn: approved,
       coveredUntil: null,
       owedSince: approved,
+      heldKobo: 0,
+      outstandingKobo: FEE,
     });
   });
 
@@ -255,7 +314,8 @@ describe('membershipCover (PRD Requirement 27.13, PAY-03)', () => {
     const paid = lagos('2027-01-20', '14:30:00');
     const cover = membershipCover({
       firstDueOn: approved,
-      paidOn: [paid],
+      payments: paidInFull(paid),
+      amountAt: fee,
       now: lagos('2027-06-01'),
     });
     expect(cover.status).toBe('PAID');
@@ -266,12 +326,18 @@ describe('membershipCover (PRD Requirement 27.13, PAY-03)', () => {
     const paid = lagos('2027-01-20');
     const lapse = lagos('2028-01-20');
     expect(
-      membershipCover({ firstDueOn: approved, paidOn: [paid], now: lapse }),
+      membershipCover({
+        firstDueOn: approved,
+        payments: paidInFull(paid),
+        amountAt: fee,
+        now: lapse,
+      }),
     ).toMatchObject({ status: 'OWED', owedSince: lapse });
     expect(
       membershipCover({
         firstDueOn: approved,
-        paidOn: [paid],
+        payments: paidInFull(paid),
+        amountAt: fee,
         now: new Date(lapse.getTime() - 1),
       }).status,
     ).toBe('PAID');
@@ -280,7 +346,8 @@ describe('membershipCover (PRD Requirement 27.13, PAY-03)', () => {
   it('owes one fee after a long gap, never one for each year missed (PAY-18)', () => {
     const cover = membershipCover({
       firstDueOn: approved,
-      paidOn: [lagos('2027-01-20')],
+      payments: paidInFull(lagos('2027-01-20')),
+      amountAt: fee,
       now: lagos('2031-05-01'),
     });
     expect(cover.status).toBe('OWED');
@@ -292,7 +359,8 @@ describe('membershipCover (PRD Requirement 27.13, PAY-03)', () => {
     // literally, the second cover ends 20 November 2028; the two overlap.
     const cover = membershipCover({
       firstDueOn: approved,
-      paidOn: [lagos('2027-01-20'), lagos('2027-11-20')],
+      payments: paidInFull(lagos('2027-01-20'), lagos('2027-11-20')),
+      amountAt: fee,
       now: lagos('2027-12-01'),
     });
     expect(cover.status).toBe('PAID');
@@ -302,7 +370,8 @@ describe('membershipCover (PRD Requirement 27.13, PAY-03)', () => {
   it('counts a fee paid before the first due date', () => {
     const cover = membershipCover({
       firstDueOn: lagos('2027-03-01'),
-      paidOn: [lagos('2027-01-05')],
+      payments: paidInFull(lagos('2027-01-05')),
+      amountAt: fee,
       now: lagos('2027-02-01'),
     });
     expect(cover.status).toBe('PAID');
@@ -310,9 +379,96 @@ describe('membershipCover (PRD Requirement 27.13, PAY-03)', () => {
 
   it('is not due before its first due date when nothing is paid', () => {
     expect(
-      membershipCover({ firstDueOn: lagos('2027-03-01'), paidOn: [], now: lagos('2027-02-01') })
-        .status,
+      membershipCover({
+        firstDueOn: lagos('2027-03-01'),
+        payments: [],
+        amountAt: fee,
+        now: lagos('2027-02-01'),
+      }).status,
     ).toBe('NOT_DUE');
+  });
+
+  describe('part payments (item 23)', () => {
+    const part = (date: Date, kobo: number): MembershipPayment => ({
+      paidOn: date,
+      pricedOn: date,
+      kobo,
+    });
+
+    it('holds a part payment toward the fee and leaves the rest owed', () => {
+      const cover = membershipCover({
+        firstDueOn: approved,
+        payments: [part(lagos('2026-12-01'), 1_000_000)],
+        amountAt: fee,
+        now: lagos('2026-12-05'),
+      });
+      expect(cover).toMatchObject({
+        status: 'OWED',
+        owedSince: approved,
+        heldKobo: 1_000_000,
+        outstandingKobo: FEE - 1_000_000,
+      });
+    });
+
+    it('starts the year on the day the last part arrives', () => {
+      const last = lagos('2027-02-14', '10:00:00');
+      const cover = membershipCover({
+        firstDueOn: approved,
+        payments: [part(lagos('2026-12-01'), 1_000_000), part(last, 2_000_000)],
+        amountAt: fee,
+        now: lagos('2027-03-01'),
+      });
+      expect(cover).toMatchObject({
+        status: 'PAID',
+        heldKobo: 0,
+        outstandingKobo: 0,
+      });
+      expect(cover.coveredUntil).toEqual(addTwelveMonths(last));
+    });
+
+    it('carries more than one fee toward the next fee, rather than overlapping a second cover', () => {
+      const cover = membershipCover({
+        firstDueOn: approved,
+        payments: [part(lagos('2026-12-01'), FEE + 500_000)],
+        amountAt: fee,
+        now: lagos('2027-01-01'),
+      });
+      expect(cover).toMatchObject({ status: 'PAID', heldKobo: 500_000 });
+      expect(cover.coveredUntil).toEqual(addTwelveMonths(lagos('2026-12-01')));
+    });
+
+    it('pays a link at the fee it was started at, even if the fee rose before it was paid', () => {
+      const rise = lagos('2027-01-01');
+      const amountAt = (at: Date) =>
+        at.getTime() >= rise.getTime() ? 3_500_000 : FEE;
+      const cover = membershipCover({
+        firstDueOn: approved,
+        payments: [
+          {
+            paidOn: lagos('2027-01-01', '00:05:00'),
+            pricedOn: lagos('2026-12-31'),
+            kobo: FEE,
+          },
+        ],
+        amountAt,
+        now: lagos('2027-01-02'),
+      });
+      expect(cover.status).toBe('PAID');
+    });
+
+    it('ignores a payment the ledger no longer holds', () => {
+      const cover = membershipCover({
+        firstDueOn: approved,
+        payments: [part(lagos('2026-12-01'), 0)],
+        amountAt: fee,
+        now: lagos('2026-12-05'),
+      });
+      expect(cover).toMatchObject({
+        status: 'OWED',
+        heldKobo: 0,
+        outstandingKobo: FEE,
+      });
+    });
   });
 });
 
@@ -323,7 +479,9 @@ describe('date helpers', () => {
   });
 
   it('adds twelve months to the day, and ends a 29 February cover on 28 February', () => {
-    expect(addTwelveMonths(lagos('2027-05-17', '08:15:00'))).toEqual(lagos('2028-05-17', '08:15:00'));
+    expect(addTwelveMonths(lagos('2027-05-17', '08:15:00'))).toEqual(
+      lagos('2028-05-17', '08:15:00'),
+    );
     expect(addTwelveMonths(lagos('2028-02-29'))).toEqual(lagos('2029-02-28'));
   });
 });

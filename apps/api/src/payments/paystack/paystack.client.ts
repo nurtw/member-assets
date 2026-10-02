@@ -3,6 +3,9 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 import { loadEnvironment } from '../../config/environment.js';
 
+/** The name the NURTW subaccount carries at Paystack. */
+export const NURTW_BUSINESS_NAME = 'NURTW Anambra State Council';
+
 /**
  * Thin wrapper over Paystack's REST API (PRD §27).
  *
@@ -104,6 +107,17 @@ export class PaystackClient {
     currency: string;
     reference: string;
     feesKobo: number | null;
+    /** `dedicated_nuban` for a transfer into a dedicated account (item 23). */
+    channel: string | null;
+    paidAt: string | null;
+    customerCode: string | null;
+    /** The dedicated account the money was sent to, where Paystack says. */
+    receiverAccountNumber: string | null;
+    /**
+     * What Paystack settled to the subaccount on a split transaction, from
+     * `fees_split.subaccount`. `null` when Paystack gave no such figure.
+     */
+    subaccountShareKobo: number | null;
   }> {
     const data = await this.request<{
       status: string;
@@ -111,14 +125,88 @@ export class PaystackClient {
       currency: string;
       reference: string;
       fees: number | null;
+      channel?: string | null;
+      paid_at?: string | null;
+      customer?: { customer_code?: string | null } | null;
+      authorization?: { receiver_bank_account_number?: string | null } | null;
+      fees_split?: { subaccount?: unknown } | null;
     }>(`/transaction/verify/${encodeURIComponent(reference)}`);
 
+    const share = data.fees_split?.subaccount;
     return {
       status: data.status,
       amountKobo: data.amount,
       currency: data.currency,
       reference: data.reference,
       feesKobo: data.fees,
+      channel: data.channel ?? null,
+      paidAt: data.paid_at ?? null,
+      customerCode: data.customer?.customer_code ?? null,
+      receiverAccountNumber:
+        data.authorization?.receiver_bank_account_number ?? null,
+      subaccountShareKobo:
+        typeof share === 'number' && Number.isInteger(share) ? share : null,
+    };
+  }
+
+  /**
+   * Creates (or, for an email Paystack already holds, returns) the customer
+   * behind a dedicated account. Requirement 27.7 — only the fields Paystack
+   * requires are sent: no address, no date of birth, no identity number.
+   */
+  async createCustomer(input: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+  }): Promise<{ customerCode: string }> {
+    const data = await this.request<{ customer_code: string }>('/customer', {
+      method: 'POST',
+      body: {
+        email: input.email,
+        first_name: input.firstName,
+        last_name: input.lastName,
+        phone: input.phone,
+      },
+    });
+    return { customerCode: data.customer_code };
+  }
+
+  /**
+   * Opens a dedicated account for a customer, split to the NURTW subaccount
+   * (Requirement 27.7, PAY-11): every transfer into it settles to NURTW at the
+   * subaccount's fixed percentage, without passing through the contractor.
+   */
+  async createDedicatedAccount(input: {
+    customerCode: string;
+    subaccountCode: string;
+    preferredBank?: string;
+  }): Promise<{
+    id: number;
+    accountNumber: string;
+    accountName: string;
+    bankName: string;
+    bankSlug: string;
+  }> {
+    const data = await this.request<{
+      id: number;
+      account_number: string;
+      account_name: string;
+      bank: { name: string; slug: string };
+    }>('/dedicated_account', {
+      method: 'POST',
+      body: {
+        customer: input.customerCode,
+        preferred_bank: input.preferredBank,
+        subaccount: input.subaccountCode,
+      },
+    });
+    return {
+      id: data.id,
+      accountNumber: data.account_number,
+      accountName: data.account_name,
+      bankName: data.bank.name,
+      bankSlug: data.bank.slug,
     };
   }
 
@@ -160,6 +248,26 @@ export class PaystackClient {
         description: input.businessName,
         bank_code: input.bankCode,
         account_number: input.accountNumber,
+      },
+    });
+  }
+
+  /**
+   * Sets the subaccount's fixed percentage: the contractor's share of every
+   * dedicated-account transfer (Requirement 27.7, PAY-11). A payment link is
+   * unaffected, because it sends its own `transaction_charge`, which overrides
+   * the percentage for that one payment (Requirement 27.4).
+   */
+  async updateSubaccountPercentage(
+    subaccountCode: string,
+    percentage: number,
+  ): Promise<void> {
+    await this.request(`/subaccount/${encodeURIComponent(subaccountCode)}`, {
+      method: 'PUT',
+      body: {
+        business_name: NURTW_BUSINESS_NAME,
+        description: NURTW_BUSINESS_NAME,
+        percentage_charge: percentage,
       },
     });
   }

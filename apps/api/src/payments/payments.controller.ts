@@ -3,13 +3,16 @@ import {
   Body,
   Controller,
   Post,
+  Put,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
 import {
   initiatePaymentSchema,
+  setDedicatedPercentageSchema,
   setSettlementAccountSchema,
   type InitiatePaymentInput,
+  type SetDedicatedPercentageInput,
   type SetSettlementAccountInput,
 } from '@nurtw/contracts';
 
@@ -20,6 +23,7 @@ import { Public, RequirePermission } from '../auth/require-permission.decorator.
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { Documented } from '../docs/documented.decorator.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { DedicatedAccountService } from './dedicated-account.service.js';
 import { PaymentsService } from './payments.service.js';
 import { PaystackClient } from './paystack/paystack.client.js';
 import { SettlementService } from './settlement.service.js';
@@ -39,6 +43,7 @@ export class PaymentsController {
     private readonly prisma: PrismaService,
     private readonly paystack: PaystackClient,
     private readonly audit: AuditService,
+    private readonly dedicated: DedicatedAccountService,
   ) {}
 
   @RequirePermission('payment.initiate')
@@ -96,10 +101,17 @@ export class PaymentsController {
 
     const body = request.body as {
       event?: string;
-      data?: { reference?: string };
+      data?: { reference?: string; channel?: string };
     };
     if (body?.event === 'charge.success' && body.data?.reference) {
-      await this.payments.confirm(body.data.reference);
+      // A transfer into a dedicated account carries a reference Paystack made
+      // up, not one the System issued, so it has no payment to confirm. The
+      // channel only routes it: `receive` re-verifies it with Paystack.
+      if (body.data.channel === 'dedicated_nuban') {
+        await this.dedicated.receive(body.data.reference);
+      } else {
+        await this.payments.confirm(body.data.reference);
+      }
     }
     return { received: true };
   }
@@ -146,6 +158,53 @@ export class PaymentsController {
       bankCode: body.bankCode,
       bankName: body.bankName,
       accountNumber: body.accountNumber,
+      actorUserId: userId,
+      reason: body.reason,
+      ipAddress: request.ip,
+      requestId: request.header('x-request-id'),
+    });
+  }
+
+  @RequirePermission('payment.manage_settlement')
+  @Put('settlement/dedicated-percentage')
+  @Documented({
+    summary: "Set the contractor's percentage of dedicated-account money.",
+    description:
+      'PRD Requirement 27.7, PAY-11 — Paystack applies the NURTW subaccount’s fixed percentage ' +
+      'to every transfer into a dedicated account; this sets it, at Paystack first and then in ' +
+      'settings. Payment links are unaffected: each carries its own split (Requirement 27.4). ' +
+      'Guarded like the settlement account: password re-entry, a mandatory reason, and an ' +
+      'audit entry whether it succeeds or fails.',
+    body: setDedicatedPercentageSchema,
+  })
+  async setDedicatedPercentage(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(setDedicatedPercentageSchema))
+    body: SetDedicatedPercentageInput,
+  ) {
+    const userId = request.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const passwordOk =
+      !!user && (await this.passwords.verify(body.password, user.passwordHash));
+    if (!passwordOk) {
+      await this.audit.record({
+        action: 'payment.settlement.dedicated_percentage',
+        subjectType: 'settlement_account',
+        actorUserId: userId,
+        reason: body.reason,
+        ipAddress: request.ip,
+        requestId: request.header('x-request-id'),
+        after: { percentage: body.percentage, outcome: 'REJECTED_WRONG_PASSWORD' },
+      });
+      throw new BadRequestException('Incorrect password.');
+    }
+
+    return this.settlement.setDedicatedPercentage({
+      percentage: body.percentage,
       actorUserId: userId,
       reason: body.reason,
       ipAddress: request.ip,

@@ -7767,6 +7767,509 @@
         }
       }
     },
+    "/api/v1/members/{id}/dedicated-account": {
+      "get": {
+        "summary": "A member's dedicated account, what it has received, and what to send.",
+        "description": "PRD Requirement 27.7 — the account, if one is assigned; money received into it, each with the dues it paid, oldest first (PAY-12); credit held for the next due; and the whole-naira amount to send for NURTW to receive what is owed, at the contractor percentage. Also says why an account cannot be assigned yet, if it cannot. **Internal only** (Requirement 27.8).\n\n**Permission required:** `payment.read`.",
+        "operationId": "DedicatedAccountController_state",
+        "tags": [
+          "DedicatedAccount"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold payment.read in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such member, or they lie outside the caller’s scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Assign a member a Paystack dedicated account.",
+        "description": "PRD Requirement 27.7 — opens a dedicated account split to the NURTW subaccount, so transfers into it settle straight to NURTW (PAY-11). Paystack is sent the email given here and the member’s names and phone, nothing more. Refused while the member is not active, already has an account, has no phone on record, or while the settlement account or the contractor percentage is unset.\n\n**Permission required:** `payment.initiate`.",
+        "operationId": "DedicatedAccountController_assign",
+        "tags": [
+          "DedicatedAccount"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  }
+                },
+                "required": [
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold payment.initiate in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such member, or they lie outside the caller’s scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An account cannot be assigned yet; the GET says why.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Paystack did not open the account.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/members/{id}/dues": {
       "get": {
         "summary": "A member's membership fee: paid, owed, or not yet due.",
@@ -10611,6 +11114,161 @@
         "responses": {
           "201": {
             "description": "Created."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold payment.manage_settlement in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/settlement/dedicated-percentage": {
+      "put": {
+        "summary": "Set the contractor's percentage of dedicated-account money.",
+        "description": "PRD Requirement 27.7, PAY-11 — Paystack applies the NURTW subaccount’s fixed percentage to every transfer into a dedicated account; this sets it, at Paystack first and then in settings. Payment links are unaffected: each carries its own split (Requirement 27.4). Guarded like the settlement account: password re-entry, a mandatory reason, and an audit entry whether it succeeds or fails.\n\n**Permission required:** `payment.manage_settlement`.",
+        "operationId": "PaymentsController_setDedicatedPercentage",
+        "tags": [
+          "Payments"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "percentage": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMaximum": 100
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "percentage",
+                  "password",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response."
           },
           "401": {
             "description": "No valid session cookie was presented.",

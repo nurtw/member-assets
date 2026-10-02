@@ -134,6 +134,10 @@ All three must be present after every migration.
 | `card_one_live_per_member` | Two credentials answering for one member. Covers `ISSUED` and `ACTIVE`; `EXPIRED`, `REPLACED`, `LOST`, and `CANCELLED` accumulate without limit, which is PRD Requirement 8.1 |
 | `officer_signature_one_active_per_position` | Two active president signatures, which would make "which signature was this card composited from" a matter of query ordering |
 
+Item 23 adds `dedicated_account_one_active_per_member` (`WHERE active`). Without it, two
+officers assigning at once could give one member two dedicated accounts, and transfers
+into either would still credit them, but the screen would show only one.
+
 ### Destructive commands
 
 `prisma migrate reset` **drops every table and all data**. It is gated behind an
@@ -169,6 +173,8 @@ start.
 | `NODE_ENV` | No | `production` enables `secure` cookies |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | No | One run only, then remove |
 | `STICKER_SIGNING_SECRET` / `STICKER_SIGNING_KEY_ID` | From item 08 | Never reaches the web application or a QR payload |
+| `PAYSTACK_SECRET_KEY` | For payments | A test key (`sk_test_…`) everywhere except production. Also verifies the webhook signature |
+| `PAYSTACK_DVA_PREFERRED_BANK` | No | The bank dedicated accounts are opened with (item 23). `test-bank` in test mode; a provider slug such as `wema-bank` in live mode. Unset lets Paystack choose |
 | `CLOUDINARY_URL` | No | Selects `CloudinaryStorage` over the local-filesystem adapter for uploaded media (`media.module.ts`). Unset in development stores under `MEDIA_STORAGE_DIR` on disk instead — set this in production, since a container's filesystem does not survive a redeploy. |
 | `MEDIA_STORAGE_DIR` | No | Local-filesystem adapter only; ignored once `CLOUDINARY_URL` is set. Default `var/media` |
 | `MEDIA_URL_SIGNING_SECRET` | No | Falls back to a value generated at startup, which invalidates outstanding signed media links on restart |
@@ -324,6 +330,52 @@ Always through the Fees settings page or `/fee-types`, never by editing
 each past month of levy at the amount in force when it fell due (item 22). A
 direct edit leaves no history row, so the System would treat the new amount as
 having applied all along, and every month already paid would show a shortfall.
+
+### Switching on dedicated accounts
+
+A dedicated account cannot be assigned until both of these exist: the NURTW settlement
+account, and the contractor percentage of dedicated-account money (item 23). The
+percentage **ships unset**, because `QUESTIONS.md` **PAY-11** says Paystack's
+dedicated-account pricing must first be confirmed from the dashboard.
+
+1. Confirm the pricing in the Paystack dashboard. Choose a percentage that covers
+   Paystack's dedicated-account fee plus the contractor's share: Paystack takes its fee
+   out of that percentage, not on top of it.
+2. Set it with a super administrator's session, the password, and a reason:
+
+   ```http
+   PUT /api/v1/payments/settlement/dedicated-percentage
+   { "percentage": 1.5, "password": "…", "reason": "Pricing confirmed from the dashboard" }
+   ```
+
+   This updates the NURTW subaccount's `percentage_charge` at Paystack first, then the
+   `payments.dedicated_account.contractor_percentage` setting. **Never edit that setting
+   directly**: the two would disagree, and members would be credited at a rate Paystack is
+   not applying. Payment links are unaffected, because each one sends its own split.
+3. Set `PAYSTACK_DVA_PREFERRED_BANK` (`test-bank` in test mode) and redeploy the API.
+4. In test mode, assign an account to a test member from their application page, and pay
+   into it from the Paystack dashboard. Then check two things:
+   - The transfer's `credit_basis` reads `PAYSTACK_SPLIT`. If it reads `PERCENTAGE_SETTING`,
+     Paystack's verified transaction carried no split figure, and the System worked the
+     credit out itself.
+   - The credit equals the amount sent less the percentage.
+
+   If Paystack refuses to open the account for want of identification, see `QUESTIONS.md`
+   **PAY-20** before going further.
+
+**Money nobody was credited for.** A transfer that matches no dedicated account is
+audited as `payment.dedicated.unmatched` rather than refused, because Paystack would only
+send it again. Look for these after any account is deactivated at Paystack:
+
+```sql
+SELECT created_at, after_value FROM audit_event
+ WHERE action = 'payment.dedicated.unmatched' ORDER BY created_at DESC;
+```
+
+**Held credit.** Money beyond what is owed is held, and an hourly job inside the API pays
+it into dues as they fall, so a member who sends two months' levy at once has the second
+month paid within the hour of it falling due. The order dues are paid in is the
+`payments.dedicated_account.allocation_order` setting, `OLDEST_FIRST` as PAY-12 answered.
 
 ### Finding work approved by the officer who recorded it
 

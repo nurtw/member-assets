@@ -50,7 +50,7 @@ Each item is independently completable and independently testable. Status values
 | 20 | registration-flow | §9.10 | done (browser check pending) | `plans/20-registration-flow.md` |
 | 21 | fee-type-settings | §27.1–27.2 | done (browser check pending) | `plans/21-fee-type-settings.md` |
 | 22 | dues-schedule | §27.8, §27.13 | done (browser check pending) | `plans/22-dues-schedule.md` |
-| 23 | dedicated-accounts | §27.7 | not-started | — |
+| 23 | dedicated-accounts | §27.7 | done (not yet tried in Paystack test mode) | [plan](plans/23-dedicated-accounts.md) |
 
 ### Item summaries
 

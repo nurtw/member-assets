@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 
 import { AuditModule } from '../audit/audit.module.js';
 import { AuthModule } from '../auth/auth.module.js';
+import { DedicatedAccountController } from './dedicated-account.controller.js';
+import { DedicatedAccountService } from './dedicated-account.service.js';
 import { DuesController } from './dues.controller.js';
 import { DuesService } from './dues.service.js';
 import { FeeTypeService } from './fee-type.service.js';
@@ -18,13 +20,19 @@ import { SettlementService } from './settlement.service.js';
  */
 @Module({
   imports: [AuditModule, AuthModule],
-  controllers: [PaymentsController, FeeTypesController, DuesController],
+  controllers: [
+    PaymentsController,
+    FeeTypesController,
+    DuesController,
+    DedicatedAccountController,
+  ],
   providers: [
     PaystackClient,
     FeeTypeService,
     SettlementService,
     PaymentsService,
     DuesService,
+    DedicatedAccountService,
   ],
   exports: [PaymentsService, FeeTypeService, SettlementService, DuesService],
 })

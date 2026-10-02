@@ -616,6 +616,23 @@ record the same plate at once. Preserve it too.
 - Open and built literally: PAY-18 (membership paid early, or after a gap) and PAY-19
   (when a levy stops; route-type change).
 
+### Dedicated accounts (item 23)
+
+- **A transfer is not a payment.** `dedicated_account_transfer` records the money, credited
+  with what NURTW received (Paystack's `fees_split.subaccount`, else the percentage). It is
+  allocated oldest due first (PAY-12) as `DEDICATED_ACCOUNT` payments, one per due period,
+  so item 22 reads them unchanged. What a transfer still holds is derived, never stored.
+- **Allocation runs under a row lock** on the member's `dedicated_account` rows
+  (`DedicatedAccountService.lockMember`). Anything that allocates must take it, or two
+  transfers can pay one month.
+- **A membership year starts when the whole fee has been received** (`membershipCover` adds
+  payments up). A link always pays in full.
+- **The contractor percentage is changed only through
+  `PUT /payments/settlement/dedicated-percentage`**, which updates the subaccount at
+  Paystack first. It ships unset (PAY-11), and assignment is refused until it is set.
+- Paystack is sent only the email, names, and phone. No BVN is collected (PAY-20, open).
+- The hourly held-credit sweep does not run under `NODE_ENV=test`; suites call `sweep()`.
+
 ### Notes that will bite you otherwise
 
 - **`pnpm build` before `pnpm --filter web dev`** on a clean checkout — web imports the

@@ -353,6 +353,9 @@ model Member {
   cards       Card[]
   vehicles    Vehicle[]
 
+  dedicatedAccounts  DedicatedAccount[]
+  dedicatedTransfers DedicatedAccountTransfer[]
+
   @@index([organisationId])
   @@index([status])
   @@map("member")
@@ -614,9 +617,9 @@ model OfficerSignature {
 
   mediaAsset MediaAsset @relation("OfficerSignatureAsset", fields: [mediaAssetId], references: [id], onDelete: Restrict)
 
-  presidentOnCards        Card[]          @relation("CardPresidentSignature")
-  generalSecretaryOnCards Card[]          @relation("CardGeneralSecretarySignature")
-  presidentOnLetters      VehicleLetter[] @relation("LetterPresidentSignature")
+  presidentOnCards          Card[]          @relation("CardPresidentSignature")
+  generalSecretaryOnCards   Card[]          @relation("CardGeneralSecretarySignature")
+  presidentOnLetters        VehicleLetter[] @relation("LetterPresidentSignature")
   generalSecretaryOnLetters VehicleLetter[] @relation("LetterGeneralSecretarySignature")
 
   @@index([position, isActive])
@@ -659,7 +662,7 @@ model Vehicle {
   /// is no date to record here. Stamped only when `vehicle.declare`
   /// promotes the row to `ACTIVE` (a fresh declaration still stamps it
   /// immediately, via the same default).
-  declaredAt DateTime? @default(now()) @map("declared_at")
+  declaredAt         DateTime?         @default(now()) @map("declared_at")
 
   /// PRD §9.5 — declaration is a manual, permissioned act. The migration is the
   /// sole exception and marks its records so they remain distinguishable in the
@@ -823,13 +826,13 @@ model Sticker {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  vehicle           Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
-  attachmentPayment Payment? @relation(fields: [attachmentPaymentId], references: [id], onDelete: Restrict)
-  replacementOf     Sticker? @relation("StickerReplacement", fields: [replacementOfStickerId], references: [id])
-  replacedBy        Sticker? @relation("StickerReplacement")
+  vehicle           Vehicle?        @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  attachmentPayment Payment?        @relation(fields: [attachmentPaymentId], references: [id], onDelete: Restrict)
+  replacementOf     Sticker?        @relation("StickerReplacement", fields: [replacementOfStickerId], references: [id])
+  replacedBy        Sticker?        @relation("StickerReplacement")
   letters           VehicleLetter[]
-  issuedByUser      User?    @relation("StickerIssuedBy", fields: [issuedByUserId], references: [id], onDelete: SetNull)
-  attachedByUser    User?    @relation("StickerAttachedBy", fields: [attachedByUserId], references: [id], onDelete: SetNull)
+  issuedByUser      User?           @relation("StickerIssuedBy", fields: [issuedByUserId], references: [id], onDelete: SetNull)
+  attachedByUser    User?           @relation("StickerAttachedBy", fields: [attachedByUserId], references: [id], onDelete: SetNull)
 
   /// PRD §9A.4 — at most one ATTACHED sticker per vehicle at a time. A
   /// PARTIAL unique index, same technique as
@@ -919,21 +922,22 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  roleAssignments       UserRoleAssignment[]
-  permissionGrants      UserPermissionGrant[]      @relation("GrantSubject")
-  grantsIssued          UserPermissionGrant[]      @relation("GrantIssuer")
-  permissionRevocations UserPermissionRevocation[] @relation("RevocationSubject")
-  revocationsIssued     UserPermissionRevocation[] @relation("RevocationIssuer")
-  applicationsRecorded  MembershipApplication[]    @relation("ApplicationCreatedBy")
-  applicationsReviewed  MembershipApplication[]    @relation("ApplicationReviewedBy")
-  cardsIssued           Card[]                     @relation("CardIssuedBy")
-  cardsApproved         Card[]                     @relation("CardApprovedBy")
-  stickersIssued        Sticker[]                  @relation("StickerIssuedBy")
-  stickersAttached      Sticker[]                  @relation("StickerAttachedBy")
-  lettersIssued         VehicleLetter[]            @relation("VehicleLetterIssuedBy")
-  auditEvents           AuditEvent[]
-  sessions              UserSession[]
-  paymentsInitiated     Payment[]
+  roleAssignments           UserRoleAssignment[]
+  permissionGrants          UserPermissionGrant[]      @relation("GrantSubject")
+  grantsIssued              UserPermissionGrant[]      @relation("GrantIssuer")
+  permissionRevocations     UserPermissionRevocation[] @relation("RevocationSubject")
+  revocationsIssued         UserPermissionRevocation[] @relation("RevocationIssuer")
+  applicationsRecorded      MembershipApplication[]    @relation("ApplicationCreatedBy")
+  applicationsReviewed      MembershipApplication[]    @relation("ApplicationReviewedBy")
+  cardsIssued               Card[]                     @relation("CardIssuedBy")
+  cardsApproved             Card[]                     @relation("CardApprovedBy")
+  stickersIssued            Sticker[]                  @relation("StickerIssuedBy")
+  stickersAttached          Sticker[]                  @relation("StickerAttachedBy")
+  lettersIssued             VehicleLetter[]            @relation("VehicleLetterIssuedBy")
+  auditEvents               AuditEvent[]
+  sessions                  UserSession[]
+  paymentsInitiated         Payment[]
+  dedicatedAccountsAssigned DedicatedAccount[]         @relation("DedicatedAccountAssignedBy")
 
   @@map("user")
 }
@@ -1468,12 +1472,28 @@ model Payment {
   /// dedicated-account credit, where the member chooses the amount.
   totalChargedKobo Int @map("total_charged_kobo")
 
+  /// Item 23 — the dedicated-account transfer this payment was allocated
+  /// from. Such a payment pays one due period, in full or in part, and is
+  /// confirmed when it is written: the transfer was verified with Paystack
+  /// first (Requirement 27.5).
+  dedicatedTransferId String? @map("dedicated_transfer_id") @db.Uuid
+
+  /// The due period a dedicated-account allocation paid: `2026-11` for a
+  /// levy month, or the Lagos date a membership fee fell due. What a receipt
+  /// names as "the due and its period" (Requirement 27.14). Null for a link
+  /// payment, which pays whatever falls oldest when the schedule is read.
+  duePeriod String? @map("due_period")
+
   channel PaymentChannel
-  status  PaymentStatus @default(PENDING)
+  status  PaymentStatus  @default(PENDING)
 
   /// Paystack's transaction reference. Unique so a webhook retry, or a
   /// server-side verification race with the webhook, can never confirm the
   /// same payment twice (Requirement 27.5).
+  ///
+  /// A dedicated-account allocation carries its transfer's reference with
+  /// `:1`, `:2`, … appended, because one transfer can pay several dues. The
+  /// transfer row holds Paystack's reference itself.
   paystackReference String @unique @map("paystack_reference")
 
   /// Recorded once Paystack settles, for the loss-detection check at
@@ -1488,15 +1508,17 @@ model Payment {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  feeType         FeeType @relation(fields: [feeTypeId], references: [id], onDelete: Restrict)
-  initiatedByUser User?   @relation(fields: [initiatedByUserId], references: [id], onDelete: SetNull)
+  feeType           FeeType                   @relation(fields: [feeTypeId], references: [id], onDelete: Restrict)
+  initiatedByUser   User?                     @relation(fields: [initiatedByUserId], references: [id], onDelete: SetNull)
+  dedicatedTransfer DedicatedAccountTransfer? @relation(fields: [dedicatedTransferId], references: [id], onDelete: Restrict)
 
-  ledgerEntries LedgerEntry[]
+  ledgerEntries   LedgerEntry[]
   fundsAttachment Sticker?
 
   @@index([subjectType, subjectId])
   @@index([status])
   @@index([feeTypeId])
+  @@index([dedicatedTransferId])
   @@map("payment")
 }
 
@@ -1547,4 +1569,104 @@ model SettlementAccount {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("settlement_account")
+}
+
+/// PRD Requirement 27.7 / PAY-11 — how a dedicated-account transfer's credit
+/// was worked out.
+enum DedicatedCreditBasis {
+  /// The amount Paystack reports settling to the NURTW subaccount.
+  PAYSTACK_SPLIT
+  /// The contractor percentage setting, when Paystack's figure was absent.
+  PERCENTAGE_SETTING
+}
+
+/// A member's Paystack dedicated virtual account (PRD Requirement 27.7, item
+/// 23). An ordinary bank account number: a POS agent or any banking app can
+/// pay into it, with no smartphone or card (PAY-17).
+///
+/// Assigned with the NURTW subaccount, so every transfer into it splits at
+/// Paystack and settles straight to NURTW; the contractor never holds Union
+/// money (PAY-11). Only NURTW dues are paid this way. A sticker fee is always
+/// paid by link.
+///
+/// History is kept: an account is deactivated, never deleted. At most one
+/// active account per member is a PARTIAL unique index, raw SQL in the
+/// migration, for the reason `Vehicle` documents:
+///
+///     CREATE UNIQUE INDEX dedicated_account_one_active_per_member
+///     ON dedicated_account (member_id) WHERE active
+model DedicatedAccount {
+  id String @id @default(uuid()) @db.Uuid
+
+  memberId String @map("member_id") @db.Uuid
+
+  /// Paystack's customer and account identifiers. A transfer is matched to
+  /// its member by the customer code on the verified transaction.
+  paystackCustomerCode String @map("paystack_customer_code")
+  paystackAccountId    Int    @unique @map("paystack_account_id")
+
+  accountNumber String @map("account_number")
+  accountName   String @map("account_name")
+  bankName      String @map("bank_name")
+  bankSlug      String @map("bank_slug")
+
+  active Boolean @default(true)
+
+  assignedAt       DateTime @default(now()) @map("assigned_at")
+  assignedByUserId String?  @map("assigned_by_user_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  member         Member @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  assignedByUser User?  @relation("DedicatedAccountAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+
+  transfers DedicatedAccountTransfer[]
+
+  @@index([memberId])
+  @@index([paystackCustomerCode])
+  @@map("dedicated_account")
+}
+
+/// Money received into a dedicated account (item 23). Append-only
+/// (Requirement 27.9).
+///
+/// The member sends what they choose, so a transfer is not itself a payment
+/// for a due. It is credited with what NURTW received, then allocated to the
+/// member's oldest outstanding dues as `Payment` rows (PAY-12). What a
+/// transfer still holds is its credit less those payments: derived, never
+/// stored, so there is no balance to drift.
+model DedicatedAccountTransfer {
+  id String @id @default(uuid()) @db.Uuid
+
+  dedicatedAccountId String @map("dedicated_account_id") @db.Uuid
+  memberId           String @map("member_id") @db.Uuid
+
+  /// Paystack's reference. Unique, so a replayed webhook records nothing new
+  /// (Requirement 27.5).
+  paystackReference String @unique @map("paystack_reference")
+
+  /// What the member sent.
+  amountKobo Int @map("amount_kobo")
+
+  /// What NURTW received, and so what the member is credited (Requirement
+  /// 27.7: "net of Paystack's fee and the contractor's percentage").
+  creditKobo  Int                  @map("credit_kobo")
+  creditBasis DedicatedCreditBasis @map("credit_basis")
+
+  /// Paystack's fee on the transfer, for the loss check at Requirement 27.6.
+  paystackFeeKobo Int? @map("paystack_fee_kobo")
+
+  /// When the member's bank paid it, as Paystack reports.
+  receivedAt DateTime @map("received_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  dedicatedAccount DedicatedAccount @relation(fields: [dedicatedAccountId], references: [id], onDelete: Restrict)
+  member           Member           @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
+  allocations Payment[]
+
+  @@index([memberId])
+  @@index([dedicatedAccountId])
+  @@map("dedicated_account_transfer")
 }
