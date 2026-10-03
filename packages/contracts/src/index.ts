@@ -194,3 +194,10 @@ export {
   type SetStickerStatusInput,
   type VehicleOnboarding,
 } from './sticker.js';
+
+export {
+  verifySchema,
+  type InternalVerification,
+  type VerificationDues,
+  type VerifyInput,
+} from './verification.js';

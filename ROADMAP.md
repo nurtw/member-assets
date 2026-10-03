@@ -37,7 +37,7 @@ Each item is independently completable and independently testable. Status values
 | 07 | vehicle-declaration | §9 | complete | `plans/07-vehicle-declaration.md` |
 | 08 | sticker-inventory-qr | §10 | complete | `plans/08-sticker-inventory-qr.md` |
 | 09 | legacy-data-migration | §25, §9A | **done** (Neon repaired 26 Sep; Transpay register loaded 27 Sep) | `plans/09-legacy-data-migration.md` |
-| 10 | internal-verification | §11 | not-started | `plans/10-internal-verification.md` |
+| 10 | internal-verification | §11 | done (browser check pending) | [plan](plans/10-internal-verification.md) |
 | 11 | api-clients-and-scopes | §12.1, §16 | not-started | `plans/11-api-clients-and-scopes.md` |
 | 12 | external-verification-api | §12, §15 | not-started | `plans/12-external-verification-api.md` |
 | 13 | rate-limiting-and-abuse | §14 | not-started | `plans/13-rate-limiting-and-abuse.md` |
@@ -131,6 +131,11 @@ including the approximately 67 per cent of vehicles carrying no local government
 **10 — internal-verification.** The verification dashboard and officer portal; plate
 lookup, QR lookup, and combined lookup with mismatch detection. First use of the shared
 projection function of Decision 5.3.
+
+Delivered as one route, `POST /verifications`, and a `/verify` page built for a phone. The
+verdict follows VEH-22's rule, the one item 12 will share. Behind it, the internal result
+shows every reason, and dues appear beside it within the officer's scope. A signed code is
+checked before any lookup. Every check is audited, and nothing else is written.
 
 **11 — api-clients-and-scopes.** External organisation registration and approval, token
 issuance, hashing, rotation and revocation, the scope catalogue of PRD §12.2, and the

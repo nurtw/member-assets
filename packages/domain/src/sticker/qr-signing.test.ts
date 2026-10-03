@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { decodeAndVerifyQrPayload, encodeQrPayload } from './qr-signing.js';
+import {
+  decodeAndVerifyQrPayload,
+  encodeQrPayload,
+  stickerCodeScheme,
+} from './qr-signing.js';
 
 /** A deterministic, insecure "HMAC" for tests — real signing uses crypto's. */
 const fakeSign = (secret: string, message: string): string => {
@@ -110,5 +114,23 @@ describe('sticker QR payload (PRD §26.1–26.2)', () => {
 
     decodeAndVerifyQrPayload(encoded, resolveSecret, fakeSign, countingCompare);
     expect(comparisonsRun).toBe(1);
+  });
+});
+
+describe('stickerCodeScheme (PRD §26.2, §26.4)', () => {
+  it('reads a code carrying the payload separator as signed', () => {
+    const encoded = encodeQrPayload(
+      { stickerQrId: 'ABC123XYZ', keyId: 'v1' },
+      'test-signing-secret',
+      fakeSign,
+    );
+    expect(stickerCodeScheme(encoded)).toBe('SIGNED');
+    // Malformed, but it claims to be signed, so it must fail its signature.
+    expect(stickerCodeScheme('ABC.v1')).toBe('SIGNED');
+  });
+
+  it('reads anything else as a Transpay barcode, leading zeros and all', () => {
+    expect(stickerCodeScheme('1600000000000')).toBe('LEGACY');
+    expect(stickerCodeScheme('0160000000000')).toBe('LEGACY');
   });
 });

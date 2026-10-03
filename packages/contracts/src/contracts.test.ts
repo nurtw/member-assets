@@ -10,6 +10,7 @@ import {
   STICKER_STATUSES,
   VERIFIABLE_DECLARATION_STATUSES,
   VERIFIABLE_STICKER_STATUSES,
+  verifySchema,
 } from './index.js';
 
 describe('scopes', () => {
@@ -121,5 +122,39 @@ describe('master data', () => {
   it('uses unique category codes', () => {
     const codes = LEGACY_VEHICLE_CATEGORY_SEED.map((entry) => entry.code);
     expect(new Set(codes).size).toBe(codes.length);
+  });
+});
+
+describe('verification request (item 10)', () => {
+  it('takes a plate, a sticker code, or both', () => {
+    expect(verifySchema.safeParse({ plateNumber: 'AA 123 XY' }).success).toBe(
+      true,
+    );
+    expect(
+      verifySchema.safeParse({ stickerCode: '1600000000000' }).success,
+    ).toBe(true);
+    expect(
+      verifySchema.safeParse({
+        plateNumber: 'AA-123-XY',
+        stickerCode: 'X.k1.0f',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('refuses an empty request', () => {
+    expect(verifySchema.safeParse({}).success).toBe(false);
+  });
+
+  it('refuses a plate that cannot be normalised, rather than looking it up', () => {
+    expect(verifySchema.safeParse({ plateNumber: 'A-1' }).success).toBe(false);
+    expect(verifySchema.safeParse({ plateNumber: '---' }).success).toBe(false);
+  });
+
+  it('strips anything else a caller sends', () => {
+    const parsed = verifySchema.parse({
+      plateNumber: 'AA123XY',
+      channel: 'EXTERNAL',
+    });
+    expect(parsed).toEqual({ plateNumber: 'AA123XY' });
   });
 });

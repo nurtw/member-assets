@@ -7,6 +7,7 @@ import {
   canTransitionSticker,
   isStickerAttached,
   isStickerFinal,
+  isStickerVerifiable,
 } from './status.js';
 
 const LEGAL: readonly [string, string][] = [
@@ -85,5 +86,15 @@ describe('sticker lifecycle', () => {
     expect(() => assertStickerTransition('CANCELLED', 'ACTIVE')).toThrow(
       /CANCELLED is final/,
     );
+  });
+});
+
+describe('isStickerVerifiable (PRD Requirement 26.3)', () => {
+  it('admits ACTIVE alone — a suspended sticker is attached but does not verify', () => {
+    expect(
+      STICKER_STATUSES.filter((status) => isStickerVerifiable(status)),
+    ).toEqual(['ACTIVE']);
+    expect(isStickerAttached('SUSPENDED')).toBe(true);
+    expect(isStickerVerifiable('SUSPENDED')).toBe(false);
   });
 });

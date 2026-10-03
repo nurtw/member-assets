@@ -633,6 +633,32 @@ record the same plate at once. Preserve it too.
 - Paystack is sent only the email, names, and phone. No BVN is collected (PAY-20, open).
 - The hourly held-credit sweep does not run under `NODE_ENV=test`; suites call `sweep()`.
 
+### Internal verification (item 10)
+
+- **One verdict rule, in `decideVerification`** (`packages/domain/src/verification/`).
+  - A plate matches a vehicle that is declared and onboarded.
+  - A sticker matches when it is attached and `ACTIVE` and its vehicle is declared.
+  - A combined check also needs the sticker's own vehicle to carry the presented plate.
+
+  Item 12 must reuse this rule and map every non-match to the generic negative. Only the
+  internal channels show the reasons.
+- **`projectVerification` is the only way a field reaches a verification response**
+  (Decision 5.3).
+  - Its catalogue is closed. Each field is external-admissible or internal-only, and the
+    external channel drops internal-only fields even when a profile permits them.
+  - Never add a field carrying a phone, address, next of kin, guarantor, chassis or VIN,
+    signature, note, owner, or dues. A test fails if you do.
+- **Read-only.** `verification-read-only.spec.ts` fails on any Prisma write or raw query in
+  `src/verification/`. Its only write is the audit event, made through `AuditService`.
+- **A signed code is checked before any lookup.** A code containing `.` is signed; anything
+  else is a Transpay barcode, looked up by exact value. A failed signature is audited as
+  `verification.invalid_signature`. Without `STICKER_SIGNING_SECRET`, a signed code answers
+  503 instead of being called a forgery.
+- **Not organisation-scoped.** The verdict and the vehicle and sticker facts need only
+  `verification.perform` anywhere.
+  - The vehicle link and the levy need `vehicle.read` over the vehicle.
+  - The member and their fee need `member.read` over the member.
+
 ### Notes that will bite you otherwise
 
 - **`pnpm build` before `pnpm --filter web dev`** on a clean checkout — web imports the

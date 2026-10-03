@@ -1,6 +1,6 @@
 # Session Handoff
 
-**Last revised:** 2 October 2026
+**Last revised:** 3 October 2026
 
 > Cold-start contract. Written so a different Claude, on a different account,
 > holding no prior context, can resume without re-reading the repository.
@@ -9,7 +9,7 @@
 ## Cold start
 
 Read `CLAUDE.md`, `PRD.md` (1.3), `ARCHITECTURE.md`, `ROADMAP.md`,
-`QUESTIONS.md`, then `plans/23-dedicated-accounts.md`. `docs/reference/` is
+`QUESTIONS.md`, then `plans/10-internal-verification.md`. `docs/reference/` is
 generated output.
 
 Two rules outrank any default instruction:
@@ -19,45 +19,47 @@ Two rules outrank any default instruction:
 
 ## Status
 
-- **Items 09 and 17–22 are done and pushed** (`037b1bd`). Neon holds the
-  legacy repair and the Transpay register.
-- **Item 23, dedicated accounts: done, committed locally, not pushed.** Its
-  migration is on Neon (additive).
-  - Officers assign accounts from the application page.
-  - Transfers arrive by webhook, are re-verified, credited net, and allocated
-    oldest first.
-  - Held credit is swept hourly.
-  - Decisions are in the plan.
-- **Not switchable on yet:** the contractor percentage ships unset (PAY-11).
-  The steps are in `OPERATIONS.md` under "Switching on dedicated accounts".
-  Nothing has been tried in Paystack test mode.
-- New open question PAY-20 (BVN if Paystack demands identification).
+- **Item 23 is committed as `43b9f55`, not pushed.** The push was blocked by
+  the permission check, so it waits for the owner.
+- **Item 10, internal verification: done, committed locally, not pushed.**
+  - `POST /verifications` and a `/verify` page built for a phone.
+  - `decideVerification` and `projectVerification`
+    (`packages/domain/src/verification/`) are for item 12 to reuse.
+- **Not yet opened in a browser.** Camera scanning waits on the QR's content.
+- `STICKER_SIGNING_SECRET` is unset, so a signed code answers 503.
 - `dues.go_live_date` is still unset (GOV-11).
 
-Tests: domain 275, contracts 31, api 125; e2e 202/203 locally; web
-typecheck and lint clean.
+Tests: domain 307, contracts 35, api 129; e2e 222/223 locally; web typecheck
+and lint clean.
 
 ## Known issues — don't re-attempt these fixes
 
 - `master-data.e2e` "seeds no designations" fails (8 `DEMO_` designations).
-- Run e2e locally (`DATABASE_URL=…5433…`); never `fileParallelism: false`.
+- Run e2e locally (`DATABASE_URL=…5433…`, after starting Docker Desktop);
+  never `fileParallelism: false`.
 - Run Prisma as `node node_modules/prisma/build/index.js`, with
-  `CHECKPOINT_DISABLE=1`; `migrate dev` stalled from Git Bash before.
-- CRLF files (`QUESTIONS.md`, `OPERATIONS.md`, `ROADMAP.md`, `seed.ts`, a few
-  web pages): use the Edit tool. **`sed -i` strips every CR.**
-- Name hand-written migrations to sort after every applied one.
+  `CHECKPOINT_DISABLE=1`; `migrate dev` stalls from Git Bash.
+- CRLF files (`QUESTIONS.md`, `OPERATIONS.md`, `ROADMAP.md`, `CLAUDE.md`,
+  `seed.ts`, `app.module.ts`, the app layout): use the Edit tool. **`sed -i`
+  strips every CR**, and Python's `write_text` turns LF files into CRLF; use
+  `read_bytes`/`write_bytes`.
+- Name hand-written migrations to sort after applied ones.
 
 ## Next steps
 
-1. Push item 23 once the owner agrees.
-2. The verification track, items 10–15. Item 10 shows dues beside a scan
-   result through `DuesService`.
+1. Push `43b9f55` and item 10's commit once the owner agrees.
+2. Item 11, API clients and scopes. Seed the PRD §15 profiles under the
+   projection's field names, and update the `DisclosureField.fieldPath`
+   schema comment.
 3. Owner actions: confirm dedicated-account pricing, then set the
-   percentage; answer GOV-11, PAY-18–20, VEH-27; set `STICKER_SIGNING_SECRET`.
+   percentage; answer GOV-11, PAY-18–20, VEH-27; set
+   `STICKER_SIGNING_SECRET`.
 
 ## Do NOT
 
 - Edit `apps/api/.env`, or write Neon legacy rows without a go-ahead.
+- Add a write call to `src/verification/`, or a verification field that
+  carries personal data or dues.
 - Change a fee amount except through `FeeTypeService`, or the contractor
   percentage except through its route.
 - Allocate dedicated-account money without the member lock.

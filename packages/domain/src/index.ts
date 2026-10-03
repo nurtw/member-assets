@@ -180,6 +180,7 @@ export {
   canTransitionSticker,
   isStickerAttached,
   isStickerFinal,
+  isStickerVerifiable,
   type StickerStatus,
 } from './sticker/status.js';
 
@@ -203,7 +204,34 @@ export {
 export {
   decodeAndVerifyQrPayload,
   encodeQrPayload,
+  stickerCodeScheme,
   type HmacSigner,
   type QrPayload,
   type QrVerificationResult,
 } from './sticker/qr-signing.js';
+
+export {
+  MATCH_STATEMENTS,
+  NOT_VERIFIED_REASONS,
+  NO_MATCH_STATEMENT,
+  VERIFICATION_CRITERIA,
+  VERIFICATION_LIMITATION,
+  decideVerification,
+  type NotVerifiedReason,
+  type VerificationCriteria,
+  type VerificationFacts,
+  type VerificationSticker,
+  type VerificationVehicle,
+  type VerificationVerdict,
+} from './verification/verdict.js';
+
+export {
+  VERIFICATION_FIELDS,
+  VERIFICATION_FIELD_NAMES,
+  projectVerification,
+  type ProjectedVerification,
+  type VerificationChannel,
+  type VerificationField,
+  type VerificationFieldTier,
+  type VerificationValues,
+} from './verification/projection.js';

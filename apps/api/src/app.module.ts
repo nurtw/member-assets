@@ -15,6 +15,7 @@ import { SettingsModule } from './settings/settings.module.js';
 import { StickerModule } from './sticker/sticker.module.js';
 import { VehicleModule } from './vehicle/vehicle.module.js';
 import { VehicleLetterModule } from './vehicle-letter/vehicle-letter.module.js';
+import { VerificationModule } from './verification/verification.module.js';
 
 /**
  * Root module.
@@ -43,6 +44,7 @@ import { VehicleLetterModule } from './vehicle-letter/vehicle-letter.module.js';
     PaymentsModule,
     StickerModule,
     VehicleLetterModule,
+    VerificationModule,
   ],
 })
 export class AppModule {}

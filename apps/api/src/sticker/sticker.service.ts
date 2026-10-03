@@ -443,6 +443,15 @@ export class StickerService {
   }
 
   /**
+   * Whether this deployment holds the signing secret. Without it every signed
+   * code fails its signature, so a verifier asks first rather than recording
+   * genuine stickers as forgeries (item 10).
+   */
+  canVerifySignatures(): boolean {
+    return loadEnvironment().stickerSigningSecret !== undefined;
+  }
+
+  /**
    * Verifies a scanned QR payload. Requirement 26.1/Decision 6.2.1 — an
    * invalid signature is refused before any database access.
    */

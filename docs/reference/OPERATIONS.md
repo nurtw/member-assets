@@ -377,6 +377,35 @@ it into dues as they fall, so a member who sends two months' levy at once has th
 month paid within the hour of it falling due. The order dues are paid in is the
 `payments.dedicated_account.allocation_order` setting, `OLDEST_FIRST` as PAY-12 answered.
 
+### Reviewing verifications
+
+Every check on the Verify screen writes one audit event, named after what the officer
+entered: `verification.plate`, `verification.sticker`, or `verification.combined`. The event
+records the outcome and every reason. Its request id is the reference the officer sees.
+
+A signed code that fails its signature writes `verification.invalid_signature` instead. That
+event records the code as entered, and no record was looked up for it.
+
+Codes that failed their signature (forgeries or misreads), by officer, over the last 30 days:
+
+```sql
+SELECT actor_user_id, count(*) FROM audit_event
+ WHERE action = 'verification.invalid_signature'
+   AND created_at > now() - interval '30 days'
+ GROUP BY actor_user_id ORDER BY count(*) DESC;
+```
+
+How often Transpay barcodes are still presented, which PRD §26.4 asks the Union to measure:
+
+```sql
+SELECT after_value->>'scheme' AS scheme, count(*) FROM audit_event
+ WHERE action IN ('verification.sticker', 'verification.combined')
+ GROUP BY 1;
+```
+
+**Signed stickers need `STICKER_SIGNING_SECRET`.** Without it, a signed code answers 503 and
+is not recorded as a forgery. Plates and Transpay barcodes still verify.
+
 ### Finding work approved by the officer who recorded it
 
 Useful before turning the setting on, to see how often it happens today.

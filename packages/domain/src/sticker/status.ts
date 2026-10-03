@@ -86,3 +86,14 @@ export function isStickerFinal(status: StickerStatus): boolean {
 export function isStickerAttached(status: StickerStatus): boolean {
   return status === 'ACTIVE' || status === 'SUSPENDED';
 }
+
+/**
+ * Whether a sticker in this status can support a positive verification (PRD
+ * Requirement 26.3: a valid signature is necessary, never sufficient). Narrower
+ * than `isStickerAttached` on purpose: a suspended sticker is still on the
+ * vehicle, but it does not verify. Never widen this to "not cancelled", which
+ * would admit LOST and REPLACED stickers.
+ */
+export function isStickerVerifiable(status: StickerStatus): boolean {
+  return status === 'ACTIVE';
+}

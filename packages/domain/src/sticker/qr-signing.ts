@@ -40,6 +40,20 @@ export function encodeQrPayload(
   return `${message}${FIELD_SEPARATOR}${signature}`;
 }
 
+/**
+ * Which scheme a presented sticker code claims (PRD §26.2, §26.4).
+ *
+ * A code carrying the payload separator claims to be signed, so it must pass
+ * `decodeAndVerifyQrPayload` before anything is looked up (Requirement 26.1);
+ * a malformed one fails there, as a forgery would. Anything else can only be a
+ * Transpay barcode: those are millisecond timestamps, copied from the export
+ * exactly as recorded, and they are looked up on the closed register by exact
+ * value. A code is never tried both ways.
+ */
+export function stickerCodeScheme(rawCode: string): 'SIGNED' | 'LEGACY' {
+  return rawCode.includes(FIELD_SEPARATOR) ? 'SIGNED' : 'LEGACY';
+}
+
 export type QrVerificationResult =
   | { valid: true; stickerQrId: string; keyId: string }
   | { valid: false };

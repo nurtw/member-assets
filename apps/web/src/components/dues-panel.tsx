@@ -26,11 +26,11 @@ import { useSession } from "@/lib/session";
  * tone only decorates; read in greyscale it still says PAID or IN ARREARS.
  */
 
-function naira(kobo: number): string {
+export function naira(kobo: number): string {
   return `₦${(kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
 }
 
-function day(iso: string): string {
+export function day(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",

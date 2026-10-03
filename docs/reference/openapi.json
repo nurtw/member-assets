@@ -2759,8 +2759,8 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Created."
+          "200": {
+            "description": "Successful response."
           },
           "401": {
             "description": "The credentials were not accepted.",
@@ -2829,8 +2829,8 @@
           "Auth"
         ],
         "responses": {
-          "201": {
-            "description": "Created."
+          "200": {
+            "description": "Successful response."
           }
         },
         "security": []
@@ -7303,8 +7303,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Successful response."
+          "204": {
+            "description": "No content."
           },
           "400": {
             "description": "The file is already attached to a record.",
@@ -11787,8 +11787,8 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Created."
+          "200": {
+            "description": "Successful response."
           },
           "401": {
             "description": "No valid session cookie was presented.",
@@ -14602,6 +14602,205 @@
           },
           "409": {
             "description": "The organisation is inactive or not a branch or unit, or a record for this plate already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/verifications": {
+      "post": {
+        "summary": "Verify a vehicle by plate, by sticker, or both (internal).",
+        "description": "PRD §11. Send `plateNumber`, `stickerCode`, or both; which are present decides the check. A plate matches a vehicle that is declared and onboarded; a sticker matches when it is attached, ACTIVE, and on a declared vehicle; together, the sticker must also be on the presented plate's vehicle. A signed code is checked before any lookup, and a failure is audited as `verification.invalid_signature`. The internal answer gives every reason behind a negative verdict and, beside it, dues within the caller's read scope (Requirement 27.8). Read-only apart from its audit event, which the `reference` names. Not organisation-scoped: an officer checks whatever vehicle is in front of them.\n\n**Permission required:** `verification.perform`.",
+        "operationId": "VerificationController_verify",
+        "tags": [
+          "Verification"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "plateNumber": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "stickerCode": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold verification.perform in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A signed sticker was presented, but the signing secret is not configured.",
             "content": {
               "application/json": {
                 "schema": {

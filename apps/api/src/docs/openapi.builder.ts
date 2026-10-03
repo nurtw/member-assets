@@ -1,5 +1,9 @@
 import { RequestMethod } from '@nestjs/common';
-import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
+import {
+  HTTP_CODE_METADATA,
+  METHOD_METADATA,
+  PATH_METADATA,
+} from '@nestjs/common/constants';
 import { DiscoveryService, MetadataScanner } from '@nestjs/core';
 import type { InstanceWrapper } from '@nestjs/core/injector/instance-wrapper.js';
 import { z } from 'zod';
@@ -21,6 +25,8 @@ export interface DiscoveredRoute {
   handler: string;
   isPublic: boolean;
   permission: string | null;
+  /** The status `@HttpCode` sets, where the handler sets one. */
+  httpCode: number | null;
   documentation: RouteDocumentation | null;
 }
 
@@ -96,6 +102,10 @@ export function discoverRoutes(
             | string
             | undefined) ??
           null,
+        httpCode:
+          (Reflect.getMetadata(HTTP_CODE_METADATA, handler) as
+            | number
+            | undefined) ?? null,
         documentation:
           (Reflect.getMetadata(DOCUMENTED_METADATA_KEY, handler) as
             | RouteDocumentation
@@ -202,13 +212,20 @@ export function buildOpenApiDocument(
     const openApiPath = toOpenApiPath(route.path);
     paths[openApiPath] ??= {};
 
+    // Nest answers a POST with 201 unless the handler's `@HttpCode` says
+    // otherwise; a lookup sent as a POST, to keep its identifier out of the
+    // URL, answers 200.
+    const success = route.httpCode ?? (route.method === 'post' ? 201 : 200);
     const responses: Record<string, unknown> = {
-      '200': { description: 'Successful response.' },
+      [String(success)]: {
+        description:
+          success === 201
+            ? 'Created.'
+            : success === 204
+              ? 'No content.'
+              : 'Successful response.',
+      },
     };
-    if (route.method === 'post') {
-      responses['201'] = { description: 'Created.' };
-      delete responses['200'];
-    }
     for (const [status, description] of Object.entries(
       documentation.responses ?? {},
     )) {

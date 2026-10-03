@@ -19,8 +19,8 @@
  * over it, and two copies of a status set is how one of them quietly gains a
  * state the other's transitions do not cover.
  *
- * The sticker set below is still declared here: no transition table exists
- * for it yet. It moves to the domain package at item 08, with its lifecycle.
+ * The sticker set (PRD §10) joined them at item 10, when verification began
+ * to depend on its lifecycle.
  */
 export { CARD_STATUSES, type CardStatus } from '@nurtw/domain';
 export {
@@ -28,34 +28,27 @@ export {
   isDeclarationLive,
   type DeclarationStatus,
 } from '@nurtw/domain';
+export { STICKER_STATUSES, type StickerStatus } from '@nurtw/domain';
 
-import { DECLARATION_STATUSES, isDeclarationLive } from '@nurtw/domain';
-import type { DeclarationStatus } from '@nurtw/domain';
-
-/** PRD §10 — vehicle sticker lifecycle. Note DAMAGED, absent from the card set. */
-export const STICKER_STATUSES = [
-  'DRAFT',
-  'ISSUED',
-  'ACTIVE',
-  'SUSPENDED',
-  'LOST',
-  'REPLACED',
-  'DAMAGED',
-  'EXPIRED',
-  'CANCELLED',
-] as const;
-
-export type StickerStatus = (typeof STICKER_STATUSES)[number];
+import {
+  DECLARATION_STATUSES,
+  STICKER_STATUSES,
+  isDeclarationLive,
+  isStickerVerifiable,
+} from '@nurtw/domain';
+import type { DeclarationStatus, StickerStatus } from '@nurtw/domain';
 
 /**
  * Statuses that permit a positive verification result.
  *
  * PRD §26.3, Requirement 26.3: a valid signature is necessary but never
  * sufficient. Every positive verification additionally requires an active record
- * of good status. This list is that second condition — keep it narrow, and never
- * widen it to "not cancelled", which would admit LOST and REPLACED stickers.
+ * of good status. Derived from `isStickerVerifiable`, which item 10's verdict
+ * applies — keep it narrow, and never widen it to "not cancelled", which would
+ * admit LOST and REPLACED stickers.
  */
-export const VERIFIABLE_STICKER_STATUSES: readonly StickerStatus[] = ['ACTIVE'];
+export const VERIFIABLE_STICKER_STATUSES: readonly StickerStatus[] =
+  STICKER_STATUSES.filter(isStickerVerifiable);
 
 /**
  * Derived from `isDeclarationLive`, not restated — the same reason

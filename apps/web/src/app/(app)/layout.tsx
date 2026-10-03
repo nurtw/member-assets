@@ -1,10 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { SessionProvider, useSession } from "@/lib/session";
+
+/**
+ * In order of precedence as well as display: an officer lands on the first
+ * screen here they may use, so a verification officer, who also reads
+ * vehicles, lands on Verify.
+ */
+const NAVIGATION = [
+  { href: "/applications", label: "Applications", permission: "application.read" },
+  { href: "/verify", label: "Verify", permission: "verification.perform" },
+  { href: "/cards", label: "Cards", permission: "card.read" },
+  { href: "/vehicles", label: "Vehicles", permission: "vehicle.read" },
+  { href: "/settings/fees", label: "Fees", permission: "payment.read" },
+];
 
 /**
  * The authenticated shell.
@@ -17,7 +30,20 @@ import { SessionProvider, useSession } from "@/lib/session";
 function Shell({ children }: { children: ReactNode }) {
   const { user, loading, holds, signOut } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const links = user ? NAVIGATION.filter((link) => holds(link.permission)) : [];
+  const home = links[0]?.href ?? "/applications";
+
+  // Signing in, and the root, land on /applications. An officer who cannot
+  // read applications — a verification officer, typically — goes to the first
+  // screen they can use instead of a refusal.
+  useEffect(() => {
+    if (user && pathname === "/applications" && home !== "/applications") {
+      router.replace(home);
+    }
+  }, [user, pathname, home, router]);
 
   // A route change is a navigation the officer just chose; leaving the menu
   // open over the new page would cover it. Adjusted during render, not an
@@ -45,18 +71,11 @@ function Shell({ children }: { children: ReactNode }) {
     return null;
   }
 
-  const links = [
-    { href: "/applications", label: "Applications", permission: "application.read" },
-    { href: "/cards", label: "Cards", permission: "card.read" },
-    { href: "/vehicles", label: "Vehicles", permission: "vehicle.read" },
-    { href: "/settings/fees", label: "Fees", permission: "payment.read" },
-  ].filter((link) => holds(link.permission));
-
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-b border-[var(--border-subtle)] bg-white">
         <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
-          <Link href="/applications" className="flex items-center gap-2.5">
+          <Link href={home} className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element -- a small, static public asset; next/image's build-time optimisation buys nothing here. */}
             <img src="/logo.png" alt="NURTW emblem" className="h-8 w-8 object-contain" />
             <span className="text-sm font-semibold tracking-tight">
