@@ -457,6 +457,30 @@ token in a URL or a cookie is ignored, and is redacted from the logs.
   Reinstating it restores the same tokens. **Revoke access** is final and revokes every
   token it holds.
 
+### Reviewing external verifications
+
+Every external check writes one audit event: `verification.external.plate`, `.sticker`,
+`.combined`, or `.membership`. It has no officer; `after_value` names the organisation and
+its token by id. It keeps the true reasons, which the organisation is never told, and the
+names of the fields disclosed. A forged sticker code writes
+`verification.external.invalid_signature`.
+
+Which organisations have checked one vehicle:
+
+```sql
+SELECT created_at, action,
+       after_value->>'clientId' AS client,
+       after_value->>'outcome' AS outcome,
+       after_value->'disclosed' AS disclosed
+  FROM audit_event
+ WHERE action LIKE 'verification.external.%'
+   AND subject_id = '<vehicle id>'
+ ORDER BY created_at DESC;
+```
+
+**Issue no token to a real organisation before item 13.** The API has no rate limit or
+enumeration detection yet, so a token could be used to try plates or codes in bulk.
+
 ### Finding why an external request was refused
 
 The organisation is told only `401` or `403`, with a request id. The reason is in

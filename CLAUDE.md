@@ -727,6 +727,24 @@ record the same plate at once. Preserve it too.
 - **Item 12 projects through `request.apiClient.permittedFields`** with the `EXTERNAL`
   channel, and records each outcome through `ApiRequestLogService`.
 
+### External verification (item 12)
+
+- **Four routes under `/verification`** (proposal §12.3), each `@RequireScope` and
+  `@HttpCode(200)`, with the proposal's snake_case bodies. See
+  `external-verification.controller.ts` and `external-verification.service.ts`.
+- **The same records and rule as the internal checks**, through `VerificationRecordsService`.
+  Never look a record up separately for one channel, or the two will drift.
+- **Every non-match is the same answer**: `NO_MATCH_FOUND` with no record field, whatever
+  the reason. The audit event (`verification.external.*`, no actor, the organisation's id)
+  keeps the reasons and the names of the fields disclosed.
+- **A match projects `externalCheckFields(check, permittedFields)` on the `EXTERNAL`
+  channel.** `EXTERNAL_CHECK_FIELDS` says what each check may carry. A sticker check never
+  carries the plate (proposal §10.2).
+- **`ExternalRequestLogInterceptor` logs each request that passed the guard**, a `400`
+  included, using the outcome the route sets on `request.externalOutcome`. The guard logs
+  its own refusals, so each request is logged once.
+- **No rate limit yet.** Until item 13, no real organisation should hold a token.
+
 ### Notes that will bite you otherwise
 
 - **`pnpm build` before `pnpm --filter web dev`** on a clean checkout — web imports the

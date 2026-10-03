@@ -11,6 +11,10 @@ import {
   STICKER_STATUSES,
   VERIFIABLE_DECLARATION_STATUSES,
   VERIFIABLE_STICKER_STATUSES,
+  externalCombinedVerificationSchema,
+  externalMembershipVerificationSchema,
+  externalPlateVerificationSchema,
+  externalStickerVerificationSchema,
   reissueVehicleLetterSchema,
   verifyMembershipSchema,
   verifySchema,
@@ -159,6 +163,63 @@ describe('verification request (item 10)', () => {
       channel: 'EXTERNAL',
     });
     expect(parsed).toEqual({ plateNumber: 'AA123XY' });
+  });
+});
+
+describe('external verification requests (item 12)', () => {
+  it('take the proposal’s names, and nothing else', () => {
+    expect(
+      externalPlateVerificationSchema.parse({
+        plate_number: 'AA 123 XY',
+        plateNumber: 'ignored',
+        profile: 'INTERNAL',
+      }),
+    ).toEqual({ plate_number: 'AA 123 XY' });
+    expect(
+      externalPlateVerificationSchema.safeParse({ plateNumber: 'AA123XY' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('validate a plate exactly as the internal check does', () => {
+    for (const plate of ['A-1', '---', 'X'.repeat(21)]) {
+      expect(
+        externalPlateVerificationSchema.safeParse({ plate_number: plate })
+          .success,
+      ).toBe(false);
+      expect(verifySchema.safeParse({ plateNumber: plate }).success).toBe(
+        false,
+      );
+    }
+  });
+
+  it('need both a plate and a code for a combined check', () => {
+    expect(
+      externalCombinedVerificationSchema.safeParse({ plate_number: 'AA123XY' })
+        .success,
+    ).toBe(false);
+    expect(
+      externalCombinedVerificationSchema.safeParse({
+        plate_number: 'AA123XY',
+        sticker_qr_id: '1600000000000',
+      }).success,
+    ).toBe(true);
+    expect(
+      externalStickerVerificationSchema.safeParse({ sticker_qr_id: '' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('refuse a membership number that fails its check character', () => {
+    const number = generateIdentifier(() => 7);
+    const mistyped = number.replace(/.$/, (last) => (last === 'A' ? 'B' : 'A'));
+    expect(
+      externalMembershipVerificationSchema.safeParse({ number }).success,
+    ).toBe(true);
+    expect(
+      externalMembershipVerificationSchema.safeParse({ number: mistyped })
+        .success,
+    ).toBe(false);
   });
 });
 

@@ -237,8 +237,17 @@ export {
 } from './sticker.js';
 
 export {
+  externalCombinedVerificationSchema,
+  externalMembershipVerificationSchema,
+  externalPlateVerificationSchema,
+  externalStickerVerificationSchema,
   verifyMembershipSchema,
   verifySchema,
+  type ExternalCombinedVerificationInput,
+  type ExternalMembershipVerificationInput,
+  type ExternalPlateVerificationInput,
+  type ExternalStickerVerificationInput,
+  type ExternalVerificationResponse,
   type InternalMembershipVerification,
   type InternalVerification,
   type VerificationDues,

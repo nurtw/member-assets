@@ -39,7 +39,7 @@ Each item is independently completable and independently testable. Status values
 | 09 | legacy-data-migration | §25, §9A | **done** (Neon repaired 26 Sep; Transpay register loaded 27 Sep) | `plans/09-legacy-data-migration.md` |
 | 10 | internal-verification | §11 | done (browser check pending) | [plan](plans/10-internal-verification.md) |
 | 11 | api-clients-and-scopes | §12.1, §16 | done | [plan](plans/11-api-clients-and-scopes.md) |
-| 12 | external-verification-api | §12, §15 | not-started | `plans/12-external-verification-api.md` |
+| 12 | external-verification-api | §12, §15 | done | [plan](plans/12-external-verification-api.md) |
 | 13 | rate-limiting-and-abuse | §14 | not-started | `plans/13-rate-limiting-and-abuse.md` |
 | 14 | aggregate-reporting | §13 | not-started | `plans/14-aggregate-reporting.md` |
 | 15 | go-live-hardening | §17, §21 | not-started | `plans/15-go-live-hardening.md` |
@@ -154,6 +154,12 @@ Item 12 adds the routes that use all this.
 
 **12 — external-verification-api.** The four verification endpoints of PRD §12.3 under
 scope enforcement and profile projection. Depends upon items 10 and 11.
+
+Delivered as four `POST` routes under `/api/v1/verification`, reached by token only. They
+read the same records and apply the same rule as the internal checks. A match carries the
+fields its check may carry that the organisation's profile permits; every non-match is the
+same answer, and the audit trail keeps the reason. Every request is logged once. No real
+organisation should hold a token until item 13 adds rate limits.
 
 **13 — rate-limiting-and-abuse.** Quota enforcement and abuse detection as the two distinct
 layers of Decision 8.1, on shared external state per Decision 8.2, with runtime-configurable

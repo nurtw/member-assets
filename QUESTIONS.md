@@ -51,10 +51,10 @@ thing a year later.
 | Cards (CARD) | 5 | 3 | — | 8 |
 | Vehicles and stickers (VEH) | 22 | 6 | 1 | 29 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
-| External organisations (EXT) | 8 | 4 | — | 12 |
+| External organisations (EXT) | 8 | 5 | — | 13 |
 | Payments (PAY) | 20 | 0 | — | 20 |
 | Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
-| **Total** | **72** | **38** | **2** | **112** |
+| **Total** | **72** | **39** | **2** | **113** |
 
 ### Blocking production use right now
 
@@ -950,6 +950,21 @@ hosting cost.
 **Answer.** _Outstanding._ Item 11 issues production tokens only.
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
+### EXT-13 · Whether an outside membership check may carry the holder's name ⏳
+
+**Question.** An outside organisation's membership check confirms that a card or membership
+number is valid. It cannot show whether the person presenting the card is its holder,
+because proposal §15's Membership verification profile carries no name or photograph. Should
+a profile the Union composes ever be allowed to carry the holder's name?
+
+**Why it is needed.** Internally the name is shown, because comparing it with the card is
+how a genuine number copied onto someone else's card is caught. Externally the System
+follows the proposal and discloses no name. Allowing it would mean a PRD revision, since the
+name is personal data and is today held back from every outside party.
+
+**Answer.** _Outstanding._ Item 12 discloses no name.
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
 ---
 
 ## 10. Open — governance and go-live (item 15)
@@ -1538,6 +1553,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 3 October 2026 (item 12) | New EXT-13: whether an outside membership check may ever carry the holder's name. Open; item 12 discloses none. |
 | 3 October 2026 (item 11) | The project owner answered EXT-06 (the API administrator approves; one officer may register and approve) and EXT-07 (a data-sharing agreement is required before approval), and two new questions: EXT-10 (token reminders on the dashboard until a mail service exists) and EXT-11 (the officer chooses how long a replaced token keeps working). New EXT-12, a test environment for outside organisations, open. PRD revised to 1.5. |
 | 3 October 2026 | The project owner answered VEH-27, PAY-18, PAY-19, and PAY-20 by adopting the recommendations (items 25 and 26 build the first three). New VEH-28: a vehicle's declaration status is shown only to holders of `vehicle.declare`. New VEH-29: adding Transpay's unrecorded stickers by scanning, deferred. VEH-20's new sticker paused; VEH-21 being revisited. PRD revised to 1.4. |
 | 2 October 2026 (item 23) | New PAY-20: whether members' BVNs may be collected if Paystack requires identification before it opens a dedicated account. Open, and it blocks dedicated accounts only if Paystack does require it. PAY-18 notes the case item 23 adds: part of a membership fee arriving before the rest. |

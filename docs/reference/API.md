@@ -304,7 +304,69 @@ committed.
 
 ---
 
-## 10. Data handling obligations for integrators
+## 10. External verification
+
+Four routes, each needing its own scope. Each is a `POST` with a JSON body, so an identifier
+never travels in a URL.
+
+| Route | Scope | Body |
+|---|---|---|
+| `/api/v1/verification/vehicle/plate` | `vehicle:verify:plate` | `{ "plate_number": "ABC 123 XY" }` |
+| `/api/v1/verification/sticker/qr` | `sticker:verify:qr` | `{ "sticker_qr_id": "…" }`, what the sticker's QR code holds |
+| `/api/v1/verification/vehicle/combined` | `vehicle:verify:combined` | both of the above |
+| `/api/v1/verification/membership` | `member:verify:membership` | `{ "number": "…" }`, a card or membership number |
+
+Every answer is a `200`. A match names the record and carries the fields your disclosure
+profile permits, of those the check may carry:
+
+```json
+{
+  "request_id": "8f3e0d9e-7f5c-4e0c-a4b1-5b9a0fcb6b5e",
+  "result": "MATCH_FOUND",
+  "record_type": "NURTW_VEHICLE",
+  "statement": "A matching NURTW vehicle record was found under the requested verification criteria.",
+  "plate_number": "ABC-123-XY",
+  "vehicle_category": "Shuttle bus",
+  "sticker_status": "ACTIVE",
+  "organizational_unit": "…",
+  "limitation": "A match confirms only that an NURTW record exists under the criteria checked. It is not evidence of ownership, roadworthiness, licensing, or insurance.",
+  "verified_at": "2026-10-03T12:00:00.000Z",
+  "data_as_of": "2026-10-03T12:00:00.000Z"
+}
+```
+
+| Check | Fields a match may carry |
+|---|---|
+| Plate | `plate_number`, `vehicle_category`, `sticker_status`, `organizational_unit`, `attached_at` |
+| Sticker | `vehicle_category`, `sticker_status`, `organizational_unit`, `attached_at` |
+| Combined | the plate's fields, and `plate_matches_sticker` |
+| Membership | `membership_status`, `card_status`, `designation`, `organizational_unit` |
+
+A profile that discloses nothing gives the match and nothing more. A field a match may carry
+can still be `null`.
+
+**Every non-match is the same answer**, whatever the reason: no record, a record not in good
+standing, a sticker on another vehicle, or a forged code.
+
+```json
+{
+  "request_id": "…",
+  "result": "NO_MATCH_FOUND",
+  "statement": "No matching NURTW record was found under the requested verification criteria.",
+  "limitation": "…",
+  "verified_at": "…",
+  "data_as_of": "…"
+}
+```
+
+Asking again will not give a different answer. Quote the `request_id` to the Union instead:
+it is the `X-Request-ID` you sent, or one the System minted. A `400` means the body failed
+validation, such as a plate that cannot be a plate or a number whose check character is
+wrong; its `details` describe only your request.
+
+---
+
+## 11. Data handling obligations for integrators
 
 - Responses contain only those fields the caller's disclosure profile permits. Fields are
   selected by projection through the profile, never by retrieving a complete record and
@@ -316,7 +378,7 @@ committed.
 
 ---
 
-## 11. Related documents
+## 12. Related documents
 
 | Document | Contents |
 |---|---|

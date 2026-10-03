@@ -255,6 +255,18 @@ export {
 } from './verification/membership.js';
 
 export {
+  EXTERNAL_CHECKS,
+  EXTERNAL_CHECK_FIELDS,
+  EXTERNAL_RECORD_TYPES,
+  EXTERNAL_RESULTS,
+  externalCheckFields,
+  externalLimitation,
+  externalStatement,
+  type ExternalCheck,
+  type ExternalResult,
+} from './verification/external.js';
+
+export {
   API_CLIENT_STATUSES,
   API_TOKEN_STATES,
   InvalidApiClientTransitionError,

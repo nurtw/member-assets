@@ -11,7 +11,7 @@ import { AppModule } from './../src/app.module.js';
 import { hashPassword } from './../src/auth/password-hashing.js';
 import { AllExceptionsFilter } from './../src/common/all-exceptions.filter.js';
 import { StickerService } from './../src/sticker/sticker.service.js';
-import { VerificationService } from './../src/verification/verification.service.js';
+import { VerificationRecordsService } from './../src/verification/verification-records.service.js';
 
 /**
  * Internal verification, end to end (PRD §11, `plans/10-internal-verification.md`).
@@ -455,8 +455,9 @@ describe('Internal verification (e2e)', () => {
     });
 
     it('refuses a forged code before any lookup, and audits it as one (Requirement 26.1)', async () => {
-      // The service's private lookups: none may run for a forged code.
-      const service = app.get(VerificationService) as unknown as Record<
+      // The private lookups behind every check, internal and external
+      // (item 12): none may run for a forged code.
+      const service = app.get(VerificationRecordsService) as unknown as Record<
         'findSignedSticker' | 'findRegisteredBarcode' | 'findVehicleByPlate',
         (...args: unknown[]) => unknown
       >;

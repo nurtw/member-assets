@@ -33,7 +33,20 @@ export interface AuthenticatedApiClient {
   readonly permittedFields: readonly string[];
 }
 
+/**
+ * What an external route reports of its outcome, for the request log. The
+ * caller is never told it.
+ */
+export interface ExternalOutcome {
+  /** A coarse class, such as `MATCH` or `NO_MATCH`. */
+  readonly resultClass: string;
+  /** PRD §26.4 — which scheme the presented code used, if one was. */
+  readonly identifierScheme: 'SIGNED' | 'LEGACY' | null;
+}
+
 /** Set on the request once a token resolves, for scope routes to read. */
 export interface ExternalRequest extends Request {
   apiClient?: AuthenticatedApiClient;
+  /** Set by the route, read by `ExternalRequestLogInterceptor`. */
+  externalOutcome?: ExternalOutcome;
 }
