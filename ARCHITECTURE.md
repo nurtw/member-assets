@@ -125,6 +125,11 @@ sets, and the mapping from scope to profile are database records administered th
 `disclosure` module. Admitting a new class of external organisation is a configuration
 action, not a release.
 
+*Item 11:* a profile names fields of the closed verification catalogue, and only its
+external-admissible ones. The profiles of PRD §15 are seeded as system rows that cannot be
+amended. The Internal profile is not a row: the internal channels are governed by
+permissions, and a row could be given to an outside organisation.
+
 **Decision 5.3 — a single projection function.** All four verification endpoints pass
 through one projection implementation in `packages/domain`. It is exhaustively tested
 against every profile. A field cannot reach a response by any other route.
@@ -394,6 +399,17 @@ time-based one-time passwords.
 the response to the creating or rotating request. Revocation is a database state change
 and takes effect immediately, satisfying acceptance criterion 11.
 
+**Decision 9.10 — the route decides the credential *(item 11)*.** A route declares a
+permission, a scope, or public access, and exactly one. The single global guard reads the
+declaration first: a scope route is authenticated by API token alone, from the
+`Authorization` header, and every other route by session alone. Neither path reads the
+other's credential, so Decisions 9.1 and 9.8 hold by construction rather than by care.
+
+**Decision 9.11 — one answer for every bad credential *(item 11)*.** An unknown, revoked,
+replaced, or expired token, a suspended organisation, and a call from outside the allowed
+address ranges all answer the same 401. The reason is kept in the request log. A stolen
+token therefore cannot be probed for which control stopped it.
+
 ---
 
 ## 10. Data protection
@@ -587,3 +603,11 @@ The following were added by revision 1.3, 26 September 2026:
 | Vehicle owner details | A separate `vehicle_owner` table, sensitive, never on a verification path | 10.1.1 |
 | Route type | Master data (`route_type`), required at the API for new vehicles, nullable in the column for legacy rows | 6.6 |
 | Levy pricing | `fee_type_price` rows per route type, falling back to the fee type's default amount | PRD §27.1 |
+
+The following were added by revision 1.5, 3 October 2026:
+
+| Matter | Determination | Decision |
+|---|---|---|
+| Approving an external organisation | A data-sharing agreement is required; any holder of `api_client.manage` approves and is recorded | PRD Requirements 12.8, 12.9 |
+| Replacing a token | The officer chooses how long the replaced token keeps working | PRD Requirement 12.10 |
+| Expiry reminders | Flagged on the dashboard until a mail service exists | PRD Requirement 12.6 |

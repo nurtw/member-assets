@@ -1,5 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { API_SCOPES } from '@nurtw/contracts';
 
 import { AppModule } from './../src/app.module.js';
 import { OpenApiService } from './../src/docs/openapi.service.js';
@@ -42,16 +43,69 @@ describe('API reference (e2e)', () => {
     expect(undocumented).toEqual([]);
   });
 
-  it('declares a permission or public status for every route', () => {
-    // The guard denies a route carrying neither, so one of these must be present
+  it('declares a permission, a scope, or public status for every route', () => {
+    // The guard denies a route carrying none, so one of these must be present
     // or the route is unreachable. Catching it here names the handler; catching
     // it at runtime produces a 403 nobody can explain.
     const undeclared = openApi
       .getRoutes()
-      .filter((route) => !route.isPublic && route.permission === null)
+      .filter(
+        (route) =>
+          !route.isPublic && route.permission === null && route.scope === null,
+      )
       .map((route) => `${route.controller}.${route.handler}`);
 
     expect(undeclared).toEqual([]);
+  });
+
+  it('declares exactly one of them on each route', () => {
+    // Decisions 9.1 and 9.8 — a route is internal or external, never both. The
+    // guard refuses one that declares a scope with anything else; this names
+    // it before it is ever called.
+    const misdeclared = openApi
+      .getRoutes()
+      .filter(
+        (route) =>
+          [route.isPublic, route.permission !== null, route.scope !== null].filter(
+            Boolean,
+          ).length !== 1,
+      )
+      .map((route) => `${route.controller}.${route.handler}`);
+
+    expect(misdeclared).toEqual([]);
+  });
+
+  it('requires only scopes that exist', () => {
+    // Requirement 12.4 — a broad scope cannot be required because it cannot
+    // be named: every scope a route asks for is in the catalogue.
+    const unknown = openApi
+      .getRoutes()
+      .filter(
+        (route) =>
+          route.scope !== null &&
+          !(API_SCOPES as readonly string[]).includes(route.scope),
+      )
+      .map((route) => `${route.controller}.${route.handler}: ${route.scope}`);
+
+    expect(unknown).toEqual([]);
+  });
+
+  it('puts no officer route within reach of an API token', () => {
+    // Registering organisations and issuing tokens are acts of the Union. If
+    // one of these ever named a scope, an outside organisation could approve
+    // itself.
+    const external = openApi
+      .getRoutes()
+      .filter(
+        (route) =>
+          route.scope !== null &&
+          /\/(api-clients|disclosure-profiles|auth|fee-types|payments)(\/|$)/.test(
+            route.path,
+          ),
+      )
+      .map((route) => `${route.method.toUpperCase()} ${route.path}`);
+
+    expect(external).toEqual([]);
   });
 
   it('keeps the public surface to the routes that must be unauthenticated', () => {
@@ -88,7 +142,9 @@ describe('API reference (e2e)', () => {
         expect(
           operation.description,
           `${method.toUpperCase()} ${path} does not state its authentication requirement`,
-        ).toMatch(/\*\*Permission required:\*\*|deliberately public/);
+        ).toMatch(
+          /\*\*Permission required:\*\*|\*\*Scope required:\*\*|deliberately public/,
+        );
       }
     }
   });
@@ -159,5 +215,6 @@ describe('API reference (e2e)', () => {
     expect(serialised).not.toMatch(/SEED_ADMIN/);
     expect(serialised).not.toMatch(/mfaSecret|mfa_secret/);
     expect(serialised).not.toMatch(/STICKER_SIGNING_SECRET/);
+    expect(serialised).not.toMatch(/tokenHash|token_hash/);
   });
 });

@@ -4,8 +4,8 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.4 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.4
+1.2 to 1.5 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.5
 **Last revised:** 3 October 2026
 
 ---
@@ -85,6 +85,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.2 | 22 September 2026 | Paid onboarding, with legacy stickers unattached until reattached (§9A). Payments through Paystack (§27). An external vehicle total that counts only vehicles both onboarded and declared (§13). | Direction relayed by the project owner from NURTW (`QUESTIONS.md` VEH-13, PAY-01), approved by the project owner on 22 September 2026. No Union official is named (PAY-09). |
 | 1.3 | 26 September 2026 | Recording a vehicle on record, separate from declaring it, and a Field enumerator role (Requirement 9.7, §16). Vehicle owner details and route type (Requirements 9.8, 9.9). Registration flows from member to vehicle (Requirement 9.10). The levy rises to ₦7,000 and is priced by route type (§27). | The project owner's answers following a call with Mr Timothy (`QUESTIONS.md` VEH-23 to VEH-26, MIG-04, MIG-07, PAY-14 to PAY-17), approved by the project owner on 26 September 2026. |
 | 1.4 | 3 October 2026 | A vehicle's declaration status is shown only to holders of `vehicle.declare` (Requirement 9A.1). A vehicle letter may be reissued (Requirement 9A.6). A membership fee paid early extends cover; the levy stops after retirement and follows the route type held each month (Requirement 27.13). See §23.22. | The project owner (`QUESTIONS.md` VEH-27, VEH-28, PAY-18 to PAY-20), 3 October 2026. |
+| 1.5 | 3 October 2026 | An external organisation is approved only with a data-sharing agreement on record, by a holder of `api_client.manage`, who is recorded (Requirements 12.8, 12.9). Token reminders appear on the dashboard until a mail service exists (Requirement 12.6). A replaced token keeps working for an overlap the officer chooses (Requirement 12.10). See §23.23. | The project owner (`QUESTIONS.md` EXT-06, EXT-07, EXT-10, EXT-11), 3 October 2026. |
 
 ---
 
@@ -461,11 +462,29 @@ proposed. See §13.2.
 **Requirement 12.6.** External API tokens expire after **90 days**. Advance rotation
 reminders are issued to the client's registered technical contact. Determined at §23.12.
 
+*Revision 1.5:* until the System has a mail service and its domains (GOV-08), the reminder is
+a flag on the API access screen from 14 days before expiry, a setting the Union can change,
+and the API administrator contacts the organisation (`QUESTIONS.md` EXT-10).
+
 **Requirement 12.7** *(revision 1.2)*. No external response carries anything relating to
 declaration: no declaration status, no field or record type naming it, and no filter on it.
 This amends the example at proposal §12.5: the verification `record_type` becomes `NURTW_VEHICLE` rather
 than `NURTW_DECLARED_VEHICLE`. No external response carries payment or dues status either
 (Requirement 27.8).
+
+**Requirement 12.8** *(revision 1.5)*. An external organisation is approved only with a
+data-sharing agreement on record: its reference and the date it was signed. No credential is
+issued to an organisation without one (`QUESTIONS.md` EXT-07).
+
+**Requirement 12.9** *(revision 1.5)*. An organisation is approved by a holder of
+`api_client.manage`: the API administrator and the super administrator. One officer may both
+register and approve it. The approving officer and the time are recorded, as proposal
+§12.1's named approving officer (EXT-06).
+
+**Requirement 12.10** *(revision 1.5)*. A token is replaced by rotation. The officer chooses
+how long the replaced token keeps working: not at all, one hour, 24 hours, or seven days, and
+never beyond its own expiry. A token that may have leaked is revoked instead, which takes
+effect at once (EXT-11).
 
 ---
 
@@ -877,6 +896,22 @@ Determined 3 October 2026 (`QUESTIONS.md` VEH-27, VEH-28, PAY-18 to PAY-20).
   its 1st** (PAY-19).
 - **A member's BVN** is asked for only if a Paystack test shows Paystack requires it for a
   dedicated account. It is then passed straight to Paystack and never stored (PAY-20).
+
+### 23.23 External organisations and tokens *(revision 1.5)*
+
+Determined 3 October 2026 (`QUESTIONS.md` EXT-06, EXT-07, EXT-10, EXT-11).
+
+- **No agreement, no approval.** An organisation is approved only with its data-sharing
+  agreement's reference and signing date recorded, and no token is issued without one
+  (Requirement 12.8).
+- **The API administrator approves.** Holders of `api_client.manage`, the API administrator
+  and the super administrator, register and approve. One officer may do both, and the
+  approver is recorded (Requirement 12.9).
+- **Reminders on the dashboard for now.** A token is flagged on the API access screen from 14
+  days before it expires, and the administrator contacts the organisation. Emailed reminders
+  follow once a mail service and the domains (GOV-08) are chosen (Requirement 12.6).
+- **Rotation with a chosen overlap.** The replaced token keeps working for none, one hour, 24
+  hours, or seven days, as the officer chooses at each rotation (Requirement 12.10).
 
 ---
 

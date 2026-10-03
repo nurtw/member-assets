@@ -68,6 +68,29 @@ export const VERIFICATION_FIELD_NAMES = Object.keys(
   VERIFICATION_FIELDS,
 ) as readonly VerificationField[];
 
+/** The fields of the `EXTERNAL` tier. */
+export type ExternalVerificationField = {
+  [
+    Field in VerificationField
+  ]: (typeof VERIFICATION_FIELDS)[Field] extends 'EXTERNAL' ? Field : never;
+}[VerificationField];
+
+/**
+ * The only fields a disclosure profile may name (item 11). A profile is
+ * refused an `INTERNAL` field when it is saved, and the projection below drops
+ * one anyway: the first check is a courtesy to the officer, the second is the
+ * control.
+ */
+export const EXTERNAL_VERIFICATION_FIELDS = VERIFICATION_FIELD_NAMES.filter(
+  (field) => VERIFICATION_FIELDS[field] === 'EXTERNAL',
+) as readonly ExternalVerificationField[];
+
+export function isExternalVerificationField(
+  name: string,
+): name is ExternalVerificationField {
+  return (EXTERNAL_VERIFICATION_FIELDS as readonly string[]).includes(name);
+}
+
 /** The value of every catalogue field, `null` where there is none. */
 export interface VerificationValues {
   plate_number: string | null;

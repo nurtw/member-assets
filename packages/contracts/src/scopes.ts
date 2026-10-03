@@ -28,6 +28,30 @@ export const API_SCOPES = [
 export type ApiScope = (typeof API_SCOPES)[number];
 
 /**
+ * What each scope lets an organisation do, in the words an officer granting
+ * it reads (proposal §12.2). Typed over `ApiScope`, so a scope added above
+ * without a description here fails to compile.
+ */
+export const API_SCOPE_DESCRIPTIONS: Readonly<Record<ApiScope, string>> = {
+  'vehicle:verify:plate': 'Verify a vehicle by its plate number.',
+  'sticker:verify:qr': 'Verify a sticker by its code.',
+  'vehicle:verify:combined':
+    'Verify a plate and a sticker together, to catch a sticker on the wrong vehicle.',
+  'member:verify:membership': 'Confirm a membership number or a card number.',
+  'aggregate:vehicles:total':
+    'Read the grand total of vehicles. No filter is accepted.',
+  'aggregate:vehicles:read':
+    'Read vehicle totals by the approved filters. Small totals are suppressed.',
+  'organization:metadata:read':
+    'Read the branch, unit, and category labels needed to interpret a response.',
+  'audit:client:read': 'Read the organisation’s own usage summary.',
+};
+
+export function isApiScope(value: string): value is ApiScope {
+  return (API_SCOPES as readonly string[]).includes(value);
+}
+
+/**
  * Aggregate access is tiered — PRD §13.2.
  *
  * `aggregate:vehicles:total` returns the unfiltered grand total and rejects any
@@ -54,3 +78,10 @@ export const DEFAULT_AGGREGATE_SUPPRESSION_FLOOR = 25;
 
 /** Default external token lifetime in days, determined at PRD §12.6. Seed value. */
 export const DEFAULT_TOKEN_EXPIRY_DAYS = 90;
+
+/**
+ * How many days before a token expires it is flagged for replacement
+ * (Requirement 12.6, `QUESTIONS.md` EXT-10). Seed value for the
+ * `api_token.reminder_days` setting, which is the authority at request time.
+ */
+export const DEFAULT_TOKEN_REMINDER_DAYS = 14;

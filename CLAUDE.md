@@ -339,6 +339,9 @@ every route added without thought would become a hole nobody notices until an au
 
 - `@RequirePermission('vehicle.declare')` — names a *permission*, never a role.
 - `@Public()` — health, login, logout, and the QR verification page only.
+- `@RequireScope('vehicle:verify:plate')` — an **external** route (item 11), reached by API
+  token only. A route carries exactly one of the three; `test/openapi.e2e-spec.ts` fails
+  otherwise.
 
 **Scope has two forms, and using the wrong one is a real vulnerability:**
 
@@ -697,6 +700,32 @@ record the same plate at once. Preserve it too.
   - `declareRecorded` checks the declarer's scope before it looks at the status.
 - A screen keys everything on the status being present. An absent status shows nothing; it
   never shows "not declared".
+
+### API clients and scopes (item 11)
+
+- **The route decides the credential.** `AuthorisationGuard` sends a route carrying
+  `@RequireScope` to `ApiClientAuthService`, which reads the `Authorization: Bearer` header
+  and nothing else. Every other route reads the session cookie and nothing else. A route
+  declaring a scope together with a permission or `@Public()` is refused outright.
+- **Every bad credential answers the same 401**: no token, malformed, unknown, revoked,
+  replaced, expired, organisation not active, or an address outside its ranges. The reason
+  goes to `api_request_log.result_class`, never to the caller. Only a valid token asking for a
+  scope it lacks answers 403. Item 12 must not undo this.
+- **A token is `nurtw_` + 8-character prefix + 43-character secret**, shown once and stored
+  as SHA-256 (`api-client/api-token.ts`). Never select `tokenHash` into a response; use
+  `TOKEN_SELECT`. Never put a token, its hash, or a looked-up identifier in a log, an audit
+  event, or `api_request_log`. Logged URLs pass through `redactUrl`.
+- **`EXPIRED` is never stored.** `apiClientStanding` and `apiTokenState` in
+  `packages/domain/src/api-client/` work it out from the dates, as "onboarded" is worked out.
+- **Approval is the only way to `ACTIVE`**, and needs a profile, at least one scope, and a
+  data-sharing agreement (Requirement 12.8). `PATCH /api-clients/:id` cannot change access.
+  Anything that changes a client or its tokens takes `ApiClientService.lock` first.
+- **A profile names only external-admissible fields** (`EXTERNAL_VERIFICATION_FIELDS`), by
+  the names a response carries. The four seeded from PRD §15 (`SYSTEM_DISCLOSURE_PROFILES`)
+  cannot be amended. The seeded Membership profile omits the designation, which proposal §15
+  gives "if approved". PRD §15's Internal profile is not a row and must never become one.
+- **Item 12 projects through `request.apiClient.permittedFields`** with the `EXTERNAL`
+  channel, and records each outcome through `ApiRequestLogService`.
 
 ### Notes that will bite you otherwise
 

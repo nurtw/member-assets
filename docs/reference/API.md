@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Last revised:** 9 September 2026 · **API version:** v1
+**Last revised:** 3 October 2026 · **API version:** v1
 
 ---
 
@@ -70,8 +70,24 @@ lookup the token was meant to avoid while leaving a window in which a dismissed 
 credential still works.
 
 External organisations authenticate by API token instead, through a mechanism sharing no
-storage with internal sessions. That is roadmap item 11 and is not yet built; an API token
-can never satisfy an internal route, and a session can never satisfy an external one.
+storage with internal sessions. An API token can never satisfy an internal route, and a
+session can never satisfy an external one.
+
+### API tokens
+
+- **Sent as `Authorization: Bearer <token>`**, and read from nowhere else. A token in a query
+  string or a cookie authenticates nothing.
+- **A token looks like `nurtw_abcd2345_…`**: a fixed prefix, eight characters that identify
+  it, and a 43-character secret. The Union shows it once, when it is issued or replaced, and
+  stores only a hash. Keep it out of source code, URLs, and logs.
+- **It expires after 90 days.** When the Union replaces it, the old token keeps working for an
+  overlap agreed with you, so you can switch without an outage.
+- **Every credential failure answers the same `401`**: no token, an unknown, revoked,
+  replaced, or expired one, a suspended organisation, or a call from outside your allowed
+  addresses. A valid token asking for a scope it does not hold answers `403`. Quote the
+  `requestId` to the Union to learn which.
+- **What a response may carry is set by your disclosure profile**, agreed at approval. A field
+  outside it is never sent.
 
 ### Login responses are uniform
 
@@ -116,8 +132,9 @@ Two consequences an integrator will observe:
 ### Deny by default
 
 A route carrying neither an explicit permission requirement nor an explicit public
-declaration is **refused**, not allowed. The public surface is exactly three routes —
-health, login, and logout — and the test suite fails if a fourth appears.
+declaration is **refused**, not allowed. Every route declares exactly one of a permission, a
+scope, or public access. The public surface is health, login, logout, signed media links,
+and the payment provider's webhook, and the test suite fails if another appears.
 
 ---
 
@@ -182,8 +199,8 @@ sent, which the caller already holds. Nothing derived from the database reaches 
 | 200 | Success. |
 | 201 | Created. |
 | 400 | The body or a parameter failed validation. |
-| 401 | No valid session was presented. |
-| 403 | The session does not hold the required permission in the relevant scope. |
+| 401 | No valid session was presented, or on an external route no valid API token. |
+| 403 | The session does not hold the required permission in the relevant scope, or the organisation does not hold the scope the route requires. |
 | 404 | No such record, **or** it lies outside the caller's scope. |
 | 409 | The request conflicts with the record's current state or with a domain rule. |
 | 429 | Rate limit exceeded. |

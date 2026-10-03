@@ -4,7 +4,13 @@ import type { NextFunction, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AuthenticatedRequest } from '../auth/authorisation.guard.js';
-import { requestLoggingMiddleware } from './request-logging.middleware.js';
+import {
+  redactUrl,
+  requestLoggingMiddleware,
+} from './request-logging.middleware.js';
+
+/** Has the form of an external API token, and is not one. */
+const TOKEN = `nurtw_abcdefgh_${'A'.repeat(43)}`;
 
 /**
  * This is an access log, not a body dump — CLAUDE.md forbids logging full
@@ -156,5 +162,50 @@ describe('requestLoggingMiddleware', () => {
       .calls[0][0] as string;
     expect(line).not.toContain('super-secret-session-token');
     expect(line).not.toContain('super-secret-api-token');
+  });
+
+  it('never logs an API token put in a URL by mistake, under any key (Requirement 12.2)', () => {
+    // A token in a URL authenticates nothing, and is still a live credential.
+    (request as { path: string }).path = `/api/v1/verification/${TOKEN}`;
+    request.query = { token: TOKEN, q: TOKEN, plate: 'AA123XY' };
+
+    requestLoggingMiddleware()(request, response, next);
+    finish();
+
+    const line = (Logger.prototype.log as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as string;
+    expect(line).not.toContain(TOKEN);
+    expect(line).not.toContain('A'.repeat(43));
+    expect(line).toContain('plate=AA123XY');
+  });
+
+  it('names the external client once the guard has resolved its token', () => {
+    requestLoggingMiddleware()(request, response, next);
+    Object.assign(request, { apiClient: { clientId: 'client-9' } });
+    finish();
+
+    const line = (Logger.prototype.log as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as string;
+    expect(line).toContain('client=client-9');
+    expect(line).toContain('user=-');
+  });
+});
+
+describe('redactUrl', () => {
+  it('leaves a URL with nothing sensitive as it was', () => {
+    expect(redactUrl('/api/v1/vehicles')).toBe('/api/v1/vehicles');
+    expect(redactUrl('/api/v1/vehicles?status=ACTIVE&page=2')).toBe(
+      '/api/v1/vehicles?status=ACTIVE&page=2',
+    );
+  });
+
+  it('redacts a sensitive key and a token under any key or in the path', () => {
+    const redacted = redactUrl(
+      `/api/v1/x/${TOKEN}?signature=abc&access_token=def&q=${TOKEN}&plate=AA123XY`,
+    );
+    expect(redacted).not.toContain(TOKEN);
+    expect(redacted).not.toContain('abc');
+    expect(redacted).not.toContain('def');
+    expect(redacted).toContain('plate=AA123XY');
   });
 });

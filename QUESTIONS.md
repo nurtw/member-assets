@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.5
+**Document version:** 1.6
 **Last revised:** 3 October 2026
 
 ---
@@ -51,10 +51,10 @@ thing a year later.
 | Cards (CARD) | 5 | 3 | — | 8 |
 | Vehicles and stickers (VEH) | 22 | 6 | 1 | 29 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
-| External organisations (EXT) | 4 | 5 | — | 9 |
+| External organisations (EXT) | 8 | 4 | — | 12 |
 | Payments (PAY) | 20 | 0 | — | 20 |
 | Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
-| **Total** | **68** | **39** | **2** | **109** |
+| **Total** | **72** | **38** | **2** | **112** |
 
 ### Blocking production use right now
 
@@ -867,15 +867,19 @@ individual approval*. This asks for the individuals.
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
-### EXT-06 · Who approves an external organisation ⏳
+### EXT-06 · Who approves an external organisation ✅
 
 **Question.** Which Union officer approves an external organisation's access and signs the
 data-sharing terms?
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **The API administrator, and the super administrator: whoever holds
+`api_client.manage`.** One officer may both register and approve an organisation, and the
+approving officer is recorded with the time. Who signs the agreement itself for the Union
+is the Union's own matter; the System records its reference and date (EXT-07).
+**Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD Requirement 12.9, §23.23.
 
-### EXT-07 · Data-sharing agreement ⏳
+### EXT-07 · Data-sharing agreement ✅
 
 **Question.** Does the Union have a data-sharing agreement or terms of use for external
 organisations? If not, one is required before any external credential is issued.
@@ -884,8 +888,12 @@ organisations? If not, one is required before any external credential is issued.
 party. The lawful basis and the recipient's obligations must be documented before, not
 after.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **Required.** The approving officer records the agreement's reference and the
+date it was signed. An organisation without one cannot be approved, and no token is issued
+to it. The agreement is drafted and signed outside the System, so none can be approved
+until the Union has one.
+**Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD Requirement 12.8, §23.23.
 
 ### EXT-08 · Withdrawal of access ⏳
 
@@ -904,6 +912,42 @@ number for disputing a result?
 to type into and no enumerable parameter. This concerns only what the resulting page shows.
 
 **Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### EXT-10 · How a token-expiry reminder reaches the organisation ✅
+
+**Question.** PRD Requirement 12.6 asks for advance reminders before a token expires. The
+System cannot send email yet. How should reminders work until it can?
+
+**Answer.** **On the dashboard.** The API access screen flags a token from 14 days before it
+expires (the `api_token.reminder_days` setting), and the administrator contacts the
+organisation. Emailed reminders follow once a mail service and the domains (GOV-08) are
+chosen.
+**Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD Requirement 12.6, §23.23.
+
+### EXT-11 · How long a replaced token keeps working ✅
+
+**Question.** When a token is replaced, should the old one stop at once, or keep working for
+a while so the organisation can install the new one without an outage?
+
+**Answer.** **The officer chooses at each rotation:** at once, one hour, 24 hours, or seven
+days, and never beyond the old token's own expiry. A token that may have leaked is revoked
+instead, which is immediate.
+**Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD Requirement 12.10, §23.23.
+
+### EXT-12 · A test environment for outside organisations ⏳
+
+**Question.** Proposal §12.1 lists "approved environments, such as test and production" for
+each client. Should organisations get a separate test environment, with test tokens and
+synthetic records, to build against before they touch real data?
+
+**Why it is needed.** Without one, an organisation's first request is against members' real
+records. A test environment means a second deployment with its own database, which has a
+hosting cost.
+
+**Answer.** _Outstanding._ Item 11 issues production tokens only.
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
 ---
@@ -1494,6 +1538,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 3 October 2026 (item 11) | The project owner answered EXT-06 (the API administrator approves; one officer may register and approve) and EXT-07 (a data-sharing agreement is required before approval), and two new questions: EXT-10 (token reminders on the dashboard until a mail service exists) and EXT-11 (the officer chooses how long a replaced token keeps working). New EXT-12, a test environment for outside organisations, open. PRD revised to 1.5. |
 | 3 October 2026 | The project owner answered VEH-27, PAY-18, PAY-19, and PAY-20 by adopting the recommendations (items 25 and 26 build the first three). New VEH-28: a vehicle's declaration status is shown only to holders of `vehicle.declare`. New VEH-29: adding Transpay's unrecorded stickers by scanning, deferred. VEH-20's new sticker paused; VEH-21 being revisited. PRD revised to 1.4. |
 | 2 October 2026 (item 23) | New PAY-20: whether members' BVNs may be collected if Paystack requires identification before it opens a dedicated account. Open, and it blocks dedicated accounts only if Paystack does require it. PAY-18 notes the case item 23 adds: part of a membership fee arriving before the rest. |
 | 27 September 2026 (item 22) | New PAY-18 (a membership fee paid early or after a gap) and PAY-19 (when a levy stops; re-pricing on a change of route type). Both open, and neither blocks item 22, which applies PAY-03 as written. |

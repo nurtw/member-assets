@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 
 import type { AuthenticatedRequest } from '../auth/authorisation.guard.js';
+import type { ExternalRequest } from '../auth/require-scope.decorator.js';
 import { resolveRequestId } from './error-response.js';
 
 const REDACTED = '[redacted]';
@@ -14,6 +15,20 @@ const REDACTED = '[redacted]';
  */
 const SENSITIVE_QUERY_KEY = /token|secret|password|signature|auth|key$/i;
 
+/**
+ * Anything with the form of an external API token (`api-client/api-token.ts`).
+ *
+ * A token is only ever read from the `Authorization` header, so one placed in
+ * a URL authenticates nothing. It is still a live credential that an
+ * integrator sent by mistake, and PRD Requirement 12.2 forbids it reaching a
+ * log whatever key or path segment it arrived in.
+ */
+const API_TOKEN_SHAPE = /nurtw_[a-z0-9]{8}_[A-Za-z0-9_-]{20,}/g;
+
+function withoutTokens(text: string): string {
+  return text.replace(API_TOKEN_SHAPE, REDACTED);
+}
+
 function sanitisedQuery(query: Request['query']): string {
   const entries = Object.entries(query as Record<string, unknown>);
   if (entries.length === 0) {
@@ -21,9 +36,27 @@ function sanitisedQuery(query: Request['query']): string {
   }
   const parts = entries.map(
     ([key, value]) =>
-      `${key}=${SENSITIVE_QUERY_KEY.test(key) ? REDACTED : String(value)}`,
+      `${key}=${SENSITIVE_QUERY_KEY.test(key) ? REDACTED : withoutTokens(String(value))}`,
   );
   return `?${parts.join('&')}`;
+}
+
+/**
+ * A raw request URL made safe to log: a sensitive query value is replaced, and
+ * so is anything shaped like an API token, wherever it sits. For a caller
+ * holding only `request.url`, as the exception filter does.
+ */
+export function redactUrl(url: string): string {
+  const mark = url.indexOf('?');
+  if (mark === -1) {
+    return withoutTokens(url);
+  }
+  const parts = [...new URLSearchParams(url.slice(mark + 1)).entries()].map(
+    ([key, value]) =>
+      `${key}=${SENSITIVE_QUERY_KEY.test(key) ? REDACTED : withoutTokens(value)}`,
+  );
+  const path = withoutTokens(url.slice(0, mark));
+  return parts.length === 0 ? path : `${path}?${parts.join('&')}`;
 }
 
 /**
@@ -55,7 +88,7 @@ export function requestLoggingMiddleware(): RequestHandler {
   const logger = new Logger('HTTP');
 
   return (
-    request: AuthenticatedRequest,
+    request: AuthenticatedRequest & ExternalRequest,
     response: Response,
     next: NextFunction,
   ): void => {
@@ -68,16 +101,19 @@ export function requestLoggingMiddleware(): RequestHandler {
     response.on('finish', () => {
       const durationMs =
         Number(process.hrtime.bigint() - startedAt) / 1_000_000;
-      const path = `${request.path}${sanitisedQuery(request.query)}`;
+      const path = `${withoutTokens(request.path)}${sanitisedQuery(request.query)}`;
       const requestLength = request.headers['content-length'] ?? '-';
       const responseLength = response.getHeader('content-length') ?? '-';
       const userId = request.user?.id ?? '-';
+      // An external request is made by an organisation, not an officer. Its
+      // client id identifies it here; its token never does.
+      const clientId = request.apiClient?.clientId ?? '-';
       const userAgent = request.header('user-agent') ?? '-';
 
       const line =
         `${request.method} ${path} ${response.statusCode} ${durationMs.toFixed(1)}ms ` +
         `reqLen=${requestLength} resLen=${responseLength} ip=${request.ip} ` +
-        `user=${userId} ua="${userAgent}" id=${requestId}`;
+        `user=${userId} client=${clientId} ua="${userAgent}" id=${requestId}`;
 
       if (response.statusCode >= 500) {
         logger.error(line);

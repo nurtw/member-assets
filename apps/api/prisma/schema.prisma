@@ -984,6 +984,9 @@ model User {
   sessions                  UserSession[]
   paymentsInitiated         Payment[]
   dedicatedAccountsAssigned DedicatedAccount[]         @relation("DedicatedAccountAssignedBy")
+  apiClientsRegistered      ApiClient[]                @relation("ApiClientRegisteredBy")
+  apiClientsApproved        ApiClient[]                @relation("ApiClientApprovedBy")
+  apiTokensCreated          ApiToken[]                 @relation("ApiTokenCreatedBy")
 
   @@map("user")
 }
@@ -1160,21 +1163,43 @@ model UserPermissionRevocation {
 model ApiClient {
   id               String          @id @default(uuid()) @db.Uuid
   organisationName String          @map("organisation_name")
+  /// `EXPIRED` is never written. It is worked out from the tokens' dates
+  /// (`apiClientStanding` in `@nurtw/domain`), so it is true the moment a token
+  /// runs out and needs no job to notice.
   status           ApiClientStatus @default(PENDING)
 
-  /// PRD §12.1 — business purpose, sponsor, and technical contact are part of the
-  /// approval record, not optional metadata.
-  businessPurpose  String  @map("business_purpose")
-  sponsorUserId    String? @map("sponsor_user_id") @db.Uuid
-  technicalContact String  @map("technical_contact")
+  /// The last status change, and the reason the officer gave. The full history
+  /// is in the audit trail.
+  statusChangedAt DateTime? @map("status_changed_at")
+  statusReason    String?   @map("status_reason")
+
+  /// PRD §12.1 — the business purpose, the approving officer, and the technical
+  /// contact are part of the approval record, not optional metadata.
+  businessPurpose String @map("business_purpose")
+
+  /// Requirement 12.6 — the rotation reminder is addressed to this contact.
+  technicalContactName  String  @map("technical_contact_name")
+  technicalContactEmail String  @map("technical_contact_email")
+  technicalContactPhone String? @map("technical_contact_phone")
+
+  registeredByUserId String? @map("registered_by_user_id") @db.Uuid
+  /// PRD §12.1's "named NURTW sponsor or approving officer" (Requirement 12.9).
+  approvedByUserId   String?   @map("approved_by_user_id") @db.Uuid
+  approvedAt         DateTime? @map("approved_at")
+
+  /// Requirement 12.8 — the data-sharing agreement, without which a client is
+  /// not approved. Nullable because a pending client need not have one yet.
+  agreementReference String?   @map("agreement_reference")
+  agreementDate      DateTime? @map("agreement_date") @db.Date
 
   /// Decision 5.2 — the profile is a row, so admitting a new class of external
   /// organisation is configuration rather than a release.
   disclosureProfileId String? @map("disclosure_profile_id") @db.Uuid
 
-  /// PRD §12.1 — allowed source ranges where practical.
+  /// PRD §12.1 — allowed source ranges where practical. Empty means any address.
   allowedIpRanges String[] @map("allowed_ip_ranges")
 
+  /// Set and enforced by item 13.
   rateLimitProfile String? @map("rate_limit_profile")
   dailyQuota       Int?    @map("daily_quota")
 
@@ -1182,6 +1207,8 @@ model ApiClient {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   disclosureProfile DisclosureProfile? @relation(fields: [disclosureProfileId], references: [id], onDelete: Restrict)
+  registeredByUser  User?              @relation("ApiClientRegisteredBy", fields: [registeredByUserId], references: [id], onDelete: SetNull)
+  approvedByUser    User?              @relation("ApiClientApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
   tokens            ApiToken[]
   scopes            ApiClientScope[]
   requests          ApiRequestLog[]
@@ -1208,9 +1235,25 @@ model ApiToken {
   /// redeployment (PRD acceptance criterion 11).
   revokedAt DateTime? @map("revoked_at")
 
-  createdAt DateTime @default(now()) @map("created_at")
+  /// Requirement 12.10 — set when a newer token replaces this one: the moment
+  /// this one stops being accepted. `expiresAt` is left as it was, so the
+  /// record still says how long the token was issued for.
+  retiresAt          DateTime? @map("retires_at")
+  /// The token this one replaced. Unique: a token is replaced once.
+  rotatedFromTokenId String?   @unique @map("rotated_from_token_id") @db.Uuid
 
-  client ApiClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  /// To the minute, and written at most once a minute. It tells an officer
+  /// whether an organisation has moved to its new token yet.
+  lastUsedAt DateTime? @map("last_used_at")
+
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  client        ApiClient       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  rotatedFrom   ApiToken?       @relation("TokenRotation", fields: [rotatedFromTokenId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rotatedTo     ApiToken?       @relation("TokenRotation")
+  createdByUser User?           @relation("ApiTokenCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  requests      ApiRequestLog[]
 
   @@index([clientId])
   @@map("api_token")
@@ -1241,7 +1284,12 @@ model DisclosureProfile {
   label       String
   description String?
 
+  /// Seeded from PRD §15 (`SYSTEM_DISCLOSURE_PROFILES` in `@nurtw/contracts`).
+  /// A system profile cannot be amended through the interface, so that
+  /// "Minimal verification" goes on meaning what the PRD says it means.
   isSystem Boolean @default(false) @map("is_system")
+  /// Withdrawn, never deleted. An inactive profile cannot be newly assigned.
+  isActive Boolean @default(true) @map("is_active")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1256,7 +1304,10 @@ model DisclosureProfile {
 /// no implicit inclusion.
 model DisclosureField {
   profileId String @map("profile_id") @db.Uuid
-  /// Dotted path of the permitted field, e.g. `vehicle.vehicle_category`.
+  /// The name of a field in the closed verification catalogue
+  /// (`VERIFICATION_FIELDS` in `@nurtw/domain`), e.g. `vehicle_category`. It is
+  /// the name the response carries. Only an external-admissible field is ever
+  /// written here, and the projection drops any other regardless.
   fieldPath String @map("field_path")
 
   profile DisclosureProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
@@ -1270,6 +1321,11 @@ model ApiRequestLog {
   id          String  @id @default(uuid()) @db.Uuid
   requestId   String  @map("request_id")
   clientId    String? @map("client_id") @db.Uuid
+  /// PRD §17 — the access log names the token used. Its id, never its value.
+  /// Null where the request presented no token this System issued.
+  tokenId     String? @map("token_id") @db.Uuid
+  /// PRD §18 — the source address of API activity.
+  ipAddress   String? @map("ip_address")
   endpoint    String
   scope       String?
   /// Coarse outcome class. PRD Requirement 14.3 — the caller receives a generic
@@ -1285,6 +1341,7 @@ model ApiRequestLog {
   createdAt DateTime @default(now()) @map("created_at")
 
   client ApiClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  token  ApiToken?  @relation(fields: [tokenId], references: [id], onDelete: SetNull)
 
   @@index([clientId, createdAt])
   @@index([requestId])

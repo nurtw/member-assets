@@ -230,9 +230,12 @@ export {
 } from './verification/verdict.js';
 
 export {
+  EXTERNAL_VERIFICATION_FIELDS,
   VERIFICATION_FIELDS,
   VERIFICATION_FIELD_NAMES,
+  isExternalVerificationField,
   projectVerification,
+  type ExternalVerificationField,
   type ProjectedVerification,
   type VerificationChannel,
   type VerificationField,
@@ -250,3 +253,37 @@ export {
   type MembershipNotVerifiedReason,
   type MembershipVerdict,
 } from './verification/membership.js';
+
+export {
+  API_CLIENT_STATUSES,
+  API_TOKEN_STATES,
+  InvalidApiClientTransitionError,
+  STORED_API_CLIENT_STATUSES,
+  TOKEN_ROTATION_OVERLAPS,
+  TOKEN_ROTATION_OVERLAP_CODES,
+  apiClientStanding,
+  apiTokenState,
+  assertApiClientTransition,
+  canApiClientAuthenticate,
+  canTransitionApiClient,
+  isApiClientFinal,
+  isApiTokenUsable,
+  isTokenExpiringSoon,
+  retirementFor,
+  type ApiClientStatus,
+  type ApiTokenFacts,
+  type ApiTokenState,
+  type StoredApiClientStatus,
+  type TokenRotationOverlap,
+} from './api-client/status.js';
+
+export {
+  ipInRange,
+  ipInRanges,
+  isValidIpRange,
+  parseIpAddress,
+  parseIpRange,
+  type IpVersion,
+  type ParsedIpAddress,
+  type ParsedIpRange,
+} from './network/ip-range.js';

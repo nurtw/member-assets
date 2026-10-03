@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.4
+**Document version:** 1.5
 **Last revised:** 3 October 2026
 
 ---
@@ -38,7 +38,7 @@ Each item is independently completable and independently testable. Status values
 | 08 | sticker-inventory-qr | §10 | complete | `plans/08-sticker-inventory-qr.md` |
 | 09 | legacy-data-migration | §25, §9A | **done** (Neon repaired 26 Sep; Transpay register loaded 27 Sep) | `plans/09-legacy-data-migration.md` |
 | 10 | internal-verification | §11 | done (browser check pending) | [plan](plans/10-internal-verification.md) |
-| 11 | api-clients-and-scopes | §12.1, §16 | not-started | `plans/11-api-clients-and-scopes.md` |
+| 11 | api-clients-and-scopes | §12.1, §16 | done | [plan](plans/11-api-clients-and-scopes.md) |
 | 12 | external-verification-api | §12, §15 | not-started | `plans/12-external-verification-api.md` |
 | 13 | rate-limiting-and-abuse | §14 | not-started | `plans/13-rate-limiting-and-abuse.md` |
 | 14 | aggregate-reporting | §13 | not-started | `plans/14-aggregate-reporting.md` |
@@ -144,6 +144,13 @@ checked before any lookup. Every check is audited, and nothing else is written.
 **11 — api-clients-and-scopes.** External organisation registration and approval, token
 issuance, hashing, rotation and revocation, the scope catalogue of PRD §12.2, and the
 disclosure-profile records of Decision 5.2.
+
+Delivered with an API access screen. An organisation is registered pending and approved
+with a disclosure profile, its scopes, and a data-sharing agreement (PRD 1.5, Requirements
+12.8–12.10). Its token is shown once and stored as a hash; a rotation keeps the old token
+working for the overlap the officer chooses. A route that names a scope is reached by API
+token only, and every other route by session only. Four profiles are seeded from PRD §15.
+Item 12 adds the routes that use all this.
 
 **12 — external-verification-api.** The four verification endpoints of PRD §12.3 under
 scope enforcement and profile projection. Depends upon items 10 and 11.

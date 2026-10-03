@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  EXTERNAL_VERIFICATION_FIELDS,
   VERIFICATION_FIELDS,
   VERIFICATION_FIELD_NAMES,
+  isExternalVerificationField,
   projectVerification,
   type VerificationField,
   type VerificationValues,
@@ -42,7 +44,12 @@ const EXTERNAL = VERIFICATION_FIELD_NAMES.filter(
   (field) => VERIFICATION_FIELDS[field] === 'EXTERNAL',
 );
 
-/** The record fields of the PRD §15 profiles, as item 11 will seed them. */
+/**
+ * The record fields of the PRD §15 profiles, as item 11 seeds them
+ * (`SYSTEM_DISCLOSURE_PROFILES` in `@nurtw/contracts`, which this package
+ * cannot import). The internal profile is not a row: it is every field, cut
+ * down by the officer's permissions.
+ */
 const PROFILES: Record<string, readonly VerificationField[]> = {
   minimal: [],
   operational: [
@@ -51,7 +58,7 @@ const PROFILES: Record<string, readonly VerificationField[]> = {
     'sticker_status',
     'organizational_unit',
   ],
-  membership: ['membership_status', 'card_status', 'designation'],
+  membership: ['membership_status', 'card_status'],
   internal: VERIFICATION_FIELD_NAMES,
 };
 
@@ -208,5 +215,16 @@ describe('the verification field catalogue', () => {
       'card_status',
       'designation',
     ]);
+  });
+
+  it('offers a disclosure profile the external tier and nothing else (item 11)', () => {
+    expect(EXTERNAL_VERIFICATION_FIELDS).toEqual(EXTERNAL);
+    for (const field of VERIFICATION_FIELD_NAMES) {
+      expect(isExternalVerificationField(field)).toBe(
+        VERIFICATION_FIELDS[field] === 'EXTERNAL',
+      );
+    }
+    expect(isExternalVerificationField('owner_phone')).toBe(false);
+    expect(isExternalVerificationField('__proto__')).toBe(false);
   });
 });

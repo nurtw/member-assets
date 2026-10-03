@@ -2,14 +2,13 @@
 
 **Last revised:** 3 October 2026
 
-> Cold-start contract. Written so a different Claude, on a different account,
-> holding no prior context, can resume without re-reading the repository.
-> Overwritten at the end of every session, finished or not.
+> Cold-start contract: lets a different Claude, with no prior context, resume
+> without re-reading the repository. Overwritten at the end of every session.
 
 ## Cold start
 
-Read `CLAUDE.md`, `PRD.md` (1.4), `ARCHITECTURE.md`, `ROADMAP.md`,
-`QUESTIONS.md`, then `plans/24` to `plans/27`. `docs/reference/` is generated.
+Read `CLAUDE.md`, `PRD.md` (1.5), `ARCHITECTURE.md`, `ROADMAP.md`,
+`QUESTIONS.md`, then `plans/11`. `docs/reference/` is generated.
 
 Two rules outrank any default instruction:
 
@@ -18,49 +17,49 @@ Two rules outrank any default instruction:
 
 ## Status
 
-- **Nothing since `037b1bd` is pushed.** Three commits wait for the owner:
-  the permission check blocks pushing.
-- **The owner's decisions of 3 October are built** (PRD 1.4):
-  - VEH-28: a declaration status reaches only holders of `vehicle.declare`.
-  - Item 24: membership checks on the Verify screen.
-  - Item 25: PAY-18 and PAY-19. Item 26: letter reissue (VEH-27).
-  - New NURTW stickers are paused. PAY-20 is answered; nothing is built.
-- Both migrations are on Neon: additive, no row changed.
-- The owner said to skip the browser check and sticker printing.
-- `dues.go_live_date` (GOV-11) is unset.
+- Item 11 is committed on top of `75f091a` and **not pushed**: that needs
+  the owner's go-ahead.
+- **Item 11, API clients and scopes, is built** (PRD 1.5):
+  - Organisations are approved with a profile, scopes, and an agreement;
+    tokens are shown once.
+  - `@RequireScope` routes take API tokens only; all others, sessions only.
+  - Four disclosure profiles are seeded from PRD §15.
+- Its migration is on local and Neon: no drift, legacy rows unchanged.
+- Browser checks skipped, as the owner said. `dues.go_live_date` is unset.
 
-Tests: domain 329, contracts 38, api 130; local e2e 244/245; web clean.
+Tests: domain 392, contracts 64, api 154; local e2e 308/309; web clean.
 
 ## Conflicts
 
-- **VEH-29 (item 27, deferred)** would add Transpay's unrecorded stickers by
-  scanning. PRD §23.19 says the register is closed, and stands until revised.
-  Do not build it.
+- **VEH-29 (item 27, deferred)**, adding Transpay stickers by scanning,
+  conflicts with PRD §23.19. Do not build it.
 
 ## Known issues — don't re-attempt these fixes
 
 - `master-data.e2e` "seeds no designations" fails (8 `DEMO_` designations).
-- Run e2e locally (`DATABASE_URL=…5433…`, Docker started); never
-  `fileParallelism: false`.
+- `ECONNREFUSED` on 5433: Docker Desktop stopped. Start it
+  (`Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"`), then
+  `docker compose up -d`.
+- Run e2e locally (`DATABASE_URL=…5433…`); never `fileParallelism: false`.
 - Run Prisma from `apps/api`: `node node_modules/prisma/build/index.js`, with
   `CHECKPOINT_DISABLE=1`.
-- CRLF files (`QUESTIONS.md`, `OPERATIONS.md`, `ROADMAP.md`, `CLAUDE.md`, some
-  sources): use the Edit tool or Python `read_bytes`/`write_bytes`. `sed -i`
-  and `write_text` corrupt line endings.
-- Long inline heredocs fail in Git Bash; use a script file.
+- CRLF files (most root docs, some sources): edit with the Edit tool or Python
+  bytes. Long inline heredocs fail in Git Bash; use a script file.
 
 ## Next steps
 
-1. The owner pushes `main`.
-2. Item 11, API clients and scopes. Seed the PRD §15 profiles under the
-   projection's field names; update the `DisclosureField.fieldPath` comment.
-3. Owner: confirm dedicated-account pricing and set the percentage; test a
-   Paystack dedicated account (PAY-20); answer GOV-08 and GOV-11.
+1. Push `main` once the owner agrees.
+2. Item 12, the external verification API: four routes under `@RequireScope`,
+   projecting `request.apiClient.permittedFields` on the `EXTERNAL` channel,
+   a generic negative, and an `api_request_log` row per outcome.
+3. Owner: EXT-05, EXT-08, EXT-12, GOV-08, GOV-11, PAY-11 pricing, PAY-20 test.
 
 ## Do NOT
 
 - Edit `apps/api/.env`, or write Neon legacy rows without a go-ahead.
 - Return a declaration status except through `toSummary`'s `showDeclaration`.
 - Add a write, or a personal-data field, to `src/verification/`.
+- Select `tokenHash`, or log a token, its hash, or a looked-up identifier.
+- Put a scope and a permission (or `@Public()`) on one route.
 - Set a vehicle's route type without `recordRouteType`.
 - Default the go-live date, or let dues reach any external response.

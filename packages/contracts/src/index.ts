@@ -65,10 +65,49 @@ export {
   AGGREGATE_FILTERED_SCOPE,
   AGGREGATE_TOTAL_SCOPE,
   API_SCOPES,
+  API_SCOPE_DESCRIPTIONS,
   DEFAULT_AGGREGATE_SUPPRESSION_FLOOR,
   DEFAULT_TOKEN_EXPIRY_DAYS,
+  DEFAULT_TOKEN_REMINDER_DAYS,
+  isApiScope,
   type ApiScope,
 } from './scopes.js';
+
+export {
+  SETTABLE_API_CLIENT_STATUSES,
+  apiScopeSchema,
+  approveApiClientSchema,
+  registerApiClientSchema,
+  revokeApiTokenSchema,
+  rotateApiTokenSchema,
+  setApiClientAccessSchema,
+  setApiClientStatusSchema,
+  updateApiClientSchema,
+  type ApiClientDetail,
+  type ApiClientList,
+  type ApiClientSummary,
+  type ApiTokenSummary,
+  type ApproveApiClientInput,
+  type IssuedApiToken,
+  type RegisterApiClientInput,
+  type RevokeApiTokenInput,
+  type RotateApiTokenInput,
+  type SetApiClientAccessInput,
+  type SetApiClientStatusInput,
+  type UpdateApiClientInput,
+} from './api-client.js';
+
+export {
+  DISCLOSURE_FIELD_LABELS,
+  SYSTEM_DISCLOSURE_PROFILES,
+  createDisclosureProfileSchema,
+  updateDisclosureProfileSchema,
+  type CreateDisclosureProfileInput,
+  type DisclosureFieldCheck,
+  type DisclosureProfileSummary,
+  type SystemDisclosureProfile,
+  type UpdateDisclosureProfileInput,
+} from './disclosure.js';
 
 export {
   ATTACH_STICKER_PERMISSION,

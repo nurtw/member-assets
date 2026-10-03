@@ -91,6 +91,21 @@ export class SettingsService {
   }
 
   /**
+   * A whole number of at least 1, or `fallback` when the row is absent or
+   * unreadable. A fallback is right here, where `getDate` refuses one: these
+   * are limits the PRD determined, so the determined value is the safe reading
+   * of a row that is missing or mistyped.
+   */
+  async getPositiveInteger(key: string, fallback: number): Promise<number> {
+    const value = await this.getString(key);
+    if (value === null || !/^\d{1,6}$/.test(value)) {
+      return fallback;
+    }
+    const parsed = Number(value);
+    return parsed >= 1 ? parsed : fallback;
+  }
+
+  /**
    * Writes a setting. Callers audit the change themselves, with the reason
    * the change was made: this method knows neither.
    */
@@ -135,6 +150,18 @@ export const DEDICATED_ALLOCATION_ORDER =
  * than counting from a date it made up.
  */
 export const DUES_GO_LIVE_DATE = 'dues.go_live_date';
+
+/**
+ * How many days an external API token lasts (PRD Requirement 12.6, §23.12).
+ * Seeded 90, the Union's determination, which is also the fallback.
+ */
+export const API_TOKEN_EXPIRY_DAYS = 'api_token.expiry_days';
+
+/**
+ * How many days before a token expires it is flagged for replacement on the
+ * API access screen (Requirement 12.6, `QUESTIONS.md` EXT-10). Seeded 14.
+ */
+export const API_TOKEN_REMINDER_DAYS = 'api_token.reminder_days';
 
 /**
  * Whether a second officer must approve.

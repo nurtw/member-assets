@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
+import { ApiClientModule } from '../api-client/api-client.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { AuthorisationGuard } from './authorisation.guard.js';
@@ -18,8 +19,14 @@ import { SessionService } from './session.service.js';
  *
  * Services are exported so other modules can ask permission questions, but the
  * guard remains the only place a decision is enforced (Decision 9.9).
+ *
+ * `ApiClientModule` is imported for one thing: the guard hands a route carrying
+ * `@RequireScope` to its `ApiClientAuthService`. That module imports nothing
+ * from this one, so sessions and API tokens stay separate mechanisms
+ * (Decisions 9.1 and 9.8).
  */
 @Module({
+  imports: [ApiClientModule],
   controllers: [AuthController],
   providers: [
     AuthService,

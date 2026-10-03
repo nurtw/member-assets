@@ -9,6 +9,7 @@ import {
 import type { Request, Response } from 'express';
 
 import { buildErrorResponse, resolveRequestId } from './error-response.js';
+import { redactUrl } from './request-logging.middleware.js';
 import { ValidationException } from './zod-validation.pipe.js';
 
 /**
@@ -54,16 +55,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? (exception.stack ?? exception.message)
         : String(exception);
 
+    // The URL is logged redacted: a signed link's signature, or an API token
+    // an integrator put in a query string by mistake, is still a credential
+    // (PRD Requirement 12.2).
+    const url = redactUrl(request.url);
+
     // Server-side only. Never returned to the caller.
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error(
-        `${request.method} ${request.url} -> ${status} [${requestId}]`,
+        `${request.method} ${url} -> ${status} [${requestId}]`,
         detail,
       );
     } else {
-      this.logger.warn(
-        `${request.method} ${request.url} -> ${status} [${requestId}]`,
-      );
+      this.logger.warn(`${request.method} ${url} -> ${status} [${requestId}]`);
     }
 
     const details =

@@ -9,6 +9,7 @@ import {
   LEGACY_VEHICLE_CATEGORY_SEED,
   PERMISSIONS,
   ROUTE_TYPE_SEED,
+  SYSTEM_DISCLOSURE_PROFILES,
   SYSTEM_ROLES,
 } from '@nurtw/contracts';
 
@@ -417,6 +418,12 @@ async function seedSystemSettings(): Promise<void> {
       description: 'External API token lifetime in days (PRD §12.6).',
     },
     {
+      key: 'api_token.reminder_days',
+      value: '14',
+      description:
+        'Days before an API token expires that it is flagged for replacement (PRD Requirement 12.6).',
+    },
+    {
       key: 'session.lifetime_hours',
       value: '12',
       description: 'Internal session lifetime in hours.',
@@ -448,6 +455,48 @@ async function seedSystemSettings(): Promise<void> {
     });
   }
   console.log(`  system settings: ${settings.length}`);
+}
+
+/**
+ * The disclosure profiles of PRD §15 that an outside organisation can hold
+ * (item 11). The migration that added the columns inserts the same rows; this
+ * keeps a freshly seeded database identical.
+ *
+ * Replaced wholesale, as system roles are: a system profile cannot be amended
+ * through the interface, so this definition is the only thing that defines it,
+ * and a field removed from the definition must disappear here too. Profiles
+ * the Union composed are never touched.
+ *
+ * PRD §15's Internal profile is deliberately not seeded. The internal channels
+ * are governed by permissions, and a row could be given to an outside
+ * organisation.
+ */
+async function seedDisclosureProfiles(): Promise<void> {
+  for (const profile of SYSTEM_DISCLOSURE_PROFILES) {
+    const record = await prisma.disclosureProfile.upsert({
+      where: { code: profile.code },
+      create: {
+        code: profile.code,
+        label: profile.label,
+        description: profile.description,
+        isSystem: true,
+      },
+      update: {
+        label: profile.label,
+        description: profile.description,
+        isSystem: true,
+      },
+    });
+
+    await prisma.disclosureField.deleteMany({ where: { profileId: record.id } });
+    await prisma.disclosureField.createMany({
+      data: profile.fields.map((fieldPath) => ({
+        profileId: record.id,
+        fieldPath,
+      })),
+    });
+  }
+  console.log(`  disclosure profiles: ${SYSTEM_DISCLOSURE_PROFILES.length}`);
 }
 
 /**
@@ -554,6 +603,7 @@ async function main(): Promise<void> {
   await seedDemoOrganisation();
   await seedDemoDesignations();
   await seedSystemSettings();
+  await seedDisclosureProfiles();
   await seedFeeTypes();
 
   await seedAdministrator();

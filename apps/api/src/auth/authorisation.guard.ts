@@ -8,11 +8,17 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 
+import { ApiClientAuthService } from '../api-client/api-client-auth.service.js';
+import { resolveRequestId } from '../common/error-response.js';
 import { PermissionService } from './permission.service.js';
 import {
   PERMISSION_METADATA_KEY,
   PUBLIC_METADATA_KEY,
 } from './require-permission.decorator.js';
+import {
+  SCOPE_METADATA_KEY,
+  type ExternalRequest,
+} from './require-scope.decorator.js';
 import { SessionService, type SessionUser } from './session.service.js';
 
 export const SESSION_COOKIE_NAME = 'nurtw_session';
@@ -33,9 +39,18 @@ export interface AuthenticatedRequest extends Request {
  *
  * ARCHITECTURE.md Decision 9.9 — evaluated before the controller runs.
  * Decision 9.2 — the check names a permission, never a role.
- * Decision 9.8 — this guard authenticates *sessions* only. An API token can
- * never satisfy it; external clients are authorised by scope through a separate
- * mechanism sharing no storage.
+ * Decisions 9.1 and 9.8 — a route is internal or external, never both, and
+ * the two credentials never cross:
+ *
+ * - A route carrying `@RequireScope` is **external**. It is authenticated by
+ *   API token alone, through `ApiClientAuthService`. The session cookie is not
+ *   read, so a signed-in officer cannot reach it with their session.
+ * - Every other route is **internal**. It is authenticated by session alone.
+ *   The `Authorization` header is not read, so an API token can never satisfy
+ *   a permission.
+ *
+ * One guard decides which path a route takes, so that "denies by default"
+ * stays a statement about one place.
  */
 @Injectable()
 export class AuthorisationGuard implements CanActivate {
@@ -43,6 +58,7 @@ export class AuthorisationGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly sessions: SessionService,
     private readonly permissions: PermissionService,
+    private readonly apiClients: ApiClientAuthService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -53,6 +69,17 @@ export class AuthorisationGuard implements CanActivate {
       PUBLIC_METADATA_KEY,
       [handler, controller],
     );
+    const scope = this.reflector.getAllAndOverride<string | undefined>(
+      SCOPE_METADATA_KEY,
+      [handler, controller],
+    );
+
+    // Checked before `@Public()`, so a scope route marked public by mistake
+    // is refused instead of opened.
+    if (scope) {
+      return this.authenticateExternal(context, scope, isPublic === true);
+    }
+
     if (isPublic) {
       return true;
     }
@@ -106,6 +133,45 @@ export class AuthorisationGuard implements CanActivate {
       throw new ForbiddenException();
     }
 
+    return true;
+  }
+
+  /**
+   * The external path. A token is the only credential considered.
+   *
+   * A route that declares a scope together with a permission, or with
+   * `@Public()`, has been declared wrongly. It is refused outright: guessing
+   * which was meant would be a guess about who may call it.
+   */
+  private async authenticateExternal(
+    context: ExecutionContext,
+    scope: string,
+    isPublic: boolean,
+  ): Promise<boolean> {
+    const permission = this.reflector.getAllAndOverride<string | undefined>(
+      PERMISSION_METADATA_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    if (isPublic || permission) {
+      throw new ForbiddenException();
+    }
+
+    const request = context.switchToHttp().getRequest<ExternalRequest>();
+    const supplied = request.headers['x-request-id'];
+    const route = (request.route as { path?: string } | undefined)?.path;
+
+    request.apiClient = await this.apiClients.authenticate(
+      {
+        authorization: request.headers.authorization,
+        ipAddress: request.ip,
+        // The route pattern, never the URL: a query string is not logged.
+        endpoint: `${request.method} ${route ?? request.path}`,
+        requestId: resolveRequestId(
+          Array.isArray(supplied) ? supplied[0] : supplied,
+        ),
+      },
+      scope,
+    );
     return true;
   }
 

@@ -12,6 +12,7 @@ import {
   PERMISSION_METADATA_KEY,
   PUBLIC_METADATA_KEY,
 } from '../auth/require-permission.decorator.js';
+import { SCOPE_METADATA_KEY } from '../auth/require-scope.decorator.js';
 import {
   DOCUMENTED_METADATA_KEY,
   type RouteDocumentation,
@@ -25,6 +26,8 @@ export interface DiscoveredRoute {
   handler: string;
   isPublic: boolean;
   permission: string | null;
+  /** Set on an external route: authenticated by API token, not by session. */
+  scope: string | null;
   /** The status `@HttpCode` sets, where the handler sets one. */
   httpCode: number | null;
   documentation: RouteDocumentation | null;
@@ -99,6 +102,14 @@ export function discoverRoutes(
             | string
             | undefined) ??
           (Reflect.getMetadata(PERMISSION_METADATA_KEY, metatype) as
+            | string
+            | undefined) ??
+          null,
+        scope:
+          (Reflect.getMetadata(SCOPE_METADATA_KEY, handler) as
+            | string
+            | undefined) ??
+          (Reflect.getMetadata(SCOPE_METADATA_KEY, metatype) as
             | string
             | undefined) ??
           null,
@@ -234,7 +245,19 @@ export function buildOpenApiDocument(
         content: { 'application/json': { schema: ERROR_SCHEMA } },
       };
     }
-    if (!route.isPublic) {
+    if (route.scope) {
+      responses['401'] ??= {
+        description:
+          'No valid API token was presented, the organisation is not active, or the ' +
+          'request came from an address outside its allowed ranges. The response does ' +
+          'not say which.',
+        content: { 'application/json': { schema: ERROR_SCHEMA } },
+      };
+      responses['403'] ??= {
+        description: `The organisation does not hold the scope ${route.scope}.`,
+        content: { 'application/json': { schema: ERROR_SCHEMA } },
+      };
+    } else if (!route.isPublic) {
       responses['401'] ??= {
         description: 'No valid session cookie was presented.',
         content: { 'application/json': { schema: ERROR_SCHEMA } },
@@ -278,7 +301,11 @@ export function buildOpenApiDocument(
           }
         : {}),
       responses,
-      ...(route.isPublic ? { security: [] } : {}),
+      ...(route.scope
+        ? { security: [{ apiToken: [route.scope] }] }
+        : route.isPublic
+          ? { security: [] }
+          : {}),
     };
   }
 
@@ -309,6 +336,15 @@ export function buildOpenApiDocument(
             'Opaque session token issued by POST /auth/login and set as an httpOnly cookie. ' +
             'Revocation takes effect on the next request.',
         },
+        apiToken: {
+          type: 'http',
+          scheme: 'bearer',
+          description:
+            'An API token issued to an approved external organisation, sent as ' +
+            '`Authorization: Bearer <token>` and nowhere else. It authenticates only the ' +
+            'routes that name a scope. It is shown once, when issued or rotated, and ' +
+            'expires after 90 days.',
+        },
       },
       schemas: { Error: ERROR_SCHEMA },
     },
@@ -326,9 +362,11 @@ function buildDescription(
   );
 
   parts.push(
-    route.isPublic
-      ? '**Authentication:** none. This route is deliberately public.'
-      : `**Permission required:** \`${route.permission ?? 'unknown'}\`.`,
+    route.scope
+      ? `**Scope required:** \`${route.scope}\`. Authenticated by API token.`
+      : route.isPublic
+        ? '**Authentication:** none. This route is deliberately public.'
+        : `**Permission required:** \`${route.permission ?? 'unknown'}\`.`,
   );
 
   return parts.join('\n\n');

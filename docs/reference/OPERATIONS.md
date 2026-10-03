@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Last revised:** 9 September 2026
+**Last revised:** 3 October 2026
 
 ---
 
@@ -426,6 +426,62 @@ SELECT l.letter_reference, l.superseded_at, n.letter_reference AS replaced_by,
   JOIN vehicle_letter AS n ON n.replaces_letter_id = l.id
  ORDER BY l.superseded_at DESC;
 ```
+
+### Admitting an external organisation
+
+From **API access** on the dashboard, or `/api/v1/api-clients`. Three acts, in this order:
+
+1. **Register** it (`api_client.manage`): the organisation, its purpose, its technical
+   contact, and any address ranges it will call from. It is pending and can do nothing.
+2. **Approve** it (`api_client.manage`): choose a disclosure profile and only the scopes its
+   purpose needs, and record the data-sharing agreement's reference and signing date. No
+   agreement, no approval (`QUESTIONS.md` EXT-07). The approving officer is recorded.
+3. **Issue a token** (`api_token.manage`). It is shown once. Copy it and pass it to the
+   technical contact by a secure route. The System keeps only a hash, so nobody can show it
+   again: a lost token is replaced, never recovered.
+
+The organisation sends the token as `Authorization: Bearer <token>` and in no other way. A
+token in a URL or a cookie is ignored, and is redacted from the logs.
+
+### Replacing and revoking API tokens
+
+- A token lasts 90 days (`api_token.expiry_days`). From 14 days before it expires
+  (`api_token.reminder_days`), the API access screen flags it. Contact the organisation,
+  replace the token, and pass the new one on. The System sends no email yet
+  (`QUESTIONS.md` EXT-10).
+- **Replace** keeps the old token working for the overlap chosen: none, 1 hour, 24 hours, or
+  7 days (EXT-11). Each token shows when it was last used, so you can see when the
+  organisation has switched.
+- **Revoke** a token that may have leaked. It stops on the next request.
+- **Suspend** the organisation to refuse its tokens while something is looked into.
+  Reinstating it restores the same tokens. **Revoke access** is final and revokes every
+  token it holds.
+
+### Finding why an external request was refused
+
+The organisation is told only `401` or `403`, with a request id. The reason is in
+`api_request_log`, which never holds the token:
+
+```sql
+SELECT created_at, endpoint, scope, result_class, status_code, ip_address
+  FROM api_request_log
+ WHERE request_id = '<request id the organisation quotes>'
+    OR client_id = '<client id>'
+ ORDER BY created_at DESC
+ LIMIT 50;
+```
+
+`result_class` is one of `NO_TOKEN`, `MALFORMED_TOKEN`, `UNKNOWN_TOKEN`, `TOKEN_REVOKED`,
+`TOKEN_REPLACED`, `TOKEN_EXPIRED`, `CLIENT_NOT_ACTIVE`, `ADDRESS_NOT_ALLOWED`, or
+`SCOPE_DENIED`. A request carrying no token the System issued has no `client_id`.
+
+### Changing what a disclosure profile discloses
+
+The four standard profiles of PRD §15 cannot be changed. Compose a new profile under
+**Disclosure profiles**, then move organisations onto it, or amend a profile the Union
+composed. A change of fields applies to every organisation holding the profile from its next
+request, and the audit event records how many that was. A profile can name only fields an
+outside organisation may be told, and one still held by an organisation cannot be withdrawn.
 
 ### Finding work approved by the officer who recorded it
 

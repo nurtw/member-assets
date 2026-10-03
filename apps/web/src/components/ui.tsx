@@ -132,6 +132,11 @@ export function StatusChip({ status }: { status: string }) {
     OWED: "bg-[var(--verdict-caution-surface)] text-[var(--verdict-caution)] border-[var(--verdict-caution)]/30",
     IN_ARREARS: "bg-[var(--verdict-deny-surface)] text-[var(--verdict-deny)] border-[var(--verdict-deny)]/30",
     NOT_DUE: "bg-[var(--surface-muted)] text-black/70 border-[var(--border-subtle)]",
+    // API clients and tokens (item 11). A revoked organisation or token is
+    // refused for good. A token being replaced still works, until it stops.
+    REVOKED: "bg-[var(--verdict-deny-surface)] text-[var(--verdict-deny)] border-[var(--verdict-deny)]/30",
+    CURRENT: "bg-[var(--verdict-affirm-surface)] text-[var(--verdict-affirm)] border-[var(--verdict-affirm)]/30",
+    RETIRING: "bg-[var(--verdict-caution-surface)] text-[var(--verdict-caution)] border-[var(--verdict-caution)]/30",
   };
 
   return (
