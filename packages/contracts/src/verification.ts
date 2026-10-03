@@ -9,8 +9,11 @@
  */
 
 import {
+  isValidIdentifier,
   tryNormalizePlateNumber,
-  type NotVerifiedReason,
+  type DisclosedReason,
+  type MembershipLookup,
+  type MembershipNotVerifiedReason,
   type ProjectedVerification,
   type VerificationCriteria,
 } from '@nurtw/domain';
@@ -64,8 +67,12 @@ export interface InternalVerification {
   verifiedAt: string;
   criteria: VerificationCriteria;
   matched: boolean;
-  /** Empty when matched; otherwise every reason, the headline first. */
-  reasons: readonly NotVerifiedReason[];
+  /**
+   * Empty when matched; otherwise every reason, the headline first. Before a
+   * caller without `vehicle.declare` over the vehicle, `NOT_DECLARED` reads
+   * `RECORD_INCOMPLETE` (VEH-28).
+   */
+  reasons: readonly DisclosedReason[];
   /** Requirement 11.1 — the exact matter verified. */
   statement: string;
   /** PRD §22 — what a match does not establish. */
@@ -77,4 +84,43 @@ export interface InternalVerification {
    * never change whether a vehicle verifies.
    */
   dues: VerificationDues;
+}
+
+/**
+ * `POST /verifications/membership` (item 24). The number printed on a card:
+ * its card number or its membership number, which share one format. A
+ * mistyped number fails its check character here, before any lookup.
+ */
+export const verifyMembershipSchema = z.object({
+  number: z
+    .string()
+    .trim()
+    .min(1, 'A card or membership number is required.')
+    .max(32, 'A card or membership number may not exceed 32 characters.')
+    .refine(
+      isValidIdentifier,
+      'Enter the number exactly as printed. This one fails its check character.',
+    ),
+});
+export type VerifyMembershipInput = z.infer<typeof verifyMembershipSchema>;
+
+/** `POST /verifications/membership` — what an internal channel is told. */
+export interface InternalMembershipVerification {
+  /** The request id, under which the check is recorded in the audit trail. */
+  reference: string;
+  verifiedAt: string;
+  /** What the number turned out to be; `null` when it answered to nothing. */
+  foundAs: MembershipLookup | null;
+  matched: boolean;
+  /** Empty when matched; otherwise every reason, the headline first. */
+  reasons: readonly MembershipNotVerifiedReason[];
+  statement: string;
+  limitation: string;
+  /** The record, through the single projection function (Decision 5.3). */
+  fields: ProjectedVerification;
+  /**
+   * The member's fee, beside the verdict (Requirement 27.8); `null` without
+   * `member.read` over the member.
+   */
+  dues: { member: MemberDues | null };
 }

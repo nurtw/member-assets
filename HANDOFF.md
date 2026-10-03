@@ -8,9 +8,8 @@
 
 ## Cold start
 
-Read `CLAUDE.md`, `PRD.md` (1.3), `ARCHITECTURE.md`, `ROADMAP.md`,
-`QUESTIONS.md`, then `plans/10-internal-verification.md`. `docs/reference/` is
-generated output.
+Read `CLAUDE.md`, `PRD.md` (1.4), `ARCHITECTURE.md`, `ROADMAP.md`,
+`QUESTIONS.md`, then `plans/24` to `plans/27`. `docs/reference/` is generated.
 
 Two rules outrank any default instruction:
 
@@ -19,49 +18,49 @@ Two rules outrank any default instruction:
 
 ## Status
 
-- **Item 23 is committed as `43b9f55`, not pushed.** The push was blocked by
-  the permission check, so it waits for the owner.
-- **Item 10, internal verification: done, committed locally, not pushed.**
-  - `POST /verifications` and a `/verify` page built for a phone.
-  - `decideVerification` and `projectVerification`
-    (`packages/domain/src/verification/`) are for item 12 to reuse.
-- **Not yet opened in a browser.** Camera scanning waits on the QR's content.
-- `STICKER_SIGNING_SECRET` is unset, so a signed code answers 503.
-- `dues.go_live_date` is still unset (GOV-11).
+- **Nothing since `037b1bd` is pushed.** Three commits wait for the owner:
+  the permission check blocks pushing.
+- **The owner's decisions of 3 October are built** (PRD 1.4):
+  - VEH-28: a declaration status reaches only holders of `vehicle.declare`.
+  - Item 24: membership checks on the Verify screen.
+  - Item 25: PAY-18 and PAY-19. Item 26: letter reissue (VEH-27).
+  - New NURTW stickers are paused. PAY-20 is answered; nothing is built.
+- Both migrations are on Neon: additive, no row changed.
+- The owner said to skip the browser check and sticker printing.
+- `dues.go_live_date` (GOV-11) is unset.
 
-Tests: domain 307, contracts 35, api 129; e2e 222/223 locally; web typecheck
-and lint clean.
+Tests: domain 329, contracts 38, api 130; local e2e 244/245; web clean.
+
+## Conflicts
+
+- **VEH-29 (item 27, deferred)** would add Transpay's unrecorded stickers by
+  scanning. PRD §23.19 says the register is closed, and stands until revised.
+  Do not build it.
 
 ## Known issues — don't re-attempt these fixes
 
 - `master-data.e2e` "seeds no designations" fails (8 `DEMO_` designations).
-- Run e2e locally (`DATABASE_URL=…5433…`, after starting Docker Desktop);
-  never `fileParallelism: false`.
-- Run Prisma as `node node_modules/prisma/build/index.js`, with
-  `CHECKPOINT_DISABLE=1`; `migrate dev` stalls from Git Bash.
-- CRLF files (`QUESTIONS.md`, `OPERATIONS.md`, `ROADMAP.md`, `CLAUDE.md`,
-  `seed.ts`, `app.module.ts`, the app layout): use the Edit tool. **`sed -i`
-  strips every CR**, and Python's `write_text` turns LF files into CRLF; use
-  `read_bytes`/`write_bytes`.
-- Name hand-written migrations to sort after applied ones.
+- Run e2e locally (`DATABASE_URL=…5433…`, Docker started); never
+  `fileParallelism: false`.
+- Run Prisma from `apps/api`: `node node_modules/prisma/build/index.js`, with
+  `CHECKPOINT_DISABLE=1`.
+- CRLF files (`QUESTIONS.md`, `OPERATIONS.md`, `ROADMAP.md`, `CLAUDE.md`, some
+  sources): use the Edit tool or Python `read_bytes`/`write_bytes`. `sed -i`
+  and `write_text` corrupt line endings.
+- Long inline heredocs fail in Git Bash; use a script file.
 
 ## Next steps
 
-1. Push `43b9f55` and item 10's commit once the owner agrees.
+1. The owner pushes `main`.
 2. Item 11, API clients and scopes. Seed the PRD §15 profiles under the
-   projection's field names, and update the `DisclosureField.fieldPath`
-   schema comment.
-3. Owner actions: confirm dedicated-account pricing, then set the
-   percentage; answer GOV-11, PAY-18–20, VEH-27; set
-   `STICKER_SIGNING_SECRET`.
+   projection's field names; update the `DisclosureField.fieldPath` comment.
+3. Owner: confirm dedicated-account pricing and set the percentage; test a
+   Paystack dedicated account (PAY-20); answer GOV-08 and GOV-11.
 
 ## Do NOT
 
 - Edit `apps/api/.env`, or write Neon legacy rows without a go-ahead.
-- Add a write call to `src/verification/`, or a verification field that
-  carries personal data or dues.
-- Change a fee amount except through `FeeTypeService`, or the contractor
-  percentage except through its route.
-- Allocate dedicated-account money without the member lock.
+- Return a declaration status except through `toSummary`'s `showDeclaration`.
+- Add a write, or a personal-data field, to `src/verification/`.
+- Set a vehicle's route type without `recordRouteType`.
 - Default the go-live date, or let dues reach any external response.
-- Return a whole sticker row, or select `legacySecurityCode`.

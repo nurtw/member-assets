@@ -225,9 +225,17 @@ export type DismissDisputeInput = z.infer<typeof dismissDisputeSchema>;
 export interface VehicleSummary {
   id: string;
   plateNumberDisplay: string;
-  status: string;
-  /** `null` for an `ON_RECORD` vehicle — never declared (revision 1.2, Decision 6.5). */
-  declaredAt: string | null;
+  /**
+   * The declaration status. **Present only for a caller holding
+   * `vehicle.declare` over this vehicle** (`QUESTIONS.md` VEH-28); absent
+   * for everyone else, never blanked or guessed.
+   */
+  status?: string;
+  /**
+   * `null` for an `ON_RECORD` vehicle — never declared (revision 1.2,
+   * Decision 6.5). Present only when `status` is.
+   */
+  declaredAt?: string | null;
   isLegacyImport: boolean;
   vehicleCategory: { id: string; code: string; label: string } | null;
   /** `null` only for a legacy record not yet given one (Requirement 9.9). */

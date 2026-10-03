@@ -150,11 +150,13 @@ export {
   lagosMonthLabel,
   levySchedule,
   membershipCover,
+  routeTypeInForce,
   type DuesStatus,
   type LevyMonth,
   type LevySchedule,
   type MembershipCover,
   type MembershipPayment,
+  type RouteTypeChange,
 } from './payments/dues.js';
 
 export {
@@ -217,6 +219,8 @@ export {
   VERIFICATION_CRITERIA,
   VERIFICATION_LIMITATION,
   decideVerification,
+  discloseReasons,
+  type DisclosedReason,
   type NotVerifiedReason,
   type VerificationCriteria,
   type VerificationFacts,
@@ -235,3 +239,14 @@ export {
   type VerificationFieldTier,
   type VerificationValues,
 } from './verification/projection.js';
+
+export {
+  MEMBERSHIP_LIMITATION,
+  MEMBERSHIP_MATCH_STATEMENT,
+  MEMBERSHIP_NOT_VERIFIED_REASONS,
+  decideMembershipVerification,
+  type MembershipFacts,
+  type MembershipLookup,
+  type MembershipNotVerifiedReason,
+  type MembershipVerdict,
+} from './verification/membership.js';

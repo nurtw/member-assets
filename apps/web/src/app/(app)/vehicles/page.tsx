@@ -28,6 +28,10 @@ const STATUSES = [
  */
 export default function VehiclesPage() {
   const { holds } = useSession();
+  // VEH-28 — the declaration status is for holders of vehicle.declare alone.
+  // The API leaves it off every row the officer may not see it for; the
+  // filter and the two columns go too, rather than sit empty.
+  const seesDeclarations = holds("vehicle.declare");
   const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -38,7 +42,7 @@ export default function VehiclesPage() {
   }, [q]);
 
   const params = new URLSearchParams();
-  if (status) params.set("status", status);
+  if (status && seesDeclarations) params.set("status", status);
   if (debouncedQ) params.set("q", debouncedQ);
   const queryString = params.toString();
 
@@ -59,9 +63,9 @@ export default function VehiclesPage() {
             Vehicles
           </h1>
           <p className="mt-1 text-sm text-black/60">
-            Vehicles within your area of responsibility, declared and on
-            record. A declaration is never created by a verification enquiry —
-            only through this screen.
+            {seesDeclarations
+              ? "Vehicles within your area of responsibility, declared and on record. A declaration is never created by a verification enquiry — only through this screen."
+              : "Vehicles within your area of responsibility."}
           </p>
         </div>
         {holds("vehicle.declare") ? (
@@ -87,22 +91,26 @@ export default function VehiclesPage() {
           className="max-w-56"
         />
 
-        <label htmlFor="status" className="text-sm font-medium">
-          Status
-        </label>
-        <Select
-          id="status"
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-          className="max-w-56"
-        >
-          <option value="">All</option>
-          {STATUSES.map((value) => (
-            <option key={value} value={value}>
-              {value.replace(/_/g, " ")}
-            </option>
-          ))}
-        </Select>
+        {seesDeclarations ? (
+          <>
+            <label htmlFor="status" className="text-sm font-medium">
+              Status
+            </label>
+            <Select
+              id="status"
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+              className="max-w-56"
+            >
+              <option value="">All</option>
+              {STATUSES.map((value) => (
+                <option key={value} value={value}>
+                  {value.replace(/_/g, " ")}
+                </option>
+              ))}
+            </Select>
+          </>
+        ) : null}
       </div>
 
       {apiError ? (
@@ -117,7 +125,7 @@ export default function VehiclesPage() {
           <p className="mt-1 text-sm text-black/55">
             {status || debouncedQ
               ? "No vehicle in your area of responsibility matches that search."
-              : "Vehicles recorded or declared in your area of responsibility will appear here."}
+              : "Vehicles in your area of responsibility will appear here."}
           </p>
         </div>
       ) : (
@@ -130,8 +138,12 @@ export default function VehiclesPage() {
                 <th className="px-4 py-2.5 font-semibold">Route</th>
                 <th className="px-4 py-2.5 font-semibold">Organisation</th>
                 <th className="px-4 py-2.5 font-semibold">Driver</th>
-                <th className="px-4 py-2.5 font-semibold">Declared</th>
-                <th className="px-4 py-2.5 font-semibold">Status</th>
+                {seesDeclarations ? (
+                  <>
+                    <th className="px-4 py-2.5 font-semibold">Declared</th>
+                    <th className="px-4 py-2.5 font-semibold">Status</th>
+                  </>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -167,14 +179,26 @@ export default function VehiclesPage() {
                       ? `${vehicle.declaredByMember.surname}, ${vehicle.declaredByMember.firstName}`
                       : "—"}
                   </td>
-                  <td className="px-4 py-3 text-black/70">
-                    {vehicle.declaredAt
-                      ? new Date(vehicle.declaredAt).toLocaleDateString("en-GB")
-                      : "Not yet declared"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusChip status={vehicle.status} />
-                  </td>
+                  {seesDeclarations ? (
+                    <>
+                      {/* A row outside the officer's declare scope carries
+                          neither field: a dash, never "not declared". */}
+                      <td className="px-4 py-3 text-black/70">
+                        {vehicle.status === undefined
+                          ? "—"
+                          : vehicle.declaredAt
+                            ? new Date(vehicle.declaredAt).toLocaleDateString("en-GB")
+                            : "Not yet declared"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {vehicle.status ? (
+                          <StatusChip status={vehicle.status} />
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </>
+                  ) : null}
                 </tr>
               ))}
             </tbody>

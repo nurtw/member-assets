@@ -189,7 +189,9 @@ an anomaly in the reconciliation report.
 - **Legacy barcodes are imported unattached and resolve only once reattached** (PRD §9A,
   revision 1.2, superseding "fully equivalent" in §26.4). They are millisecond epoch
   timestamps, forgeable by inspection. Transpay has stopped issuing, so **the register is
-  closed** at the export's 2,408 barcodes, and nothing is ever added to it. Reattachment
+  closed** at the export's 2,408 barcodes, and nothing is ever added to it. (The owner has
+  since asked for a way to add Transpay's unrecorded stock by scanning, deferred as VEH-29.
+  Until it is taken up and the PRD revised, the register stays closed.) Reattachment
   therefore requires all four of the following, with no override:
   - the barcode is on the imported register
   - it is presented for the plate the register records for it
@@ -572,7 +574,11 @@ record the same plate at once. Preserve it too.
   audited with its `AttachmentRefusalReason`, including the three the service decides
   before the domain function can run.
 - **Only the legacy import writes `legacyBarcode`.** The register is closed (VEH-21), and
-  no API route can add to it.
+  no API route can add to it. `plans/27-transpay-stock-intake.md` holds the deferred
+  direction to change that; do not build it before the owner takes it up.
+- **New NURTW stickers are paused** (VEH-20, 3 October 2026). The onboarding screen offers
+  reattachment only, behind `NEW_STICKERS_IN_USE` in `onboarding-section.tsx`. The API
+  path stays built.
 - **`legacySecurityCode` is never selected** (Requirement 9A.5). Sticker responses go
   through `STICKER_RESPONSE` in `sticker.service.ts`, an explicit select. Never return a
   whole sticker row.
@@ -595,7 +601,10 @@ record the same plate at once. Preserve it too.
   sticker. Signature lines stay blank until CARD-07.
 - Text drawn with the standard fonts goes through `encodable` (`pdf/text.ts`), or a
   character outside WinAnsi throws. The card template predates it and has the same gap.
-- Reissuing a letter after a change is open at VEH-27. Do not build it before the answer.
+- **A letter is never rewritten; it is reissued** (VEH-27, item 26).
+  `POST /vehicles/:id/letter/reissue` needs `sticker.attach` over the vehicle and a reason.
+  It writes a new letter under a new reference and marks the old one superseded. Only a
+  letter with `supersededAt` null downloads.
 
 ### The dues schedule (item 22)
 
@@ -613,8 +622,14 @@ record the same plate at once. Preserve it too.
   shows them beside a scan result through `DuesService`, after its own authorisation.
 - **The go-live date is the `dues.go_live_date` setting**, unset until GOV-11. A migrated
   member's fee has not started until then. Do not default it.
-- Open and built literally: PAY-18 (membership paid early, or after a gap) and PAY-19
-  (when a levy stops; route-type change).
+- **A fee paid while covered extends the cover** from its end; a lapse owes one fee
+  (PAY-18, item 25).
+- **The levy stops after the month of retirement**, and **each month is priced at the route
+  type the vehicle had on its 1st** (PAY-19, item 25).
+  - `vehicle.retiredAt` is stamped with the move to `RETIRED`.
+  - `vehicle_route_type_change` is append-only. Anything that sets a vehicle's route type
+    must go through `VehicleService.recordRouteType`, in the same transaction, or past
+    months are repriced.
 
 ### Dedicated accounts (item 23)
 
@@ -630,7 +645,9 @@ record the same plate at once. Preserve it too.
 - **The contractor percentage is changed only through
   `PUT /payments/settlement/dedicated-percentage`**, which updates the subaccount at
   Paystack first. It ships unset (PAY-11), and assignment is refused until it is set.
-- Paystack is sent only the email, names, and phone. No BVN is collected (PAY-20, open).
+- Paystack is sent only the email, names, and phone. No BVN is collected. PAY-20: only if
+  a Paystack test shows it is required, and then it is passed straight through and never
+  stored or logged.
 - The hourly held-credit sweep does not run under `NODE_ENV=test`; suites call `sweep()`.
 
 ### Internal verification (item 10)
@@ -641,7 +658,7 @@ record the same plate at once. Preserve it too.
   - A combined check also needs the sticker's own vehicle to carry the presented plate.
 
   Item 12 must reuse this rule and map every non-match to the generic negative. Only the
-  internal channels show the reasons.
+  internal channels show the reasons, through `discloseReasons`.
 - **`projectVerification` is the only way a field reaches a verification response**
   (Decision 5.3).
   - Its catalogue is closed. Each field is external-admissible or internal-only, and the
@@ -658,6 +675,28 @@ record the same plate at once. Preserve it too.
   `verification.perform` anywhere.
   - The vehicle link and the levy need `vehicle.read` over the vehicle.
   - The member and their fee need `member.read` over the member.
+  - The declaration status needs `vehicle.declare` over the vehicle (below).
+- **Membership checks** (item 24) use `decideMembershipVerification` and
+  `POST /verifications/membership`, under `verification.membership`. The holder's name is
+  shown to every officer who may run the check, because comparing it with the card is the
+  check. Item 12's membership endpoint must reuse the rule.
+
+### Who sees a declaration status (VEH-28)
+
+**Only a holder of `vehicle.declare` over the vehicle**, by the owner's direction of
+3 October 2026. This holds on every route and screen, not only the Verify page.
+
+- `VehicleSummary.status` and `declaredAt` are optional. `VehicleService.toSummary` takes
+  `showDeclaration` and leaves both out otherwise. Never return them any other way.
+- On a verification, `declaration_status` is permitted only then, and `NOT_DECLARED` reads
+  `RECORD_INCOMPLETE` for everyone else. The audit trail keeps the true reasons.
+- Nothing may give the status away indirectly:
+  - A `?status=` filter matches only vehicles whose status the caller may see.
+  - The vehicle list is ordered by last change, never by declaration date.
+  - Changing a status (`setStatus`, `dismissDispute`) needs `vehicle.declare` as well.
+  - `declareRecorded` checks the declarer's scope before it looks at the status.
+- A screen keys everything on the status being present. An absent status shows nothing; it
+  never shows "not declared".
 
 ### Notes that will bite you otherwise
 

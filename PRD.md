@@ -4,9 +4,9 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 and 1.3 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.3
-**Last revised:** 26 September 2026
+1.2 to 1.4 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.4
+**Last revised:** 3 October 2026
 
 ---
 
@@ -84,6 +84,7 @@ of this document approved by the Union, not a plan-level decision.
 |---|---|---|---|
 | 1.2 | 22 September 2026 | Paid onboarding, with legacy stickers unattached until reattached (§9A). Payments through Paystack (§27). An external vehicle total that counts only vehicles both onboarded and declared (§13). | Direction relayed by the project owner from NURTW (`QUESTIONS.md` VEH-13, PAY-01), approved by the project owner on 22 September 2026. No Union official is named (PAY-09). |
 | 1.3 | 26 September 2026 | Recording a vehicle on record, separate from declaring it, and a Field enumerator role (Requirement 9.7, §16). Vehicle owner details and route type (Requirements 9.8, 9.9). Registration flows from member to vehicle (Requirement 9.10). The levy rises to ₦7,000 and is priced by route type (§27). | The project owner's answers following a call with Mr Timothy (`QUESTIONS.md` VEH-23 to VEH-26, MIG-04, MIG-07, PAY-14 to PAY-17), approved by the project owner on 26 September 2026. |
+| 1.4 | 3 October 2026 | A vehicle's declaration status is shown only to holders of `vehicle.declare` (Requirement 9A.1). A vehicle letter may be reissued (Requirement 9A.6). A membership fee paid early extends cover; the levy stops after retirement and follows the route type held each month (Requirement 27.13). See §23.22. | The project owner (`QUESTIONS.md` VEH-27, VEH-28, PAY-18 to PAY-20), 3 October 2026. |
 
 ---
 
@@ -328,7 +329,9 @@ Determined 22 September 2026; see §23.19 and `QUESTIONS.md` VEH-13 to VEH-22.
 None implies another. The external vehicle total counts only vehicles that are both
 onboarded and declared (Requirement 13.5). Likewise, **the external API and the public page
 return a positive verification only for a vehicle that is both** (`QUESTIONS.md` VEH-22).
-The internal channels show every state.
+The internal channels show every state, with one exception (*revision 1.4*, VEH-28): **a
+vehicle's declaration status is shown only to holders of `vehicle.declare`**. Anyone else is
+told, at most, that the vehicle's record is not complete.
 
 **Requirement 9A.2 — onboarding.** A vehicle is onboarded when a sticker is attached to it
 following a payment of the onboarding fee that Paystack has confirmed (§27). For a vehicle
@@ -376,6 +379,10 @@ wording does not invalidate letters already issued.
   The lines stay blank until CARD-07 supplies them.
 - **No QR code.** A QR carrying the sticker's payload on paper could be photocopied onto a
   counterfeit sticker, defeating the substrate control of §26.4.
+- **Reissue** (*revision 1.4*, VEH-27). An officer holding `sticker.attach` may reissue the
+  letter, giving a reason, after a driver is linked or the vehicle moves unit. The new letter
+  is a fresh snapshot under a new reference. The one it replaces is kept as printed, marked
+  superseded, and no longer downloads.
 
 ---
 
@@ -855,6 +862,22 @@ Determined 26 September 2026 (`QUESTIONS.md` VEH-23 to VEH-26, MIG-04, MIG-07).
   the shared database only after the project owner has read its reconciliation report
   (Requirement 25.4, MIG-07).
 
+### 23.22 Declaration visibility, the letter, and the dues *(revision 1.4)*
+
+Determined 3 October 2026 (`QUESTIONS.md` VEH-27, VEH-28, PAY-18 to PAY-20).
+
+- **Declaration status is for declarers.** Only holders of `vehicle.declare` see whether a
+  vehicle is declared, on any screen or route. Others are told, at most, that a record is not
+  complete. Changing a declaration status needs `vehicle.declare` too, since the result would
+  reveal it (Requirement 9A.1, VEH-28).
+- **The vehicle letter may be reissued** by an officer holding `sticker.attach`, with a reason
+  (Requirement 9A.6, VEH-27).
+- **An early membership fee extends cover** from its end; a lapse owes one fee (PAY-18).
+- **The levy stops after the month of retirement**, and **each month keeps the route type of
+  its 1st** (PAY-19).
+- **A member's BVN** is asked for only if a Paystack test shows Paystack requires it for a
+  dedicated account. It is then passed straight to Paystack and never stored (PAY-20).
+
 ---
 
 ## 24. Canonical field names
@@ -1138,6 +1161,10 @@ it is first set.
   falls due on approval, or on the go-live date for a member migrated before it.
 - Nothing is owed for any earlier period. Legacy balances are neither honoured nor
   migrated. Unpaid dues accumulate from the start dates onwards.
+- *Revision 1.4* (PAY-18). **A membership fee paid while cover is running adds 12 months to
+  the end of it.** After a lapse, one fee is owed, and its year starts on the day it is paid.
+- *Revision 1.4* (PAY-19). **The levy stops after the month a vehicle is retired in**, and
+  **each month is priced at the route type the vehicle had on its 1st**.
 
 **Requirement 27.14 — refunds and receipts** (PAY-08).
 

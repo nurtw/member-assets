@@ -338,7 +338,8 @@ export default function ApplicationDetailPage() {
                   <span className="text-sm text-black/60">
                     {vehicle.routeType?.label ?? "No route type"}
                   </span>
-                  <StatusChip status={vehicle.status} />
+                  {/* VEH-28 — present only for a holder of vehicle.declare. */}
+                  {vehicle.status ? <StatusChip status={vehicle.status} /> : null}
                 </li>
               ))}
             </ul>

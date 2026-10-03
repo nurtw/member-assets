@@ -380,8 +380,13 @@ month paid within the hour of it falling due. The order dues are paid in is the
 ### Reviewing verifications
 
 Every check on the Verify screen writes one audit event, named after what the officer
-entered: `verification.plate`, `verification.sticker`, or `verification.combined`. The event
-records the outcome and every reason. Its request id is the reference the officer sees.
+entered: `verification.plate`, `verification.sticker`, `verification.combined`, or
+`verification.membership` for a card. The event records the outcome and every reason. Its
+request id is the reference the officer sees.
+
+The event always holds the true reasons. The officer's screen says a vehicle is not declared
+only to a holder of `vehicle.declare`; anyone else reads that its record is not complete
+(`QUESTIONS.md` VEH-28).
 
 A signed code that fails its signature writes `verification.invalid_signature` instead. That
 event records the code as entered, and no record was looked up for it.
@@ -404,7 +409,23 @@ SELECT after_value->>'scheme' AS scheme, count(*) FROM audit_event
 ```
 
 **Signed stickers need `STICKER_SIGNING_SECRET`.** Without it, a signed code answers 503 and
-is not recorded as a forgery. Plates and Transpay barcodes still verify.
+is not recorded as a forgery. Plates and Transpay barcodes still verify. New NURTW stickers
+are paused for now (`QUESTIONS.md` VEH-20), so the secret is not yet needed.
+
+### Reissuing a vehicle letter
+
+When a vehicle's details change after onboarding, for example a driver is linked or the
+vehicle moves unit, an officer holding `sticker.attach` reissues the letter from the
+vehicle's page, giving a reason (`QUESTIONS.md` VEH-27). The new letter has a new reference.
+The old one is kept exactly as printed and no longer downloads. Letters replaced this way:
+
+```sql
+SELECT l.letter_reference, l.superseded_at, n.letter_reference AS replaced_by,
+       n.reissue_reason
+  FROM vehicle_letter AS l
+  JOIN vehicle_letter AS n ON n.replaces_letter_id = l.id
+ ORDER BY l.superseded_at DESC;
+```
 
 ### Finding work approved by the officer who recorded it
 

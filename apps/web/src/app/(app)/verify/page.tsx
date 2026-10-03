@@ -1,13 +1,15 @@
 "use client";
 
 import type {
+  InternalMembershipVerification,
   InternalVerification,
   MemberDues,
   VehicleDues,
 } from "@nurtw/contracts";
 import {
   RECOGNISED_NOT_ATTACHED_COPY,
-  type NotVerifiedReason,
+  type DisclosedReason,
+  type MembershipNotVerifiedReason,
 } from "@nurtw/domain";
 import Link from "next/link";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
@@ -15,15 +17,16 @@ import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { day, naira } from "@/components/dues-panel";
 import { Button, ErrorNotice, StatusChip } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
+import { useSession } from "@/lib/session";
 
 /**
- * The officer verification portal (PRD §11, channels 1 and 2 — item 10).
+ * The officer verification portal (PRD §11, channels 1 and 2 — items 10 and
+ * 24): a vehicle by plate or sticker, and a membership card by its number.
  *
- * Built for a phone at the roadside (DESIGN.md §5): two large fields, one
- * button, and a verdict that dominates the screen. DESIGN.md §3 governs the
- * verdict: the word VERIFIED or NOT VERIFIED, a shape (a circle with a tick, an
- * octagon with a cross), and only then colour. Read in greyscale, it still says
- * which.
+ * Built for a phone at the roadside (DESIGN.md §5): large fields, one button,
+ * and a verdict that dominates the screen. DESIGN.md §3 governs the verdict:
+ * the word VERIFIED or NOT VERIFIED, a shape (a circle with a tick, an octagon
+ * with a cross), and only then colour. Read in greyscale, it still says which.
  *
  * Everything shown comes from the API's projection. The page holds no rule of
  * its own about what an officer may see; it explains what it is given.
@@ -51,8 +54,25 @@ const DECLARATION_SENTENCES: Record<string, string> = {
   ARCHIVED: "The vehicle's record is archived.",
 };
 
-/** Each reason in plain words, with the detail the result carries. */
-function explain(reason: NotVerifiedReason, fields: Fields): string {
+const MEMBER_STATUS_WORDS: Record<string, string> = {
+  PENDING: "awaiting approval",
+  SUSPENDED: "suspended",
+  CANCELLED: "cancelled",
+};
+
+const CARD_STATUS_WORDS: Record<string, string> = {
+  DRAFT: "not yet issued",
+  PENDING_APPROVAL: "not yet issued",
+  ISSUED: "issued but not yet handed over",
+  SUSPENDED: "suspended",
+  LOST: "reported lost",
+  REPLACED: "replaced by a newer card",
+  EXPIRED: "expired",
+  CANCELLED: "cancelled",
+};
+
+/** Each vehicle reason in plain words, with the detail the result carries. */
+function explain(reason: DisclosedReason, fields: Fields): string {
   switch (reason) {
     case "INVALID_CODE":
       return "This is not a valid NURTW sticker code. It may be forged, or it may have been misread. Check it again, or check the plate on its own.";
@@ -85,8 +105,35 @@ function explain(reason: NotVerifiedReason, fields: Fields): string {
         DECLARATION_SENTENCES[fields.declaration_status ?? ""] ??
         "The vehicle is not declared."
       );
+    case "RECORD_INCOMPLETE":
+      // VEH-28 — what an officer without vehicle.declare is told in place of
+      // the declaration status. It never says "declared".
+      return "This vehicle's record is not complete. Refer the member to their unit or branch office.";
     case "NOT_ONBOARDED":
       return "The vehicle has not been onboarded: no sticker has been attached to it.";
+  }
+}
+
+/** Each membership reason in plain words. */
+function explainMembership(
+  reason: MembershipNotVerifiedReason,
+  fields: Fields,
+): string {
+  switch (reason) {
+    case "NO_RECORD":
+      return "No NURTW card or membership answers to this number.";
+    case "MEMBER_NOT_ACTIVE":
+      return `The membership is ${
+        MEMBER_STATUS_WORDS[fields.membership_status ?? ""] ?? "not active"
+      }.`;
+    case "CARD_NOT_ACTIVE":
+      return `This card is ${
+        CARD_STATUS_WORDS[fields.card_status ?? ""] ?? "not active"
+      }.`;
+    case "CARD_EXPIRED":
+      return fields.card_expiry_date
+        ? `This card expired on ${day(fields.card_expiry_date)}.`
+        : "This card has expired.";
   }
 }
 
@@ -98,8 +145,15 @@ function time(iso: string): string {
   });
 }
 
-function VerdictPanel({ result }: { result: InternalVerification }) {
-  const matched = result.matched;
+function VerdictPanel({
+  matched,
+  statement,
+  lines,
+}: {
+  matched: boolean;
+  statement: string;
+  lines: string[];
+}) {
   return (
     <div
       role="status"
@@ -152,13 +206,13 @@ function VerdictPanel({ result }: { result: InternalVerification }) {
           {matched ? "VERIFIED" : "NOT VERIFIED"}
         </p>
       </div>
-      <p className="mt-4 text-base font-medium">{result.statement}</p>
-      {result.reasons.length > 0 ? (
+      <p className="mt-4 text-base font-medium">{statement}</p>
+      {lines.length > 0 ? (
         <ul className="mt-4 grid gap-2 border-t border-white/30 pt-4 text-base">
-          {result.reasons.map((reason) => (
-            <li key={reason} className="flex gap-2">
+          {lines.map((line) => (
+            <li key={line} className="flex gap-2">
               <span aria-hidden>•</span>
-              <span>{explain(reason, result.fields)}</span>
+              <span>{line}</span>
             </li>
           ))}
         </ul>
@@ -178,7 +232,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Facts({ fields }: { fields: Fields }) {
+function VehicleFacts({ fields }: { fields: Fields }) {
   if (Object.keys(fields).length === 0) {
     return null;
   }
@@ -211,7 +265,7 @@ function Facts({ fields }: { fields: Fields }) {
             <StatusChip status={fields.declaration_status} />
           </Fact>
         ) : null}
-        {fields.declaration_status ? (
+        {fields.plate_number ? (
           <Fact label="Onboarded">
             {fields.onboarded_at ? day(fields.onboarded_at) : "Not onboarded"}
           </Fact>
@@ -265,6 +319,62 @@ function Facts({ fields }: { fields: Fields }) {
   );
 }
 
+function MembershipFacts({ fields }: { fields: Fields }) {
+  if (Object.keys(fields).length === 0) {
+    return null;
+  }
+  return (
+    <section className="rounded-lg border border-[var(--border-subtle)] bg-white p-5">
+      <h2 className="text-base font-semibold">What the System holds</h2>
+      <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+        {fields.member_name ? (
+          <Fact label="Name">
+            <span className="font-semibold">{fields.member_name}</span>
+            {/* The name is shown so a genuine number on someone else's card
+                is caught. */}
+            <span className="mt-0.5 block text-sm text-black/60">
+              Check this against the name on the card.
+            </span>
+          </Fact>
+        ) : null}
+        {fields.membership_number ? (
+          <Fact label="Membership number">
+            <span className="font-mono">{fields.membership_number}</span>
+          </Fact>
+        ) : null}
+        {fields.membership_status ? (
+          <Fact label="Membership">
+            <StatusChip status={fields.membership_status} />
+          </Fact>
+        ) : null}
+        {fields.card_number ? (
+          <Fact label="Card">
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="font-mono">{fields.card_number}</span>
+              {fields.card_status ? (
+                <StatusChip status={fields.card_status} />
+              ) : null}
+            </span>
+          </Fact>
+        ) : null}
+        {fields.card_number ? (
+          <Fact label="Expires">
+            {fields.card_expiry_date
+              ? day(fields.card_expiry_date)
+              : "No expiry date"}
+          </Fact>
+        ) : null}
+        {fields.designation ? (
+          <Fact label="Designation">{fields.designation}</Fact>
+        ) : null}
+        {fields.organizational_unit ? (
+          <Fact label="Branch or unit">{fields.organizational_unit}</Fact>
+        ) : null}
+      </dl>
+    </section>
+  );
+}
+
 function levySentence(dues: VehicleDues): string {
   const months = dues.unpaidMonths.length;
   switch (dues.status) {
@@ -308,8 +418,14 @@ function membershipSentence(dues: MemberDues): string {
  * Dues, beside the verdict and never part of it (PRD Requirement 27.8,
  * PAY-05). The API includes them only within the officer's read scope.
  */
-function Dues({ dues }: { dues: InternalVerification["dues"] }) {
-  if (!dues.vehicle && !dues.member) {
+function Dues({
+  vehicle,
+  member,
+}: {
+  vehicle: VehicleDues | null;
+  member: MemberDues | null;
+}) {
+  if (!vehicle && !member) {
     return null;
   }
   return (
@@ -319,19 +435,19 @@ function Dues({ dues }: { dues: InternalVerification["dues"] }) {
         Shown to NURTW staff only. Dues never change the verification result.
       </p>
       <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-        {dues.vehicle ? (
+        {vehicle ? (
           <Fact label="Monthly levy">
             <span className="flex flex-wrap items-center gap-2">
-              <StatusChip status={dues.vehicle.status} />
-              <span className="text-sm">{levySentence(dues.vehicle)}</span>
+              <StatusChip status={vehicle.status} />
+              <span className="text-sm">{levySentence(vehicle)}</span>
             </span>
           </Fact>
         ) : null}
-        {dues.member ? (
+        {member ? (
           <Fact label="Membership fee">
             <span className="flex flex-wrap items-center gap-2">
-              <StatusChip status={dues.member.status} />
-              <span className="text-sm">{membershipSentence(dues.member)}</span>
+              <StatusChip status={member.status} />
+              <span className="text-sm">{membershipSentence(member)}</span>
             </span>
           </Fact>
         ) : null}
@@ -341,9 +457,9 @@ function Dues({ dues }: { dues: InternalVerification["dues"] }) {
 }
 
 /** The API's errors are generic (Requirement 14.3), so the screen explains them. */
-function explainError(error: ApiError): ApiError {
+function explainError(error: ApiError, what: "vehicles" | "cards"): ApiError {
   const message: Record<number, string> = {
-    403: "Your account cannot verify vehicles. Ask an administrator for the verification permission.",
+    403: `Your account cannot verify ${what}. Ask an administrator for the verification permission.`,
     503: "Signed NURTW stickers cannot be checked yet, because the System's signing key is not configured. Check the plate on its own, and tell an administrator.",
   };
   return message[error.status]
@@ -356,7 +472,38 @@ function explainError(error: ApiError): ApiError {
     : error;
 }
 
-export default function VerifyPage() {
+const inputClass =
+  "w-full rounded-lg border border-[var(--border-subtle)] bg-white px-4 py-3 text-lg " +
+  "outline-none transition focus:border-[var(--nurtw-green)] focus:ring-2 focus:ring-[var(--nurtw-green)]/25";
+
+function FieldError({ message }: { message: string | undefined }) {
+  return message ? (
+    <p role="alert" className="text-sm font-medium text-[var(--verdict-deny)]">
+      {message}
+    </p>
+  ) : null;
+}
+
+function Reference({ reference, at }: { reference: string; at: string }) {
+  return (
+    <p className="font-mono text-xs text-black/55">
+      Reference {reference} · checked at {time(at)}
+    </p>
+  );
+}
+
+/** Puts the keyboard away so the verdict is what the officer sees. */
+function dismissKeyboard() {
+  (document.activeElement as HTMLElement | null)?.blur();
+}
+
+function showResult(region: HTMLDivElement | null) {
+  requestAnimationFrame(() =>
+    region?.scrollIntoView({ behavior: "smooth", block: "start" }),
+  );
+}
+
+function VehicleCheck() {
   const [plate, setPlate] = useState("");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -372,8 +519,7 @@ export default function VerifyPage() {
     if (!canSubmit) {
       return;
     }
-    // Put the keyboard away so the verdict is what the officer sees.
-    (document.activeElement as HTMLElement | null)?.blur();
+    dismissKeyboard();
     setBusy(true);
     setError(null);
     setResult(null);
@@ -386,15 +532,10 @@ export default function VerifyPage() {
         body,
       );
       setResult(response.verification);
-      requestAnimationFrame(() =>
-        resultRegion.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        }),
-      );
+      showResult(resultRegion.current);
     } catch (caught) {
       if (caught instanceof ApiError) {
-        setError(explainError(caught));
+        setError(explainError(caught, "vehicles"));
       }
     } finally {
       setBusy(false);
@@ -409,21 +550,12 @@ export default function VerifyPage() {
     plateInput.current?.focus();
   }
 
-  const inputClass =
-    "w-full rounded-lg border border-[var(--border-subtle)] bg-white px-4 py-3 text-lg " +
-    "outline-none transition focus:border-[var(--nurtw-green)] focus:ring-2 focus:ring-[var(--nurtw-green)]/25";
-
   return (
-    <div className="mx-auto grid max-w-2xl gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">
-          Verify a vehicle
-        </h1>
-        <p className="mt-1 text-sm text-black/60">
-          Enter the plate, the sticker&apos;s code, or both. Both together also
-          check that the sticker belongs to the plate.
-        </p>
-      </div>
+    <div className="grid gap-6">
+      <p className="text-sm text-black/60">
+        Enter the plate, the sticker&apos;s code, or both. Both together also
+        check that the sticker belongs to the plate.
+      </p>
 
       <form onSubmit={submit} className="grid gap-4" noValidate>
         <div className="grid gap-1.5">
@@ -443,14 +575,7 @@ export default function VerifyPage() {
             placeholder="e.g. AWK 123 XY"
             className={`${inputClass} font-semibold uppercase tracking-wide`}
           />
-          {error?.fieldError("plateNumber") ? (
-            <p
-              role="alert"
-              className="text-sm font-medium text-[var(--verdict-deny)]"
-            >
-              {error.fieldError("plateNumber")}
-            </p>
-          ) : null}
+          <FieldError message={error?.fieldError("plateNumber")} />
         </div>
 
         <div className="grid gap-1.5">
@@ -472,14 +597,7 @@ export default function VerifyPage() {
             maxLength={128}
             className={`${inputClass} font-mono`}
           />
-          {error?.fieldError("stickerCode") ? (
-            <p
-              role="alert"
-              className="text-sm font-medium text-[var(--verdict-deny)]"
-            >
-              {error.fieldError("stickerCode")}
-            </p>
-          ) : null}
+          <FieldError message={error?.fieldError("stickerCode")} />
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -514,17 +632,194 @@ export default function VerifyPage() {
       >
         {result ? (
           <>
-            <VerdictPanel result={result} />
-            <p className="font-mono text-xs text-black/55">
-              Reference {result.reference} · checked at{" "}
-              {time(result.verifiedAt)}
-            </p>
-            <Facts fields={result.fields} />
-            <Dues dues={result.dues} />
+            <VerdictPanel
+              matched={result.matched}
+              statement={result.statement}
+              lines={result.reasons.map((reason) =>
+                explain(reason, result.fields),
+              )}
+            />
+            <Reference reference={result.reference} at={result.verifiedAt} />
+            <VehicleFacts fields={result.fields} />
+            <Dues vehicle={result.dues.vehicle} member={result.dues.member} />
             <p className="text-xs text-black/55">{result.limitation}</p>
           </>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function MembershipCheck() {
+  const [number, setNumber] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [result, setResult] = useState<InternalMembershipVerification | null>(
+    null,
+  );
+  const numberInput = useRef<HTMLInputElement>(null);
+  const resultRegion = useRef<HTMLDivElement>(null);
+
+  const canSubmit = number.trim() !== "" && !busy;
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!canSubmit) {
+      return;
+    }
+    dismissKeyboard();
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      const response = await api.post<{
+        verification: InternalMembershipVerification;
+      }>("/verifications/membership", { number: number.trim() });
+      setResult(response.verification);
+      showResult(resultRegion.current);
+    } catch (caught) {
+      if (caught instanceof ApiError) {
+        setError(explainError(caught, "cards"));
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function reset() {
+    setNumber("");
+    setResult(null);
+    setError(null);
+    numberInput.current?.focus();
+  }
+
+  return (
+    <div className="grid gap-6">
+      <p className="text-sm text-black/60">
+        Enter the card number or the membership number printed on the card.
+      </p>
+
+      <form onSubmit={submit} className="grid gap-4" noValidate>
+        <div className="grid gap-1.5">
+          <label htmlFor="number" className="text-sm font-medium">
+            Card or membership number
+          </label>
+          <input
+            id="number"
+            ref={numberInput}
+            value={number}
+            onChange={(event) => setNumber(event.target.value)}
+            autoComplete="off"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            maxLength={32}
+            placeholder="e.g. 7K3Q-WX9P-2MND-4"
+            className={`${inputClass} font-mono uppercase tracking-wide`}
+          />
+          <FieldError message={error?.fieldError("number")} />
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button
+            type="submit"
+            disabled={!canSubmit}
+            className="h-14 flex-1 text-lg"
+          >
+            {busy ? "Checking…" : "Verify"}
+          </Button>
+          {number || result ? (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={reset}
+              className="h-14 text-base"
+            >
+              Check another
+            </Button>
+          ) : null}
+        </div>
+      </form>
+
+      {error && error.details.length === 0 ? (
+        <ErrorNotice message={error.message} requestId={error.requestId} />
+      ) : null}
+
+      <div
+        ref={resultRegion}
+        aria-live="polite"
+        className="grid scroll-mt-4 gap-4"
+      >
+        {result ? (
+          <>
+            <VerdictPanel
+              matched={result.matched}
+              statement={result.statement}
+              lines={result.reasons.map((reason) =>
+                explainMembership(reason, result.fields),
+              )}
+            />
+            <Reference reference={result.reference} at={result.verifiedAt} />
+            <MembershipFacts fields={result.fields} />
+            <Dues vehicle={null} member={result.dues.member} />
+            <p className="text-xs text-black/55">{result.limitation}</p>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export default function VerifyPage() {
+  const { holds } = useSession();
+  const canCheckVehicles = holds("verification.perform");
+  const canCheckCards = holds("verification.membership");
+  const [mode, setMode] = useState<"vehicle" | "card">(
+    canCheckVehicles ? "vehicle" : "card",
+  );
+
+  const tabs = [
+    { key: "vehicle" as const, label: "Vehicle", allowed: canCheckVehicles },
+    { key: "card" as const, label: "Membership card", allowed: canCheckCards },
+  ].filter((tab) => tab.allowed);
+
+  return (
+    <div className="mx-auto grid max-w-2xl gap-6">
+      <h1 className="text-xl font-semibold tracking-tight">Verify</h1>
+
+      {tabs.length > 1 ? (
+        <div
+          role="tablist"
+          aria-label="What to verify"
+          className="grid grid-cols-2 gap-2 rounded-lg bg-[var(--surface-muted)] p-1"
+        >
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={mode === tab.key}
+              onClick={() => setMode(tab.key)}
+              className={
+                "h-12 rounded-md text-base font-semibold transition " +
+                (mode === tab.key
+                  ? "bg-white text-[var(--nurtw-green-deep)] shadow-sm"
+                  : "text-black/60 hover:text-black/80")
+              }
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {tabs.length === 0 ? (
+        <ErrorNotice message="Your account cannot verify vehicles or cards. Ask an administrator for the verification permission." />
+      ) : mode === "vehicle" && canCheckVehicles ? (
+        <VehicleCheck />
+      ) : (
+        <MembershipCheck />
+      )}
     </div>
   );
 }

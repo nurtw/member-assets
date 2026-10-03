@@ -62,6 +62,8 @@ export default function VehicleDetailPage() {
   const [declareOwnerName, setDeclareOwnerName] = useState("");
   const [declareOwnerPhone, setDeclareOwnerPhone] = useState("");
   const [declareOwnerAddress, setDeclareOwnerAddress] = useState("");
+  // VEH-27 — why the letter is being reissued.
+  const [letterReason, setLetterReason] = useState("");
 
   const { data, error, isLoading, mutate } = useSWR<{ vehicle: VehicleDetail }>(
     `/vehicles/${params.id}`,
@@ -156,7 +158,9 @@ export default function VehicleDetailPage() {
           <h1 className="font-mono text-xl font-semibold tracking-tight">
             {vehicle.plateNumberDisplay}
           </h1>
-          <StatusChip status={vehicle.status} />
+          {/* VEH-28 — present only for a holder of vehicle.declare. Everything
+              keyed on the status below disappears with it. */}
+          {vehicle.status ? <StatusChip status={vehicle.status} /> : null}
           {vehicle.isLegacyImport ? (
             <span className="text-xs italic text-black/40">
               from the legacy migration
@@ -206,14 +210,16 @@ export default function VehicleDetailPage() {
           <Detail label="Make" value={vehicle.make} />
           <Detail label="Model" value={vehicle.model} />
           <Detail label="Colour" value={vehicle.color} />
-          <Detail
-            label="Declared"
-            value={
-              vehicle.declaredAt
-                ? new Date(vehicle.declaredAt).toLocaleDateString("en-GB")
-                : "Not yet declared"
-            }
-          />
+          {vehicle.status !== undefined ? (
+            <Detail
+              label="Declared"
+              value={
+                vehicle.declaredAt
+                  ? new Date(vehicle.declaredAt).toLocaleDateString("en-GB")
+                  : "Not yet declared"
+              }
+            />
+          ) : null}
           {/* Requirement 9A.1 — onboarded is its own fact, beside declared. */}
           <Detail
             label="Onboarded"
@@ -348,7 +354,7 @@ export default function VehicleDetailPage() {
       {vehicle.onboarding?.letterReference ? (
         <Section
           title="Vehicle letter"
-          description="Produced when the vehicle was onboarded, and printed exactly as issued. It confirms the vehicle is recorded with the Union; it is not evidence of ownership, roadworthiness, licensing, or insurance."
+          description="Produced when the vehicle was onboarded, and printed exactly as issued. It confirms the vehicle is recorded with the Union; it is not evidence of ownership, roadworthiness, licensing, or insurance. A reissued letter replaces it under a new reference."
         >
           <div className="flex flex-wrap items-center gap-4">
             <Detail label="Reference" value={vehicle.onboarding.letterReference} />
@@ -368,6 +374,51 @@ export default function VehicleDetailPage() {
               Download letter
             </Button>
           </div>
+          {holds("sticker.attach") ? (
+            <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+              <Field
+                label="Reason for reissuing"
+                htmlFor="letterReason"
+                hint="For example, a driver has been linked or the vehicle has moved unit. The current letter is kept, marked superseded, and will no longer download."
+              >
+                <TextInput
+                  id="letterReason"
+                  value={letterReason}
+                  onChange={(event) => setLetterReason(event.target.value)}
+                  maxLength={1000}
+                />
+              </Field>
+              <div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy || letterReason.trim().length < 4}
+                  onClick={() =>
+                    void act(async () => {
+                      try {
+                        await api.post(`/vehicles/${vehicle.id}/letter/reissue`, {
+                          reason: letterReason.trim(),
+                        });
+                        setLetterReason("");
+                      } catch (caught) {
+                        // The API's 409 is generic (Requirement 14.3).
+                        if (caught instanceof ApiError && caught.status === 409) {
+                          throw new ApiError(
+                            409,
+                            "The letter was reissued by someone else a moment ago. The page now shows it.",
+                            caught.requestId,
+                          );
+                        }
+                        throw caught;
+                      }
+                    })
+                  }
+                >
+                  Reissue letter
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </Section>
       ) : null}
 

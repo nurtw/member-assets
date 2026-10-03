@@ -228,6 +228,8 @@ model RouteType {
   vehicles      Vehicle[]
   prices        FeeTypePrice[]
   amountHistory FeeAmountHistory[]
+  changesTo     VehicleRouteTypeChange[] @relation("RouteTypeChangeTo")
+  changesFrom   VehicleRouteTypeChange[] @relation("RouteTypeChangeFrom")
 
   @@map("route_type")
 }
@@ -663,6 +665,9 @@ model Vehicle {
   /// promotes the row to `ACTIVE` (a fresh declaration still stamps it
   /// immediately, via the same default).
   declaredAt         DateTime?         @default(now()) @map("declared_at")
+  /// `QUESTIONS.md` PAY-19 — when the vehicle was retired. Set once, with the
+  /// move to `RETIRED`, which is terminal. The levy stops after that month.
+  retiredAt          DateTime?         @map("retired_at")
 
   /// PRD §9.5 — declaration is a manual, permissioned act. The migration is the
   /// sole exception and marks its records so they remain distinguishable in the
@@ -686,9 +691,10 @@ model Vehicle {
   branch           Organisation?    @relation("VehicleBranch", fields: [branchId], references: [id], onDelete: Restrict)
   unit             Organisation?    @relation("VehicleUnit", fields: [unitId], references: [id], onDelete: Restrict)
 
-  owner    VehicleOwner?
-  stickers Sticker[]
-  letters  VehicleLetter[]
+  owner            VehicleOwner?
+  stickers         Sticker[]
+  letters          VehicleLetter[]
+  routeTypeChanges VehicleRouteTypeChange[]
 
   /// PRD Requirement 9.2 — at most one ACTIVE declaration per normalised plate.
   ///
@@ -745,6 +751,31 @@ model VehicleOwner {
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@map("vehicle_owner")
+}
+
+/// Every route type a vehicle has been given (`QUESTIONS.md` PAY-19 — item
+/// 25). The levy prices each month at the route type in force on its 1st, so
+/// changing a vehicle's route type must not reprice the months before.
+///
+/// Append-only, written in the transaction that sets the route type. Kept from
+/// item 25 onwards: a month before a vehicle's first row takes the route type
+/// that row replaced (`routeTypeInForce`).
+model VehicleRouteTypeChange {
+  id                  String   @id @default(uuid()) @db.Uuid
+  vehicleId           String   @map("vehicle_id") @db.Uuid
+  routeTypeId         String   @map("route_type_id") @db.Uuid
+  /// `null` when the vehicle had no route type before.
+  previousRouteTypeId String?  @map("previous_route_type_id") @db.Uuid
+  changedAt           DateTime @default(now()) @map("changed_at")
+
+  /// Cascade, as `VehicleOwner` does: part of the vehicle's record. Vehicles
+  /// are never deleted in the application.
+  vehicle           Vehicle    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  routeType         RouteType  @relation("RouteTypeChangeTo", fields: [routeTypeId], references: [id], onDelete: Restrict)
+  previousRouteType RouteType? @relation("RouteTypeChangeFrom", fields: [previousRouteTypeId], references: [id], onDelete: Restrict)
+
+  @@index([vehicleId, changedAt])
+  @@map("vehicle_route_type_change")
 }
 
 // ---------------------------------------------------------------------------
@@ -889,11 +920,26 @@ model VehicleLetter {
   presidentSignatureId        String? @map("president_signature_id") @db.Uuid
   generalSecretarySignatureId String? @map("general_secretary_signature_id") @db.Uuid
 
+  // --- Reissue (`QUESTIONS.md` VEH-27 — item 26) -------------------------------
+  /// When a reissue replaced this letter. A superseded letter is kept, exactly
+  /// as printed, and is no longer downloadable.
+  supersededAt     DateTime? @map("superseded_at")
+  /// The letter this one replaced; `null` for a letter issued at onboarding.
+  replacesLetterId String?   @unique @map("replaces_letter_id") @db.Uuid
+  /// Why the officer reissued it. Required for a reissue (Requirement 18.1).
+  reissueReason    String?   @map("reissue_reason")
+
   createdAt DateTime @default(now()) @map("created_at")
 
   vehicle      Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
   sticker      Sticker @relation(fields: [stickerId], references: [id], onDelete: Restrict)
   issuedByUser User?   @relation("VehicleLetterIssuedBy", fields: [issuedByUserId], references: [id], onDelete: SetNull)
+
+  /// `NoAction` rather than `Restrict`: checked at the end of the statement, so
+  /// a test cleanup removing a letter and its replacement together succeeds.
+  /// The application never deletes a letter.
+  replaces   VehicleLetter? @relation("LetterReissue", fields: [replacesLetterId], references: [id], onDelete: NoAction)
+  replacedBy VehicleLetter? @relation("LetterReissue")
 
   presidentSignature        OfficerSignature? @relation("LetterPresidentSignature", fields: [presidentSignatureId], references: [id], onDelete: Restrict)
   generalSecretarySignature OfficerSignature? @relation("LetterGeneralSecretarySignature", fields: [generalSecretarySignatureId], references: [id], onDelete: Restrict)

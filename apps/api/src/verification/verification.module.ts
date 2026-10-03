@@ -4,6 +4,7 @@ import { AuditModule } from '../audit/audit.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { PaymentsModule } from '../payments/payments.module.js';
 import { StickerModule } from '../sticker/sticker.module.js';
+import { MembershipVerificationService } from './membership-verification.service.js';
 import { VerificationController } from './verification.controller.js';
 import { VerificationService } from './verification.service.js';
 
@@ -15,6 +16,6 @@ import { VerificationService } from './verification.service.js';
 @Module({
   imports: [AuditModule, AuthModule, StickerModule, PaymentsModule],
   controllers: [VerificationController],
-  providers: [VerificationService],
+  providers: [VerificationService, MembershipVerificationService],
 })
 export class VerificationModule {}

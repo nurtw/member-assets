@@ -109,6 +109,22 @@ export interface OnboardingState {
   eligiblePayments: EligibleOnboardingPayment[];
 }
 
+/**
+ * `POST /vehicles/:id/letter/reissue` (`QUESTIONS.md` VEH-27 — item 26). A
+ * reason is required: a reissue replaces a document someone carries, and the
+ * audit trail says why (Requirement 18.1).
+ */
+export const reissueVehicleLetterSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(4, 'Give a reason of at least 4 characters.')
+    .max(1000, 'A reason may not exceed 1000 characters.'),
+});
+export type ReissueVehicleLetterInput = z.infer<
+  typeof reissueVehicleLetterSchema
+>;
+
 export const setStickerStatusSchema = z.object({
   status: z.enum(['SUSPENDED', 'ACTIVE', 'LOST', 'DAMAGED', 'CANCELLED']),
   reason: z.string().trim().min(1, 'A reason is required.'),

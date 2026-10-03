@@ -96,3 +96,13 @@ public page.
 - The screens have not been opened in a browser.
 - Camera scanning waits on deciding what the printed QR encodes.
 - Membership verification (`verification.membership`) comes with item 12.
+
+**Amended 3 October 2026:**
+
+- **Declaration status is for holders of `vehicle.declare` only** (`QUESTIONS.md` VEH-28),
+  so the goal's "every state" no longer includes it for other officers. They are told the
+  vehicle's record is not complete, never that it is undeclared. The audit trail keeps the
+  true reasons.
+- **Membership verification is built**, as item 24.
+- **New NURTW stickers are paused** (VEH-20), so the signed-code path has no stickers to
+  check for now.

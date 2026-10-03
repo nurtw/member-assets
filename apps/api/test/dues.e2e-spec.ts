@@ -374,6 +374,81 @@ describe('Dues (e2e)', () => {
       }
     });
 
+    it('stops after the month the vehicle is retired in (PAY-19)', async () => {
+      const retired = await vehicle(5);
+      await prisma.vehicle.update({
+        where: { id: retired.id },
+        data: { status: 'RETIRED', retiredAt: midMonth(3) },
+      });
+
+      const dues = await vehicleDues(retired.id);
+      // Onboarded five months back: the levy fell due four and three months
+      // back, and stopped with the month of retirement.
+      expect(dues.monthsDue).toBe(2);
+      expect(dues.unpaidMonths.map((month: { month: string }) => month.month)).toEqual([
+        monthLabel(4),
+        monthLabel(3),
+      ]);
+      expect(dues.nextDueOn).toBeNull();
+    });
+
+    it('prices each month at the route type the vehicle had on its 1st (PAY-19)', async () => {
+      // A route type of the test's own, priced apart from the real ones, so
+      // no other suite's levy changes while this runs.
+      const ownRouteType = await prisma.routeType.create({
+        data: { code: `E2E_DUES_${randomUUID().slice(0, 8)}`, label: `Route ${TAG}` },
+      });
+      const ownPrice = fixture.levyKobo + 200_000;
+      await prisma.feeTypePrice.create({
+        data: {
+          feeTypeId: fixture.levyId,
+          routeTypeId: ownRouteType.id,
+          amountKobo: ownPrice,
+        },
+      });
+      const onboarded = await vehicle(3);
+      try {
+        // On the test's route type from before onboarding, moved to the
+        // fixture's in the middle of last month.
+        await prisma.vehicleRouteTypeChange.createMany({
+          data: [
+            {
+              vehicleId: onboarded.id,
+              routeTypeId: ownRouteType.id,
+              previousRouteTypeId: null,
+              changedAt: midMonth(6),
+            },
+            {
+              vehicleId: onboarded.id,
+              routeTypeId: fixture.routeTypeId,
+              previousRouteTypeId: ownRouteType.id,
+              changedAt: midMonth(1),
+            },
+          ],
+        });
+
+        const dues = await vehicleDues(onboarded.id);
+        expect(
+          dues.unpaidMonths.map((month: { month: string; amountKobo: number }) => [
+            month.month,
+            month.amountKobo,
+          ]),
+        ).toEqual([
+          [monthLabel(2), ownPrice],
+          [monthLabel(1), ownPrice],
+          [monthLabel(0), fixture.levyKobo],
+        ]);
+      } finally {
+        await prisma.vehicleRouteTypeChange.deleteMany({
+          where: { vehicleId: onboarded.id },
+        });
+        await prisma.feeTypePrice.deleteMany({
+          where: { routeTypeId: ownRouteType.id },
+        });
+        await prisma.routeType.delete({ where: { id: ownRouteType.id } });
+      }
+    });
+
     it('answers 404 outside the caller’s scope, and 403 without vehicle.read', async () => {
       const onboarded = await vehicle(1);
       await request(server)

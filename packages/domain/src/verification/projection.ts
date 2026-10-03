@@ -18,7 +18,9 @@
  *
  * `EXTERNAL` fields are the ones PRD §15 and §23.14 allow beyond the match
  * itself: the plate, vehicle category, sticker status, branch or unit label,
- * the issue date, and (combined) whether the sticker belongs to the plate.
+ * the issue date, and (combined) whether the sticker belongs to the plate. For
+ * a membership check, §15's Membership verification profile adds the
+ * membership status, the card status, and the designation.
  *
  * `INTERNAL` fields reach the internal channels only, whatever a profile row
  * says. Declaration status is one by law of the PRD (Requirement 12.7), and
@@ -35,6 +37,10 @@ export const VERIFICATION_FIELDS = {
   attached_at: 'EXTERNAL',
   /** Combined checks only. */
   plate_matches_sticker: 'EXTERNAL',
+  /** Membership checks only. */
+  membership_status: 'EXTERNAL',
+  card_status: 'EXTERNAL',
+  designation: 'EXTERNAL',
 
   declaration_status: 'INTERNAL',
   onboarded_at: 'INTERNAL',
@@ -50,7 +56,10 @@ export const VERIFICATION_FIELDS = {
   vehicle_id: 'INTERNAL',
   member_name: 'INTERNAL',
   membership_number: 'INTERNAL',
+  /** The member a verified vehicle belongs to; `membership_status` is a check's own. */
   member_status: 'INTERNAL',
+  card_number: 'INTERNAL',
+  card_expiry_date: 'INTERNAL',
 } as const satisfies Record<string, VerificationFieldTier>;
 
 export type VerificationField = keyof typeof VERIFICATION_FIELDS;
@@ -67,6 +76,9 @@ export interface VerificationValues {
   organizational_unit: string | null;
   attached_at: string | null;
   plate_matches_sticker: boolean | null;
+  membership_status: string | null;
+  card_status: string | null;
+  designation: string | null;
   declaration_status: string | null;
   onboarded_at: string | null;
   identifier_scheme: 'SIGNED' | 'LEGACY' | null;
@@ -80,6 +92,8 @@ export interface VerificationValues {
   member_name: string | null;
   membership_number: string | null;
   member_status: string | null;
+  card_number: string | null;
+  card_expiry_date: string | null;
 }
 
 export type ProjectedVerification = Partial<VerificationValues>;

@@ -818,6 +818,91 @@ describe('Sticker issuance and attachment (e2e)', () => {
         .set('Cookie', cookies.verifier!)
         .expect(403);
     });
+
+    describe('reissuing (QUESTIONS.md VEH-27)', () => {
+      it('issues a new letter under a new reference, keeping the old one superseded', async () => {
+        const { vehicle } = await onboard('LT7');
+        const original = await prisma.vehicleLetter.findFirstOrThrow({
+          where: { vehicleId: vehicle.id },
+        });
+        await prisma.vehicle.update({
+          where: { id: vehicle.id },
+          data: { color: 'Blue' },
+        });
+
+        const response = await request(server)
+          .post(`/api/v1/vehicles/${vehicle.id}/letter/reissue`)
+          .set('Cookie', cookies.attacher!)
+          .send({ reason: 'e2e: repainted' })
+          .expect(201);
+        expect(response.body.letter.letterReference).not.toBe(
+          original.letterReference,
+        );
+
+        const letters = await prisma.vehicleLetter.findMany({
+          where: { vehicleId: vehicle.id },
+          orderBy: { issuedAt: 'asc' },
+        });
+        expect(letters).toHaveLength(2);
+        // The old letter is kept exactly as printed.
+        expect(letters[0]).toMatchObject({
+          id: original.id,
+          printedColour: 'White',
+        });
+        expect(letters[0]!.supersededAt).not.toBeNull();
+        expect(letters[1]).toMatchObject({
+          letterReference: response.body.letter.letterReference,
+          printedColour: 'Blue',
+          replacesLetterId: original.id,
+          reissueReason: 'e2e: repainted',
+          supersededAt: null,
+        });
+
+        const audit = await prisma.auditEvent.findFirstOrThrow({
+          where: { action: 'vehicle_letter.reissue', subjectId: letters[1]!.id },
+        });
+        expect(audit.reason).toBe('e2e: repainted');
+        expect(audit.beforeValue).toMatchObject({
+          letterReference: original.letterReference,
+        });
+
+        // Only the current letter downloads.
+        const download = await pdf(
+          `/api/v1/vehicles/${vehicle.id}/letter`,
+          cookies.bystander!,
+        ).expect(200);
+        expect(download.headers['content-disposition']).toContain(
+          response.body.letter.letterReference,
+        );
+      });
+
+      it('requires a reason', async () => {
+        const { vehicle } = await onboard('LT8');
+        await request(server)
+          .post(`/api/v1/vehicles/${vehicle.id}/letter/reissue`)
+          .set('Cookie', cookies.attacher!)
+          .send({ reason: '' })
+          .expect(400);
+      });
+
+      it('refuses a caller without sticker.attach', async () => {
+        const { vehicle } = await onboard('LT9');
+        await request(server)
+          .post(`/api/v1/vehicles/${vehicle.id}/letter/reissue`)
+          .set('Cookie', cookies.bystander!)
+          .send({ reason: 'e2e: not allowed' })
+          .expect(403);
+      });
+
+      it('answers 404 for a vehicle with no letter to reissue', async () => {
+        const vehicle = await declareVehicle('LT10');
+        await request(server)
+          .post(`/api/v1/vehicles/${vehicle.id}/letter/reissue`)
+          .set('Cookie', cookies.attacher!)
+          .send({ reason: 'e2e: nothing to reissue' })
+          .expect(404);
+      });
+    });
   });
 
   describe('internal Transpay lookup (Requirement 11.2)', () => {

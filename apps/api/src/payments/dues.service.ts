@@ -4,6 +4,7 @@ import {
   levySchedule,
   membershipCover,
   resolveFeeAmountAtKobo,
+  routeTypeInForce,
   type OutstandingDue,
 } from '@nurtw/domain';
 
@@ -95,7 +96,17 @@ export class DuesService {
     const [vehicle, feeType, firstAttachment, creditKobo] = await Promise.all([
       this.prisma.vehicle.findUnique({
         where: { id: vehicleId },
-        select: { routeTypeId: true },
+        select: {
+          routeTypeId: true,
+          retiredAt: true,
+          routeTypeChanges: {
+            select: {
+              routeTypeId: true,
+              previousRouteTypeId: true,
+              changedAt: true,
+            },
+          },
+        },
       }),
       this.feeType(LEVY),
       // Onboarded when a sticker was first attached (Decision 6.5). A later
@@ -111,12 +122,16 @@ export class DuesService {
       throw new NotFoundException();
     }
 
-    // PAY-19 (open): every month is priced at the route type the vehicle has
-    // now, at the amount in force for it when that month fell due.
+    // PAY-19 — each month is priced at the route type the vehicle had on its
+    // 1st, at the amount in force for that route type then.
     const amountOn = (at: Date) =>
       resolveFeeAmountAtKobo({
         at,
-        routeTypeId: vehicle.routeTypeId,
+        routeTypeId: routeTypeInForce(
+          at,
+          vehicle.routeTypeChanges,
+          vehicle.routeTypeId,
+        ),
         current: { defaultAmountKobo: feeType.amountKobo, prices: feeType.prices },
         history: feeType.amountHistory,
       });
@@ -126,6 +141,8 @@ export class DuesService {
       now,
       creditKobo,
       amountForMonth: amountOn,
+      // PAY-19 — nothing falls due after the month of retirement.
+      retiredAt: vehicle.retiredAt,
     });
 
     return {

@@ -96,12 +96,16 @@ export interface LevySchedule {
  *
  * `amountForMonth` is asked for the amount in force when each month fell due,
  * so a later price change leaves earlier months as they were.
+ *
+ * `retiredAt` stops the levy (`QUESTIONS.md` PAY-19): the month the vehicle is
+ * retired in is still due, and nothing falls due after it.
  */
 export function levySchedule(input: {
   onboardedAt: Date | null;
   now: Date;
   creditKobo: number;
   amountForMonth: (dueOn: Date) => number;
+  retiredAt?: Date | null;
 }): LevySchedule {
   if (!input.onboardedAt) {
     return {
@@ -121,7 +125,11 @@ export function levySchedule(input: {
   const months: LevyMonth[] = [];
   let dueOn = firstDueOn;
   let offset = 1;
-  while (dueOn.getTime() <= input.now.getTime()) {
+  const stopsAfter = input.retiredAt?.getTime() ?? Infinity;
+  while (
+    dueOn.getTime() <= input.now.getTime() &&
+    dueOn.getTime() <= stopsAfter
+  ) {
     const amountKobo = input.amountForMonth(dueOn);
     const paidKobo = Math.min(remaining, amountKobo);
     remaining -= paidKobo;
@@ -157,15 +165,52 @@ export function levySchedule(input: {
     months,
     outstandingKobo,
     creditKobo: remaining,
-    // The loop stopped at the first 1st still in the future.
-    nextDueOn: dueOn,
+    // The loop stopped at the first 1st still in the future, or at the first
+    // one after retirement, which never falls due.
+    nextDueOn: dueOn.getTime() <= stopsAfter ? dueOn : null,
   };
+}
+
+/** A change of a vehicle's route type, as the history records it. */
+export interface RouteTypeChange {
+  routeTypeId: string;
+  /** What it replaced; `null` when the vehicle had none before. */
+  previousRouteTypeId: string | null;
+  changedAt: Date;
+}
+
+/**
+ * The route type a vehicle had at an instant (`QUESTIONS.md` PAY-19): each
+ * levy month is priced at the route type in force on its 1st.
+ *
+ * The history starts when it was first kept, so an instant before the first
+ * change takes the route type that change replaced. With no history at all,
+ * the vehicle's route type has never changed, and `current` is the answer.
+ */
+export function routeTypeInForce(
+  at: Date,
+  history: readonly RouteTypeChange[],
+  current: string | null,
+): string | null {
+  const sorted = [...history].sort(
+    (a, b) => a.changedAt.getTime() - b.changedAt.getTime(),
+  );
+  const first = sorted[0];
+  if (!first) {
+    return current;
+  }
+  const inForce = sorted
+    .filter((change) => change.changedAt.getTime() <= at.getTime())
+    .at(-1);
+  return inForce
+    ? inForce.routeTypeId
+    : (first.previousRouteTypeId ?? first.routeTypeId);
 }
 
 // --- The membership fee -------------------------------------------------------
 
 export interface MembershipCover {
-  /** Never `IN_ARREARS`: at most one fee is outstanding at a time (PAY-18). */
+  /** Never `IN_ARREARS`: a lapse owes one fee, however long (PAY-18). */
   status: DuesStatus;
   /** When the fee first fell due; `null` when it has not started. */
   firstDueOn: Date | null;
@@ -221,10 +266,9 @@ export function addTwelveMonths(instant: Date): Date {
  * is paid** (PAY-03), and first falls due on approval, or on the go-live date
  * for a member migrated before it.
  *
- * Applied as written, which settles two cases the Union has not been asked
- * about (PAY-18, open): a fee paid while cover is still running starts its 12
- * months on the day it is paid, so the overlap is not added on; and a lapse is
- * never billed, so one fee is outstanding at most.
+ * `QUESTIONS.md` PAY-18, answered: a fee paid while cover is still running
+ * starts its 12 months where the current cover ends, so nobody loses what they
+ * paid for; and a lapse is never billed, so one fee is outstanding at most.
  *
  * `firstDueOn` is `null` when the fee has not started: the member is not yet
  * approved, or was migrated and no go-live date is set (GOV-11).
@@ -233,9 +277,8 @@ export function addTwelveMonths(instant: Date): Date {
  * always pays the whole fee, so for a link this is simply the day it was paid.
  * Dedicated-account money can arrive in parts (PAY-12 pays the oldest due
  * first, in part if need be): the parts are held, and the year starts on the
- * day the last of the fee arrives. More than one fee's worth in a single
- * payment is carried toward the next fee rather than starting a second cover
- * on the same day, which would overlap the first and buy nothing.
+ * day the last of the fee arrives. Each whole fee buys a year, and a part
+ * fee is held toward the next.
  */
 export function membershipCover(input: {
   firstDueOn: Date | null;
@@ -253,27 +296,27 @@ export function membershipCover(input: {
     .sort((a, b) => a.paidOn.getTime() - b.paidOn.getTime())) {
     heldKobo += payment.kobo;
     const fee = input.amountAt(payment.pricedOn);
-    if (heldKobo >= fee) {
+    // A fee of zero would never be used up; it buys nothing.
+    while (fee > 0 && heldKobo >= fee) {
       paidInFullOn.push(payment.paidOn);
       heldKobo -= fee;
     }
   }
 
-  // Each fee covers [paid, paid + 12 months). Overlapping covers merge.
-  const covers = paidInFullOn
-    .map((paid) => ({
-      from: paid.getTime(),
-      to: addTwelveMonths(paid).getTime(),
-    }))
-    .reduce<{ from: number; to: number }[]>((merged, cover) => {
-      const last = merged[merged.length - 1];
-      if (last && cover.from <= last.to) {
-        last.to = Math.max(last.to, cover.to);
-      } else {
-        merged.push({ ...cover });
-      }
-      return merged;
-    }, []);
+  // PAY-18 — a fee paid while covered adds 12 months to the end of the cover;
+  // one paid after a lapse starts its 12 months on the day it is paid.
+  const covers: { from: number; to: number }[] = [];
+  for (const paid of paidInFullOn) {
+    const last = covers[covers.length - 1];
+    if (last && paid.getTime() < last.to) {
+      last.to = addTwelveMonths(new Date(last.to)).getTime();
+    } else {
+      covers.push({
+        from: paid.getTime(),
+        to: addTwelveMonths(paid).getTime(),
+      });
+    }
+  }
 
   const current = covers.find((cover) => cover.from <= now && now < cover.to);
   if (current) {

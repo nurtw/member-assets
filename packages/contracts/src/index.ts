@@ -185,19 +185,24 @@ export {
   attachStickerSchema,
   issueStickerSchema,
   legacyBarcodeLookupSchema,
+  reissueVehicleLetterSchema,
   setStickerStatusSchema,
   type AttachStickerInput,
   type EligibleOnboardingPayment,
   type IssueStickerInput,
   type LegacyBarcodeLookupInput,
   type OnboardingState,
+  type ReissueVehicleLetterInput,
   type SetStickerStatusInput,
   type VehicleOnboarding,
 } from './sticker.js';
 
 export {
+  verifyMembershipSchema,
   verifySchema,
+  type InternalMembershipVerification,
   type InternalVerification,
   type VerificationDues,
   type VerifyInput,
+  type VerifyMembershipInput,
 } from './verification.js';

@@ -8,6 +8,7 @@ import {
   NO_MATCH_STATEMENT,
   VERIFICATION_LIMITATION,
   decideVerification,
+  discloseReasons,
   type VerificationSticker,
   type VerificationVehicle,
 } from './verdict.js';
@@ -280,5 +281,27 @@ describe('verdict copy (PRD Requirement 11.1, §22)', () => {
     expect(new Set(NOT_VERIFIED_REASONS).size).toBe(
       NOT_VERIFIED_REASONS.length,
     );
+  });
+});
+
+describe('discloseReasons (QUESTIONS.md VEH-28)', () => {
+  const reasons = ['PLATE_MISMATCH', 'NOT_DECLARED', 'NOT_ONBOARDED'] as const;
+
+  it('states every reason to a holder of vehicle.declare', () => {
+    expect(discloseReasons(reasons, true)).toEqual(reasons);
+  });
+
+  it('never says "not declared" to anyone else, keeping the order', () => {
+    expect(discloseReasons(reasons, false)).toEqual([
+      'PLATE_MISMATCH',
+      'RECORD_INCOMPLETE',
+      'NOT_ONBOARDED',
+    ]);
+  });
+
+  it('leaves a verdict with no declaration reason untouched', () => {
+    expect(discloseReasons(['STICKER_NOT_ACTIVE'], false)).toEqual([
+      'STICKER_NOT_ACTIVE',
+    ]);
   });
 });

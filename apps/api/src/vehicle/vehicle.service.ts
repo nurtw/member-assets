@@ -20,9 +20,12 @@ import {
   InvalidDeclarationTransitionError,
   RECORD_BLOCKING_STATUSES,
   assertDeclarationTransition,
+  decidePermission,
+  listEffectivePermissions,
   normalizePlateNumber,
   outermostScopes,
   type DeclarationStatus,
+  type PermissionAssignments,
 } from '@nurtw/domain';
 import { Prisma } from '@prisma/client';
 
@@ -48,7 +51,11 @@ const RESOLVE_DISPUTE = 'vehicle.resolve_dispute';
 const ALREADY_RECORDED =
   'A record for this plate number already exists. Recording is for adding vehicles; to claim one already recorded, it must be declared.';
 
-/** The fields a `VehicleSummary` needs, and nothing else — see `toSummary`. */
+/**
+ * The fields a `VehicleSummary` needs, and nothing else — see `toSummary`.
+ * The organisation paths are read to decide who may see the declaration
+ * status (VEH-28). `toSummary` never returns them.
+ */
 function summarySelect() {
   return {
     id: true,
@@ -58,8 +65,8 @@ function summarySelect() {
     isLegacyImport: true,
     vehicleCategory: { select: { id: true, code: true, label: true } },
     routeType: { select: { id: true, code: true, label: true } },
-    branch: { select: { id: true, name: true, level: true } },
-    unit: { select: { id: true, name: true, level: true } },
+    branch: { select: { id: true, name: true, level: true, path: true } },
+    unit: { select: { id: true, name: true, level: true, path: true } },
     declaredByMember: {
       select: { id: true, surname: true, firstName: true },
     },
@@ -83,8 +90,8 @@ interface SummaryRow {
   isLegacyImport: boolean;
   vehicleCategory: { id: string; code: string; label: string } | null;
   routeType: { id: string; code: string; label: string } | null;
-  branch: { id: string; name: string; level: string } | null;
-  unit: { id: string; name: string; level: string } | null;
+  branch: { id: string; name: string; level: string; path: string } | null;
+  unit: { id: string; name: string; level: string; path: string } | null;
   declaredByMember: { id: string; surname: string; firstName: string } | null;
 }
 
@@ -155,6 +162,11 @@ export class VehicleService {
    *
    * No owner field is selected. Requirement 9.8 keeps owner details off every
    * list, the same projection rule Requirement 7.1 applies to members.
+   *
+   * VEH-28 — the declaration status is shown row by row, only where the caller
+   * holds `vehicle.declare`. Nothing else may give it away either: a status
+   * filter matches only rows whose status the caller may see, and the order
+   * does not put declared vehicles first.
    */
   async list(
     userId: string,
@@ -165,8 +177,15 @@ export class VehicleService {
       memberId?: string;
     },
   ): Promise<VehicleSummary[]> {
-    const scopes = await this.readableScopes(userId);
+    const assignments = await this.permissions.loadAssignments(userId);
+    const scopes = this.scopesHolding(assignments, READ);
     if (scopes.length === 0) {
+      return [];
+    }
+    const declareScopes = filters.status
+      ? this.scopesHolding(assignments, DECLARE)
+      : [];
+    if (filters.status && declareScopes.length === 0) {
       return [];
     }
 
@@ -191,12 +210,8 @@ export class VehicleService {
         // not widen what the caller may see.
         ...(filters.memberId ? { declaredByMemberId: filters.memberId } : {}),
         AND: [
-          {
-            OR: scopes.flatMap((scope) => [
-              { unitId: { not: null }, unit: { path: { startsWith: scope } } },
-              { unitId: null, branch: { path: { startsWith: scope } } },
-            ]),
-          },
+          this.withinScopes(scopes),
+          ...(filters.status ? [this.withinScopes(declareScopes)] : []),
           ...(filters.organisationId
             ? [
                 {
@@ -210,26 +225,31 @@ export class VehicleService {
         ],
       },
       select: summarySelect(),
-      // ON_RECORD rows have no declaration date; without `nulls: 'last'`
-      // PostgreSQL sorts NULL first under DESC and every recorded vehicle
-      // would crowd the declared ones off the first page.
-      orderBy: [
-        { declaredAt: { sort: 'desc', nulls: 'last' } },
-        { createdAt: 'desc' },
-      ],
+      // Most recently changed first. Ordering by declaration date, as this
+      // once did, would show anyone where the declared vehicles end (VEH-28).
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       take: 200,
     });
 
-    return rows.map((row) => this.toSummary(row));
+    // Decided row by row, so a revocation narrower than a grant is honoured.
+    return rows
+      .map((row) => ({
+        row,
+        showDeclaration: decidePermission(assignments, {
+          permission: DECLARE,
+          subjectPath: this.pathOf(row),
+        }).allowed,
+      }))
+      .filter(({ showDeclaration }) => !filters.status || showDeclaration)
+      .map(({ row, showDeclaration }) => this.toSummary(row, showDeclaration));
   }
 
   async findOne(userId: string, id: string): Promise<VehicleDetail> {
     const vehicle = await this.loadVisible(userId, id);
-    const canReadRestricted = await this.permissions.can(
-      userId,
-      READ_RESTRICTED,
-      vehicle.path,
-    );
+    const [canReadRestricted, showDeclaration] = await Promise.all([
+      this.permissions.can(userId, READ_RESTRICTED, vehicle.path),
+      this.permissions.can(userId, DECLARE, vehicle.path),
+    ]);
 
     // Requirement 9A.1 / Decision 6.5 — onboarded is read from the attached
     // sticker, never from the vehicle. The barcode is selected only to tell
@@ -253,7 +273,7 @@ export class VehicleService {
     ]);
 
     return {
-      ...this.toSummary(vehicle),
+      ...this.toSummary(vehicle, showDeclaration),
       make: vehicle.make,
       model: vehicle.model,
       color: vehicle.color,
@@ -347,6 +367,7 @@ export class VehicleService {
           },
           select: summarySelect(),
         });
+        await this.recordRouteType(tx, vehicle.id, input.routeTypeId, null);
 
         await this.audit.record(
           {
@@ -372,7 +393,7 @@ export class VehicleService {
         return vehicle;
       });
 
-      return this.toSummary(created);
+      return await this.summaryFor(actor.userId, created);
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -452,7 +473,7 @@ export class VehicleService {
           chassisVinRestricted: input.chassisVinRestricted,
           notes: input.notes,
         });
-        return this.toSummary(promoted);
+        return this.summaryFor(actor.userId, promoted);
       }
     }
 
@@ -464,7 +485,7 @@ export class VehicleService {
       existingActive ? 'DISPUTED' : 'ACTIVE',
     );
 
-    return this.toSummary(created);
+    return this.summaryFor(actor.userId, created);
   }
 
   /**
@@ -484,12 +505,14 @@ export class VehicleService {
     input: DeclareRecordedVehicleInput,
   ): Promise<VehicleSummary> {
     const vehicle = await this.loadVisible(actor.userId, id);
+    // Scope before status: answering 409 first would tell a declarer from
+    // another area whether this vehicle is on record (VEH-28).
+    await this.require(actor.userId, DECLARE, vehicle.path);
     if (vehicle.status !== 'ON_RECORD') {
       throw new ConflictException(
         'Only a vehicle on record can be declared this way. This one is already declared, or has left the register.',
       );
     }
-    await this.require(actor.userId, DECLARE, vehicle.path);
 
     let destination: DeclaringOrganisation = {
       id: vehicle.organisationId,
@@ -548,7 +571,7 @@ export class VehicleService {
         owner: input.owner,
       },
     );
-    return this.toSummary(promoted);
+    return this.summaryFor(actor.userId, promoted);
   }
 
   /**
@@ -615,6 +638,12 @@ export class VehicleService {
           },
           select: summarySelect(),
         });
+        await this.recordRouteType(
+          tx,
+          vehicle.id,
+          fields.routeTypeId,
+          recorded.routeTypeId,
+        );
 
         await this.audit.record(
           {
@@ -681,6 +710,7 @@ export class VehicleService {
           },
           select: summarySelect(),
         });
+        await this.recordRouteType(tx, vehicle.id, input.routeTypeId, null);
 
         await this.audit.record(
           {
@@ -792,6 +822,12 @@ export class VehicleService {
         },
         select: summarySelect(),
       });
+      await this.recordRouteType(
+        tx,
+        id,
+        input.routeTypeId,
+        vehicle.routeTypeId,
+      );
 
       await this.audit.record(
         {
@@ -810,10 +846,16 @@ export class VehicleService {
       return result;
     });
 
-    return this.toSummary(updated);
+    return this.summaryFor(actor.userId, updated);
   }
 
-  /** `ACTIVE`, `SUSPENDED`, `RETIRED` only — see `setDeclarationStatusSchema`. */
+  /**
+   * `ACTIVE`, `SUSPENDED`, `RETIRED` only — see `setDeclarationStatusSchema`.
+   *
+   * Needs `vehicle.declare` as well as `vehicle.suspend` (VEH-28). Only a
+   * holder of `vehicle.declare` may see a declaration status, and changing one
+   * would show it: the transition refused or accepted says what it was.
+   */
   async setStatus(
     actor: ActorContext,
     id: string,
@@ -821,13 +863,17 @@ export class VehicleService {
   ): Promise<{ id: string; status: string }> {
     const vehicle = await this.loadVisible(actor.userId, id);
     await this.require(actor.userId, SUSPEND, vehicle.path);
+    await this.require(actor.userId, DECLARE, vehicle.path);
 
     this.assertTransition(vehicle.status as DeclarationStatus, input.status);
 
     return this.applyStatus(actor, vehicle, input.status, input.reason);
   }
 
-  /** `DISPUTED -> ARCHIVED` only. See the class doc for what this does not do. */
+  /**
+   * `DISPUTED -> ARCHIVED` only. See the class doc for what this does not do.
+   * Needs `vehicle.declare` too, for `setStatus`'s reason.
+   */
   async dismissDispute(
     actor: ActorContext,
     id: string,
@@ -835,6 +881,7 @@ export class VehicleService {
   ): Promise<{ id: string; status: string }> {
     const vehicle = await this.loadVisible(actor.userId, id);
     await this.require(actor.userId, RESOLVE_DISPUTE, vehicle.path);
+    await this.require(actor.userId, DECLARE, vehicle.path);
 
     this.assertTransition(vehicle.status as DeclarationStatus, 'ARCHIVED');
 
@@ -862,7 +909,12 @@ export class VehicleService {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.vehicle.update({
         where: { id: vehicle.id },
-        data: { status },
+        data: {
+          status,
+          // PAY-19 — the levy stops after the month of retirement, which is
+          // terminal, so this is stamped once.
+          ...(status === 'RETIRED' ? { retiredAt: new Date() } : {}),
+        },
         select: { id: true, status: true },
       });
 
@@ -888,12 +940,48 @@ export class VehicleService {
 
   // --- Helpers -----------------------------------------------------------------
 
-  private async readableScopes(userId: string): Promise<string[]> {
-    const held = await this.permissions.listFor(userId);
+  /** The outermost scopes in which the user holds a permission. */
+  private scopesHolding(
+    assignments: PermissionAssignments,
+    permission: string,
+  ): string[] {
     return outermostScopes(
-      held
-        .filter((entry) => entry.permission === READ)
+      listEffectivePermissions(assignments)
+        .filter((entry) => entry.permission === permission)
         .map((entry) => entry.scopePath),
+    );
+  }
+
+  /**
+   * A query condition matching vehicles inside any of the scopes, judged by
+   * the unit's path when the vehicle has a unit and the branch's otherwise.
+   */
+  private withinScopes(scopes: readonly string[]): Prisma.VehicleWhereInput {
+    return {
+      OR: scopes.flatMap((scope) => [
+        { unitId: { not: null }, unit: { path: { startsWith: scope } } },
+        { unitId: null, branch: { path: { startsWith: scope } } },
+      ]),
+    };
+  }
+
+  private pathOf(row: SummaryRow): string {
+    const path = row.unit?.path ?? row.branch?.path;
+    if (!path) {
+      // Every vehicle is created with a branch or a unit.
+      throw new Error('A vehicle record carries no organisation.');
+    }
+    return path;
+  }
+
+  /** A summary for this user, with the declaration status only if they may see it. */
+  private async summaryFor(
+    userId: string,
+    row: SummaryRow,
+  ): Promise<VehicleSummary> {
+    return this.toSummary(
+      row,
+      await this.permissions.can(userId, DECLARE, this.pathOf(row)),
     );
   }
 
@@ -1084,6 +1172,25 @@ export class VehicleService {
     };
   }
 
+  /**
+   * `QUESTIONS.md` PAY-19 — appends to the route type history when a route
+   * type is set or changed, in the transaction that changes it, so a levy
+   * month already due keeps the route type it fell due under.
+   */
+  private async recordRouteType(
+    tx: Prisma.TransactionClient,
+    vehicleId: string,
+    routeTypeId: string | null | undefined,
+    previousRouteTypeId: string | null,
+  ): Promise<void> {
+    if (!routeTypeId || routeTypeId === previousRouteTypeId) {
+      return;
+    }
+    await tx.vehicleRouteTypeChange.create({
+      data: { vehicleId, routeTypeId, previousRouteTypeId },
+    });
+  }
+
   private async require(
     userId: string,
     permission: string,
@@ -1094,7 +1201,12 @@ export class VehicleService {
     }
   }
 
-  private toSummary(row: SummaryRow): VehicleSummary {
+  /**
+   * Every field named, nothing spread. The organisation is copied field by
+   * field because the row carries its materialised path, which is never
+   * returned (item 04).
+   */
+  private toSummary(row: SummaryRow, showDeclaration: boolean): VehicleSummary {
     const organisation = row.unit ?? row.branch;
     if (!organisation) {
       // Structurally impossible: every vehicle is created with a branch or a
@@ -1104,14 +1216,23 @@ export class VehicleService {
     return {
       id: row.id,
       plateNumberDisplay: row.plateNumberDisplay,
-      status: row.status,
-      // ON_RECORD rows carry no declaration date (Decision 6.5) — null,
-      // not a fabricated timestamp.
-      declaredAt: row.declaredAt?.toISOString() ?? null,
+      // VEH-28 — only for a holder of `vehicle.declare` over this vehicle.
+      ...(showDeclaration
+        ? {
+            status: row.status,
+            // ON_RECORD rows carry no declaration date (Decision 6.5) — null,
+            // not a fabricated timestamp.
+            declaredAt: row.declaredAt?.toISOString() ?? null,
+          }
+        : {}),
       isLegacyImport: row.isLegacyImport,
       vehicleCategory: row.vehicleCategory,
       routeType: row.routeType,
-      organisation,
+      organisation: {
+        id: organisation.id,
+        name: organisation.name,
+        level: organisation.level,
+      },
       declaredByMember: row.declaredByMember,
     };
   }

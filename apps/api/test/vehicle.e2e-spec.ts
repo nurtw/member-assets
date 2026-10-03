@@ -66,6 +66,8 @@ describe('Vehicle declaration (e2e)', () => {
       'restricted',
       'reader',
       'enumerator',
+      'suspender',
+      'crossdeclarer',
     ]) {
       cookies[who] = await login(`${who}.${TAG}@nurtw.test`);
     }
@@ -191,9 +193,16 @@ describe('Vehicle declaration (e2e)', () => {
         201,
       );
 
-      expect(response.body.vehicle.status).toBe('ON_RECORD');
-      expect(response.body.vehicle.declaredAt).toBeNull();
+      // VEH-28 — the enumerator holds no vehicle.declare, so is not told the
+      // declaration status, even of the record they just made.
+      expect(response.body.vehicle).not.toHaveProperty('status');
+      expect(response.body.vehicle).not.toHaveProperty('declaredAt');
       expect(response.body.vehicle.routeType.code).toBe('INTERSTATE');
+      const stored = await prisma.vehicle.findUniqueOrThrow({
+        where: { id: response.body.vehicle.id },
+      });
+      expect(stored.status).toBe('ON_RECORD');
+      expect(stored.declaredAt).toBeNull();
 
       const audit = await prisma.auditEvent.findFirst({
         where: { subjectId: response.body.vehicle.id, action: 'vehicle.record' },
@@ -374,6 +383,107 @@ describe('Vehicle declaration (e2e)', () => {
     });
   });
 
+  describe('declaration status (QUESTIONS.md VEH-28)', () => {
+    it('shows the status only to a holder of vehicle.declare', async () => {
+      const created = await declare({ plateNumberDisplay: plate('DS1') }).expect(
+        201,
+      );
+      const id = created.body.vehicle.id;
+
+      const asReader = await request(server)
+        .get(`/api/v1/vehicles/${id}`)
+        .set('Cookie', cookies.reader!)
+        .expect(200);
+      expect(asReader.body.vehicle).not.toHaveProperty('status');
+      expect(asReader.body.vehicle).not.toHaveProperty('declaredAt');
+
+      const asDeclarer = await request(server)
+        .get(`/api/v1/vehicles/${id}`)
+        .set('Cookie', cookies.declarer!)
+        .expect(200);
+      expect(asDeclarer.body.vehicle.status).toBe('ACTIVE');
+      expect(asDeclarer.body.vehicle.declaredAt).not.toBeNull();
+    });
+
+    it('leaves it off list rows, and lets no status filter find anything, without vehicle.declare', async () => {
+      await declare({ plateNumberDisplay: plate('DS2') }).expect(201);
+
+      const listed = await request(server)
+        .get('/api/v1/vehicles')
+        .set('Cookie', cookies.reader!)
+        .expect(200);
+      expect(listed.body.vehicles.length).toBeGreaterThan(0);
+      for (const vehicle of listed.body.vehicles) {
+        expect(vehicle).not.toHaveProperty('status');
+        expect(vehicle).not.toHaveProperty('declaredAt');
+      }
+
+      const filtered = await request(server)
+        .get('/api/v1/vehicles?status=ACTIVE')
+        .set('Cookie', cookies.reader!)
+        .expect(200);
+      expect(filtered.body.vehicles).toEqual([]);
+
+      const asDeclarer = await request(server)
+        .get('/api/v1/vehicles?status=ACTIVE')
+        .set('Cookie', cookies.declarer!)
+        .expect(200);
+      expect(
+        asDeclarer.body.vehicles.some(
+          (v: { plateNumberDisplay: string; status: string }) =>
+            v.plateNumberDisplay.includes('DS2') && v.status === 'ACTIVE',
+        ),
+      ).toBe(true);
+    });
+
+    it('refuses a status change from an officer who may not see the status', async () => {
+      const created = await declare({ plateNumberDisplay: plate('DS3') }).expect(
+        201,
+      );
+
+      await request(server)
+        .patch(`/api/v1/vehicles/${created.body.vehicle.id}/status`)
+        .set('Cookie', cookies.suspender!)
+        .send({ status: 'SUSPENDED', reason: 'e2e: blind suspension' })
+        .expect(403);
+      const stored = await prisma.vehicle.findUniqueOrThrow({
+        where: { id: created.body.vehicle.id },
+      });
+      expect(stored.status).toBe('ACTIVE');
+    });
+
+    it('checks the declarer’s scope before saying anything about the status', async () => {
+      const created = await declare({ plateNumberDisplay: plate('DS4') }).expect(
+        201,
+      );
+
+      // Declare scope in another branch only: refused for scope (403), never
+      // told that this vehicle is already declared (409).
+      await request(server)
+        .post(`/api/v1/vehicles/${created.body.vehicle.id}/declare`)
+        .set('Cookie', cookies.crossdeclarer!)
+        .send({})
+        .expect(403);
+    });
+
+    it('never returns the organisation’s materialised path', async () => {
+      const created = await declare({ plateNumberDisplay: plate('DS5') }).expect(
+        201,
+      );
+
+      const detail = await request(server)
+        .get(`/api/v1/vehicles/${created.body.vehicle.id}`)
+        .set('Cookie', cookies.declarer!)
+        .expect(200);
+      expect(Object.keys(detail.body.vehicle.organisation).sort()).toEqual([
+        'id',
+        'level',
+        'name',
+      ]);
+      expect(JSON.stringify(detail.body)).not.toContain(`/${fixture.branchAId}/`);
+    });
+  });
+
   describe('reading', () => {
     it('omits chassis/VIN for a caller without vehicle.read_restricted', async () => {
       const created = await declare({
@@ -539,6 +649,40 @@ describe('Vehicle declaration (e2e)', () => {
         .send({ status: 'RETIRED', reason: 'e2e: vehicle sold' })
         .expect(200)
         .expect((res) => expect(res.body.vehicle.status).toBe('RETIRED'));
+
+      // PAY-19 — retirement is dated, so the levy can stop after its month.
+      const stored = await prisma.vehicle.findUniqueOrThrow({ where: { id } });
+      expect(stored.retiredAt).not.toBeNull();
+    });
+
+    it('keeps every route type a vehicle has had (PAY-19)', async () => {
+      const created = await declare({ plateNumberDisplay: plate('RT1') }).expect(
+        201,
+      );
+      const id = created.body.vehicle.id;
+
+      await request(server)
+        .patch(`/api/v1/vehicles/${id}`)
+        .set('Cookie', cookies.declarer!)
+        .send({ routeTypeId: fixture.townServiceId })
+        .expect(200);
+      // Setting the route type it already has changes nothing.
+      await request(server)
+        .patch(`/api/v1/vehicles/${id}`)
+        .set('Cookie', cookies.declarer!)
+        .send({ routeTypeId: fixture.townServiceId })
+        .expect(200);
+
+      const history = await prisma.vehicleRouteTypeChange.findMany({
+        where: { vehicleId: id },
+        orderBy: { changedAt: 'asc' },
+      });
+      expect(
+        history.map((row) => [row.previousRouteTypeId, row.routeTypeId]),
+      ).toEqual([
+        [null, fixture.interstateId],
+        [fixture.interstateId, fixture.townServiceId],
+      ]);
     });
 
     it('refuses reviving a retired declaration', async () => {
@@ -648,6 +792,11 @@ describe('Vehicle declaration (e2e)', () => {
     ]);
     await buildUser('reader', branchA.id, ['vehicle.read']);
     await buildUser('enumerator', branchA.id, ['vehicle.record', 'vehicle.read']);
+    // VEH-28 — may suspend, but holds no vehicle.declare to see a status with.
+    await buildUser('suspender', branchA.id, ['vehicle.read', 'vehicle.suspend']);
+    // Reads branch A, declares only in branch B.
+    await buildUser('crossdeclarer', branchA.id, ['vehicle.read']);
+    await grant('crossdeclarer', branchB.id, ['vehicle.declare']);
 
     const member = await prisma.member.create({
       data: {
@@ -690,12 +839,23 @@ describe('Vehicle declaration (e2e)', () => {
     organisationId: string,
     permissions: readonly string[],
   ): Promise<void> {
-    const user = await prisma.user.create({
+    await prisma.user.create({
       data: {
         email: `${who}.${TAG}@nurtw.test`.toLowerCase(),
         fullName: `${who} fixture`,
         passwordHash: await hashPassword(PASSWORD),
       },
+    });
+    await grant(who, organisationId, permissions);
+  }
+
+  async function grant(
+    who: string,
+    organisationId: string,
+    permissions: readonly string[],
+  ): Promise<void> {
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { email: `${who}.${TAG}@nurtw.test`.toLowerCase() },
     });
     for (const code of permissions) {
       const permission = await prisma.permission.findUniqueOrThrow({

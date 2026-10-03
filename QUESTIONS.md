@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.4
-**Last revised:** 2 October 2026
+**Document version:** 1.5
+**Last revised:** 3 October 2026
 
 ---
 
@@ -49,12 +49,12 @@ thing a year later.
 | Structure and master data (ORG) | 4 | 3 | — | 7 |
 | Membership and registration (MEM) | 4 | 10 | — | 14 |
 | Cards (CARD) | 5 | 3 | — | 8 |
-| Vehicles and stickers (VEH) | 20 | 7 | — | 27 |
+| Vehicles and stickers (VEH) | 22 | 6 | 1 | 29 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 4 | 5 | — | 9 |
-| Payments (PAY) | 17 | 3 | — | 20 |
+| Payments (PAY) | 20 | 0 | — | 20 |
 | Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
-| **Total** | **63** | **43** | **1** | **107** |
+| **Total** | **68** | **39** | **2** | **109** |
 
 ### Blocking production use right now
 
@@ -614,6 +614,11 @@ separate fee types, so the two can be priced differently later without developme
 **Answered on.** 22 September 2026. **Answered by.** Project owner.
 **Recorded at.** PRD Requirement 27.2.
 
+**Paused, 3 October 2026.** No new NURTW stickers for now (the project owner). The
+onboarding screen offers reattachment only. The new-sticker path stays built, behind one
+flag, and the System cannot yet print a signed sticker in any case. Transpay's unrecorded
+stock may be used instead, later: see VEH-29.
+
 ### VEH-21 · Refreshing the Transpay register ✅
 
 **Question.** Only barcodes on the imported register can be reattached. How would barcodes
@@ -631,6 +636,10 @@ trying to pass one off in the field.
 **Answered on.** 22 September 2026. **Answered by.** Project owner.
 **Recorded at.** PRD Requirement 9A.4, §23.19, §26.4.
 
+**Being revisited.** On 3 October 2026 the owner asked for a way to add Transpay's
+unrecorded stickers to the System by scanning them, before attaching them, but not yet.
+Until VEH-29 is taken up, the register stays closed as answered here.
+
 ### VEH-22 · What a positive verification requires ✅
 
 **Question.** Only vehicles that are both onboarded and declared count in the external total
@@ -645,6 +654,9 @@ declared, dues) whatever the answer.
 that is both onboarded and declared. The internal channels show every state.
 **Answered on.** 22 September 2026. **Answered by.** Project owner, adopting the recommendation (“use a recommendation for the others, do not ask me again”).
 **Recorded at.** PRD Requirement 9A.1.
+
+**Amended.** 3 October 2026 by VEH-28: the internal channels show a vehicle's declaration
+status only to holders of `vehicle.declare`.
 
 ### VEH-23 · How enumerators add vehicles in the field ✅
 
@@ -719,7 +731,7 @@ category list, which is already administrable master data.
 **Answered on.** 26 September 2026. **Answered by.** Project owner.
 **Recorded at.** PRD Requirement 9.9, 9A.2, §23.21.
 
-### VEH-27 · Reissuing the vehicle letter when its details change ⏳
+### VEH-27 · Reissuing the vehicle letter when its details change ✅
 
 **Question.** The vehicle letter (VEH-19) is produced at onboarding and prints the member's
 name and membership number and the unit as they stand at that moment. Most legacy vehicles
@@ -734,8 +746,57 @@ therefore keeps each letter exactly as printed.
 **Recommended.** Allow a reissue by an officer holding `sticker.attach`, with a recorded
 reason. The new letter gets a new reference, the old one is kept and marked superseded,
 and only the latest can be downloaded.
-**Answered on.** —. **Answered by.** —.
-**Recorded at.** —. Blocks nothing: item 18 issues one letter per onboarding.
+
+**Answer.** **As recommended.** An officer holding `sticker.attach` over the vehicle may
+reissue the letter, giving a reason. The new letter is a fresh snapshot under a new
+reference; the old one is kept as printed, marked superseded, and no longer downloads.
+**Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD Requirement 9A.6, §23.22. Built as item 26.
+
+### VEH-28 · Who may see a vehicle's declaration status ✅
+
+**Question.** The internal verification screen (item 10) showed every state behind a
+negative result, including whether the vehicle is declared. Officers at the roadside use it,
+and a driver can see their screen. Who should see a vehicle's declaration status?
+
+**Answer.** **Only those who hold the permission to declare a vehicle** (`vehicle.declare`),
+which is the super administrator and those expressly granted it. It is never public.
+**Answered on.** 3 October 2026. **Answered by.** Project owner.
+**Recorded at.** PRD Requirement 9A.1, §23.22.
+
+**Applied as.** A vehicle's declaration status and declaration date reach a response only
+for a caller holding `vehicle.declare` over that vehicle, on every screen and route:
+
+- The vehicle list, the vehicle's page, the registration flow, and the Verify screen.
+- On the Verify screen, anyone else is told that the vehicle's record is not complete,
+  never that it is undeclared. The audit trail keeps the true reasons.
+- A status filter matches only vehicles whose status the caller may see, and the vehicle
+  list no longer orders declared vehicles first.
+- Suspending, reinstating, retiring, or dismissing a dispute changes a declaration status,
+  and the answer to such a request would reveal it, so those acts now need `vehicle.declare`
+  as well as their own permission.
+
+Outside the Union nothing changes: Requirement 12.7 already keeps declaration out of every
+external response.
+
+### VEH-29 · Adding Transpay's unrecorded stickers by scanning them 🔒
+
+**Direction.** Transpay still holds stickers the Union can use, but they are not on the
+register. The Union wants to add them to the System by scanning them, before attaching them
+to a vehicle. **Not now, later** (the project owner, 3 October 2026).
+
+**Why it needs care when it is taken up.** This reopens the register VEH-21 closed, and a
+Transpay barcode is a millisecond timestamp with no proof of authenticity (PRD §26.4).
+Today a fabricated barcode fails because it is not on the register; once barcodes can be
+added by scanning, the controls move to whoever may add them. To settle then:
+
+1. Who may add a barcode, and whether a second officer must confirm the batch.
+2. Whether Transpay supplies a list of the stock, so a scan is checked against it.
+3. Whether an added barcode is bound to a plate at once, or only on attachment.
+4. A revision of PRD §23.19 and Requirement 9A.4, which say the register is closed.
+
+**Deferred on.** 3 October 2026. **By.** Project owner. **Recorded at.** —. Nothing is
+built; until it is, nothing is added to the register.
 
 ---
 
@@ -1262,7 +1323,7 @@ dashboard (PAY-11).
 **Answered on.** 26 September 2026. **Answered by.** Project owner.
 **Recorded at.** PRD Requirement 27.7, §23.20.
 
-### PAY-18 · A membership fee paid early, or after a gap ⏳
+### PAY-18 · A membership fee paid early, or after a gap ✅
 
 **Question.** The membership fee covers 12 months from the date it is paid (PAY-03). Two
 cases follow from that rule and are not settled:
@@ -1283,10 +1344,13 @@ whole fee has been received.
 **Recommended.** For an early payment, run the new cover from the end of the current one,
 so nobody loses what they paid for. For a gap, keep one fee: it matches "12 months from the
 date it is paid".
-**Answered on.** —. **Answered by.** —.
-**Recorded at.** —. Blocks nothing: item 22 applies PAY-03 literally.
 
-### PAY-19 · When a levy stops, and a change of route type ⏳
+**Answer.** **As recommended.** A fee paid while cover is running adds 12 months to the end
+of it. After a lapse, one fee is owed, and its year starts on the day it is paid.
+**Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD Requirement 27.13, §23.22. Built as item 25.
+
+### PAY-19 · When a levy stops, and a change of route type ✅
 
 **Question.** The levy falls due every month from the month after a vehicle is onboarded
 (PAY-03). Two cases are not settled:
@@ -1303,10 +1367,14 @@ month. All three route types cost the same today, so the second case changes not
 
 **Recommended.** Stop the levy from the month after a vehicle is retired, and keep each
 month at the route type the vehicle had on the 1st of that month.
-**Answered on.** —. **Answered by.** —.
-**Recorded at.** —. Blocks nothing today.
 
-### PAY-20 · If Paystack asks for a member's BVN before opening a dedicated account ⏳
+**Answer.** **As recommended.** The month a vehicle is retired in is still due; nothing
+falls due after it. Each month is priced at the route type the vehicle had on its 1st.
+**Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD Requirement 27.13, §23.22. Built as item 25: the
+retirement date and every route type a vehicle has had are now recorded.
+
+### PAY-20 · If Paystack asks for a member's BVN before opening a dedicated account ✅
 
 **Question.** Paystack can require a customer's identity to be checked before it opens a
 dedicated account, using their BVN or their own bank account number. Whether it does depends
@@ -1325,8 +1393,12 @@ refusal is audited and the officer is told Paystack did not open it.
 **Recommended.** Check first, with a test-mode account and then one live account. Only if
 Paystack refuses, collect the BVN at the moment of assignment, pass it straight to Paystack,
 and do not store it.
-**Answered on.** —. **Answered by.** —.
-**Recorded at.** —. Blocks dedicated accounts only if Paystack requires it.
+
+**Answer.** **As recommended.** Nothing is built until the test shows Paystack requires it;
+if it does, the BVN is asked for at assignment, passed straight to Paystack, and never
+stored or logged.
+**Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD §23.22.
 
 ---
 
@@ -1422,6 +1494,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 3 October 2026 | The project owner answered VEH-27, PAY-18, PAY-19, and PAY-20 by adopting the recommendations (items 25 and 26 build the first three). New VEH-28: a vehicle's declaration status is shown only to holders of `vehicle.declare`. New VEH-29: adding Transpay's unrecorded stickers by scanning, deferred. VEH-20's new sticker paused; VEH-21 being revisited. PRD revised to 1.4. |
 | 2 October 2026 (item 23) | New PAY-20: whether members' BVNs may be collected if Paystack requires identification before it opens a dedicated account. Open, and it blocks dedicated accounts only if Paystack does require it. PAY-18 notes the case item 23 adds: part of a membership fee arriving before the rest. |
 | 27 September 2026 (item 22) | New PAY-18 (a membership fee paid early or after a gap) and PAY-19 (when a levy stops; re-pricing on a change of route type). Both open, and neither blocks item 22, which applies PAY-03 as written. |
 | 26 September 2026 (item 18) | New VEH-27: whether the vehicle letter can be reissued when its driver or unit changes after onboarding. Open, and it blocks nothing: item 18 issues one letter per onboarding and keeps it as printed. |

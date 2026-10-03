@@ -17,6 +17,9 @@ function values(): VerificationValues {
     organizational_unit: 'Unit 4',
     attached_at: '2026-10-01T09:00:00.000Z',
     plate_matches_sticker: true,
+    membership_status: 'ACTIVE',
+    card_status: 'ACTIVE',
+    designation: 'Driver',
     declaration_status: 'ACTIVE',
     onboarded_at: '2026-10-01T09:00:00.000Z',
     identifier_scheme: 'SIGNED',
@@ -30,6 +33,8 @@ function values(): VerificationValues {
     member_name: 'Ada Obi',
     membership_number: 'NUR-0001',
     member_status: 'ACTIVE',
+    card_number: 'CARD-0001',
+    card_expiry_date: '2027-10-01T00:00:00.000Z',
   };
 }
 
@@ -46,6 +51,7 @@ const PROFILES: Record<string, readonly VerificationField[]> = {
     'sticker_status',
     'organizational_unit',
   ],
+  membership: ['membership_status', 'card_status', 'designation'],
   internal: VERIFICATION_FIELD_NAMES,
 };
 
@@ -152,19 +158,32 @@ describe('projectVerification (ARCHITECTURE.md Decision 5.3)', () => {
   });
 
   it('holds for any permitted set: output ⊆ permitted ∩ catalogue, external ⊆ external tier', () => {
+    // Violations are collected and asserted once: two thousand rounds of
+    // `expect` outran the default timeout on a loaded machine.
+    const violations: string[] = [];
     for (const subset of subsets(2_000)) {
-      const internal = projectVerification(values(), subset, 'INTERNAL');
-      expect(Object.keys(internal)).toEqual(
-        VERIFICATION_FIELD_NAMES.filter((field) => subset.includes(field)),
+      const allowed = new Set<string>(subset);
+      const internal = Object.keys(
+        projectVerification(values(), subset, 'INTERNAL'),
       );
-      const external = projectVerification(values(), subset, 'EXTERNAL');
-      for (const field of Object.keys(external)) {
-        expect(subset).toContain(field);
-        expect(VERIFICATION_FIELDS[field as VerificationField]).toBe(
-          'EXTERNAL',
-        );
+      const expected = VERIFICATION_FIELD_NAMES.filter((field) =>
+        allowed.has(field),
+      );
+      if (internal.join() !== expected.join()) {
+        violations.push(`internal ${subset.join()} -> ${internal.join()}`);
+      }
+      for (const field of Object.keys(
+        projectVerification(values(), subset, 'EXTERNAL'),
+      )) {
+        if (
+          !allowed.has(field) ||
+          VERIFICATION_FIELDS[field as VerificationField] !== 'EXTERNAL'
+        ) {
+          violations.push(`external ${subset.join()} -> ${field}`);
+        }
       }
     }
+    expect(violations).toEqual([]);
   });
 });
 
@@ -185,6 +204,9 @@ describe('the verification field catalogue', () => {
       'organizational_unit',
       'attached_at',
       'plate_matches_sticker',
+      'membership_status',
+      'card_status',
+      'designation',
     ]);
   });
 });

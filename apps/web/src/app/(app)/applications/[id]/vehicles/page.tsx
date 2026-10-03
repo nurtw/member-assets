@@ -94,7 +94,7 @@ export default function ApplicantVehiclesPage() {
             {saved.map((vehicle) => (
               <li key={vehicle.id} className="flex items-center gap-3 text-sm">
                 <span className="font-mono">{vehicle.plateNumberDisplay}</span>
-                <StatusChip status={vehicle.status} />
+                {vehicle.status ? <StatusChip status={vehicle.status} /> : null}
               </li>
             ))}
           </ul>

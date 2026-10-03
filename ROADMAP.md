@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.3
-**Last revised:** 26 September 2026
+**Document version:** 1.4
+**Last revised:** 3 October 2026
 
 ---
 
@@ -51,6 +51,10 @@ Each item is independently completable and independently testable. Status values
 | 21 | fee-type-settings | §27.1–27.2 | done (browser check pending) | `plans/21-fee-type-settings.md` |
 | 22 | dues-schedule | §27.8, §27.13 | done (browser check pending) | `plans/22-dues-schedule.md` |
 | 23 | dedicated-accounts | §27.7 | done (not yet tried in Paystack test mode) | [plan](plans/23-dedicated-accounts.md) |
+| 24 | membership-verification | §11, §15 | done | [plan](plans/24-membership-verification.md) |
+| 25 | dues-answers | §27.13 | done | [plan](plans/25-dues-answers.md) |
+| 26 | letter-reissue | §9A.6 | done | [plan](plans/26-letter-reissue.md) |
+| 27 | transpay-stock-intake | §9A.4 | deferred by the owner | [plan](plans/27-transpay-stock-intake.md) |
 
 ### Item summaries
 
@@ -200,6 +204,25 @@ items 17 and 21.
 **23 — dedicated-accounts.** *Requirement 27.7, PAY-11, PAY-12, PAY-17.* A Paystack dedicated
 account per member, split to the NURTW subaccount, crediting oldest dues first. Dedicated
 accounts are enabled on the Paystack business. Depends on item 22.
+
+**24 — membership-verification.** *PRD 1.4, §11.* An officer checks a membership card by its
+card number or membership number, on the Verify screen. Internal only; the external
+membership endpoint (item 12) reuses its rule. Depends on item 10.
+
+**25 — dues-answers.** *PRD 1.4, PAY-18 and PAY-19.* A membership fee paid early extends
+cover from its end. The levy stops after the month a vehicle is retired in, and each month
+is priced at the route type the vehicle had on its 1st. Amends item 22.
+
+**26 — letter-reissue.** *PRD 1.4, VEH-27.* An officer holding `sticker.attach` reissues a
+vehicle's letter with a reason. The old letter is kept, marked superseded. Amends item 18.
+
+**27 — transpay-stock-intake.** *VEH-29, deferred.* Adding Transpay's unrecorded stickers to
+the register by scanning them, before attaching them. Not started, by the owner's direction
+of 3 October 2026. It reopens the register VEH-21 closed, so it needs a PRD revision first.
+
+**Also on 3 October 2026 (PRD 1.4, VEH-28).** A vehicle's declaration status is shown only
+to holders of `vehicle.declare`, on every screen and route. This amended items 07 and 10.
+New NURTW stickers are paused, so onboarding is by reattachment only.
 
 ## Dependencies
 

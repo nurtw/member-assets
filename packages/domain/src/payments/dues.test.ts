@@ -5,7 +5,9 @@ import {
   lagosMonthLabel,
   levySchedule,
   membershipCover,
+  routeTypeInForce,
   type MembershipPayment,
+  type RouteTypeChange,
 } from './dues.js';
 import { resolveFeeAmountAtKobo, type FeeAmountChange } from './fee-amount.js';
 
@@ -158,6 +160,99 @@ describe('levySchedule (PRD Requirement 27.13)', () => {
       ['2027-01', 800_000, 800_000],
     ]);
     expect(schedule.status).toBe('OWED');
+  });
+
+  describe('retirement (PAY-19)', () => {
+    it('charges the month a vehicle is retired in, and none after it', () => {
+      const schedule = levySchedule({
+        onboardedAt: lagos('2026-10-10'),
+        now: lagos('2027-03-10'),
+        creditKobo: 0,
+        amountForMonth: flat,
+        retiredAt: lagos('2027-01-15'),
+      });
+      expect(schedule.months.map((m) => m.month)).toEqual([
+        '2026-11',
+        '2026-12',
+        '2027-01',
+      ]);
+      expect(schedule.nextDueOn).toBeNull();
+    });
+
+    it('still charges a month whose 1st is the instant of retirement', () => {
+      const schedule = levySchedule({
+        onboardedAt: lagos('2026-10-10'),
+        now: lagos('2027-03-10'),
+        creditKobo: 0,
+        amountForMonth: flat,
+        retiredAt: lagos('2027-02-01'),
+      });
+      expect(schedule.months.at(-1)?.month).toBe('2027-02');
+    });
+
+    it('is paid once the months before retirement are paid', () => {
+      const schedule = levySchedule({
+        onboardedAt: lagos('2026-10-10'),
+        now: lagos('2027-06-10'),
+        creditKobo: 2 * LEVY,
+        amountForMonth: flat,
+        retiredAt: lagos('2026-12-20'),
+      });
+      expect(schedule).toMatchObject({
+        status: 'PAID',
+        outstandingKobo: 0,
+        nextDueOn: null,
+      });
+    });
+  });
+});
+
+describe('routeTypeInForce (PAY-19)', () => {
+  const change = (
+    routeTypeId: string,
+    previousRouteTypeId: string | null,
+    changedAt: Date,
+  ): RouteTypeChange => ({ routeTypeId, previousRouteTypeId, changedAt });
+
+  it('is the current route type when it has never changed', () => {
+    expect(routeTypeInForce(lagos('2027-01-01'), [], 'TOWN')).toBe('TOWN');
+  });
+
+  it('is the route type in force at the instant, whatever came later', () => {
+    const history = [
+      change('TOWN', null, lagos('2026-09-01')),
+      change('INTERSTATE', 'TOWN', lagos('2027-02-10')),
+    ];
+    expect(routeTypeInForce(lagos('2027-02-01'), history, 'INTERSTATE')).toBe(
+      'TOWN',
+    );
+    expect(routeTypeInForce(lagos('2027-03-01'), history, 'INTERSTATE')).toBe(
+      'INTERSTATE',
+    );
+  });
+
+  it('takes the route type the first recorded change replaced, before it', () => {
+    // History kept from item 25 only: an earlier month had what the first
+    // change replaced.
+    const history = [change('INTERSTATE', 'TOWN', lagos('2027-02-10'))];
+    expect(routeTypeInForce(lagos('2027-01-01'), history, 'INTERSTATE')).toBe(
+      'TOWN',
+    );
+  });
+
+  it('takes the first route type when the vehicle had none before it', () => {
+    const history = [change('TOWN', null, lagos('2027-02-10'))];
+    expect(routeTypeInForce(lagos('2027-01-01'), history, 'TOWN')).toBe('TOWN');
+  });
+
+  it('applies a change made on the 1st itself to that month', () => {
+    const history = [
+      change('TOWN', null, lagos('2026-09-01')),
+      change('INTERSTATE', 'TOWN', lagos('2027-03-01')),
+    ];
+    expect(routeTypeInForce(lagos('2027-03-01'), history, 'INTERSTATE')).toBe(
+      'INTERSTATE',
+    );
   });
 });
 
@@ -354,9 +449,9 @@ describe('membershipCover (PRD Requirement 27.13, PAY-03)', () => {
     expect(cover.owedSince).toEqual(lagos('2028-01-20'));
   });
 
-  it('starts a fee paid early on the day it is paid, as PAY-03 reads (PAY-18)', () => {
-    // Covered to 20 January 2028, paid again on 20 November 2027. Read
-    // literally, the second cover ends 20 November 2028; the two overlap.
+  it('adds a fee paid early to the end of the current cover (PAY-18)', () => {
+    // Covered to 20 January 2028, paid again on 20 November 2027: the new
+    // year runs from 20 January 2028, so nothing already paid for is lost.
     const cover = membershipCover({
       firstDueOn: approved,
       payments: paidInFull(lagos('2027-01-20'), lagos('2027-11-20')),
@@ -364,7 +459,31 @@ describe('membershipCover (PRD Requirement 27.13, PAY-03)', () => {
       now: lagos('2027-12-01'),
     });
     expect(cover.status).toBe('PAID');
-    expect(cover.coveredUntil).toEqual(lagos('2028-11-20'));
+    expect(cover.coveredUntil).toEqual(lagos('2029-01-20'));
+  });
+
+  it('stacks every early fee, one year each (PAY-18)', () => {
+    const cover = membershipCover({
+      firstDueOn: approved,
+      payments: paidInFull(
+        lagos('2027-01-20'),
+        lagos('2027-03-01'),
+        lagos('2027-06-01'),
+      ),
+      amountAt: fee,
+      now: lagos('2027-07-01'),
+    });
+    expect(cover.coveredUntil).toEqual(lagos('2030-01-20'));
+  });
+
+  it('starts afresh on the day it is paid after a lapse (PAY-18)', () => {
+    const cover = membershipCover({
+      firstDueOn: approved,
+      payments: paidInFull(lagos('2027-01-20'), lagos('2029-05-01')),
+      amountAt: fee,
+      now: lagos('2029-06-01'),
+    });
+    expect(cover.coveredUntil).toEqual(lagos('2030-05-01'));
   });
 
   it('counts a fee paid before the first due date', () => {
@@ -426,7 +545,20 @@ describe('membershipCover (PRD Requirement 27.13, PAY-03)', () => {
       expect(cover.coveredUntil).toEqual(addTwelveMonths(last));
     });
 
-    it('carries more than one fee toward the next fee, rather than overlapping a second cover', () => {
+    it('buys a year for each whole fee and holds the rest (PAY-18)', () => {
+      const cover = membershipCover({
+        firstDueOn: approved,
+        payments: [part(lagos('2026-12-01'), 2 * FEE + 500_000)],
+        amountAt: fee,
+        now: lagos('2027-01-01'),
+      });
+      expect(cover).toMatchObject({ status: 'PAID', heldKobo: 500_000 });
+      expect(cover.coveredUntil).toEqual(
+        addTwelveMonths(addTwelveMonths(lagos('2026-12-01'))),
+      );
+    });
+
+    it('carries part of a fee toward the next one, rather than starting a second cover', () => {
       const cover = membershipCover({
         firstDueOn: approved,
         payments: [part(lagos('2026-12-01'), FEE + 500_000)],

@@ -13,9 +13,9 @@ import type {
 import {
   MATCH_STATEMENTS,
   NO_MATCH_STATEMENT,
-  VERIFICATION_FIELD_NAMES,
   VERIFICATION_LIMITATION,
   decideVerification,
+  discloseReasons,
   normalizePlateNumber,
   projectVerification,
   stickerCodeScheme,
@@ -36,6 +36,7 @@ import { StickerService } from '../sticker/sticker.service.js';
 const PERFORM = 'verification.perform';
 const READ_VEHICLE = 'vehicle.read';
 const READ_MEMBER = 'member.read';
+const DECLARE = 'vehicle.declare';
 
 /**
  * What a verification reads of a vehicle. Never the owner, the chassis or VIN,
@@ -94,14 +95,29 @@ const MEMBER_FIELDS: readonly VerificationField[] = [
 ];
 
 /**
- * What every internal check may show. The vehicle link and the member are
- * added only within the officer's own read scope; everything here identifies
- * a vehicle and a sticker, never a person.
+ * What every internal vehicle check may show, named one by one so a field
+ * added to the catalogue later stays out until it is added here. Everything
+ * here identifies a vehicle and a sticker, never a person. The vehicle link and
+ * the member are added only within the officer's own read scope, and the
+ * declaration status only for a holder of `vehicle.declare` over the vehicle
+ * (VEH-28).
  */
-const BASE_FIELDS: readonly VerificationField[] =
-  VERIFICATION_FIELD_NAMES.filter(
-    (field) => field !== 'vehicle_id' && !MEMBER_FIELDS.includes(field),
-  );
+const BASE_FIELDS: readonly VerificationField[] = [
+  'plate_number',
+  'vehicle_category',
+  'sticker_status',
+  'organizational_unit',
+  'attached_at',
+  'plate_matches_sticker',
+  'onboarded_at',
+  'identifier_scheme',
+  'registered_plate',
+  'sticker_plate',
+  'make',
+  'model',
+  'color',
+  'route_type',
+];
 
 export interface VerificationRequestMeta {
   requestId: string;
@@ -203,6 +219,7 @@ export class VerificationService {
                 sticker: null,
                 vehicle: null,
               }),
+          false,
           {},
           { vehicle: null, member: null },
           meta,
@@ -310,6 +327,9 @@ export class VerificationService {
         READ_MEMBER,
         member.organisation.path,
       ));
+    const declarationVisible =
+      vehiclePath !== null &&
+      (await this.permissions.can(userId, DECLARE, vehiclePath));
 
     const [vehicleDues, memberDues] = await Promise.all([
       vehicle && vehicleReadable
@@ -359,6 +379,12 @@ export class VerificationService {
       member_name: member ? `${member.firstName} ${member.surname}` : null,
       membership_number: member?.membershipNumber ?? null,
       member_status: member?.status ?? null,
+      // A membership check's own fields; a vehicle check never permits them.
+      membership_status: null,
+      card_status: null,
+      designation: null,
+      card_number: null,
+      card_expiry_date: null,
     };
 
     // The fields describe what was found; with nothing found there is
@@ -369,6 +395,7 @@ export class VerificationService {
             ...BASE_FIELDS,
             ...(vehicleReadable ? (['vehicle_id'] as const) : []),
             ...(memberReadable ? MEMBER_FIELDS : []),
+            ...(declarationVisible ? (['declaration_status'] as const) : []),
           ]
         : [];
 
@@ -398,6 +425,7 @@ export class VerificationService {
     return this.respond(
       criteria,
       verdict,
+      declarationVisible,
       projectVerification(values, permitted, 'INTERNAL'),
       { vehicle: vehicleDues, member: memberDues },
       meta,
@@ -405,9 +433,14 @@ export class VerificationService {
     );
   }
 
+  /**
+   * The audit event keeps the true reasons; the officer is told them only as
+   * far as VEH-28 allows.
+   */
   private respond(
     criteria: VerificationCriteria,
     verdict: VerificationVerdict,
+    declarationVisible: boolean,
     fields: InternalVerification['fields'],
     dues: { vehicle: VehicleDues | null; member: MemberDues | null },
     meta: VerificationRequestMeta,
@@ -418,7 +451,7 @@ export class VerificationService {
       verifiedAt: now.toISOString(),
       criteria,
       matched: verdict.matched,
-      reasons: verdict.reasons,
+      reasons: discloseReasons(verdict.reasons, declarationVisible),
       statement: verdict.matched
         ? MATCH_STATEMENTS[criteria]
         : NO_MATCH_STATEMENT,

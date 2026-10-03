@@ -32,6 +32,13 @@ import { useSession } from "@/lib/session";
 
 type Method = "LEGACY" | "SIGNED";
 
+/**
+ * The owner's direction of 3 October 2026: no new NURTW stickers for now, so
+ * onboarding is by reattaching a Transpay sticker. The new-sticker path stays
+ * built, and switching it back on is this one flag.
+ */
+const NEW_STICKERS_IN_USE = false;
+
 const FEE_FOR: Record<Method, string> = {
   LEGACY: "STICKER_REATTACHMENT",
   SIGNED: "STICKER_NEW",
@@ -226,7 +233,9 @@ export function OnboardingSection({
             <p className="text-xs text-black/55">
               {state.registerHoldsBarcodeForPlate
                 ? "The Transpay register holds a barcode for this plate. If the vehicle carries that sticker, reattach it."
-                : "The Transpay register holds no unattached barcode for this plate, so a Transpay sticker cannot be reattached. Attach a new NURTW sticker."}
+                : NEW_STICKERS_IN_USE
+                  ? "The Transpay register holds no unattached barcode for this plate, so a Transpay sticker cannot be reattached. Attach a new NURTW sticker."
+                  : "The Transpay register holds no unattached barcode for this plate, so a Transpay sticker cannot be reattached. New NURTW stickers are not in use yet, so this vehicle cannot be onboarded for now."}
             </p>
             {(
               [
@@ -240,7 +249,11 @@ export function OnboardingSection({
                   name="onboardMethod"
                   value={value}
                   checked={method === value}
-                  disabled={value === "LEGACY" && !state.registerHoldsBarcodeForPlate}
+                  disabled={
+                    value === "LEGACY"
+                      ? !state.registerHoldsBarcodeForPlate
+                      : !NEW_STICKERS_IN_USE
+                  }
                   onChange={() => {
                     setMethod(value);
                     setPaymentId("");
@@ -248,6 +261,9 @@ export function OnboardingSection({
                   }}
                 />
                 {label}
+                {value === "SIGNED" && !NEW_STICKERS_IN_USE ? (
+                  <span className="text-xs text-black/45">(not in use yet)</span>
+                ) : null}
               </label>
             ))}
           </fieldset>

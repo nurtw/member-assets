@@ -161,6 +161,30 @@ function verdict(reasons: ReadonlySet<NotVerifiedReason>): VerificationVerdict {
 }
 
 /**
+ * A reason as an internal channel may state it. `RECORD_INCOMPLETE` stands in
+ * for `NOT_DECLARED` before anyone who may not see declaration status.
+ */
+export type DisclosedReason = NotVerifiedReason | 'RECORD_INCOMPLETE';
+
+/**
+ * `QUESTIONS.md` VEH-28 — a vehicle's declaration status is shown only to
+ * holders of `vehicle.declare`. For anyone else, `NOT_DECLARED` becomes
+ * `RECORD_INCOMPLETE`, in the same place in the order. The officer learns the
+ * record is not complete, never that the vehicle is undeclared. The verdict
+ * itself is unchanged, and the audit trail keeps the true reasons.
+ */
+export function discloseReasons(
+  reasons: readonly NotVerifiedReason[],
+  declarationVisible: boolean,
+): DisclosedReason[] {
+  return declarationVisible
+    ? [...reasons]
+    : reasons.map((reason) =>
+        reason === 'NOT_DECLARED' ? 'RECORD_INCOMPLETE' : reason,
+      );
+}
+
+/**
  * PRD Requirement 11.1 and §22 — a result states exactly what was verified.
  * A match never claims ownership, roadworthiness, licensing, or insurance.
  */

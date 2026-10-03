@@ -22,6 +22,8 @@ import {
 import type { LetterSignatory } from './templates/template.js';
 
 const READ = 'vehicle.read';
+/** VEH-27 — reissuing is part of onboarding's work, as attaching is. */
+const REISSUE = 'sticker.attach';
 const IDENTIFIER_ATTEMPTS = 5;
 
 const SIGNATURE_SELECT = {
@@ -39,6 +41,10 @@ const SIGNATURE_SELECT = {
  * snapshot, through the template version the letter recorded — so a rendering
  * problem can never undo an onboarding, and a letter downloaded a year later is
  * the letter issued.
+ *
+ * `reissue` (`QUESTIONS.md` VEH-27 — item 26) takes a fresh snapshot under a
+ * new reference when the details have changed. The letter it replaces is kept
+ * exactly as printed, marked superseded, and is no longer downloadable.
  */
 @Injectable()
 export class VehicleLetterService {
@@ -58,6 +64,124 @@ export class VehicleLetterService {
       actorUserId: string;
     },
   ): Promise<{ letterReference: string }> {
+    const letter = await this.createLetter(tx, input);
+
+    await this.audit.record(
+      {
+        action: 'vehicle_letter.issue',
+        subjectType: 'vehicle_letter',
+        subjectId: letter.id,
+        actorUserId: input.actorUserId,
+        after: {
+          vehicleId: input.vehicleId,
+          stickerId: input.stickerId,
+          letterReference: letter.letterReference,
+          templateVersion: CURRENT_LETTER_TEMPLATE_VERSION,
+        },
+      },
+      tx,
+    );
+
+    return { letterReference: letter.letterReference };
+  }
+
+  /**
+   * VEH-27 — a fresh letter, under a new reference, from the vehicle as it
+   * stands now: after a driver is linked, or the vehicle moves unit. Needs
+   * `sticker.attach` over the vehicle and a reason. A vehicle outside that
+   * scope, or with no letter yet, answers 404 alike.
+   */
+  async reissue(
+    userId: string,
+    vehicleId: string,
+    reason: string,
+    meta: { ipAddress?: string; requestId?: string } = {},
+  ): Promise<{ letterReference: string; issuedAt: string }> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: {
+        branch: { select: { path: true } },
+        unit: { select: { path: true } },
+      },
+    });
+    const path = vehicle?.unit?.path ?? vehicle?.branch?.path;
+    if (!path || !(await this.permissions.can(userId, REISSUE, path))) {
+      throw new NotFoundException();
+    }
+
+    const [current, sticker] = await Promise.all([
+      this.prisma.vehicleLetter.findFirst({
+        where: { vehicleId, supersededAt: null },
+        orderBy: { issuedAt: 'desc' },
+        select: { id: true, letterReference: true, stickerId: true },
+      }),
+      // The sticker on the vehicle now, which a later attachment may have
+      // changed since the letter was issued.
+      this.prisma.sticker.findFirst({
+        where: { vehicleId, attachedAt: { not: null } },
+        orderBy: { attachedAt: 'desc' },
+        select: { id: true, legacyBarcode: true, stickerQrId: true },
+      }),
+    ]);
+    if (!current || !sticker) {
+      throw new NotFoundException();
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Of two reissues at once, one finds the letter already superseded.
+      const { count } = await tx.vehicleLetter.updateMany({
+        where: { id: current.id, supersededAt: null },
+        data: { supersededAt: new Date() },
+      });
+      if (count === 0) {
+        throw new ConflictException('The letter was reissued a moment ago.');
+      }
+
+      const letter = await this.createLetter(tx, {
+        vehicleId,
+        stickerId: sticker.id,
+        stickerNumber: sticker.legacyBarcode ?? sticker.stickerQrId,
+        actorUserId: userId,
+        replaces: { id: current.id, reason },
+      });
+
+      await this.audit.record(
+        {
+          action: 'vehicle_letter.reissue',
+          subjectType: 'vehicle_letter',
+          subjectId: letter.id,
+          actorUserId: userId,
+          reason,
+          before: { letterReference: current.letterReference },
+          after: {
+            vehicleId,
+            letterReference: letter.letterReference,
+            templateVersion: CURRENT_LETTER_TEMPLATE_VERSION,
+          },
+          ipAddress: meta.ipAddress,
+          requestId: meta.requestId,
+        },
+        tx,
+      );
+
+      return {
+        letterReference: letter.letterReference,
+        issuedAt: letter.issuedAt.toISOString(),
+      };
+    });
+  }
+
+  /** The snapshot of the vehicle as it stands, written as a new letter. */
+  private async createLetter(
+    tx: Prisma.TransactionClient,
+    input: {
+      vehicleId: string;
+      stickerId: string;
+      stickerNumber: string;
+      actorUserId: string;
+      replaces?: { id: string; reason: string };
+    },
+  ): Promise<{ id: string; letterReference: string; issuedAt: Date }> {
     const vehicle = await tx.vehicle.findUniqueOrThrow({
       where: { id: input.vehicleId },
       select: {
@@ -89,7 +213,7 @@ export class VehicleLetterService {
     const member = vehicle.declaredByMember;
     const letterReference = await this.allocateReference(tx);
 
-    const letter = await tx.vehicleLetter.create({
+    return tx.vehicleLetter.create({
       data: {
         vehicleId: input.vehicleId,
         stickerId: input.stickerId,
@@ -116,27 +240,11 @@ export class VehicleLetterService {
           signatures.find((s) => s.position === 'PRESIDENT')?.id ?? null,
         generalSecretarySignatureId:
           signatures.find((s) => s.position === 'GENERAL_SECRETARY')?.id ?? null,
+        replacesLetterId: input.replaces?.id ?? null,
+        reissueReason: input.replaces?.reason ?? null,
       },
-      select: { id: true },
+      select: { id: true, letterReference: true, issuedAt: true },
     });
-
-    await this.audit.record(
-      {
-        action: 'vehicle_letter.issue',
-        subjectType: 'vehicle_letter',
-        subjectId: letter.id,
-        actorUserId: input.actorUserId,
-        after: {
-          vehicleId: input.vehicleId,
-          stickerId: input.stickerId,
-          letterReference,
-          templateVersion: CURRENT_LETTER_TEMPLATE_VERSION,
-        },
-      },
-      tx,
-    );
-
-    return { letterReference };
   }
 
   /**
@@ -161,8 +269,9 @@ export class VehicleLetterService {
       throw new NotFoundException();
     }
 
+    // VEH-27 — only the current letter downloads; a superseded one is kept.
     const letter = await this.prisma.vehicleLetter.findFirst({
-      where: { vehicleId },
+      where: { vehicleId, supersededAt: null },
       orderBy: { issuedAt: 'desc' },
       include: {
         presidentSignature: SIGNATURE_SELECT,

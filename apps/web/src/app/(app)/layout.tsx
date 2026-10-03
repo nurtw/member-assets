@@ -11,12 +11,16 @@ import { SessionProvider, useSession } from "@/lib/session";
  * screen here they may use, so a verification officer, who also reads
  * vehicles, lands on Verify.
  */
-const NAVIGATION = [
-  { href: "/applications", label: "Applications", permission: "application.read" },
-  { href: "/verify", label: "Verify", permission: "verification.perform" },
-  { href: "/cards", label: "Cards", permission: "card.read" },
-  { href: "/vehicles", label: "Vehicles", permission: "vehicle.read" },
-  { href: "/settings/fees", label: "Fees", permission: "payment.read" },
+const NAVIGATION: { href: string; label: string; permissions: string[] }[] = [
+  { href: "/applications", label: "Applications", permissions: ["application.read"] },
+  {
+    href: "/verify",
+    label: "Verify",
+    permissions: ["verification.perform", "verification.membership"],
+  },
+  { href: "/cards", label: "Cards", permissions: ["card.read"] },
+  { href: "/vehicles", label: "Vehicles", permissions: ["vehicle.read"] },
+  { href: "/settings/fees", label: "Fees", permissions: ["payment.read"] },
 ];
 
 /**
@@ -33,7 +37,9 @@ function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const links = user ? NAVIGATION.filter((link) => holds(link.permission)) : [];
+  const links = user
+    ? NAVIGATION.filter((link) => link.permissions.some(holds))
+    : [];
   const home = links[0]?.href ?? "/applications";
 
   // Signing in, and the root, land on /applications. An officer who cannot

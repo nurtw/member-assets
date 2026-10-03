@@ -1,3 +1,4 @@
+import { generateIdentifier } from '@nurtw/domain';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -10,6 +11,8 @@ import {
   STICKER_STATUSES,
   VERIFIABLE_DECLARATION_STATUSES,
   VERIFIABLE_STICKER_STATUSES,
+  reissueVehicleLetterSchema,
+  verifyMembershipSchema,
   verifySchema,
 } from './index.js';
 
@@ -156,5 +159,41 @@ describe('verification request (item 10)', () => {
       channel: 'EXTERNAL',
     });
     expect(parsed).toEqual({ plateNumber: 'AA123XY' });
+  });
+});
+
+describe('membership verification request (item 24)', () => {
+  // A fixed byte source keeps the generated number the same on every run.
+  const number = generateIdentifier(() => 7);
+
+  it('accepts a number as printed, however it is typed', () => {
+    expect(verifyMembershipSchema.safeParse({ number }).success).toBe(true);
+    expect(
+      verifyMembershipSchema.safeParse({
+        number: number.toLowerCase().replace(/-/g, ' '),
+      }).success,
+    ).toBe(true);
+  });
+
+  it('refuses a number that fails its check character, before any lookup', () => {
+    const mistyped = number.replace(/.$/, (last) => (last === 'A' ? 'B' : 'A'));
+    expect(verifyMembershipSchema.safeParse({ number: mistyped }).success).toBe(
+      false,
+    );
+    expect(verifyMembershipSchema.safeParse({ number: '' }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe('vehicle letter reissue request (VEH-27)', () => {
+  it('requires a reason', () => {
+    expect(reissueVehicleLetterSchema.safeParse({}).success).toBe(false);
+    expect(
+      reissueVehicleLetterSchema.safeParse({ reason: ' ok ' }).success,
+    ).toBe(false);
+    expect(
+      reissueVehicleLetterSchema.safeParse({ reason: 'Driver linked' }).success,
+    ).toBe(true);
   });
 });

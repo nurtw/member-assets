@@ -1,6 +1,9 @@
+import { randomInt } from 'node:crypto';
+
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { generateIdentifier } from '@nurtw/domain';
 import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 
@@ -65,6 +68,9 @@ describe('Internal verification (e2e)', () => {
   let otherBranchId: string;
   const ids: Record<string, string> = {};
   const codes: Record<string, string> = {};
+  /** Card and membership numbers, in the System's own format (item 24). */
+  const numbers: Record<string, string> = {};
+  const identifier = () => generateIdentifier(() => randomInt(256));
 
   beforeAll(async () => {
     process.env.STICKER_SIGNING_SECRET = SIGNING_SECRET;
@@ -94,7 +100,7 @@ describe('Internal verification (e2e)', () => {
         firstName: TAG,
         organisationId: branchId,
         status: 'ACTIVE',
-        membershipNumber: `${TAG}-M1`,
+        membershipNumber: (numbers.member = identifier()),
         contact: {
           create: {
             phone: RESTRICTED.memberPhone,
@@ -109,10 +115,63 @@ describe('Internal verification (e2e)', () => {
         firstName: TAG,
         organisationId: otherBranchId,
         status: 'ACTIVE',
-        membershipNumber: `${TAG}-M2`,
+        membershipNumber: (numbers.otherMember = identifier()),
       },
     });
     ids.member = member.id;
+
+    // Item 24 — cards to check. One live card per member (the
+    // `card_one_live_per_member` index), so the expired card has its own.
+    async function card(
+      key: string,
+      memberId: string,
+      status: 'ACTIVE' | 'REPLACED',
+      expiryDate: Date | null,
+    ) {
+      const row = await prisma.card.create({
+        data: {
+          memberId,
+          status,
+          cardNumber: (numbers[key] = identifier()),
+          issueDate: new Date('2026-09-01T09:00:00Z'),
+          expiryDate,
+          templateVersion: 'v1-provisional',
+        },
+      });
+      ids[`card-${key}`] = row.id;
+    }
+    await card(
+      'activeCard',
+      member.id,
+      'ACTIVE',
+      new Date('2099-01-01T00:00:00Z'),
+    );
+    await card('replacedCard', member.id, 'REPLACED', null);
+    await card('otherCard', otherMember.id, 'ACTIVE', null);
+    const lapsed = await prisma.member.create({
+      data: {
+        surname: 'Lapsed',
+        firstName: TAG,
+        organisationId: branchId,
+        status: 'ACTIVE',
+        membershipNumber: identifier(),
+      },
+    });
+    await card(
+      'expiredCard',
+      lapsed.id,
+      'ACTIVE',
+      new Date('2026-01-01T00:00:00Z'),
+    );
+    await prisma.member.create({
+      data: {
+        surname: 'Suspended',
+        firstName: TAG,
+        organisationId: branchId,
+        status: 'SUSPENDED',
+        membershipNumber: (numbers.suspendedMember = identifier()),
+      },
+    });
 
     async function vehicle(
       key: string,
@@ -212,7 +271,16 @@ describe('Internal verification (e2e)', () => {
     ]);
     await buildUser('verifier', ['verification.perform']);
     await buildUser('bystander', ['vehicle.read']);
-    for (const who of ['officer', 'verifier', 'bystander']) {
+    // VEH-28 — the only kind of officer told a declaration status.
+    await buildUser('declarer', ['verification.perform', 'vehicle.declare']);
+    await buildUser('carder', ['verification.membership', 'member.read']);
+    for (const who of [
+      'officer',
+      'verifier',
+      'bystander',
+      'declarer',
+      'carder',
+    ]) {
       cookies[who] = await login(`${who}.${TAG}@nurtw.test`);
     }
   });
@@ -238,6 +306,21 @@ describe('Internal verification (e2e)', () => {
       .expect(200);
     responses.push(JSON.stringify(response.body));
     return response.body.verification as Verification;
+  }
+
+  async function verifyMembership(
+    number: string,
+    who = 'carder',
+  ): Promise<Verification & { foundAs: string | null }> {
+    const response = await request(server)
+      .post('/api/v1/verifications/membership')
+      .set('Cookie', cookies[who]!)
+      .send({ number })
+      .expect(200);
+    responses.push(JSON.stringify(response.body));
+    return response.body.verification as Verification & {
+      foundAs: string | null;
+    };
   }
 
   async function auditFor(reference: string) {
@@ -278,16 +361,17 @@ describe('Internal verification (e2e)', () => {
       expect(result.limitation).toMatch(/not evidence of ownership/);
       expect(result.fields).toMatchObject({
         plate_number: 'E2EVFY-MATCH',
-        declaration_status: 'ACTIVE',
         sticker_status: 'ACTIVE',
         identifier_scheme: 'SIGNED',
         organizational_unit: `Branch ${TAG}`,
         make: 'Toyota',
         vehicle_id: ids.MATCH,
         member_name: `${TAG} Verified`,
-        membership_number: `${TAG}-M1`,
+        membership_number: numbers.member,
       });
       expect(result.fields.onboarded_at).not.toBeNull();
+      // VEH-28 — this officer holds no vehicle.declare.
+      expect(result.fields).not.toHaveProperty('declaration_status');
       // Requirement 27.8 — beside the verdict, within the officer's scope.
       expect(result.dues.vehicle?.vehicleId).toBe(ids.MATCH);
       expect(result.dues.member?.memberId).toBe(ids.member);
@@ -307,7 +391,7 @@ describe('Internal verification (e2e)', () => {
     });
 
     it('gives both reasons for a legacy vehicle on record only (VEH-22)', async () => {
-      const result = await verify({ plateNumber: 'E2EVFY-REC' });
+      const result = await verify({ plateNumber: 'E2EVFY-REC' }, 'declarer');
       expect(result.matched).toBe(false);
       expect(result.reasons).toEqual(['NOT_DECLARED', 'NOT_ONBOARDED']);
       expect(result.statement).toBe(
@@ -317,6 +401,20 @@ describe('Internal verification (e2e)', () => {
         declaration_status: 'ON_RECORD',
         onboarded_at: null,
         sticker_status: null,
+      });
+    });
+
+    it('tells an officer without vehicle.declare only that the record is incomplete (VEH-28)', async () => {
+      const result = await verify({ plateNumber: 'E2EVFY-REC' });
+      expect(result.matched).toBe(false);
+      expect(result.reasons).toEqual(['RECORD_INCOMPLETE', 'NOT_ONBOARDED']);
+      expect(result.fields).not.toHaveProperty('declaration_status');
+      expect(JSON.stringify(result)).not.toMatch(/DECLARED|ON_RECORD/);
+
+      // The audit trail keeps the true reasons.
+      const audit = await auditFor(result.reference);
+      expect(audit.afterValue).toMatchObject({
+        reasons: ['NOT_DECLARED', 'NOT_ONBOARDED'],
       });
     });
 
@@ -517,6 +615,109 @@ describe('Internal verification (e2e)', () => {
     });
   });
 
+  describe('membership (item 24)', () => {
+    it('refuses a caller without verification.membership', async () => {
+      await request(server)
+        .post('/api/v1/verifications/membership')
+        .set('Cookie', cookies.officer!)
+        .send({ number: numbers.activeCard })
+        .expect(403);
+    });
+
+    it('refuses a number that fails its check character, before any lookup', async () => {
+      const typo = numbers.activeCard!.replace(/.$/, (last) =>
+        last === 'A' ? 'B' : 'A',
+      );
+      await request(server)
+        .post('/api/v1/verifications/membership')
+        .set('Cookie', cookies.carder!)
+        .send({ number: typo })
+        .expect(400);
+    });
+
+    it('matches an ACTIVE, in-date card, and names its holder for comparison', async () => {
+      const result = await verifyMembership(numbers.activeCard!);
+      expect(result).toMatchObject({
+        foundAs: 'CARD_NUMBER',
+        matched: true,
+        reasons: [],
+        statement:
+          'A matching NURTW membership record was found under the requested verification criteria.',
+      });
+      expect(result.fields).toMatchObject({
+        member_name: `${TAG} Verified`,
+        membership_number: numbers.member,
+        membership_status: 'ACTIVE',
+        card_number: numbers.activeCard,
+        card_status: 'ACTIVE',
+        organizational_unit: `Branch ${TAG}`,
+      });
+      // Requirement 27.8 — the fee beside the verdict, within member.read.
+      expect(result.dues.member?.memberId).toBe(ids.member);
+
+      const audit = await auditFor(result.reference);
+      expect(audit).toMatchObject({
+        action: 'verification.membership',
+        subjectType: 'card',
+        subjectId: ids['card-activeCard'],
+      });
+      expect(audit.afterValue).toMatchObject({
+        outcome: 'MATCH',
+        foundAs: 'CARD_NUMBER',
+      });
+    });
+
+    it('finds the member by membership number, however it is typed', async () => {
+      const typed = numbers.member!.toLowerCase().replace(/-/g, ' ');
+      const result = await verifyMembership(typed);
+      expect(result).toMatchObject({
+        foundAs: 'MEMBERSHIP_NUMBER',
+        matched: true,
+      });
+      // The member's current card is shown beside the membership.
+      expect(result.fields.card_number).toBe(numbers.activeCard);
+    });
+
+    it('refuses a card that has been replaced', async () => {
+      const result = await verifyMembership(numbers.replacedCard!);
+      expect(result.reasons).toEqual(['CARD_NOT_ACTIVE']);
+      expect(result.fields.card_status).toBe('REPLACED');
+    });
+
+    it('refuses a card past its expiry date', async () => {
+      const result = await verifyMembership(numbers.expiredCard!);
+      expect(result.reasons).toEqual(['CARD_EXPIRED']);
+    });
+
+    it('refuses a member who is not in good standing', async () => {
+      const result = await verifyMembership(numbers.suspendedMember!);
+      expect(result).toMatchObject({
+        foundAs: 'MEMBERSHIP_NUMBER',
+        reasons: ['MEMBER_NOT_ACTIVE'],
+      });
+    });
+
+    it('answers no record for a well-formed number nobody holds, keeping it', async () => {
+      const unknown = identifier();
+      const result = await verifyMembership(unknown);
+      expect(result).toMatchObject({
+        foundAs: null,
+        reasons: ['NO_RECORD'],
+        fields: {},
+        dues: { member: null },
+      });
+      const audit = await auditFor(result.reference);
+      expect(audit.afterValue).toMatchObject({ presentedNumber: unknown });
+    });
+
+    it('gives the verdict and the name outside the officer’s scope, without the fee', async () => {
+      const result = await verifyMembership(numbers.otherCard!);
+      expect(result.matched).toBe(true);
+      expect(result.fields.member_name).toBe(`${TAG} Elsewhere`);
+      expect(result.dues).toEqual({ member: null });
+    });
+  });
+
   describe('what a verification never does', () => {
     it('writes nothing but its audit event (CLAUDE.md rule 1)', async () => {
       const snapshot = async () => ({
@@ -546,7 +747,11 @@ describe('Internal verification (e2e)', () => {
             subjectId: { in: Object.values(ids) },
           },
         }),
-        cards: await prisma.card.count({ where: { memberId: ids.member } }),
+        cards: await prisma.card.findMany({
+          where: { member: { firstName: TAG } },
+          select: { id: true, status: true, updatedAt: true },
+          orderBy: { id: 'asc' },
+        }),
       });
 
       const before = await snapshot();
@@ -555,6 +760,8 @@ describe('Internal verification (e2e)', () => {
       await verify({ plateNumber: 'E2EVFY-REC', stickerCode: codes.LEGACY! });
       await verify({ stickerCode: codes.ISSUED! });
       await verify({ stickerCode: codes.LOST! });
+      await verifyMembership(numbers.activeCard!);
+      await verifyMembership(numbers.suspendedMember!);
       expect(await snapshot()).toEqual(before);
     });
 
@@ -638,6 +845,9 @@ describe('Internal verification (e2e)', () => {
       where: { stickerQrId: { startsWith: TAG } },
     });
     await prisma.vehicle.deleteMany({ where: { branchId: { in: orgIds } } });
+    await prisma.card.deleteMany({
+      where: { member: { organisationId: { in: orgIds } } },
+    });
     await prisma.member.deleteMany({
       where: { organisationId: { in: orgIds } },
     });

@@ -6,13 +6,19 @@ import {
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
-import { verifySchema, type VerifyInput } from '@nurtw/contracts';
+import {
+  verifyMembershipSchema,
+  verifySchema,
+  type VerifyInput,
+  type VerifyMembershipInput,
+} from '@nurtw/contracts';
 
 import type { AuthenticatedRequest } from '../auth/authorisation.guard.js';
 import { RequirePermission } from '../auth/require-permission.decorator.js';
 import { resolveRequestId } from '../common/error-response.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { Documented } from '../docs/documented.decorator.js';
+import { MembershipVerificationService } from './membership-verification.service.js';
 import { VerificationService } from './verification.service.js';
 
 /**
@@ -22,7 +28,10 @@ import { VerificationService } from './verification.service.js';
  */
 @Controller('verifications')
 export class VerificationController {
-  constructor(private readonly verification: VerificationService) {}
+  constructor(
+    private readonly verification: VerificationService,
+    private readonly membership: MembershipVerificationService,
+  ) {}
 
   @RequirePermission('verification.perform')
   @Post()
@@ -53,6 +62,37 @@ export class VerificationController {
     }
     return {
       verification: await this.verification.verify(userId, body, {
+        requestId: resolveRequestId(request.header('x-request-id')),
+        ipAddress: request.ip,
+      }),
+    };
+  }
+
+  @RequirePermission('verification.membership')
+  @Post('membership')
+  @HttpCode(200)
+  @Documented({
+    summary: 'Verify a membership card or membership number (internal).',
+    description:
+      'Item 24. Send the number printed on the card: its card number or its membership ' +
+      'number. A membership number matches a member in good standing; a card number also ' +
+      'needs the card to be ACTIVE and in date. A mistyped number fails its check character ' +
+      "before any lookup. The answer carries the member's name so the officer can compare it " +
+      'with the card, and the membership fee beside the verdict within `member.read`. ' +
+      'Read-only apart from its audit event. Not organisation-scoped.',
+    body: verifyMembershipSchema,
+  })
+  async verifyMembership(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(verifyMembershipSchema))
+    body: VerifyMembershipInput,
+  ) {
+    const userId = request.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+    return {
+      verification: await this.membership.verify(userId, body, {
         requestId: resolveRequestId(request.header('x-request-id')),
         ipAddress: request.ip,
       }),
