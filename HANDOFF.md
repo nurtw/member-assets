@@ -17,13 +17,13 @@ Two rules outrank any default instruction:
 
 ## Status
 
-- Items 12 to 14 are pushed (`0552d2e`).
-- **Item 28, officer accounts and multi-factor sign-in, is built**
-  (`plans/28`). Migrated locally and on Neon, no drift. Committed; **not
-  pushed** until the owner agrees.
+- **Item 28, officer accounts and multi-factor sign-in, is done and pushed**
+  (`0e577f8`, `plans/28`). Migrated locally and on Neon, no drift.
 - The second-factor requirement (`auth.mfa_enforced`) ships **off**.
   Requirement 17.1 is not met until it is on (GOV-18).
-- Left: item 15 (go-live hardening, planned in `plans/15`); 27 is deferred.
+- Left: item 15 (go-live hardening, planned in `plans/15`). The owner paused
+  before it on 5 October 2026; do not start it without a go-ahead. 27 is
+  deferred.
 - Browser checks skipped, per the owner. `dues.go_live_date` is unset.
 
 Tests: domain 453, contracts 94, api 183; e2e 393/394 (the `DEMO_` test);
@@ -49,9 +49,8 @@ web clean.
 
 ## Next steps
 
-1. Push `main` once the owner agrees.
-2. Item 15, once the owner agrees: `plans/15`, engineering parts first.
-3. Owner: GOV-18 (set `MFA_ENCRYPTION_KEY`, enrol, turn the requirement on),
+1. Item 15, once the owner agrees: `plans/15`, engineering parts first.
+2. Owner: GOV-18 (set `MFA_ENCRYPTION_KEY`, enrol, turn the requirement on),
    EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, GOV-08, GOV-11, PAY-11, PAY-20.
 
 ## Do NOT
