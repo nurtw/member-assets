@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.7
+**Document version:** 1.8
 **Last revised:** 4 October 2026
 
 ---
@@ -51,10 +51,10 @@ thing a year later.
 | Cards (CARD) | 5 | 3 | — | 8 |
 | Vehicles and stickers (VEH) | 22 | 6 | 1 | 29 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
-| External organisations (EXT) | 11 | 6 | — | 17 |
+| External organisations (EXT) | 13 | 6 | — | 19 |
 | Payments (PAY) | 20 | 0 | — | 20 |
 | Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
-| **Total** | **75** | **40** | **2** | **117** |
+| **Total** | **77** | **40** | **2** | **119** |
 
 ### Blocking production use right now
 
@@ -1012,6 +1012,28 @@ They are launch defaults chosen by the project, not figures the Union gave.
 API access screen without a release.
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
+### EXT-18 · Guarding totals against subtraction ✅
+
+**Question.** Filtered totals can be subtracted from one another: a branch's total minus its
+other units' totals reveals a small unit whose own total was suppressed. How should the
+totals guard against that?
+
+**Answer.** **By zone or branch only, never by unit, and every filtered total rounded to the
+nearest 10** (the `aggregate.rounding_base` setting). Subtracting then gives only a rough
+figure. The grand total stays exact, since it cannot be differenced.
+**Answered on.** 4 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD Requirement 13.6, §23.25.
+
+### EXT-19 · Reporting periods ✅
+
+**Question.** Proposal §13.2 allows a date filter "using approved reporting periods". Which
+periods?
+
+**Answer.** **A calendar month, quarter, or year**, in Lagos, each counted as at its end, or
+now if it has not ended.
+**Answered on.** 4 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD Requirement 13.7, §23.25.
+
 ---
 
 ## 10. Open — governance and go-live (item 15)
@@ -1600,6 +1622,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 4 October 2026 (item 14) | The project owner answered EXT-18 (totals by zone or branch only, rounded to the nearest 10) and EXT-19 (month, quarter, and year periods), adopting the recommendations. PRD revised to 1.7. |
 | 4 October 2026 (item 13) | The project owner answered three new questions by adopting the recommendations: EXT-14 (rate-limit counters in Postgres), EXT-15 (daily quotas of 1,000 and 5,000), and EXT-16 (detection pauses an organisation for an hour). New EXT-17, the detection thresholds, open. PRD revised to 1.6. |
 | 3 October 2026 (item 12) | New EXT-13: whether an outside membership check may ever carry the holder's name. Open; item 12 discloses none. |
 | 3 October 2026 (item 11) | The project owner answered EXT-06 (the API administrator approves; one officer may register and approve) and EXT-07 (a data-sharing agreement is required before approval), and two new questions: EXT-10 (token reminders on the dashboard until a mail service exists) and EXT-11 (the officer chooses how long a replaced token keeps working). New EXT-12, a test environment for outside organisations, open. PRD revised to 1.5. |

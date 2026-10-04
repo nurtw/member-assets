@@ -770,6 +770,21 @@ record the same plate at once. Preserve it too.
   its own, as `api-client.e2e-spec.ts` does. The pruning timer does not run under
   `NODE_ENV=test`; suites call `prune()`.
 
+### Vehicle totals (item 14)
+
+- **Two routes, one scope each** (Requirement 13.8): `GET /aggregates/vehicles/total`
+  (exact, refuses any parameter) and `GET /aggregates/vehicles` (filtered). The metadata an
+  organisation filters by is `GET /metadata/organisation`.
+- **The query schemas are strict.** An unapproved filter is a `400`, never ignored
+  (Requirement 13.1). No unit, LGA, or declaration-status filter, ever.
+- **The count rule is `isCountedAt`** in `packages/domain/src/aggregate/`;
+  `AggregateService.countAt` restates it as a query. Change one, change both.
+- **Suppress on the exact count, then round** (`filteredTotal`). The query always runs, so
+  a suppressed answer takes the same path, status, and shape (Requirement 13.4). The floor
+  and base are settings (`aggregate.suppression_floor`, `aggregate.rounding_base`).
+- **No external answer mentions declaration** (Requirement 12.7), not even in the statement.
+  The audit event (`aggregate.external.*`) keeps the exact count beside the answer.
+
 ### Notes that will bite you otherwise
 
 - **`pnpm build` before `pnpm --filter web dev`** on a clean checkout — web imports the

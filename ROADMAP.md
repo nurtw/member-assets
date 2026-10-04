@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.6
+**Document version:** 1.7
 **Last revised:** 4 October 2026
 
 ---
@@ -41,7 +41,7 @@ Each item is independently completable and independently testable. Status values
 | 11 | api-clients-and-scopes | §12.1, §16 | done | [plan](plans/11-api-clients-and-scopes.md) |
 | 12 | external-verification-api | §12, §15 | done | [plan](plans/12-external-verification-api.md) |
 | 13 | rate-limiting-and-abuse | §14 | done | [plan](plans/13-rate-limiting-and-abuse.md) |
-| 14 | aggregate-reporting | §13 | not-started | `plans/14-aggregate-reporting.md` |
+| 14 | aggregate-reporting | §13 | done | [plan](plans/14-aggregate-reporting.md) |
 | 15 | go-live-hardening | §17, §21 | not-started | `plans/15-go-live-hardening.md` |
 | 16 | payments | §27 | done (link payments, settlement account) | `plans/16-payments.md` |
 | 17 | vehicle-onboarding | §9A | done (register on Neon 27 Sep; browser check pending) | `plans/17-vehicle-onboarding.md` |
@@ -179,6 +179,11 @@ any filter parameter outright, and `aggregate:vehicles:read`, which accepts the 
 filter dimensions subject to the below-25 suppression floor. Suppression is applied to the
 computed result, so a suppressed total is indistinguishable from an available one by
 timing or error class.
+
+Delivered as two routes, one per scope (PRD 1.7, Requirement 13.8), and a metadata route
+naming the zones, branches, and categories. Filtered totals are by zone or branch only,
+rounded to the nearest 10, and suppressed below 25; periods are a month, quarter, or year.
+Only vehicles declared and onboarded count.
 
 **15 — go-live-hardening.** Security testing, API abuse testing, backup and restoration
 procedures, monitoring and alerting, the incident-response document, production

@@ -414,6 +414,13 @@ async function seedSystemSettings(): Promise<void> {
         'Aggregate totals below this are returned as SUPPRESSED (PRD §23.12).',
     },
     {
+      key: 'aggregate.rounding_base',
+      value: '10',
+      description:
+        'Filtered aggregate totals are rounded to the nearest multiple of this, so totals ' +
+        'cannot be subtracted to uncover a suppressed one (QUESTIONS.md EXT-18). 1 turns it off.',
+    },
+    {
       key: 'api_token.expiry_days',
       value: '90',
       description: 'External API token lifetime in days (PRD §12.6).',

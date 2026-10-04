@@ -164,6 +164,21 @@ export const API_TOKEN_EXPIRY_DAYS = 'api_token.expiry_days';
 export const API_TOKEN_REMINDER_DAYS = 'api_token.reminder_days';
 
 /**
+ * A filtered vehicle total below this is answered `SUPPRESSED` (PRD
+ * Requirement 13.3, §23.12). Seeded 25, the Union's determination, which is
+ * also the fallback.
+ */
+export const AGGREGATE_SUPPRESSION_FLOOR = 'aggregate.suppression_floor';
+
+/**
+ * A filtered vehicle total is rounded to the nearest multiple of this, so one
+ * total cannot be subtracted from another to uncover a small one (the owner's
+ * direction of 4 October 2026, `QUESTIONS.md` EXT-18). Seeded 10. A value of
+ * 1 turns rounding off.
+ */
+export const AGGREGATE_ROUNDING_BASE = 'aggregate.rounding_base';
+
+/**
  * Whether a second officer must approve.
  *
  * When true, the officer who recorded a membership application may not decide

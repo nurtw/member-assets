@@ -80,6 +80,412 @@
     }
   ],
   "paths": {
+    "/api/v1/aggregates/vehicles": {
+      "get": {
+        "summary": "Read a total number of NURTW vehicles under approved filters.",
+        "description": "Counts the vehicles the Union admits to an external total (PRD Requirement 13.5); a vehicle merely on record is never counted. The answer names no vehicle and says nothing of declaration, payment, or dues (Requirement 12.7). Filters: a zone or a branch (not both), a vehicle category, and a reporting period, each named as `GET /metadata/organisation` names it. Any other parameter is refused (Requirement 13.1). A total below the floor (25) answers `SUPPRESSED`; any other is rounded to the nearest `rounded_to_nearest` (10), so one total cannot be subtracted from another to uncover a small one. A period is counted as at its end, in Lagos, or now if it has not ended.\n\n**Scope required:** `aggregate:vehicles:read`. Authenticated by API token.",
+        "operationId": "AggregateController_filtered",
+        "tags": [
+          "Aggregate"
+        ],
+        "parameters": [
+          {
+            "name": "zone_id",
+            "in": "query",
+            "required": false,
+            "description": "A zone’s id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branch_id",
+            "in": "query",
+            "required": false,
+            "description": "A branch’s id. Not with `zone_id`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vehicle_category",
+            "in": "query",
+            "required": false,
+            "description": "A vehicle category’s code.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "description": "A month (`2026-09`), a quarter (`2026-Q3`), or a year (`2026`) that has begun.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "400": {
+            "description": "A parameter that is not an approved filter, or a filter naming nothing in the metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid API token was presented, the organisation is not active, or the request came from an address outside its allowed ranges. The response does not say which.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The organisation does not hold the scope aggregate:vehicles:read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiToken": [
+              "aggregate:vehicles:read"
+            ]
+          }
+        ]
+      }
+    },
+    "/api/v1/aggregates/vehicles/total": {
+      "get": {
+        "summary": "Read the total number of NURTW vehicles.",
+        "description": "The unfiltered total, now, exact. Counts the vehicles the Union admits to an external total (PRD Requirement 13.5); a vehicle merely on record is never counted. The answer names no vehicle and says nothing of declaration, payment, or dues (Requirement 12.7). Any query parameter is refused as a request error, never ignored (PRD Requirement 13.2).\n\n**Scope required:** `aggregate:vehicles:total`. Authenticated by API token.",
+        "operationId": "AggregateController_total",
+        "tags": [
+          "Aggregate"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "400": {
+            "description": "A query parameter was sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid API token was presented, the organisation is not active, or the request came from an address outside its allowed ranges. The response does not say which.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The organisation does not hold the scope aggregate:vehicles:total.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiToken": [
+              "aggregate:vehicles:total"
+            ]
+          }
+        ]
+      }
+    },
     "/api/v1/api-clients": {
       "get": {
         "summary": "List external organisations.",
@@ -12461,6 +12867,136 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/metadata/organisation": {
+      "get": {
+        "summary": "Read the zones, branches, and vehicle categories.",
+        "description": "The ids and names a filter on `GET /aggregates/vehicles` uses, and the labels of the categories a response may carry. Active entries only. The Union’s structure, never a member or a vehicle.\n\n**Scope required:** `organization:metadata:read`. Authenticated by API token.",
+        "operationId": "OrganisationMetadataController_organisation",
+        "tags": [
+          "OrganisationMetadata"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid API token was presented, the organisation is not active, or the request came from an address outside its allowed ranges. The response does not say which.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The organisation does not hold the scope organization:metadata:read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiToken": [
+              "organization:metadata:read"
+            ]
+          }
+        ]
       }
     },
     "/api/v1/officer-signatures": {

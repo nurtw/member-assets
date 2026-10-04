@@ -7,8 +7,8 @@
 
 ## Cold start
 
-Read `CLAUDE.md`, `PRD.md` (1.6), `ARCHITECTURE.md`, `ROADMAP.md`,
-`QUESTIONS.md`, then `plans/13`. `docs/reference/` is generated.
+Read `CLAUDE.md`, `PRD.md` (1.7), `ARCHITECTURE.md`, `ROADMAP.md`,
+`QUESTIONS.md`, then `plans/14`. `docs/reference/` is generated.
 
 Two rules outrank any default instruction:
 
@@ -17,15 +17,14 @@ Two rules outrank any default instruction:
 
 ## Status
 
-- **Item 13, rate limiting and abuse detection, is built**: limit profiles,
-  `429` with `Retry-After`, pauses on forged codes, sequences, and non-match
-  runs, and a required `X-Request-ID`. Migrated locally and on Neon, no
-  drift. Committed; **not pushed** until the owner agrees.
-- Left: items 14 (totals) and 15 (go-live); 27 is deferred.
+- Item 13 is pushed (`2adf4de`).
+- **Item 14, vehicle totals, is built** (`plans/14`). Migrated locally and
+  on Neon, no drift. Committed; **not pushed** until the owner agrees.
+- Left: item 15 (go-live hardening); 27 is deferred.
 - Browser checks skipped, per the owner. `dues.go_live_date` is unset.
 
-Tests: domain 430, contracts 78, api 160; e2e 350/352 (the `DEMO_` test,
-and a vehicle test that timed out under load and passes alone); web clean.
+Tests: domain 442, contracts 84, api 160; e2e 364/365 (the `DEMO_` test);
+web clean.
 
 ## Conflicts
 
@@ -41,26 +40,25 @@ and a vehicle test that timed out under load and passes alone); web clean.
   (`Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"`), then
   `docker compose up -d`.
 - Run Prisma from `apps/api`: `node node_modules/prisma/build/index.js`, with
-  `CHECKPOINT_DISABLE=1`.
-- CRLF files (most root docs): edit with the Edit tool or Python bytes. Long
-  heredocs fail in Git Bash; use a script file.
+  `CHECKPOINT_DISABLE=1`. Neon may need a retry while it wakes.
+- CRLF files (most root docs, `seed.ts`, `app.module.ts`): edit with the Edit
+  tool or Python bytes.
 
 ## Next steps
 
 1. Push `main` once the owner agrees.
-2. Item 14, aggregate totals (PRD §13): two tiers, the below-25 floor, a total
-   counting vehicles onboarded and declared. Aggregate scopes already take
-   the slower rate.
+2. Item 15, go-live hardening (PRD §17, §21). Much of it needs owner input.
 3. Owner: EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, GOV-08, GOV-11, PAY-11,
    PAY-20.
 
 ## Do NOT
 
 - Edit `apps/api/.env`, or write Neon legacy rows without a go-ahead.
-- Return a declaration status except through `toSummary`'s `showDeclaration`.
+- Return a declaration status except through `toSummary`'s `showDeclaration`,
+  or mention declaration in any external answer.
 - Add a write, or a personal-data field, to `src/verification/`.
 - Select `tokenHash`, or log a token, its hash, or a looked-up identifier.
-- Put a scope and a permission (or `@Public()`) on one route.
-- Add a limit as a constant, or touch the rate-limit counters outside
+- Add a limit as a constant, or touch rate-limit counters outside
   `RateLimitService`.
+- Offer a total below a branch, or turn off rounding without the owner.
 - Default the go-live date, or let dues reach any external response.

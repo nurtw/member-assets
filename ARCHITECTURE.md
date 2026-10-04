@@ -635,3 +635,11 @@ The following were added by revision 1.6, 4 October 2026:
 | Where counters live | Postgres, behind `RateLimitService` | 8.3 |
 | Limits | Per organisation, from a `rate_limit_profile` row | 8.4 |
 | Detection | Pauses the organisation for its profile's minutes | 8.5 |
+
+The following were added by revision 1.7, 4 October 2026:
+
+| Matter | Determination | Decision |
+|---|---|---|
+| Totals by area | Zone or branch only; filtered totals rounded to the nearest 10 | PRD Requirement 13.6 |
+| The two tiers | Two routes, one scope each | 9.10, PRD Requirement 13.8 |
+| Counting | Declared and onboarded as at the period's end, with today's status | PRD §23.25 |

@@ -336,3 +336,20 @@ export {
   type SequencePosition,
   type SequenceState,
 } from './rate-limit/detection.js';
+
+export {
+  AGGREGATE_LIMITATION,
+  AGGREGATE_STATEMENT,
+  REPORTING_PERIOD_KINDS,
+  SUPPRESSED,
+  filteredTotal,
+  hasPeriodBegun,
+  isCountedAt,
+  parseReportingPeriod,
+  periodCountedAt,
+  roundToNearest,
+  type CountableVehicle,
+  type FilteredTotal,
+  type ReportingPeriod,
+  type ReportingPeriodKind,
+} from './aggregate/totals.js';

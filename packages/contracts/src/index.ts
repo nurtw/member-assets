@@ -98,6 +98,15 @@ export {
 } from './api-client.js';
 
 export {
+  aggregateTotalQuerySchema,
+  aggregateVehicleQuerySchema,
+  type AggregateFiltersApplied,
+  type AggregateVehicleQuery,
+  type AggregateVehicleResponse,
+  type OrganisationMetadataResponse,
+} from './aggregate.js';
+
+export {
   ABUSE_SIGNAL_LABELS,
   DEFAULT_RATE_LIMIT_PROFILE,
   SYSTEM_RATE_LIMIT_PROFILES,

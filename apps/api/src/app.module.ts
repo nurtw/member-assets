@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AggregateModule } from './aggregate/aggregate.module.js';
 import { ApiClientModule } from './api-client/api-client.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -51,6 +52,7 @@ import { VerificationModule } from './verification/verification.module.js';
     DisclosureModule,
     ApiClientModule,
     RateLimitModule,
+    AggregateModule,
   ],
 })
 export class AppModule {}

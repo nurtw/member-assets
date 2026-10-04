@@ -4,8 +4,8 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.6 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.6
+1.2 to 1.7 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.7
 **Last revised:** 4 October 2026
 
 ---
@@ -87,6 +87,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.4 | 3 October 2026 | A vehicle's declaration status is shown only to holders of `vehicle.declare` (Requirement 9A.1). A vehicle letter may be reissued (Requirement 9A.6). A membership fee paid early extends cover; the levy stops after retirement and follows the route type held each month (Requirement 27.13). See §23.22. | The project owner (`QUESTIONS.md` VEH-27, VEH-28, PAY-18 to PAY-20), 3 October 2026. |
 | 1.5 | 3 October 2026 | An external organisation is approved only with a data-sharing agreement on record, by a holder of `api_client.manage`, who is recorded (Requirements 12.8, 12.9). Token reminders appear on the dashboard until a mail service exists (Requirement 12.6). A replaced token keeps working for an overlap the officer chooses (Requirement 12.10). See §23.23. | The project owner (`QUESTIONS.md` EXT-06, EXT-07, EXT-10, EXT-11), 3 October 2026. |
 | 1.6 | 4 October 2026 | Abuse detection pauses an organisation for a time (Requirement 14.4). An external request carries its own request id (Requirement 14.5). Rate-limit counters are kept in Postgres, and daily quotas start at 1,000 and 5,000. See §23.24. | The project owner (`QUESTIONS.md` EXT-14, EXT-15, EXT-16), 3 October 2026. |
+| 1.7 | 4 October 2026 | Filtered totals by zone or branch only, rounded to the nearest 10 (Requirement 13.6). Reporting periods are a month, quarter, or year (13.7). The grand total moves to its own route, and an organisation reads the names it filters by from a metadata route (13.8). See §23.25. | The project owner (`QUESTIONS.md` EXT-18, EXT-19), 4 October 2026. |
 
 ---
 
@@ -527,6 +528,22 @@ are onboarded and declared. Per Requirement 12.7, this amends proposal §13:
 
 Internal reporting may break the three counts of Requirement 9A.1 out separately.
 
+**Requirement 13.6** *(revision 1.7)*. A filtered total is by zone or by branch, never by
+unit, and is rounded to the nearest multiple of a Union-configurable base (10), after the
+suppression of Requirement 13.3 is decided on the exact count. The grand total is exact. The
+purpose is that no total can be subtracted from another to uncover a suppressed one.
+
+**Requirement 13.7** *(revision 1.7)*. The reporting periods are a calendar month
+(`2026-09`), quarter (`2026-Q3`), or year (`2026`) in Lagos, counted as at the period's end,
+or at the moment of the request if it has not ended. A period not yet begun is refused.
+
+**Requirement 13.8** *(revision 1.7)*. A route names exactly one scope (`ARCHITECTURE.md`
+Decision 9.10), so the two tiers of Requirement 13.2 are two routes: the grand total at
+`GET /api/v1/aggregates/vehicles/total` and the filtered total at
+`GET /api/v1/aggregates/vehicles`. This amends the single endpoint of Requirement 13.5. The
+zones, branches, and vehicle categories a filter names are read from
+`GET /api/v1/metadata/organisation`, under `organization:metadata:read`.
+
 ---
 
 ## 14. Rate limiting and abuse prevention
@@ -934,6 +951,17 @@ Determined 3 October 2026 (`QUESTIONS.md` EXT-14, EXT-15, EXT-16).
   its own.
 - **Detection pauses.** A pattern pauses the organisation for an hour, a number on its limit
   profile (Requirement 14.4). The detection thresholds are launch defaults pending EXT-17.
+
+### 23.25 Vehicle totals *(revision 1.7)*
+
+Determined 4 October 2026 (`QUESTIONS.md` EXT-18, EXT-19).
+
+- **Zone or branch, rounded.** No total below a branch. Filtered totals are rounded to the
+  nearest 10 (`aggregate.rounding_base`); the grand total is exact (Requirement 13.6).
+- **Month, quarter, or year**, counted as at the period's end (Requirement 13.7).
+- **A vehicle counts with today's status.** The System keeps no history of suspension or
+  dispute that a past period could read, so a vehicle suspended now is left out of past
+  periods too. Leaving it out is the disclosure-safe error.
 
 ---
 

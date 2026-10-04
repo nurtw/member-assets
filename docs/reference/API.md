@@ -393,7 +393,42 @@ check, as it is presented to you, and nothing else.
 
 ---
 
-## 11. Data handling obligations for integrators
+## 11. Vehicle totals
+
+Two scopes, two routes (PRD §13):
+
+| Route | Scope | Answers |
+|---|---|---|
+| `GET /api/v1/aggregates/vehicles/total` | `aggregate:vehicles:total` | The total, now, exact. Any parameter is a `400`. |
+| `GET /api/v1/aggregates/vehicles` | `aggregate:vehicles:read` | A total under the filters below, rounded. |
+| `GET /api/v1/metadata/organisation` | `organization:metadata:read` | The zones, branches, and vehicle categories, with the ids and codes the filters take. |
+
+The filters are `zone_id` or `branch_id` (not both), `vehicle_category`, and `period`: a
+month (`2026-09`), quarter (`2026-Q3`), or year (`2026`) that has begun, counted as at its
+end in Lagos. Any other parameter is a `400`, never ignored.
+
+```json
+{
+  "request_id": "…",
+  "result": "AGGREGATE_ONLY",
+  "filters_applied": { "zone_id": "…", "period": "2026-Q3" },
+  "totals": { "vehicle_count": 1280 },
+  "rounded_to_nearest": 10,
+  "statement": "The number of vehicles held in NURTW records under the requested criteria.",
+  "limitation": "…",
+  "data_as_of": "2026-09-30T22:59:59.999Z",
+  "verified_at": "…"
+}
+```
+
+A filtered total below 25 reads `"vehicle_count": "SUPPRESSED"`, with the same status and
+shape. Every other filtered total is rounded to the nearest `rounded_to_nearest`, so totals
+cannot be subtracted from one another to recover a small one. Totals take the slower
+aggregate rate (§10.1).
+
+---
+
+## 12. Data handling obligations for integrators
 
 - Responses contain only those fields the caller's disclosure profile permits. Fields are
   selected by projection through the profile, never by retrieving a complete record and
@@ -405,7 +440,7 @@ check, as it is presented to you, and nothing else.
 
 ---
 
-## 12. Related documents
+## 13. Related documents
 
 | Document | Contents |
 |---|---|

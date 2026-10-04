@@ -515,6 +515,28 @@ SELECT p.paused_at, c.organisation_name, p.signal, p.evidence,
 The detection thresholds are launch defaults the Union has not yet confirmed (`QUESTIONS.md`
 EXT-17).
 
+### Vehicle totals given to outside organisations
+
+Each total an organisation reads writes an audit event, `aggregate.external.total` or
+`aggregate.external.vehicles`, with no officer. `after_value` holds the organisation, the
+filters, the instant counted at, the **exact** count, and what was answered (a rounded number
+or `SUPPRESSED`).
+
+```sql
+SELECT created_at, action,
+       after_value->>'clientId' AS client,
+       after_value->'filters' AS filters,
+       after_value->>'count' AS exact,
+       after_value->>'answered' AS answered
+  FROM audit_event
+ WHERE action LIKE 'aggregate.external.%'
+ ORDER BY created_at DESC LIMIT 50;
+```
+
+Two settings govern filtered totals, and take effect on the next request:
+`aggregate.suppression_floor` (25: a total below it reads `SUPPRESSED`) and
+`aggregate.rounding_base` (10; 1 turns rounding off, which re-opens subtraction, EXT-18).
+
 ### Finding why an external request was refused
 
 The organisation is told only `401`, `403`, `400`, or `429`, with a request id, and its
