@@ -98,6 +98,25 @@ export {
 } from './api-client.js';
 
 export {
+  ABUSE_SIGNAL_LABELS,
+  DEFAULT_RATE_LIMIT_PROFILE,
+  SYSTEM_RATE_LIMIT_PROFILES,
+  createRateLimitProfileSchema,
+  liftApiClientPauseSchema,
+  setApiClientLimitsSchema,
+  updateRateLimitProfileSchema,
+  type ApiClientLimits,
+  type ApiClientPause,
+  type CreateRateLimitProfileInput,
+  type LiftApiClientPauseInput,
+  type RateLimitProfileSummary,
+  type RateLimitProfileValues,
+  type SetApiClientLimitsInput,
+  type SystemRateLimitProfile,
+  type UpdateRateLimitProfileInput,
+} from './rate-limit.js';
+
+export {
   DISCLOSURE_FIELD_LABELS,
   SYSTEM_DISCLOSURE_PROFILES,
   createDisclosureProfileSchema,

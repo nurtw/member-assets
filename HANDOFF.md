@@ -17,8 +17,8 @@ Two rules outrank any default instruction:
 
 ## Status
 
-- `origin/main` has item 11 (`a276492`). Item 12 is committed on top and
-  **not pushed**: that needs the owner's go-ahead.
+- Items 11 and 12 are pushed. **Item 13 is in progress** (`plans/13`): its
+  domain rules and contracts are pushed; the API, screens, and docs are not.
 - **Item 12, the external verification API, is built**: four routes under
   `/api/v1/verification`, token only. Both channels read through
   `VerificationRecordsService`. Every non-match is the same answer.

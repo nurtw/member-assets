@@ -299,3 +299,40 @@ export {
   type ParsedIpAddress,
   type ParsedIpRange,
 } from './network/ip-range.js';
+
+export {
+  RATE_LIMIT_REFUSALS,
+  RATE_LIMIT_ROUTE_CLASSES,
+  bucketRetryAfterSeconds,
+  dailyRetryAfterSeconds,
+  effectiveDailyQuota,
+  hourStart,
+  hourlyRetryAfterSeconds,
+  lagosDayStart,
+  ratePerMinute,
+  routeClassForScope,
+  secondsUntil,
+  windowStart,
+  type RateLimitQuotas,
+  type RateLimitRefusal,
+  type RateLimitRouteClass,
+} from './rate-limit/limits.js';
+
+export {
+  ABUSE_SIGNALS,
+  OBSERVED_OUTCOMES,
+  advanceSequence,
+  detectAbuse,
+  isAbuseSignal,
+  isObservedOutcome,
+  isPaused,
+  pauseEnd,
+  sequencePosition,
+  tallyOutcome,
+  type AbuseEvidence,
+  type AbuseSignal,
+  type AbuseThresholds,
+  type ObservedOutcome,
+  type SequencePosition,
+  type SequenceState,
+} from './rate-limit/detection.js';

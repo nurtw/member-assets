@@ -40,7 +40,7 @@ Each item is independently completable and independently testable. Status values
 | 10 | internal-verification | §11 | done (browser check pending) | [plan](plans/10-internal-verification.md) |
 | 11 | api-clients-and-scopes | §12.1, §16 | done | [plan](plans/11-api-clients-and-scopes.md) |
 | 12 | external-verification-api | §12, §15 | done | [plan](plans/12-external-verification-api.md) |
-| 13 | rate-limiting-and-abuse | §14 | not-started | `plans/13-rate-limiting-and-abuse.md` |
+| 13 | rate-limiting-and-abuse | §14 | in-progress (domain rules and contracts pushed; API, screens, tests to come) | [plan](plans/13-rate-limiting-and-abuse.md) |
 | 14 | aggregate-reporting | §13 | not-started | `plans/14-aggregate-reporting.md` |
 | 15 | go-live-hardening | §17, §21 | not-started | `plans/15-go-live-hardening.md` |
 | 16 | payments | §27 | done (link payments, settlement account) | `plans/16-payments.md` |
