@@ -11,6 +11,7 @@ import type { ApiClientAuthService } from '../api-client/api-client-auth.service
 import type { ApiRequestLogService } from '../api-client/api-request-log.service.js';
 import { ValidationException } from '../common/zod-validation.pipe.js';
 import type { RateLimitService } from '../rate-limit/rate-limit.service.js';
+import type { SettingsService } from '../settings/settings.service.js';
 import {
   AuthorisationGuard,
   SESSION_COOKIE_NAME,
@@ -19,6 +20,7 @@ import type { PermissionService } from './permission.service.js';
 import {
   PERMISSION_METADATA_KEY,
   PUBLIC_METADATA_KEY,
+  SIGNED_IN,
 } from './require-permission.decorator.js';
 import { SCOPE_METADATA_KEY } from './require-scope.decorator.js';
 import type { SessionService } from './session.service.js';
@@ -37,6 +39,7 @@ describe('AuthorisationGuard', () => {
   let apiClients: { authenticate: ReturnType<typeof vi.fn> };
   let requestLog: { record: ReturnType<typeof vi.fn> };
   let rateLimits: { admit: ReturnType<typeof vi.fn> };
+  let settings: { isEnabled: ReturnType<typeof vi.fn> };
   let headers: Record<string, string>;
   let guard: AuthorisationGuard;
   let metadata: Record<string, unknown>;
@@ -77,6 +80,7 @@ describe('AuthorisationGuard', () => {
     apiClients = { authenticate: vi.fn() };
     requestLog = { record: vi.fn().mockResolvedValue(undefined) };
     rateLimits = { admit: vi.fn().mockResolvedValue({ allowed: true }) };
+    settings = { isEnabled: vi.fn().mockResolvedValue(false) };
     headers = {};
 
     guard = new AuthorisationGuard(
@@ -86,15 +90,26 @@ describe('AuthorisationGuard', () => {
       apiClients as unknown as ApiClientAuthService,
       requestLog as unknown as ApiRequestLogService,
       rateLimits as unknown as RateLimitService,
+      settings as unknown as SettingsService,
     );
   });
 
-  const withSession = (token = 'valid-token') => {
+  const withSession = (
+    token = 'valid-token',
+    overrides: {
+      mustChangePassword?: boolean;
+      secondFactorVerified?: boolean;
+    } = {},
+  ) => {
     request.headers.cookie = `${SESSION_COOKIE_NAME}=${token}`;
     sessions.resolve.mockResolvedValue({
       id: 'user-1',
       email: 'officer@example.test',
       fullName: 'Test Officer',
+      sessionId: 'session-1',
+      mustChangePassword: false,
+      secondFactorVerified: false,
+      ...overrides,
     });
   };
 
@@ -217,6 +232,76 @@ describe('AuthorisationGuard', () => {
     );
     expect(sessions.resolve).not.toHaveBeenCalled();
     expect(apiClients.authenticate).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Item 28 — the officer's own account, a temporary password, and the second
+   * factor (PRD Requirement 17.1).
+   */
+  describe('an officer’s own account, and privileged permissions', () => {
+    it('opens a signed-in route to any session, and asks no permission', async () => {
+      withSession();
+      metadata[PERMISSION_METADATA_KEY] = SIGNED_IN;
+
+      await expect(guard.canActivate(contextFor())).resolves.toBe(true);
+      expect(permissions.canAnywhere).not.toHaveBeenCalled();
+    });
+
+    it('still needs a session for a signed-in route', async () => {
+      metadata[PERMISSION_METADATA_KEY] = SIGNED_IN;
+
+      await expect(guard.canActivate(contextFor())).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('lets a temporary password reach the signed-in routes and nothing else', async () => {
+      withSession('valid-token', { mustChangePassword: true });
+      permissions.canAnywhere.mockResolvedValue(true);
+
+      metadata[PERMISSION_METADATA_KEY] = SIGNED_IN;
+      await expect(guard.canActivate(contextFor())).resolves.toBe(true);
+
+      metadata[PERMISSION_METADATA_KEY] = 'member.read';
+      await expect(guard.canActivate(contextFor())).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(permissions.canAnywhere).not.toHaveBeenCalled();
+    });
+
+    it('refuses a privileged permission to a session without a second factor, once enforced', async () => {
+      withSession();
+      permissions.canAnywhere.mockResolvedValue(true);
+      settings.isEnabled.mockResolvedValue(true);
+      metadata[PERMISSION_METADATA_KEY] = 'user.manage';
+
+      await expect(guard.canActivate(contextFor())).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(permissions.canAnywhere).not.toHaveBeenCalled();
+    });
+
+    it('allows it once the session has proved a second factor', async () => {
+      withSession('valid-token', { secondFactorVerified: true });
+      permissions.canAnywhere.mockResolvedValue(true);
+      settings.isEnabled.mockResolvedValue(true);
+      metadata[PERMISSION_METADATA_KEY] = 'user.manage';
+
+      await expect(guard.canActivate(contextFor())).resolves.toBe(true);
+    });
+
+    it('asks no second factor of an everyday permission, or before enforcement', async () => {
+      withSession();
+      permissions.canAnywhere.mockResolvedValue(true);
+
+      settings.isEnabled.mockResolvedValue(true);
+      metadata[PERMISSION_METADATA_KEY] = 'member.read';
+      await expect(guard.canActivate(contextFor())).resolves.toBe(true);
+
+      settings.isEnabled.mockResolvedValue(false);
+      metadata[PERMISSION_METADATA_KEY] = 'user.manage';
+      await expect(guard.canActivate(contextFor())).resolves.toBe(true);
+    });
   });
 
   /**

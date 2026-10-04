@@ -24,6 +24,12 @@ export const loginSchema = z.object({
     .max(320)
     .pipe(z.email('A valid email address is required.')),
   password: z.string().min(1, 'A password is required.').max(1024),
+  /**
+   * The second factor, where the account has one (item 28): a six-digit code
+   * from the authenticator app, or a recovery code. Sent with the password in
+   * one request, so a code is never accepted without it.
+   */
+  code: z.string().trim().min(6).max(40).optional(),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

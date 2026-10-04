@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.8
+**Document version:** 1.9
 **Last revised:** 4 October 2026
 
 ---
@@ -53,8 +53,8 @@ thing a year later.
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 13 | 6 | — | 19 |
 | Payments (PAY) | 20 | 0 | — | 20 |
-| Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
-| **Total** | **77** | **40** | **2** | **119** |
+| Governance and go-live (GOV) | 8 | 11 | 1 | 20 |
+| **Total** | **81** | **41** | **2** | **124** |
 
 ### Blocking production use right now
 
@@ -1135,6 +1135,61 @@ handles such a request?
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
+### GOV-16 · How a new officer gets a first password ✅
+
+**Question.** The System cannot send email yet (GOV-08). How does a new officer, or one whose
+password is reset, get a password?
+
+**Answer.** **A temporary password.** The System generates it and shows it once to the
+administrator, who passes it on. The officer must choose their own at first sign-in and can
+use nothing else until they have.
+**Answered on.** 4 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD Requirement 17.3, §23.26.
+
+### GOV-17 · Who must use a second factor ✅
+
+**Question.** PRD Requirement 17.1 requires multi-factor sign-in for "privileged roles" and
+names none. Who?
+
+**Answer.** **Anyone using a privileged permission**: managing officers, roles, grants,
+settings, limits, outside organisations and their tokens, the settlement account, security
+monitoring, and `vehicle.declare`. That covers the super, API, and security administrators
+and anyone granted one of those permissions. Other officers sign in with a password, and may
+set a second factor up if they wish.
+**Answered on.** 4 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD Requirement 17.1, §23.26.
+
+### GOV-18 · When the second-factor requirement is turned on ⏳
+
+**Question.** The requirement ships off, so that no administrator is locked out before
+setting an authenticator up. When is it turned on?
+
+**Why it is needed.** Requirement 17.1 is not met until it is on. It must be on at go-live.
+Turning it on needs each administrator to have enrolled, and the deployment to hold
+`MFA_ENCRYPTION_KEY`.
+
+**Answer.** _Outstanding._ An administrator turns it on under Officers → Security.
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### GOV-19 · Roles the Union composes ✅
+
+**Question.** Should the Union be able to compose its own roles from the permission list at
+launch, or only later?
+
+**Answer.** **At launch.** A composed role may hold any permission except `vehicle.declare`
+and `payment.manage_settlement`, which reach an officer only by express grant. The twelve
+roles of PRD §16 stay unchangeable.
+**Answered on.** 4 October 2026. **Answered by.** Project owner. **Recorded at.** PRD §23.26.
+
+### GOV-20 · Locking audit events in the database ✅
+
+**Question.** The proposal asks for "immutable or tamper-evident audit events". Should the
+database itself refuse any change or deletion of an audit event?
+
+**Answer.** **Not yet.** The application never changes or deletes an audit event. A database
+lock is left for later.
+**Answered on.** 4 October 2026. **Answered by.** Project owner. **Recorded at.** PRD §23.26.
+
 ---
 
 ## 11. Payments (direction of 22 September 2026)
@@ -1622,6 +1677,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 4 October 2026 (item 28) | Officer accounts and multi-factor sign-in were found unbuilt. The project owner answered GOV-16 (a temporary password at first sign-in), GOV-17 (a second factor for privileged permissions), GOV-19 (composed roles at launch), and GOV-20 (no database lock on audit events yet). New GOV-18, when the second-factor requirement is turned on, open. PRD revised to 1.8. |
 | 4 October 2026 (item 14) | The project owner answered EXT-18 (totals by zone or branch only, rounded to the nearest 10) and EXT-19 (month, quarter, and year periods), adopting the recommendations. PRD revised to 1.7. |
 | 4 October 2026 (item 13) | The project owner answered three new questions by adopting the recommendations: EXT-14 (rate-limit counters in Postgres), EXT-15 (daily quotas of 1,000 and 5,000), and EXT-16 (detection pauses an organisation for an hour). New EXT-17, the detection thresholds, open. PRD revised to 1.6. |
 | 3 October 2026 (item 12) | New EXT-13: whether an outside membership check may ever carry the holder's name. Open; item 12 discloses none. |

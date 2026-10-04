@@ -4,8 +4,8 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.7 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.7
+1.2 to 1.8 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.8
 **Last revised:** 4 October 2026
 
 ---
@@ -88,6 +88,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.5 | 3 October 2026 | An external organisation is approved only with a data-sharing agreement on record, by a holder of `api_client.manage`, who is recorded (Requirements 12.8, 12.9). Token reminders appear on the dashboard until a mail service exists (Requirement 12.6). A replaced token keeps working for an overlap the officer chooses (Requirement 12.10). See §23.23. | The project owner (`QUESTIONS.md` EXT-06, EXT-07, EXT-10, EXT-11), 3 October 2026. |
 | 1.6 | 4 October 2026 | Abuse detection pauses an organisation for a time (Requirement 14.4). An external request carries its own request id (Requirement 14.5). Rate-limit counters are kept in Postgres, and daily quotas start at 1,000 and 5,000. See §23.24. | The project owner (`QUESTIONS.md` EXT-14, EXT-15, EXT-16), 3 October 2026. |
 | 1.7 | 4 October 2026 | Filtered totals by zone or branch only, rounded to the nearest 10 (Requirement 13.6). Reporting periods are a month, quarter, or year (13.7). The grand total moves to its own route, and an organisation reads the names it filters by from a metadata route (13.8). See §23.25. | The project owner (`QUESTIONS.md` EXT-18, EXT-19), 4 October 2026. |
+| 1.8 | 4 October 2026 | Requirement 17.1 is defined by permission, not role. A new officer gets a temporary password (17.3). Failed sign-ins lock the account for a time (17.4). The Union may compose roles, never holding `vehicle.declare` or the settlement account. See §23.26. | The project owner (`QUESTIONS.md` GOV-16, GOV-17, GOV-19, GOV-20), 4 October 2026. |
 
 ---
 
@@ -608,6 +609,22 @@ Specified in the proposal at §17 and §18 and adopted here in full.
 
 **Requirement 17.1.** Multi-factor authentication is required for privileged roles.
 
+*Revision 1.8:* "privileged" is defined by permission, not by role (`ARCHITECTURE.md`
+Decision 9.2). A session may use a privileged permission only after proving a second factor:
+a code from an authenticator app, or a one-use recovery code. The privileged permissions are
+those that manage officers, roles, grants, settings, limits, outside organisations and their
+tokens, security monitoring, and the settlement account, and `vehicle.declare`. The
+requirement is a setting that ships off and must be on at go-live (`QUESTIONS.md` GOV-18).
+
+**Requirement 17.3** *(revision 1.8)*. An officer's first password, and any reset, is a
+temporary one the System generates and shows once to the administrator. The officer must
+choose their own at next sign-in and can use nothing else until they have. No administrator
+chooses or learns a lasting password.
+
+**Requirement 17.4** *(revision 1.8)*. Ten failed sign-ins in a row, by password or by code,
+lock the account for fifteen minutes. Both numbers are settings. A locked account answers as
+any failed sign-in does.
+
 **Requirement 17.2.** Application logs must not contain full API tokens, passport images,
 signatures, guarantor details, or unnecessary personal data.
 
@@ -962,6 +979,20 @@ Determined 4 October 2026 (`QUESTIONS.md` EXT-18, EXT-19).
 - **A vehicle counts with today's status.** The System keeps no history of suspension or
   dispute that a past period could read, so a vehicle suspended now is left out of past
   periods too. Leaving it out is the disclosure-safe error.
+
+### 23.26 Officer accounts and the second factor *(revision 1.8)*
+
+Determined 4 October 2026 (`QUESTIONS.md` GOV-16, GOV-17, GOV-19, GOV-20).
+
+- **Temporary passwords.** Shown once to the administrator, changed at first sign-in
+  (Requirement 17.3).
+- **A second factor for privileged permissions** (Requirement 17.1), turned on by the Union
+  once its administrators have enrolled (GOV-18, open).
+- **Nobody gives what they do not hold, and nobody changes their own access.** A role or a
+  permission is given only within a scope where the giver holds all of it.
+- **Composed roles at launch.** A role the Union composes may never hold `vehicle.declare`
+  or `payment.manage_settlement`. The roles of §16 cannot be changed.
+- **No database lock on audit events yet.** The application never changes or deletes one.
 
 ---
 

@@ -179,6 +179,25 @@ export const AGGREGATE_SUPPRESSION_FLOOR = 'aggregate.suppression_floor';
 export const AGGREGATE_ROUNDING_BASE = 'aggregate.rounding_base';
 
 /**
+ * Whether a privileged permission needs a second-factor session (PRD
+ * Requirement 17.1, item 28).
+ *
+ * **Ships `false` on a database that already has administrators**, so that
+ * none is locked out before enrolling. The Union turns it on once they have.
+ * It must be on at go-live (`QUESTIONS.md` GOV-18); until it is, do not
+ * describe Requirement 17.1 as met. An officer who has enrolled is asked for
+ * their code at every sign-in whatever this says.
+ */
+export const AUTH_MFA_ENFORCED = 'auth.mfa_enforced';
+
+/**
+ * Consecutive failed sign-ins before an account is locked, and for how many
+ * minutes. Fallbacks 10 and 15 where the rows are absent.
+ */
+export const AUTH_LOCKOUT_THRESHOLD = 'auth.lockout_threshold';
+export const AUTH_LOCKOUT_MINUTES = 'auth.lockout_minutes';
+
+/**
  * Whether a second officer must approve.
  *
  * When true, the officer who recorded a membership application may not decide

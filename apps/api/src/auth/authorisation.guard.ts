@@ -11,6 +11,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { needsSecondFactor } from '@nurtw/domain';
 import type { Request, Response } from 'express';
 
 import { ApiClientAuthService } from '../api-client/api-client-auth.service.js';
@@ -21,10 +22,15 @@ import {
 } from '../common/error-response.js';
 import { ValidationException } from '../common/zod-validation.pipe.js';
 import { RateLimitService } from '../rate-limit/rate-limit.service.js';
+import {
+  AUTH_MFA_ENFORCED,
+  SettingsService,
+} from '../settings/settings.service.js';
 import { PermissionService } from './permission.service.js';
 import {
   PERMISSION_METADATA_KEY,
   PUBLIC_METADATA_KEY,
+  SIGNED_IN,
 } from './require-permission.decorator.js';
 import {
   SCOPE_METADATA_KEY,
@@ -74,6 +80,7 @@ export class AuthorisationGuard implements CanActivate {
     private readonly apiClients: ApiClientAuthService,
     private readonly requests: ApiRequestLogService,
     private readonly rateLimits: RateLimitService,
+    private readonly settings: SettingsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -121,6 +128,29 @@ export class AuthorisationGuard implements CanActivate {
       // Authenticated but the route declares no permission. Refused, not
       // allowed: an undeclared route is an oversight, and an oversight must fail
       // closed. Annotate it with @RequirePermission() or @Public().
+      throw new ForbiddenException();
+    }
+
+    // The officer's own account: who am I, my password, my second factor.
+    // Open to any session, so an officer with no role yet, or one still on a
+    // temporary password, can do exactly this and nothing else.
+    if (required === SIGNED_IN) {
+      return true;
+    }
+
+    // Item 28 — a temporary password opens nothing until it is changed.
+    if (user.mustChangePassword) {
+      throw new ForbiddenException();
+    }
+
+    // PRD Requirement 17.1 — a privileged permission is exercised only by a
+    // session that has proved a second factor, once enforcement is on. Asked
+    // of the permission, never of a role (Decision 9.2).
+    if (
+      needsSecondFactor(required) &&
+      !user.secondFactorVerified &&
+      (await this.settings.isEnabled(AUTH_MFA_ENFORCED))
+    ) {
       throw new ForbiddenException();
     }
 

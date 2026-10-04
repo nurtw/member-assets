@@ -1,5 +1,6 @@
 "use client";
 
+import type { AccountState } from "@nurtw/contracts";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import useSWR, { mutate } from "swr";
@@ -20,11 +21,17 @@ export interface SignedInUser {
 interface MeResponse {
   user: SignedInUser;
   permissions: ScopedPermission[];
+  account: AccountState;
 }
 
 interface SessionValue {
   user: SignedInUser | null;
   permissions: ScopedPermission[];
+  /**
+   * Whether the officer is still on a temporary password, and where they
+   * stand with the second factor (item 28). `null` until loaded.
+   */
+  account: AccountState | null;
   loading: boolean;
   /**
    * Whether the officer holds a permission anywhere.
@@ -80,6 +87,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return {
       user: data?.user ?? null,
       permissions,
+      account: data?.account ?? null,
       loading: isLoading,
       holds: (permission: string) =>
         permissions.some((entry) => entry.permission === permission),

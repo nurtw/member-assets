@@ -961,8 +961,24 @@ model User {
 
   /// PRD Requirement 17.1 — multi-factor authentication is required for
   /// privileged roles. The mechanism is pluggable (Decision 9.3).
-  mfaSecret    String?   @map("mfa_secret")
-  mfaEnabledAt DateTime? @map("mfa_enabled_at")
+  mfaSecret        String?   @map("mfa_secret")
+  mfaEnabledAt     DateTime? @map("mfa_enabled_at")
+  /// The last time step a code was accepted for, so a code cannot be used
+  /// twice (item 28).
+  mfaLastStep      BigInt?   @map("mfa_last_step")
+  /// A secret being set up, not yet confirmed by a code. It replaces
+  /// `mfaSecret` only when confirmed, so a half-finished change of phone
+  /// never leaves the officer without a working factor.
+  mfaPendingSecret String?   @map("mfa_pending_secret")
+
+  /// Consecutive failed sign-ins, password or code, and the lock they lead
+  /// to. A six-digit code is only as strong as the limit on guessing it.
+  failedSignInCount Int       @default(0) @map("failed_sign_in_count")
+  signInLockedUntil DateTime? @map("sign_in_locked_until")
+
+  /// Set when an administrator issues a temporary password (item 28). Until
+  /// the officer chooses their own, the session can do nothing else.
+  mustChangePassword Boolean @default(false) @map("must_change_password")
 
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
@@ -988,6 +1004,7 @@ model User {
   apiClientsApproved        ApiClient[]                @relation("ApiClientApprovedBy")
   apiTokensCreated          ApiToken[]                 @relation("ApiTokenCreatedBy")
   apiPausesLifted           ApiClientPause[]           @relation("ApiClientPauseLiftedBy")
+  recoveryCodes             UserRecoveryCode[]
 
   @@map("user")
 }
@@ -1015,6 +1032,10 @@ model UserSession {
   ipAddress String? @map("ip_address")
   userAgent String? @map("user_agent")
 
+  /// When this session proved a second factor (Requirement 17.1, item 28).
+  /// Null means it has not: it cannot exercise a privileged permission.
+  mfaVerifiedAt DateTime? @map("mfa_verified_at")
+
   createdAt  DateTime @default(now()) @map("created_at")
   lastSeenAt DateTime @default(now()) @map("last_seen_at")
 
@@ -1023,6 +1044,22 @@ model UserSession {
   @@index([userId])
   @@index([expiresAt])
   @@map("user_session")
+}
+
+/// A one-use code that stands in for the authenticator app when the phone is
+/// lost (item 28). Shown once at enrolment; only its hash is kept.
+model UserRecoveryCode {
+  id       String    @id @default(uuid()) @db.Uuid
+  userId   String    @map("user_id") @db.Uuid
+  codeHash String    @unique @map("code_hash")
+  usedAt   DateTime? @map("used_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_recovery_code")
 }
 
 /// The permission catalogue.
@@ -1094,6 +1131,11 @@ model UserRoleAssignment {
   userId         String @map("user_id") @db.Uuid
   roleId         String @map("role_id") @db.Uuid
   organisationId String @map("organisation_id") @db.Uuid
+
+  /// Who gave the role, and why (item 28). Null on rows the seed wrote. The
+  /// full history, removals included, is in the audit trail.
+  assignedByUserId String? @map("assigned_by_user_id") @db.Uuid
+  reason           String?
 
   createdAt DateTime @default(now()) @map("created_at")
 

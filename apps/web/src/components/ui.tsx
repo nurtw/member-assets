@@ -137,6 +137,8 @@ export function StatusChip({ status }: { status: string }) {
     REVOKED: "bg-[var(--verdict-deny-surface)] text-[var(--verdict-deny)] border-[var(--verdict-deny)]/30",
     CURRENT: "bg-[var(--verdict-affirm-surface)] text-[var(--verdict-affirm)] border-[var(--verdict-affirm)]/30",
     RETIRING: "bg-[var(--verdict-caution-surface)] text-[var(--verdict-caution)] border-[var(--verdict-caution)]/30",
+    // Officer accounts (item 28). A deactivated account is closed, not denied.
+    DEACTIVATED: "bg-[var(--surface-muted)] text-black/70 border-[var(--border-subtle)]",
   };
 
   return (

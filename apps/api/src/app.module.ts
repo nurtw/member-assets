@@ -17,6 +17,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { RateLimitModule } from './rate-limit/rate-limit.module.js';
 import { SettingsModule } from './settings/settings.module.js';
 import { StickerModule } from './sticker/sticker.module.js';
+import { UsersModule } from './users/users.module.js';
 import { VehicleModule } from './vehicle/vehicle.module.js';
 import { VehicleLetterModule } from './vehicle-letter/vehicle-letter.module.js';
 import { VerificationModule } from './verification/verification.module.js';
@@ -53,6 +54,7 @@ import { VerificationModule } from './verification/verification.module.js';
     ApiClientModule,
     RateLimitModule,
     AggregateModule,
+    UsersModule,
   ],
 })
 export class AppModule {}

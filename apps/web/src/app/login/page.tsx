@@ -21,6 +21,10 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  // Asked for only once the API says the account has a second factor, which
+  // it says only after accepting the password (item 28).
+  const [needsCode, setNeedsCode] = useState(false);
+  const [code, setCode] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,7 +34,11 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await api.post("/auth/login", { email, password });
+      await api.post("/auth/login", {
+        email,
+        password,
+        ...(needsCode && code.trim() ? { code: code.trim() } : {}),
+      });
       // `/auth/me` is a global SWR cache key: whoever last mounted the
       // authenticated shell (typically the pre-login redirect through
       // `/applications`) left a cached 401 there. `SessionProvider` would
@@ -42,11 +50,18 @@ export default function LoginPage() {
       await mutate("/auth/me");
       router.replace("/applications");
     } catch (caught) {
-      setError(
+      const failure =
         caught instanceof ApiError
           ? caught
-          : new ApiError(0, "The service could not be reached."),
-      );
+          : new ApiError(0, "The service could not be reached.");
+      const codeProblem = failure.fieldError("code");
+      if (codeProblem && !needsCode) {
+        // The password was accepted; ask for the code and say nothing failed.
+        setNeedsCode(true);
+        setError(null);
+      } else {
+        setError(failure);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -75,9 +90,12 @@ export default function LoginPage() {
           {error ? (
             <ErrorNotice
               message={
-                error.status === 401
+                error.fieldError("code") ??
+                (error.status === 401
                   ? "Those credentials were not accepted."
-                  : error.message
+                  : error.status === 503
+                    ? "Your second factor cannot be checked at present. Tell the administrator."
+                    : error.message)
               }
               requestId={error.requestId}
             />
@@ -120,8 +138,28 @@ export default function LoginPage() {
             </div>
           </Field>
 
+          {needsCode ? (
+            <Field
+              label="Authenticator code"
+              htmlFor="code"
+              required
+              hint="The six-digit code from your authenticator app, or one of your recovery codes."
+            >
+              <TextInput
+                id="code"
+                name="code"
+                inputMode="text"
+                autoComplete="one-time-code"
+                autoFocus
+                required
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+              />
+            </Field>
+          ) : null}
+
           <Button type="submit" disabled={submitting}>
-            {submitting ? "Signing in…" : "Sign in"}
+            {submitting ? "Signing in…" : needsCode ? "Verify and sign in" : "Sign in"}
           </Button>
         </form>
 

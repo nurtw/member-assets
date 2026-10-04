@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
 import { ApiClientModule } from '../api-client/api-client.module.js';
+import { AuditModule } from '../audit/audit.module.js';
 import { RateLimitModule } from '../rate-limit/rate-limit.module.js';
+import { AccountService } from './account.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { AuthorisationGuard } from './authorisation.guard.js';
@@ -29,10 +31,11 @@ import { SessionService } from './session.service.js';
  * its token is accepted (item 13).
  */
 @Module({
-  imports: [ApiClientModule, RateLimitModule],
+  imports: [ApiClientModule, RateLimitModule, AuditModule],
   controllers: [AuthController],
   providers: [
     AuthService,
+    AccountService,
     PasswordService,
     SessionService,
     PermissionService,

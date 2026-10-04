@@ -132,6 +132,34 @@ export class PermissionService {
     );
   }
 
+  /**
+   * Of `candidates`, the permissions the user holds over `subjectPath`, with
+   * revocations applied. For the no-escalation rule of item 28: nobody gives
+   * what they do not hold there.
+   */
+  async heldAt(
+    userId: string,
+    candidates: readonly string[],
+    subjectPath: string,
+  ): Promise<string[]> {
+    const assignments = await this.loadAssignments(userId);
+    return candidates.filter(
+      (permission) =>
+        decidePermission(assignments, { permission, subjectPath }).allowed,
+    );
+  }
+
+  /** Of `candidates`, the permissions the user holds in at least one scope. */
+  async heldAnywhere(
+    userId: string,
+    candidates: readonly string[],
+  ): Promise<string[]> {
+    const assignments = await this.loadAssignments(userId);
+    return candidates.filter((permission) =>
+      hasPermissionAnywhere(assignments, permission),
+    );
+  }
+
   /** Decision 9.7.1 — "what may this user do, and where", answered directly. */
   async listFor(userId: string): Promise<ScopedPermission[]> {
     return listEffectivePermissions(await this.loadAssignments(userId));

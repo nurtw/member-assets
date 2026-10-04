@@ -40,6 +40,17 @@ export {
 } from './permissions/effective-permissions.js';
 
 export {
+  GRANT_ONLY_PERMISSIONS,
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
+  SECOND_FACTOR_PERMISSIONS,
+  escalations,
+  isGrantOnly,
+  needsSecondFactor,
+  passwordProblems,
+} from './permissions/accounts.js';
+
+export {
   InvalidHierarchyError,
   ORGANISATION_LEVELS,
   assertMoveIsAcyclic,

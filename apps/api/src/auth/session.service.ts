@@ -32,6 +32,12 @@ export interface SessionUser {
   readonly id: string;
   readonly email: string;
   readonly fullName: string;
+  /** The session itself, for marking it once a second factor is proved. */
+  readonly sessionId: string;
+  /** Still on a temporary password: may do nothing but change it (item 28). */
+  readonly mustChangePassword: boolean;
+  /** This session has proved a second factor (Requirement 17.1). */
+  readonly secondFactorVerified: boolean;
 }
 
 export interface IssuedSession {
@@ -50,7 +56,12 @@ export class SessionService {
 
   async issue(
     userId: string,
-    context: { ipAddress?: string; userAgent?: string } = {},
+    context: {
+      ipAddress?: string;
+      userAgent?: string;
+      /** The sign-in proved a second factor. */
+      secondFactorVerified?: boolean;
+    } = {},
   ): Promise<IssuedSession> {
     const token = randomBytes(TOKEN_BYTES).toString('base64url');
     const expiresAt = new Date(
@@ -64,6 +75,7 @@ export class SessionService {
         expiresAt,
         ipAddress: context.ipAddress ?? null,
         userAgent: context.userAgent ?? null,
+        mfaVerifiedAt: context.secondFactorVerified ? new Date() : null,
       },
     });
 
@@ -85,7 +97,13 @@ export class SessionService {
       where: { tokenHash: this.hash(token) },
       include: {
         user: {
-          select: { id: true, email: true, fullName: true, isActive: true },
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+            isActive: true,
+            mustChangePassword: true,
+          },
         },
       },
     });
@@ -111,7 +129,30 @@ export class SessionService {
       id: session.user.id,
       email: session.user.email,
       fullName: session.user.fullName,
+      sessionId: session.id,
+      mustChangePassword: session.user.mustChangePassword,
+      secondFactorVerified: session.mfaVerifiedAt !== null,
     };
+  }
+
+  /** Marks a session as having proved a second factor. */
+  async markSecondFactor(sessionId: string): Promise<void> {
+    await this.prisma.userSession.update({
+      where: { id: sessionId },
+      data: { mfaVerifiedAt: new Date() },
+    });
+  }
+
+  /**
+   * Revokes a user's other sessions, keeping the one in hand: after a
+   * password change, whoever else was signed in as them is signed out.
+   */
+  async revokeOthers(userId: string, keepSessionId: string): Promise<number> {
+    const result = await this.prisma.userSession.updateMany({
+      where: { userId, revokedAt: null, id: { not: keepSessionId } },
+      data: { revokedAt: new Date() },
+    });
+    return result.count;
   }
 
   /** Revokes one session. Effective on the next request. */

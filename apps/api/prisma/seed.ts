@@ -421,6 +421,14 @@ async function seedSystemSettings(): Promise<void> {
         'cannot be subtracted to uncover a suppressed one (QUESTIONS.md EXT-18). 1 turns it off.',
     },
     {
+      key: 'auth.mfa_enforced',
+      value: 'false',
+      description:
+        'When true, a privileged permission can be used only by a session that has proved a ' +
+        'second factor (PRD Requirement 17.1). Turn on once every administrator has enrolled. ' +
+        'Must be on at go-live (QUESTIONS.md GOV-18).',
+    },
+    {
       key: 'api_token.expiry_days',
       value: '90',
       description: 'External API token lifetime in days (PRD §12.6).',

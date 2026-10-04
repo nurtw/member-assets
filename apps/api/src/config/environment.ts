@@ -49,6 +49,13 @@ export interface Environment {
    */
   readonly stickerSigningSecret: string | undefined;
   readonly stickerSigningKeyId: string;
+  /**
+   * The key that encrypts second-factor secrets at rest (item 28). Held only
+   * by the API. `undefined` where it is not configured: enrolment then
+   * answers 503 instead of storing a secret in the clear. Changing it makes
+   * every enrolled secret unreadable, so every officer must enrol again.
+   */
+  readonly mfaEncryptionKey: string | undefined;
 }
 
 class EnvironmentError extends Error {
@@ -115,6 +122,7 @@ export function loadEnvironment(): Environment {
     stickerSigningKeyId:
       // Matches .env.example's documented default (roadmap item 08).
       process.env.STICKER_SIGNING_KEY_ID?.trim() || 'k1',
+    mfaEncryptionKey: process.env.MFA_ENCRYPTION_KEY?.trim() || undefined,
   };
 }
 

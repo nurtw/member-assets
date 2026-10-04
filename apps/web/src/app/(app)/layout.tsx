@@ -26,6 +26,7 @@ const NAVIGATION: { href: string; label: string; permissions: string[] }[] = [
     label: "API access",
     permissions: ["api_client.read", "disclosure_profile.read"],
   },
+  { href: "/settings/users", label: "Officers", permissions: ["user.read", "role.read"] },
 ];
 
 /**
@@ -37,7 +38,7 @@ const NAVIGATION: { href: string; label: string; permissions: string[] }[] = [
  * avoids offering a button that would refuse.
  */
 function Shell({ children }: { children: ReactNode }) {
-  const { user, loading, holds, signOut } = useSession();
+  const { user, account, loading, holds, signOut } = useSession();
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -55,6 +56,16 @@ function Shell({ children }: { children: ReactNode }) {
       router.replace(home);
     }
   }, [user, pathname, home, router]);
+
+  // Item 28 — an officer on a temporary password can use nothing until they
+  // choose their own, so every screen leads to the one where they do. The API
+  // refuses regardless; this only spares them a page of refusals.
+  const mustChange = account?.mustChangePassword === true;
+  useEffect(() => {
+    if (mustChange && pathname !== "/account") {
+      router.replace("/account");
+    }
+  }, [mustChange, pathname, router]);
 
   // A route change is a navigation the officer just chose; leaving the menu
   // open over the new page would cover it. Adjusted during render, not an
@@ -119,7 +130,12 @@ function Shell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto hidden items-center gap-3 sm:flex">
-            <span className="text-sm text-black/60">{user.fullName}</span>
+            <Link
+              href="/account"
+              className="text-sm text-black/60 underline-offset-2 hover:underline"
+            >
+              {user.fullName}
+            </Link>
             <button
               type="button"
               onClick={() => void signOut()}
@@ -172,7 +188,12 @@ function Shell({ children }: { children: ReactNode }) {
               })}
             </nav>
             <div className="mt-3 flex items-center justify-between border-t border-[var(--border-subtle)] pt-3">
-              <span className="text-sm text-black/60">{user.fullName}</span>
+              <Link
+                href="/account"
+                className="text-sm text-black/60 underline-offset-2 hover:underline"
+              >
+                {user.fullName}
+              </Link>
               <button
                 type="button"
                 onClick={() => void signOut()}
@@ -185,7 +206,26 @@ function Shell({ children }: { children: ReactNode }) {
         ) : null}
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
+        {account?.secondFactor.required &&
+        !account.secondFactor.verified &&
+        pathname !== "/account" ? (
+          <div className="mb-6 rounded-md border border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] px-4 py-3 text-sm">
+            <p className="font-semibold text-[var(--verdict-caution)]">
+              A second factor is needed for administrative work
+            </p>
+            <p className="mt-1">
+              {account.secondFactor.enrolled
+                ? "Enter a code from your authenticator app to use administrative functions in this session."
+                : "Set up an authenticator app to use administrative functions. Everything else works as usual."}{" "}
+              <Link href="/account" className="font-medium underline underline-offset-2">
+                Go to your account
+              </Link>
+            </p>
+          </div>
+        ) : null}
+        {children}
+      </main>
 
       <footer className="border-t border-[var(--border-subtle)] px-4 py-4">
         <p className="mx-auto max-w-6xl text-xs text-black/45">

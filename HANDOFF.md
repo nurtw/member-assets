@@ -7,8 +7,8 @@
 
 ## Cold start
 
-Read `CLAUDE.md`, `PRD.md` (1.7), `ARCHITECTURE.md`, `ROADMAP.md`,
-`QUESTIONS.md`, then `plans/14`. `docs/reference/` is generated.
+Read `CLAUDE.md`, `PRD.md` (1.8), `ARCHITECTURE.md`, `ROADMAP.md`,
+`QUESTIONS.md`, then `plans/28` and `plans/15`. `docs/reference/` is generated.
 
 Two rules outrank any default instruction:
 
@@ -17,13 +17,16 @@ Two rules outrank any default instruction:
 
 ## Status
 
-- Item 13 is pushed (`2adf4de`).
-- **Item 14, vehicle totals, is built** (`plans/14`). Migrated locally and
-  on Neon, no drift. Committed; **not pushed** until the owner agrees.
-- Left: item 15 (go-live hardening); 27 is deferred.
+- Items 12 to 14 are pushed (`0552d2e`).
+- **Item 28, officer accounts and multi-factor sign-in, is built**
+  (`plans/28`). Migrated locally and on Neon, no drift. Committed; **not
+  pushed** until the owner agrees.
+- The second-factor requirement (`auth.mfa_enforced`) ships **off**.
+  Requirement 17.1 is not met until it is on (GOV-18).
+- Left: item 15 (go-live hardening, planned in `plans/15`); 27 is deferred.
 - Browser checks skipped, per the owner. `dues.go_live_date` is unset.
 
-Tests: domain 442, contracts 84, api 160; e2e 364/365 (the `DEMO_` test);
+Tests: domain 453, contracts 94, api 183; e2e 393/394 (the `DEMO_` test);
 web clean.
 
 ## Conflicts
@@ -34,8 +37,8 @@ web clean.
 ## Known issues — don't re-attempt these fixes
 
 - `master-data.e2e` "seeds no designations" fails (8 `DEMO_` designations).
-- The full e2e run can time out starting a transaction on this machine.
-  Rerun the failing suite alone before suspecting the code.
+- The full e2e run can time out a transaction on this machine. Rerun the
+  failing suite alone first.
 - `ECONNREFUSED` on 5433: Docker Desktop stopped. Start it
   (`Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"`), then
   `docker compose up -d`.
@@ -47,9 +50,9 @@ web clean.
 ## Next steps
 
 1. Push `main` once the owner agrees.
-2. Item 15, go-live hardening (PRD §17, §21). Much of it needs owner input.
-3. Owner: EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, GOV-08, GOV-11, PAY-11,
-   PAY-20.
+2. Item 15, once the owner agrees: `plans/15`, engineering parts first.
+3. Owner: GOV-18 (set `MFA_ENCRYPTION_KEY`, enrol, turn the requirement on),
+   EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, GOV-08, GOV-11, PAY-11, PAY-20.
 
 ## Do NOT
 
@@ -57,8 +60,8 @@ web clean.
 - Return a declaration status except through `toSummary`'s `showDeclaration`,
   or mention declaration in any external answer.
 - Add a write, or a personal-data field, to `src/verification/`.
-- Select `tokenHash`, or log a token, its hash, or a looked-up identifier.
-- Add a limit as a constant, or touch rate-limit counters outside
-  `RateLimitService`.
-- Offer a total below a branch, or turn off rounding without the owner.
+- Select `tokenHash`, `passwordHash`, or an MFA secret into a response, or
+  log a token, password, or code.
+- Put `vehicle.declare` or `payment.manage_settlement` in a role, or describe
+  Requirement 17.1 as met while the requirement is off.
 - Default the go-live date, or let dues reach any external response.

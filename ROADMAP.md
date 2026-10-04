@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.7
+**Document version:** 1.8
 **Last revised:** 4 October 2026
 
 ---
@@ -42,7 +42,7 @@ Each item is independently completable and independently testable. Status values
 | 12 | external-verification-api | §12, §15 | done | [plan](plans/12-external-verification-api.md) |
 | 13 | rate-limiting-and-abuse | §14 | done | [plan](plans/13-rate-limiting-and-abuse.md) |
 | 14 | aggregate-reporting | §13 | done | [plan](plans/14-aggregate-reporting.md) |
-| 15 | go-live-hardening | §17, §21 | not-started | `plans/15-go-live-hardening.md` |
+| 15 | go-live-hardening | §17, §21 | planned | [plan](plans/15-go-live-hardening.md) |
 | 16 | payments | §27 | done (link payments, settlement account) | `plans/16-payments.md` |
 | 17 | vehicle-onboarding | §9A | done (register on Neon 27 Sep; browser check pending) | `plans/17-vehicle-onboarding.md` |
 | 18 | vehicle-letter | §9A.6 | done (not yet viewed by eye) | `plans/18-vehicle-letter.md` |
@@ -55,6 +55,7 @@ Each item is independently completable and independently testable. Status values
 | 25 | dues-answers | §27.13 | done | [plan](plans/25-dues-answers.md) |
 | 26 | letter-reissue | §9A.6 | done | [plan](plans/26-letter-reissue.md) |
 | 27 | transpay-stock-intake | §9A.4 | deferred by the owner | [plan](plans/27-transpay-stock-intake.md) |
+| 28 | officer-accounts-and-mfa | §16, §17.1 | done (requirement off until GOV-18; browser check pending) | [plan](plans/28-officer-accounts-and-mfa.md) |
 
 ### Item summaries
 
@@ -77,6 +78,11 @@ left disabled. `vehicle.declare` is seeded into the super administrator bundle o
 into no other role; the interface must be able to enumerate who currently holds it and
 within what scope (Decision 9.7.1). External client authentication is deliberately
 excluded and belongs to item 11.
+
+*Corrected 4 October 2026.* Item 03 delivered the tables, the permission check, and the
+guard. It did **not** deliver any route or screen to create an officer, assign a role, grant
+or revoke a permission, or compose a role, and no multi-factor sign-in or step-up existed
+beyond unused columns. Those are item 28.
 
 **04 — org-hierarchy.** Council, zone, branch, and unit, together with the master-data
 administration interface. Hierarchy and master-data determinations at PRD §23.1, §23.3,
@@ -243,6 +249,13 @@ vehicle's letter with a reason. The old letter is kept, marked superseded. Amend
 **27 — transpay-stock-intake.** *VEH-29, deferred.* Adding Transpay's unrecorded stickers to
 the register by scanning them, before attaching them. Not started, by the owner's direction
 of 3 October 2026. It reopens the register VEH-21 closed, so it needs a PRD revision first.
+
+**28 — officer-accounts-and-mfa.** *PRD §16, §17.1; found missing on 4 October 2026.*
+Creating and deactivating officers with a temporary password, assigning roles by scope,
+granting and revoking single permissions, composing roles, and multi-factor sign-in for
+privileged permissions. Blocked go-live: without it nobody but the seeded administrator
+could sign in. Delivered on 4 October 2026 (PRD 1.8). The second-factor requirement ships
+off (`auth.mfa_enforced`) and must be turned on before go-live (GOV-18).
 
 **Also on 3 October 2026 (PRD 1.4, VEH-28).** A vehicle's declaration status is shown only
 to holders of `vehicle.declare`, on every screen and route. This amended items 07 and 10.

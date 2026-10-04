@@ -95,6 +95,24 @@ An unknown account and an incorrect password produce byte-identical responses an
 comparable time. Neither the existence of an account nor a near-miss on a password can be
 inferred from a login attempt.
 
+Ten failed sign-ins in a row lock the account for fifteen minutes. A locked account answers
+the same `401`, even to the right password.
+
+### The second factor, and a temporary password
+
+- **Where an account has a second factor**, `POST /auth/login` also takes `code`: six digits
+  from the authenticator app, or a recovery code. Once the password is accepted, a missing or
+  wrong code answers `401` with `details` naming the `code` field. A code works once.
+- **A session that has proved a second factor may use privileged permissions** (PRD
+  Requirement 17.1): those that manage officers, roles, grants, settings, limits, outside
+  organisations, and the settlement account, and `vehicle.declare`. Without it they answer
+  `403`, once the Union has turned the requirement on.
+- **A new officer signs in with a temporary password** and must change it through
+  `POST /auth/password`. Until then every other route answers `403`.
+- **The officer's own account** (`GET /auth/me`, `POST /auth/password`, `POST /auth/mfa/*`)
+  needs a session and no permission. `GET /auth/me` returns `account`, which says whether a
+  password change or a second factor is due.
+
 ---
 
 ## 5. Authorisation

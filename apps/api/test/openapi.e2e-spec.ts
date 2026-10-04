@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { API_SCOPES } from '@nurtw/contracts';
 
 import { AppModule } from './../src/app.module.js';
+import { SIGNED_IN } from './../src/auth/require-permission.decorator.js';
 import { OpenApiService } from './../src/docs/openapi.service.js';
 
 /**
@@ -129,6 +130,27 @@ describe('API reference (e2e)', () => {
       'POST /api/v1/auth/login',
       'POST /api/v1/auth/logout',
       'POST /api/v1/payments/webhook',
+    ]);
+  });
+
+  it('keeps the signed-in-only surface to the officer’s own account', () => {
+    // `@SignedIn()` asks for a session and no permission (item 28). It exists
+    // for who-am-I, one's own password, and one's own second factor. Adding a
+    // line here should require an argument for why the route names no
+    // permission.
+    const own = openApi
+      .getRoutes()
+      .filter((route) => route.permission === SIGNED_IN)
+      .map((route) => `${route.method.toUpperCase()} ${route.path}`)
+      .sort();
+
+    expect(own).toEqual([
+      'GET /api/v1/auth/me',
+      'POST /api/v1/auth/mfa/confirm',
+      'POST /api/v1/auth/mfa/enrol',
+      'POST /api/v1/auth/mfa/recovery-codes',
+      'POST /api/v1/auth/mfa/verify',
+      'POST /api/v1/auth/password',
     ]);
   });
 

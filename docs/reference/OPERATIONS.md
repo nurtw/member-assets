@@ -236,15 +236,58 @@ endpoint rather than enriching this one.
 
 ## 10. Routine procedures
 
+### Adding an officer, and giving them access
+
+Officers → **Add an officer** (needs `user.manage`). The System shows a temporary password
+once: pass it on in person or by a route you trust. The officer signs in, must choose their
+own password, and can do nothing else until they have.
+
+The account starts with no role. On the officer's page:
+
+- **Give a role** for a part of the Union. It covers that council, zone, branch, or unit and
+  everything beneath it. You can only give a role whose every permission you hold there.
+- **Grant a single permission**, such as `vehicle.declare` (needs `permission.grant`), or
+  **revoke** one whatever their roles give (needs `permission.revoke`).
+
+You cannot change your own roles, permissions, or status. Another administrator does it.
+Every change needs a reason and is audited (`user.*`, `role.*`).
+
+### A forgotten password, a lost phone, a locked account
+
+- **Forgotten password:** officer's page → **Issue a temporary password**.
+- **Lost phone, no recovery code:** officer's page → **Remove second factor**. The officer
+  sets an authenticator up again on their account page.
+- **Locked account:** ten failed sign-ins lock it for fifteen minutes; it unlocks itself.
+  Issuing a temporary password clears the lock at once. Each lock is audited as
+  `auth.lockout`.
+
+### Turning on the second-factor requirement
+
+It ships **off** and **must be on at go-live** (PRD Requirement 17.1, `QUESTIONS.md` GOV-18).
+
+1. Set `MFA_ENCRYPTION_KEY` on the API to a long random value, and keep a copy somewhere
+   safe. Without it, setting an authenticator up answers `503`. **Do not change it later**:
+   every officer would have to set their authenticator up again.
+2. Each administrator sets an authenticator up under their name → **Your account**, and
+   keeps their recovery codes.
+3. Officers → **Security** lists administrators who have not. When it is empty, an
+   administrator who has proved their own second factor turns the requirement on.
+
+If every administrator is locked out, clear one account's second factor in the database
+(`UPDATE "user" SET mfa_secret = NULL, mfa_enabled_at = NULL, mfa_last_step = NULL WHERE
+email = '…'`), record why in the incident log, and have them enrol again.
+
 ### Suspending a user's access immediately
 
-Delete the user's sessions. Revocation takes effect on the **next** request — this is the
-property for which opaque sessions were chosen over signed tokens.
+Officers → the officer's page → **Deactivate**, with a reason (needs `user.manage`). Every
+session they hold ends on its **next** request — the property for which opaque sessions were
+chosen over signed tokens. The account and its history are kept, and it can be reactivated.
 
 ### Withdrawing a permission from one user
 
-Record a revocation rather than removing the role. Revocation always beats grant, applies
-immediately, and leaves the role assignment intact and legible.
+Record a revocation rather than removing the role: the officer's page → **Single
+permissions** → **Revoke**. Revocation always beats grant, applies immediately, and leaves
+the role assignment intact and legible.
 
 ### Establishing who holds a sensitive permission
 

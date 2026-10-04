@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.3
+**Document version:** 1.4
 **Last revised:** 4 October 2026
 **Authority:** Subordinate to `PRD.md`. Where this document and the PRD conflict, the PRD prevails.
 
@@ -392,6 +392,11 @@ the recipient, the scope, and the stated reason (Decision 9.6).
 to demand a fresh second factor at the point of exercise exists per permission and is not
 presently enabled for `vehicle.declare`.
 
+*Corrected 4 October 2026.* This was not true when written: no step-up existed. Since item
+28, `vehicle.declare` is a privileged permission, usable only by a session that has proved a
+second factor once the requirement is on (Decision 9.12). A fresh code at the moment of each
+declaration is still not asked for, and would be new work, not a configuration change.
+
 The residual exposure — that a hijacked session creates declarations — is materially
 smaller under this determination than under the earlier one, because the holder set is now
 a deliberately maintained list rather than three role classes. It is further bounded by
@@ -425,6 +430,24 @@ other's credential, so Decisions 9.1 and 9.8 hold by construction rather than by
 replaced, or expired token, a suspended organisation, and a call from outside the allowed
 address ranges all answer the same 401. The reason is kept in the request log. A stolen
 token therefore cannot be probed for which control stopped it.
+
+**Decision 9.12 — the second factor is a property of the session *(item 28)*.** A session
+records when it proved a second factor. The guard refuses a privileged permission to one that
+has not, once the requirement is on. The question is asked of the permission, never the role
+(Decision 9.2), so a composed role holding a privileged permission is covered without being
+named. Codes are RFC 6238, each accepted once; the shared secret is encrypted at rest under a
+key from the environment.
+
+**Decision 9.13 — nobody gives what they do not hold *(item 28)*.** A role is assigned, or a
+permission granted, only within a scope where the giver holds every permission involved.
+Nobody changes their own roles, grants, revocations, or status. Without the first,
+`user.manage` in one branch would manufacture any access there; without the second, one
+compromised session could widen itself.
+
+**Decision 9.14 — three kinds of route *(item 28)*.** Beside a permission, a scope, or
+public access, a route may be open to any signed-in officer. That is for the officer's own
+account alone: who am I, their password, their second factor. It lets an officer with no
+role yet, or one still on a temporary password, do exactly that and nothing else.
 
 ---
 
@@ -643,3 +666,12 @@ The following were added by revision 1.7, 4 October 2026:
 | Totals by area | Zone or branch only; filtered totals rounded to the nearest 10 | PRD Requirement 13.6 |
 | The two tiers | Two routes, one scope each | 9.10, PRD Requirement 13.8 |
 | Counting | Declared and onboarded as at the period's end, with today's status | PRD §23.25 |
+
+The following were added by revision 1.8, 4 October 2026:
+
+| Matter | Determination | Decision |
+|---|---|---|
+| The second factor | Required by permission, recorded on the session | 9.12, PRD Requirement 17.1 |
+| Giving access | Only what the giver holds there; never to oneself | 9.13 |
+| The officer's own account | Open to any signed-in officer | 9.14 |
+| First passwords | Temporary, changed at first sign-in | PRD Requirement 17.3 |

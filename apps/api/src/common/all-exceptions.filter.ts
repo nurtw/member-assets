@@ -10,6 +10,7 @@ import type { Request, Response } from 'express';
 
 import { buildErrorResponse, resolveRequestId } from './error-response.js';
 import { redactUrl } from './request-logging.middleware.js';
+import { SecondFactorRequiredException } from './second-factor.exception.js';
 import { ValidationException } from './zod-validation.pipe.js';
 
 /**
@@ -71,7 +72,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     const details =
-      exception instanceof ValidationException ? exception.issues : undefined;
+      exception instanceof ValidationException ||
+      exception instanceof SecondFactorRequiredException
+        ? exception.issues
+        : undefined;
 
     response.status(status).json(buildErrorResponse(status, requestId, details));
   }
