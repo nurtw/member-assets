@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.2
-**Last revised:** 26 September 2026
+**Document version:** 1.3
+**Last revised:** 4 October 2026
 **Authority:** Subordinate to `PRD.md`. Where this document and the PRD conflict, the PRD prevails.
 
 ---
@@ -298,6 +298,22 @@ therefore adopted before scaling is required rather than after.
 
 **Decision 8.3 — limits are runtime configuration.** Per PRD §14.1, every limit, quota, and
 suppression threshold is administered through the interface. No limit is a code constant.
+
+*Item 13:* the shared store is **Postgres** (PRD §23.24). A token bucket per organisation
+and route class, and hourly and daily counters, are each changed by one atomic statement, so
+two instances cannot both spend the last place. `RateLimitService` is the only code that
+touches them, so a move to Redis changes that service alone.
+
+**Decision 8.4 — limits per organisation, read from a profile *(item 13)*.** An
+organisation's tokens share one set of limits. Every number, the detection thresholds and
+the length of a pause included, is a column of its `rate_limit_profile` row, read on each
+request. A request refused by a limit is not counted against a quota.
+
+**Decision 8.5 — detection observes outcomes, and pauses *(item 13)*.** After a check is
+answered, detection counts it: forged codes, non-matches, and plates or Transpay barcodes in
+sequence. A match never lengthens a sequence, because a fleet registered together carries
+plates in order and is verified in turn. A signal pauses the organisation (PRD Requirement
+14.4) and clears the evidence, so it is not paused again the moment the pause ends.
 
 ---
 
@@ -611,3 +627,11 @@ The following were added by revision 1.5, 3 October 2026:
 | Approving an external organisation | A data-sharing agreement is required; any holder of `api_client.manage` approves and is recorded | PRD Requirements 12.8, 12.9 |
 | Replacing a token | The officer chooses how long the replaced token keeps working | PRD Requirement 12.10 |
 | Expiry reminders | Flagged on the dashboard until a mail service exists | PRD Requirement 12.6 |
+
+The following were added by revision 1.6, 4 October 2026:
+
+| Matter | Determination | Decision |
+|---|---|---|
+| Where counters live | Postgres, behind `RateLimitService` | 8.3 |
+| Limits | Per organisation, from a `rate_limit_profile` row | 8.4 |
+| Detection | Pauses the organisation for its profile's minutes | 8.5 |

@@ -10,6 +10,7 @@ import {
   PERMISSIONS,
   ROUTE_TYPE_SEED,
   SYSTEM_DISCLOSURE_PROFILES,
+  SYSTEM_RATE_LIMIT_PROFILES,
   SYSTEM_ROLES,
 } from '@nurtw/contracts';
 
@@ -458,6 +459,23 @@ async function seedSystemSettings(): Promise<void> {
 }
 
 /**
+ * The limit profiles of proposal §14.2 (item 13). The migration that added
+ * the table inserts the same rows; this keeps a freshly seeded database
+ * identical. Never overwritten: once a row exists, the Union owns its numbers
+ * (Requirement 14.1).
+ */
+async function seedRateLimitProfiles(): Promise<void> {
+  for (const { code, ...profile } of SYSTEM_RATE_LIMIT_PROFILES) {
+    await prisma.rateLimitProfile.upsert({
+      where: { code },
+      create: { code, ...profile },
+      update: {},
+    });
+  }
+  console.log(`  rate-limit profiles: ${SYSTEM_RATE_LIMIT_PROFILES.length}`);
+}
+
+/**
  * The disclosure profiles of PRD §15 that an outside organisation can hold
  * (item 11). The migration that added the columns inserts the same rows; this
  * keeps a freshly seeded database identical.
@@ -604,6 +622,7 @@ async function main(): Promise<void> {
   await seedDemoDesignations();
   await seedSystemSettings();
   await seedDisclosureProfiles();
+  await seedRateLimitProfiles();
   await seedFeeTypes();
 
   await seedAdministrator();

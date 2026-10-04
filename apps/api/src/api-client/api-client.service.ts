@@ -14,6 +14,7 @@ import {
   type DisclosureProfileSummary,
   type RegisterApiClientInput,
   type SetApiClientAccessInput,
+  type SetApiClientLimitsInput,
   type SetApiClientStatusInput,
   type UpdateApiClientInput,
 } from '@nurtw/contracts';
@@ -32,6 +33,7 @@ import { ValidationException } from '../common/zod-validation.pipe.js';
 import { DisclosureProfileService } from '../disclosure/disclosure-profile.service.js';
 import type { ActorContext } from '../organisation/organisation.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { RateLimitService } from '../rate-limit/rate-limit.service.js';
 import {
   API_TOKEN_REMINDER_DAYS,
   SettingsService,
@@ -78,6 +80,8 @@ const DETAIL_SELECT = {
   approvedAt: true,
   statusChangedAt: true,
   statusReason: true,
+  rateLimitProfile: true,
+  dailyQuota: true,
   registeredByUser: { select: { id: true, fullName: true } },
   approvedByUser: { select: { id: true, fullName: true } },
 } as const;
@@ -141,6 +145,7 @@ export class ApiClientService {
     private readonly audit: AuditService,
     private readonly settings: SettingsService,
     private readonly profiles: DisclosureProfileService,
+    private readonly rateLimits: RateLimitService,
   ) {}
 
   // --- Reads -----------------------------------------------------------------
@@ -154,8 +159,14 @@ export class ApiClientService {
       }),
       this.reminderDays(),
     ]);
+    const paused = await this.rateLimits.pausedUntil(
+      rows.map((row) => row.id),
+      now,
+    );
     return {
-      clients: rows.map((row) => this.toSummary(row, now, reminderDays)),
+      clients: rows.map((row) =>
+        this.toSummary(row, now, reminderDays, paused.get(row.id) ?? null),
+      ),
       reminderDays,
     };
   }
@@ -171,7 +182,25 @@ export class ApiClientService {
     if (!row) {
       throw new NotFoundException();
     }
-    return this.toDetail(row, new Date(), reminderDays);
+    const now = new Date();
+    const { limits, pause } = await this.rateLimits.describe(
+      {
+        clientId: row.id,
+        rateLimitProfile: row.rateLimitProfile,
+        dailyQuota: row.dailyQuota,
+      },
+      now,
+    );
+    return {
+      ...this.toDetail(
+        row,
+        now,
+        reminderDays,
+        pause?.active ? new Date(pause.pausedUntil) : null,
+      ),
+      limits,
+      pause,
+    };
   }
 
   /** The profiles an organisation can be given, for the approval form. */
@@ -561,6 +590,77 @@ export class ApiClientService {
     return this.get(id);
   }
 
+  /**
+   * The limit profile an organisation is held to, and a daily quota of its
+   * own where the profile's does not fit (item 13). It applies to the next
+   * request. A revoked organisation's record is closed.
+   */
+  async setLimits(
+    actor: ActorContext,
+    id: string,
+    input: SetApiClientLimitsInput,
+  ): Promise<ApiClientDetail> {
+    await this.prisma.$transaction(async (tx) => {
+      await this.lock(tx, id);
+      const before = await tx.apiClient.findUnique({
+        where: { id },
+        select: { status: true, rateLimitProfile: true, dailyQuota: true },
+      });
+      if (!before) {
+        throw new NotFoundException();
+      }
+      if (before.status === 'REVOKED') {
+        throw new ConflictException('A revoked client cannot be amended.');
+      }
+      const profile = await this.rateLimits.requireProfile(
+        input.rateLimitProfile,
+        tx,
+      );
+      await tx.apiClient.update({
+        where: { id },
+        data: { rateLimitProfile: profile.code, dailyQuota: input.dailyQuota },
+      });
+      await this.audit.record(
+        {
+          action: 'api_client.limits_change',
+          subjectType: 'api_client',
+          subjectId: id,
+          actorUserId: actor.userId,
+          before: {
+            rateLimitProfile: before.rateLimitProfile,
+            dailyQuota: before.dailyQuota,
+          },
+          after: {
+            rateLimitProfile: profile.code,
+            dailyQuota: input.dailyQuota,
+          },
+          reason: input.reason,
+          requestId: actor.requestId,
+          ipAddress: actor.ipAddress,
+        },
+        tx,
+      );
+    });
+    return this.get(id);
+  }
+
+  /** Ends the System's pause on an organisation early (item 13). */
+  async liftPause(
+    actor: ActorContext,
+    id: string,
+    reason: string,
+  ): Promise<ApiClientDetail> {
+    const exists = await this.prisma.apiClient.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!exists) {
+      throw new NotFoundException();
+    }
+    await this.rateLimits.lift(actor, id, reason);
+    return this.get(id);
+  }
+
   // --- Internals ---------------------------------------------------------------
 
   /**
@@ -599,6 +699,7 @@ export class ApiClientService {
     row: SummaryRow,
     now: Date,
     reminderDays: number,
+    pausedUntil: Date | null,
   ): ApiClientSummary {
     const tokens = row.tokens.map((token) =>
       toTokenSummary(token, now, reminderDays),
@@ -614,6 +715,7 @@ export class ApiClientService {
       disclosureProfile: row.disclosureProfile,
       scopes: orderScopes(row.scopes.map((granted) => granted.scope)),
       currentToken: tokens.find((token) => token.state === 'CURRENT') ?? null,
+      pausedUntil: pausedUntil?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
     };
   }
@@ -622,9 +724,10 @@ export class ApiClientService {
     row: DetailRow,
     now: Date,
     reminderDays: number,
-  ): ApiClientDetail {
+    pausedUntil: Date | null,
+  ): Omit<ApiClientDetail, 'limits' | 'pause'> {
     return {
-      ...this.toSummary(row, now, reminderDays),
+      ...this.toSummary(row, now, reminderDays, pausedUntil),
       businessPurpose: row.businessPurpose,
       technicalContact: {
         name: row.technicalContactName,

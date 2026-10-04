@@ -38,11 +38,31 @@ A limit by address on requests with no valid token: that belongs at the edge (it
 Caching results. A limit on concurrent requests. Totals (item 14).
 
 ## Definition of done
-- [ ] Over the rate, the hourly quota, or the daily quota: `429` with `Retry-After`
+- [x] Over the rate, the hourly quota, or the daily quota: `429` with `Retry-After`
       (criterion 7).
-- [ ] Sequential plates are detected and blocked inside the quota (criterion 8).
-- [ ] Forged codes and a high non-match rate pause the organisation.
-- [ ] A pause is audited, shown on the screen, and can be lifted with a reason.
-- [ ] Every limit and threshold is changed at runtime, audited with a reason.
-- [ ] An external request without `X-Request-ID` is refused.
-- [ ] Tests pass; `openapi.json` is regenerated.
+- [x] Sequential plates are detected and blocked inside the quota (criterion 8).
+- [x] Forged codes and a high non-match rate pause the organisation.
+- [x] A pause is audited, shown on the screen, and can be lifted with a reason.
+- [x] Every limit and threshold is changed at runtime, audited with a reason.
+- [x] An external request without `X-Request-ID` is refused.
+- [x] Tests pass; `openapi.json` is regenerated.
+
+**Decided while building (4 October 2026):**
+
+- **Limits are per organisation**, shared by its tokens, so a second token gives no second
+  allowance.
+- **A refusal is not counted** against a quota, so a client hammering after its limit does
+  not push its own reset further away.
+- **A match never lengthens a sequence.** A fleet registered together carries plates in
+  order and is verified in turn; only non-matching steps count.
+- **A pause answers `429` with the time left.** An honest integrator can back off, and an
+  abuser learns nothing it would not learn anyway.
+- **Pausing clears the evidence**, so lifting a pause does not re-pause on the next check.
+- **The request id is checked after the token**, so the refusal is logged against the
+  organisation, and before the limits, so it costs nothing.
+- **Pauses are rows**, kept after they end, so the history of each organisation shows.
+- **New EXT-17:** the detection thresholds are launch defaults. Every one is a number on the
+  profile.
+
+**Pending:** not opened in a browser. A limit by address for requests with no valid token
+belongs at the edge (item 15).

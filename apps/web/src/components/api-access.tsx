@@ -72,24 +72,31 @@ export function scopeDescription(scope: string): string {
   return API_SCOPE_DESCRIPTIONS[scope as ApiScope] ?? scope;
 }
 
-/** Organisations | Disclosure profiles, for an officer who may see both. */
+/** Organisations | Disclosure profiles | Limits, as the officer may see them. */
 export function ApiAccessTabs() {
   const pathname = usePathname();
   const { holds } = useSession();
   const onProfiles = pathname.startsWith("/settings/api-access/profiles");
+  const onLimits = pathname.startsWith("/settings/api-access/limits");
 
   const tabs = [
     {
       href: "/settings/api-access",
       label: "Organisations",
       permission: "api_client.read",
-      active: !onProfiles,
+      active: !onProfiles && !onLimits,
     },
     {
       href: "/settings/api-access/profiles",
       label: "Disclosure profiles",
       permission: "disclosure_profile.read",
       active: onProfiles,
+    },
+    {
+      href: "/settings/api-access/limits",
+      label: "Limits",
+      permission: "api_client.read",
+      active: onLimits,
     },
   ].filter((tab) => holds(tab.permission));
 

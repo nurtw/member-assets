@@ -743,7 +743,32 @@ record the same plate at once. Preserve it too.
 - **`ExternalRequestLogInterceptor` logs each request that passed the guard**, a `400`
   included, using the outcome the route sets on `request.externalOutcome`. The guard logs
   its own refusals, so each request is logged once.
-- **No rate limit yet.** Until item 13, no real organisation should hold a token.
+
+### Rate limiting and abuse detection (item 13)
+
+- **Two layers, one service** (Decision 8.1). `RateLimitService.admit` runs in the guard
+  after the token and the request id; `observe` runs in `ExternalRequestLogInterceptor`
+  after a check is answered. Nothing else touches the counters.
+- **Counters are Postgres** (PRD §23.24): `api_rate_bucket`, `api_rate_counter`,
+  `api_abuse_window`, `api_sequence_state`. Each write is one atomic statement in raw SQL
+  with `timestamptz` columns. Never read-then-write them outside a lock.
+- **Limits are per organisation, from `rate_limit_profile`.** Every number, the detection
+  thresholds and the pause included, is a column. Never add a limit as a constant.
+  `api_client.daily_quota` is the organisation's own override.
+- **A refusal is never counted** against a quota, and every limit refusal answers `429`
+  with `Retry-After`, logged with `rate_limited` true.
+- **A match never lengthens a sequence**, so a fleet verified in turn is not flagged. Only a
+  decided check (`MATCH`, `NO_MATCH`, `INVALID_SIGNATURE`) is observed; a `400` is not. A
+  signed code is never passed to sequence detection.
+- **A pause is a row in `api_client_pause`**, kept after it ends or is lifted. Pausing
+  clears the evidence. Lifting needs `api_client.manage` and a reason.
+- **External requests must send `X-Request-ID`** (Requirement 14.5): checked after the token,
+  before the limits, logged as `NO_REQUEST_ID`. Every external answer carries
+  `X-Server-Request-ID`, stored as `api_request_log.server_request_id`.
+- **Test fixtures need a generous profile.** An organisation created in a suite starts on
+  `STANDARD` (burst 5), so a suite making many calls gives its organisations a profile of
+  its own, as `api-client.e2e-spec.ts` does. The pruning timer does not run under
+  `NODE_ENV=test`; suites call `prune()`.
 
 ### Notes that will bite you otherwise
 

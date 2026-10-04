@@ -15,6 +15,7 @@ import {
 } from '@nurtw/domain';
 import { z } from 'zod';
 
+import type { ApiClientLimits, ApiClientPause } from './rate-limit.js';
 import { API_SCOPES } from './scopes.js';
 
 const uuid = z.uuid('A valid identifier is required.');
@@ -198,6 +199,11 @@ export interface ApiClientSummary {
   scopes: string[];
   /** The token in use, if there is one. */
   currentToken: ApiTokenSummary | null;
+  /**
+   * Set only while the System is holding the organisation paused (item 13).
+   * Its requests are refused until then.
+   */
+  pausedUntil: string | null;
   createdAt: string;
 }
 
@@ -214,6 +220,10 @@ export interface ApiClientDetail extends ApiClientSummary {
   /** The last status change and the reason given for it. */
   statusChangedAt: string | null;
   statusReason: string | null;
+  /** The limits it is held to, and its use of them today (item 13). */
+  limits: ApiClientLimits;
+  /** The last time the System paused it, or `null` if it never has. */
+  pause: ApiClientPause | null;
   /** Newest first. */
   tokens: ApiTokenSummary[];
 }

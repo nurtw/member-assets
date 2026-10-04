@@ -13,6 +13,7 @@ import { MembershipModule } from './membership/membership.module.js';
 import { OrganisationModule } from './organisation/organisation.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { RateLimitModule } from './rate-limit/rate-limit.module.js';
 import { SettingsModule } from './settings/settings.module.js';
 import { StickerModule } from './sticker/sticker.module.js';
 import { VehicleModule } from './vehicle/vehicle.module.js';
@@ -49,6 +50,7 @@ import { VerificationModule } from './verification/verification.module.js';
     VerificationModule,
     DisclosureModule,
     ApiClientModule,
+    RateLimitModule,
   ],
 })
 export class AppModule {}

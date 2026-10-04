@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 
-import { ApiAccessTabs, shortDay } from "@/components/api-access";
+import { ApiAccessTabs, moment, shortDay } from "@/components/api-access";
 import {
   Button,
   ErrorNotice,
@@ -208,6 +208,7 @@ export default function ApiAccessPage() {
   const expiring = clients.filter(
     (client) => client.currentToken?.expiringSoon,
   );
+  const paused = clients.filter((client) => client.pausedUntil !== null);
 
   return (
     <div className="grid max-w-5xl gap-6">
@@ -227,6 +228,32 @@ export default function ApiAccessPage() {
           message={loadError.message}
           requestId={loadError.requestId}
         />
+      ) : null}
+
+      {paused.length > 0 ? (
+        <div className="rounded-md border border-[var(--verdict-deny)]/30 bg-[var(--verdict-deny-surface)] px-4 py-3 text-sm">
+          <p className="font-semibold text-[var(--verdict-deny)]">
+            Paused by abuse detection
+          </p>
+          <p className="mt-1">
+            The System is refusing these organisations’ requests for a time,
+            because their checks followed a pattern. Open one to see why, and to
+            lift the pause or suspend it.
+          </p>
+          <ul className="mt-2 list-disc pl-5">
+            {paused.map((client) => (
+              <li key={client.id}>
+                <Link
+                  href={`/settings/api-access/${client.id}`}
+                  className="font-medium underline underline-offset-2"
+                >
+                  {client.organisationName}
+                </Link>{" "}
+                — until {moment(client.pausedUntil)}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {expiring.length > 0 ? (
@@ -296,6 +323,11 @@ export default function ApiAccessPage() {
                   </td>
                   <td className="px-4 py-3">
                     <StatusChip status={client.status} />
+                    {client.pausedUntil ? (
+                      <span className="mt-1 block text-xs font-semibold text-[var(--verdict-deny)]">
+                        Paused until {moment(client.pausedUntil)}
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-4 py-3 text-black/70">
                     {client.disclosureProfile?.label ?? "—"}

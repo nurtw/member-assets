@@ -1,15 +1,26 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 
 import { ApiClientAuthService } from '../api-client/api-client-auth.service.js';
-import { resolveRequestId } from '../common/error-response.js';
+import { ApiRequestLogService } from '../api-client/api-request-log.service.js';
+import {
+  isAcceptableRequestId,
+  resolveRequestId,
+} from '../common/error-response.js';
+import { ValidationException } from '../common/zod-validation.pipe.js';
+import { RateLimitService } from '../rate-limit/rate-limit.service.js';
 import { PermissionService } from './permission.service.js';
 import {
   PERMISSION_METADATA_KEY,
@@ -54,11 +65,15 @@ export interface AuthenticatedRequest extends Request {
  */
 @Injectable()
 export class AuthorisationGuard implements CanActivate {
+  private readonly logger = new Logger(AuthorisationGuard.name);
+
   constructor(
     private readonly reflector: Reflector,
     private readonly sessions: SessionService,
     private readonly permissions: PermissionService,
     private readonly apiClients: ApiClientAuthService,
+    private readonly requests: ApiRequestLogService,
+    private readonly rateLimits: RateLimitService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -142,6 +157,9 @@ export class AuthorisationGuard implements CanActivate {
    * A route that declares a scope together with a permission, or with
    * `@Public()`, has been declared wrongly. It is refused outright: guessing
    * which was meant would be a guess about who may call it.
+   *
+   * In order: the token (item 11), the caller's request id, then the limits
+   * (item 13). Each refusal is logged once, here or in `ApiClientAuthService`.
    */
   private async authenticateExternal(
     context: ExecutionContext,
@@ -156,22 +174,79 @@ export class AuthorisationGuard implements CanActivate {
       throw new ForbiddenException();
     }
 
-    const request = context.switchToHttp().getRequest<ExternalRequest>();
-    const supplied = request.headers['x-request-id'];
+    const http = context.switchToHttp();
+    const request = http.getRequest<ExternalRequest>();
+    const response = http.getResponse<Response>();
+    const header = request.headers['x-request-id'];
+    const supplied = Array.isArray(header) ? header[0] : header;
+    const requestId = resolveRequestId(supplied);
     const route = (request.route as { path?: string } | undefined)?.path;
+    // The route pattern, never the URL: a query string is not logged.
+    const endpoint = `${request.method} ${route ?? request.path}`;
 
-    request.apiClient = await this.apiClients.authenticate(
+    // Proposal §14.3 — the System's own id for the request, on every answer
+    // from here on, refusals included.
+    const serverRequestId = randomUUID();
+    request.serverRequestId = serverRequestId;
+    response.setHeader('X-Server-Request-ID', serverRequestId);
+
+    const client = await this.apiClients.authenticate(
       {
         authorization: request.headers.authorization,
         ipAddress: request.ip,
-        // The route pattern, never the URL: a query string is not logged.
-        endpoint: `${request.method} ${route ?? request.path}`,
-        requestId: resolveRequestId(
-          Array.isArray(supplied) ? supplied[0] : supplied,
-        ),
+        endpoint,
+        requestId,
+        serverRequestId,
       },
       scope,
     );
+    request.apiClient = client;
+
+    const refused = (resultClass: string, statusCode: number) =>
+      this.requests.record({
+        requestId,
+        serverRequestId,
+        endpoint,
+        scope,
+        resultClass,
+        statusCode,
+        clientId: client.clientId,
+        tokenId: client.tokenId,
+        ipAddress: request.ip ?? null,
+        rateLimited: statusCode === 429,
+      });
+
+    // Proposal §14.3 — an external caller sends its own request id. Checked
+    // once the token is accepted, so the refusal is logged against the
+    // organisation, and before the limits, so it spends none of them.
+    if (!isAcceptableRequestId(supplied)) {
+      // The id minted above is the one logged; the error body carries it too.
+      request.headers['x-request-id'] = requestId;
+      await refused('NO_REQUEST_ID', 400);
+      throw new ValidationException([
+        {
+          field: 'X-Request-ID',
+          message:
+            'Send your own request id, of up to 200 printable characters, in the X-Request-ID header.',
+        },
+      ]);
+    }
+
+    // PRD §14 — the quota layer (Decision 8.1). A refusal is logged, never
+    // counted against a quota, and answered 429 with Retry-After
+    // (acceptance criterion 7).
+    const admission = await this.rateLimits.admit(client, scope);
+    if (!admission.allowed) {
+      await refused(admission.refusal, 429);
+      this.logger.warn(
+        `${endpoint} refused: ${admission.refusal} client=${client.clientId} [${requestId}]`,
+      );
+      response.setHeader('Retry-After', String(admission.retryAfterSeconds));
+      throw new HttpException(
+        'Too many requests',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
     return true;
   }
 

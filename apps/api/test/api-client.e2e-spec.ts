@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { Controller, Get, INestApplication, Req } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -42,6 +44,25 @@ const PASSWORD = 'e2e-fixture-password-1';
 const PROFILE_CODE = 'E2E_APICLIENT_INSURER';
 const TOKEN_FORM = /^nurtw_[a-hjkmnp-z2-9]{8}_[A-Za-z0-9_-]{43}$/;
 const DAY_MS = 24 * 60 * 60 * 1000;
+/**
+ * Limits this suite's organisations are held to: high enough that no test
+ * here meets one. Limits themselves are `rate-limit.e2e-spec.ts`'s.
+ */
+const LIMITS_CODE = 'E2E_APICLIENT_LIMITS';
+const GENEROUS_LIMITS = {
+  verificationPerMinute: 6000,
+  aggregatePerMinute: 6000,
+  burst: 1000,
+  hourlyQuota: null,
+  dailyQuota: 10_000_000,
+  windowMinutes: 10,
+  forgeryThreshold: 100_000,
+  missThreshold: 1_000_000,
+  missPercent: 100,
+  sequenceThreshold: 100_000,
+  sequenceReach: 1,
+  pauseMinutes: 1,
+};
 
 @Controller('e2e-probe')
 class ProbeController {
@@ -123,6 +144,9 @@ describe('API clients and scopes (e2e)', () => {
     server = app.getHttpServer();
 
     await cleanUp();
+    await prisma.rateLimitProfile.create({
+      data: { code: LIMITS_CODE, label: 'E2E generous', ...GENEROUS_LIMITS },
+    });
 
     const council = await prisma.organisation.findFirstOrThrow({
       where: { level: 'COUNCIL' },
@@ -210,7 +234,9 @@ describe('API clients and scopes (e2e)', () => {
 
   /** An external route, by API token and nothing else. */
   function probe(bearer: string | null, route = 'plate') {
-    const pending = request(server).get(`/api/v1/e2e-probe/${route}`);
+    const pending = request(server)
+      .get(`/api/v1/e2e-probe/${route}`)
+      .set('X-Request-ID', `${TAG}-${randomUUID()}`);
     return bearer === null
       ? pending
       : pending.set('Authorization', `Bearer ${bearer}`);
@@ -223,7 +249,7 @@ describe('API clients and scopes (e2e)', () => {
   }
 
   async function register(name: string, who = 'admin') {
-    return call(
+    const response = await call(
       'post',
       '/api-clients',
       {
@@ -234,6 +260,14 @@ describe('API clients and scopes (e2e)', () => {
       },
       who,
     );
+    const id = (response.body as { client?: { id?: string } }).client?.id;
+    if (id) {
+      await prisma.apiClient.update({
+        where: { id },
+        data: { rateLimitProfile: LIMITS_CODE },
+      });
+    }
+    return response;
   }
 
   const approval = (overrides: object = {}) => ({
@@ -447,6 +481,10 @@ describe('API clients and scopes (e2e)', () => {
 
       const client = response.body.client as ClientDetail;
       clientId = client.id;
+      await prisma.apiClient.update({
+        where: { id: clientId },
+        data: { rateLimitProfile: LIMITS_CODE },
+      });
       expect(client).toMatchObject({
         status: 'PENDING',
         scopes: [],
@@ -668,6 +706,8 @@ describe('API clients and scopes (e2e)', () => {
           'sticker_status',
           'organizational_unit',
         ]),
+        rateLimitProfile: LIMITS_CODE,
+        dailyQuota: null,
       });
       expect(response.body.client.permittedFields).toHaveLength(4);
 
@@ -1375,6 +1415,7 @@ describe('API clients and scopes (e2e)', () => {
     await prisma.disclosureProfile.deleteMany({
       where: { code: { startsWith: 'E2E_APICLIENT_' } },
     });
+    await prisma.rateLimitProfile.deleteMany({ where: { code: LIMITS_CODE } });
     await prisma.auditEvent.deleteMany({
       where: { actorUserId: { in: userIds } },
     });

@@ -24,6 +24,8 @@ export type ApiDenial = (typeof API_DENIALS)[number];
 
 export interface ApiRequestLogEntry {
   requestId: string;
+  /** Proposal §14.3 — the id the System gave the request. */
+  serverRequestId?: string | null;
   /** The method and the route pattern. Never a query string. */
   endpoint: string;
   scope: string | null;
@@ -54,6 +56,7 @@ export class ApiRequestLogService {
     await this.prisma.apiRequestLog.create({
       data: {
         requestId: entry.requestId,
+        serverRequestId: entry.serverRequestId ?? null,
         endpoint: entry.endpoint,
         scope: entry.scope,
         resultClass: entry.resultClass,

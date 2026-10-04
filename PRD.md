@@ -4,9 +4,9 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.5 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.5
-**Last revised:** 3 October 2026
+1.2 to 1.6 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.6
+**Last revised:** 4 October 2026
 
 ---
 
@@ -86,6 +86,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.3 | 26 September 2026 | Recording a vehicle on record, separate from declaring it, and a Field enumerator role (Requirement 9.7, §16). Vehicle owner details and route type (Requirements 9.8, 9.9). Registration flows from member to vehicle (Requirement 9.10). The levy rises to ₦7,000 and is priced by route type (§27). | The project owner's answers following a call with Mr Timothy (`QUESTIONS.md` VEH-23 to VEH-26, MIG-04, MIG-07, PAY-14 to PAY-17), approved by the project owner on 26 September 2026. |
 | 1.4 | 3 October 2026 | A vehicle's declaration status is shown only to holders of `vehicle.declare` (Requirement 9A.1). A vehicle letter may be reissued (Requirement 9A.6). A membership fee paid early extends cover; the levy stops after retirement and follows the route type held each month (Requirement 27.13). See §23.22. | The project owner (`QUESTIONS.md` VEH-27, VEH-28, PAY-18 to PAY-20), 3 October 2026. |
 | 1.5 | 3 October 2026 | An external organisation is approved only with a data-sharing agreement on record, by a holder of `api_client.manage`, who is recorded (Requirements 12.8, 12.9). Token reminders appear on the dashboard until a mail service exists (Requirement 12.6). A replaced token keeps working for an overlap the officer chooses (Requirement 12.10). See §23.23. | The project owner (`QUESTIONS.md` EXT-06, EXT-07, EXT-10, EXT-11), 3 October 2026. |
+| 1.6 | 4 October 2026 | Abuse detection pauses an organisation for a time (Requirement 14.4). An external request carries its own request id (Requirement 14.5). Rate-limit counters are kept in Postgres, and daily quotas start at 1,000 and 5,000. See §23.24. | The project owner (`QUESTIONS.md` EXT-14, EXT-15, EXT-16), 3 October 2026. |
 
 ---
 
@@ -543,6 +544,15 @@ overall quota.
 **Requirement 14.3.** Not-found responses must be generic and must not indicate that a
 submitted identifier was close to a valid value.
 
+**Requirement 14.4** *(revision 1.6)*. When detection finds a pattern, the System pauses the
+organisation for the minutes its limit profile sets, refusing its requests with `429` and a
+`Retry-After`. The pause is audited and shown on the API access screen. A holder of
+`api_client.manage` may lift it early, with a reason, or suspend the organisation.
+
+**Requirement 14.5** *(revision 1.6)*. An external request carries its own request id in
+`X-Request-ID`, and is refused without one. Every answer carries the System's own id in
+`X-Server-Request-ID` (proposal §14.3).
+
 ---
 
 ## 15. Disclosure profiles
@@ -912,6 +922,18 @@ Determined 3 October 2026 (`QUESTIONS.md` EXT-06, EXT-07, EXT-10, EXT-11).
   follow once a mail service and the domains (GOV-08) are chosen (Requirement 12.6).
 - **Rotation with a chosen overlap.** The replaced token keeps working for none, one hour, 24
   hours, or seven days, as the officer chooses at each rotation (Requirement 12.10).
+
+### 23.24 Rate limits and abuse detection *(revision 1.6)*
+
+Determined 3 October 2026 (`QUESTIONS.md` EXT-14, EXT-15, EXT-16).
+
+- **Counters in Postgres.** The shared store of `ARCHITECTURE.md` Decision 8.2 is the existing
+  database. No new service is run.
+- **Daily quotas of 1,000 and 5,000** for the approved and trusted profiles of proposal §14.2,
+  whose rates and bursts are adopted at §23.12. An organisation may be given a daily quota of
+  its own.
+- **Detection pauses.** A pattern pauses the organisation for an hour, a number on its limit
+  profile (Requirement 14.4). The detection thresholds are launch defaults pending EXT-17.
 
 ---
 

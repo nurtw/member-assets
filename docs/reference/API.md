@@ -217,7 +217,8 @@ sent, which the caller already holds. Nothing derived from the database reaches 
 - **Strings are trimmed** before validation, so a value of spaces is rejected rather than
   stored blank.
 - **`X-Request-ID`** is honoured where supplied and echoed in any error, so a caller's own
-  correlation identifier survives into the Union's logs. One is minted where absent.
+  correlation identifier survives into the Union's logs. On the officer routes one is minted
+  where absent. **On the external routes it is required** (§10.1).
 - **Identifiers are UUIDs.** A malformed identifier answers 400 without a database query.
 
 ### Changes that require a reason
@@ -363,6 +364,32 @@ Asking again will not give a different answer. Quote the `request_id` to the Uni
 it is the `X-Request-ID` you sent, or one the System minted. A `400` means the body failed
 validation, such as a plate that cannot be a plate or a number whose check character is
 wrong; its `details` describe only your request.
+
+### 10.1 Request ids, limits, and pauses
+
+**Send your own `X-Request-ID`** on every external request: 1 to 200 printable characters,
+with no spaces. A request without one answers `400`, with `details` naming the header, and
+spends none of your limits. Every answer, refusals included, carries the System's own id in
+`X-Server-Request-ID`. Quote both when you contact the Union.
+
+**Limits apply to your organisation**, across all its tokens. The Union sets them on a limit
+profile and may change them at any time:
+
+| Limit | Approved client | Trusted operational client |
+|---|---:|---:|
+| Checks a minute | 30 | 120 |
+| Totals a minute | 2 | 5 |
+| Burst | 5 | 20 |
+| Daily quota, from midnight in Lagos | 1,000 | 5,000 |
+
+Over a limit, the answer is `429` with `Retry-After` in seconds. Wait that long. A refused
+request is not counted against a quota.
+
+**Checks that follow a pattern pause your organisation**: forged sticker codes, plates or
+sticker numbers in sequence that match nothing, or a run of checks that mostly match
+nothing. While paused, every request answers `429`, with `Retry-After` giving the time left.
+The Union is told, and may lift the pause or contact you. Check what you have been asked to
+check, as it is presented to you, and nothing else.
 
 ---
 

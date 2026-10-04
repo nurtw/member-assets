@@ -1,9 +1,11 @@
 "use client";
 
-import type {
-  ApiClientDetail,
-  DisclosureProfileSummary,
-  IssuedApiToken,
+import {
+  ABUSE_SIGNAL_LABELS,
+  type ApiClientDetail,
+  type DisclosureProfileSummary,
+  type IssuedApiToken,
+  type RateLimitProfileSummary,
 } from "@nurtw/contracts";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -138,6 +140,11 @@ export default function ApiClientPage() {
     profiles: DisclosureProfileSummary[];
   }>(client ? "/api-clients/profiles" : null, fetcher);
   const profiles = profileList?.profiles ?? [];
+  // The limit profiles on offer, also served under `api_client.read`.
+  const { data: limitList } = useSWR<{
+    profiles: RateLimitProfileSummary[];
+  }>(client ? "/rate-limits/profiles" : null, fetcher);
+  const limitProfiles = limitList?.profiles ?? [];
   const heldProfile = profiles.find(
     (profile) => profile.id === client?.disclosureProfile?.id,
   );
@@ -167,13 +174,18 @@ export default function ApiClientPage() {
   const [editReference, setEditReference] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editReason, setEditReason] = useState("");
+  // Limits and the pause (item 13).
+  const [limitProfile, setLimitProfile] = useState("");
+  const [ownQuota, setOwnQuota] = useState("");
+  const [limitsReason, setLimitsReason] = useState("");
+  const [liftReason, setLiftReason] = useState("");
   const [syncedFor, setSyncedFor] = useState<string | null>(null);
 
   // The forms start from the record as loaded, and start again whenever it
   // is reloaded after a change. Adjusted during render, as the vehicle page
   // does, rather than in an effect that would flash the old values.
   const version = client
-    ? `${client.id}:${client.status}:${client.disclosureProfile?.id ?? ""}:${client.scopes.join()}:${client.organisationName}:${client.allowedIpRanges.join()}:${client.agreementReference ?? ""}`
+    ? `${client.id}:${client.status}:${client.disclosureProfile?.id ?? ""}:${client.scopes.join()}:${client.organisationName}:${client.allowedIpRanges.join()}:${client.agreementReference ?? ""}:${client.limits.profile.code}:${client.limits.dailyQuotaOverride ?? ""}:${client.pausedUntil ?? ""}`
     : null;
   if (client && version !== syncedFor) {
     setSyncedFor(version);
@@ -190,6 +202,10 @@ export default function ApiClientPage() {
     setEditReference(client.agreementReference ?? "");
     setEditDate(client.agreementDate ?? "");
     setEditReason("");
+    setLimitProfile(client.limits.profile.code);
+    setOwnQuota(client.limits.dailyQuotaOverride?.toString() ?? "");
+    setLimitsReason("");
+    setLiftReason("");
   }
 
   async function act(action: () => Promise<unknown>, conflict: string) {
@@ -296,6 +312,14 @@ export default function ApiClientPage() {
           Every token it held was revoked, and this record is closed. An
           organisation whose access was withdrawn is registered afresh.
           {client.statusReason ? ` Reason given: ${client.statusReason}` : ""}
+        </Notice>
+      ) : null}
+      {client.pause?.active ? (
+        <Notice title="Paused by abuse detection" tone="deny">
+          {ABUSE_SIGNAL_LABELS[client.pause.signal].description} Its requests
+          are refused until {moment(client.pause.pausedUntil)}. Lift the pause
+          below if the pattern has an innocent cause, or suspend the
+          organisation to keep it out.
         </Notice>
       ) : null}
       {client.status === "EXPIRED" ? (
@@ -416,6 +440,139 @@ export default function ApiClientPage() {
           </dl>
         </Section>
       ) : null}
+
+      <Section
+        title="Limits"
+        description="How much the organisation may ask (PRD §14). Over a limit, it is told to wait and try again."
+      >
+        <dl className="grid gap-4 sm:grid-cols-3">
+          <Detail label="Limit profile">{client.limits.profile.label}</Detail>
+          <Detail label="Daily quota">
+            {client.limits.dailyQuota.toLocaleString("en-GB")}
+            {client.limits.dailyQuotaOverride !== null ? (
+              <span className="block text-black/60">
+                Its own, not the profile’s
+              </span>
+            ) : null}
+          </Detail>
+          <Detail label="Used today">
+            {client.limits.usedToday.toLocaleString("en-GB")}
+            <span className="block text-black/60">Since midnight in Lagos</span>
+          </Detail>
+          {client.pause && !client.pause.active ? (
+            <div className="sm:col-span-3">
+              <Detail label="Last paused">
+                {moment(client.pause.pausedAt)} —{" "}
+                {ABUSE_SIGNAL_LABELS[client.pause.signal].label.toLowerCase()},
+                until {moment(client.pause.pausedUntil)}
+              </Detail>
+            </div>
+          ) : null}
+        </dl>
+
+        {client.pause?.active && canManage ? (
+          <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+            <Field
+              label="Reason for lifting the pause"
+              htmlFor="liftReason"
+              required
+              hint="Recorded in the audit trail. The organisation’s next request is answered."
+            >
+              <TextInput
+                id="liftReason"
+                value={liftReason}
+                onChange={(event) => setLiftReason(event.target.value)}
+                maxLength={1000}
+              />
+            </Field>
+            <div>
+              <Button
+                type="button"
+                disabled={busy || liftReason.trim().length < 4}
+                onClick={() =>
+                  void act(
+                    () =>
+                      api.post(`/api-clients/${client.id}/pause/lift`, {
+                        reason: liftReason.trim(),
+                      }),
+                    "The pause had already ended. The page now shows the organisation’s current state.",
+                  )
+                }
+              >
+                Lift the pause
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {canManage && !isRevoked ? (
+          <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Limit profile" htmlFor="limitProfile" required>
+                <Select
+                  id="limitProfile"
+                  value={limitProfile}
+                  onChange={(event) => setLimitProfile(event.target.value)}
+                >
+                  {limitProfiles.map((profile) => (
+                    <option key={profile.code} value={profile.code}>
+                      {profile.label} — {profile.verificationPerMinute} a
+                      minute, {profile.dailyQuota.toLocaleString("en-GB")} a day
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label="Its own daily quota"
+                htmlFor="ownQuota"
+                hint="Leave blank to use the profile’s."
+                error={actionError?.fieldError("dailyQuota")}
+              >
+                <TextInput
+                  id="ownQuota"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  value={ownQuota}
+                  onChange={(event) => setOwnQuota(event.target.value)}
+                />
+              </Field>
+            </div>
+            <Field label="Reason" htmlFor="limitsReason" required>
+              <TextInput
+                id="limitsReason"
+                value={limitsReason}
+                onChange={(event) => setLimitsReason(event.target.value)}
+                maxLength={1000}
+              />
+            </Field>
+            <div>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={
+                  busy || !limitProfile || limitsReason.trim().length < 4
+                }
+                onClick={() =>
+                  void act(
+                    () =>
+                      api.put(`/api-clients/${client.id}/limits`, {
+                        rateLimitProfile: limitProfile,
+                        dailyQuota:
+                          ownQuota.trim() === "" ? null : Number(ownQuota),
+                        reason: limitsReason.trim(),
+                      }),
+                    "The limits could not be changed: the organisation’s access has been withdrawn.",
+                  )
+                }
+              >
+                Save limits
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Section>
 
       {isPending && canManage ? (
         <Section

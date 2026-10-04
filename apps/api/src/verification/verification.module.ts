@@ -4,6 +4,7 @@ import { ApiClientModule } from '../api-client/api-client.module.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { PaymentsModule } from '../payments/payments.module.js';
+import { RateLimitModule } from '../rate-limit/rate-limit.module.js';
 import { StickerModule } from '../sticker/sticker.module.js';
 import { ExternalVerificationController } from './external-verification.controller.js';
 import { ExternalVerificationService } from './external-verification.service.js';
@@ -19,8 +20,8 @@ import { VerificationService } from './verification.service.js';
  *
  * Uses `StickerModule` for the signature check alone, `PaymentsModule` for
  * the dues shown beside an internal result (Requirement 27.8), and
- * `ApiClientModule` for the external request log. It holds no write path of
- * its own.
+ * `ApiClientModule` and `RateLimitModule` for the external request log and
+ * the abuse detection it feeds (item 13). It holds no write path of its own.
  */
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { VerificationService } from './verification.service.js';
     StickerModule,
     PaymentsModule,
     ApiClientModule,
+    RateLimitModule,
   ],
   controllers: [VerificationController, ExternalVerificationController],
   providers: [

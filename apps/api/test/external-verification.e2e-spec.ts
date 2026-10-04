@@ -1,4 +1,4 @@
-import { randomInt } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -39,6 +39,25 @@ const prisma = new PrismaClient({
 const TAG = 'e2e-fixture-extverify';
 const SIGNING_SECRET = 'e2e-fixture-extverify-signing-secret';
 const WIDE_PROFILE = 'E2E_EXTVERIFY_WIDE';
+/**
+ * Limits this suite's organisations are held to: high enough that no test
+ * here meets one, nor trips abuse detection with its deliberate non-matches.
+ */
+const LIMITS_CODE = 'E2E_EXTVERIFY_LIMITS';
+const GENEROUS_LIMITS = {
+  verificationPerMinute: 6000,
+  aggregatePerMinute: 6000,
+  burst: 1000,
+  hourlyQuota: null,
+  dailyQuota: 10_000_000,
+  windowMinutes: 10,
+  forgeryThreshold: 100_000,
+  missThreshold: 1_000_000,
+  missPercent: 100,
+  sequenceThreshold: 100_000,
+  sequenceReach: 1,
+  pauseMinutes: 1,
+};
 
 /** Values that must never appear in any external answer. */
 const RESTRICTED = {
@@ -288,6 +307,9 @@ describe('External verification API (e2e)', () => {
     const profile = async (code: string) =>
       (await prisma.disclosureProfile.findUniqueOrThrow({ where: { code } }))
         .id;
+    await prisma.rateLimitProfile.create({
+      data: { code: LIMITS_CODE, label: 'E2E generous', ...GENEROUS_LIMITS },
+    });
     const wide = await prisma.disclosureProfile.create({
       data: {
         code: WIDE_PROFILE,
@@ -324,6 +346,7 @@ describe('External verification API (e2e)', () => {
           agreementDate: new Date('2026-09-01T00:00:00Z'),
           approvedAt: new Date(),
           disclosureProfileId: profileId,
+          rateLimitProfile: LIMITS_CODE,
           allowedIpRanges: [],
           scopes: { create: scopes.map((scope) => ({ scope })) },
         },
@@ -378,12 +401,11 @@ describe('External verification API (e2e)', () => {
     who: string,
     requestId?: string,
   ) {
+    // Proposal §14.3 (item 13) — an external caller always sends its own id.
     const pending = request(server)
       .post(`/api/v1/verification/${path}`)
-      .set('Authorization', `Bearer ${tokens[who]}`);
-    if (requestId) {
-      pending.set('X-Request-ID', requestId);
-    }
+      .set('Authorization', `Bearer ${tokens[who]}`)
+      .set('X-Request-ID', requestId ?? `${TAG}-${randomUUID()}`);
     const response = await pending.send(body);
     answers.push(response.text);
     return response;
@@ -862,6 +884,7 @@ describe('External verification API (e2e)', () => {
     await prisma.disclosureProfile.deleteMany({
       where: { code: WIDE_PROFILE },
     });
+    await prisma.rateLimitProfile.deleteMany({ where: { code: LIMITS_CODE } });
     await prisma.sticker.deleteMany({
       where: { stickerQrId: { startsWith: TAG } },
     });

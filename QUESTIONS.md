@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.6
-**Last revised:** 3 October 2026
+**Document version:** 1.7
+**Last revised:** 4 October 2026
 
 ---
 
@@ -51,10 +51,10 @@ thing a year later.
 | Cards (CARD) | 5 | 3 | — | 8 |
 | Vehicles and stickers (VEH) | 22 | 6 | 1 | 29 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
-| External organisations (EXT) | 8 | 5 | — | 13 |
+| External organisations (EXT) | 11 | 6 | — | 17 |
 | Payments (PAY) | 20 | 0 | — | 20 |
 | Governance and go-live (GOV) | 4 | 10 | 1 | 15 |
-| **Total** | **72** | **39** | **2** | **113** |
+| **Total** | **75** | **40** | **2** | **117** |
 
 ### Blocking production use right now
 
@@ -965,6 +965,53 @@ name is personal data and is today held back from every outside party.
 **Answer.** _Outstanding._ Item 12 discloses no name.
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
+### EXT-14 · Where the rate-limit counters are kept ✅
+
+**Question.** The limits must hold across restarts and across more than one API instance, so
+the counters cannot live in the process (Decision 8.2). Should they be kept in the existing
+Postgres database, or in a managed Redis service at a monthly cost?
+
+**Answer.** **Postgres.** No new service. Every counter goes through one service, so moving to
+Redis later changes that service alone.
+**Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD §23.24.
+
+### EXT-15 · The starting daily quota ✅
+
+**Question.** Proposal §14.2 sets per-minute rates and leaves the daily quota as
+"NURTW-configured". What should it start at?
+
+**Answer.** **1,000 a day for an approved organisation and 5,000 for a trusted operational
+one**, changeable per profile and per organisation. The standard figure is below the size of
+the register, so a day's quota cannot walk it.
+**Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD §23.24.
+
+### EXT-16 · What happens when enumeration is detected ✅
+
+**Question.** When an organisation tests plates or sticker codes in a pattern, should the
+System block it automatically, only alert, or suspend it until reviewed?
+
+**Answer.** **Pause it for a time**: an hour to start, a setting on its limit profile. The
+pause is flagged on the API access screen, and an API administrator may lift it early, with a
+reason, or suspend the organisation.
+**Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD Requirement 14.4, §23.24.
+
+### EXT-17 · Abuse-detection thresholds ⏳
+
+**Question.** Item 13 pauses an organisation that, within ten minutes, sends five forged
+sticker codes, or five plates or sticker numbers in sequence that match nothing, or at least
+as many non-matches as one minute at its full rate, if they are also 80 per cent of its
+checks. Are these the right starting thresholds?
+
+**Why it is needed.** Set too low, an honest integrator is paused; too high, a scraper is not.
+They are launch defaults chosen by the project, not figures the Union gave.
+
+**Answer.** _Outstanding._ Every threshold is a number on the limit profile, changed on the
+API access screen without a release.
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
 ---
 
 ## 10. Open — governance and go-live (item 15)
@@ -1553,6 +1600,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 4 October 2026 (item 13) | The project owner answered three new questions by adopting the recommendations: EXT-14 (rate-limit counters in Postgres), EXT-15 (daily quotas of 1,000 and 5,000), and EXT-16 (detection pauses an organisation for an hour). New EXT-17, the detection thresholds, open. PRD revised to 1.6. |
 | 3 October 2026 (item 12) | New EXT-13: whether an outside membership check may ever carry the holder's name. Open; item 12 discloses none. |
 | 3 October 2026 (item 11) | The project owner answered EXT-06 (the API administrator approves; one officer may register and approve) and EXT-07 (a data-sharing agreement is required before approval), and two new questions: EXT-10 (token reminders on the dashboard until a mail service exists) and EXT-11 (the officer chooses how long a replaced token keeps working). New EXT-12, a test environment for outside organisations, open. PRD revised to 1.5. |
 | 3 October 2026 | The project owner answered VEH-27, PAY-18, PAY-19, and PAY-20 by adopting the recommendations (items 25 and 26 build the first three). New VEH-28: a vehicle's declaration status is shown only to holders of `vehicle.declare`. New VEH-29: adding Transpay's unrecorded stickers by scanning, deferred. VEH-20's new sticker paused; VEH-21 being revisited. PRD revised to 1.4. |

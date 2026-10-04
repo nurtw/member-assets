@@ -1,12 +1,16 @@
 import {
   ExecutionContext,
   ForbiddenException,
+  HttpException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ApiClientAuthService } from '../api-client/api-client-auth.service.js';
+import type { ApiRequestLogService } from '../api-client/api-request-log.service.js';
+import { ValidationException } from '../common/zod-validation.pipe.js';
+import type { RateLimitService } from '../rate-limit/rate-limit.service.js';
 import {
   AuthorisationGuard,
   SESSION_COOKIE_NAME,
@@ -31,6 +35,9 @@ describe('AuthorisationGuard', () => {
     canAnywhere: ReturnType<typeof vi.fn>;
   };
   let apiClients: { authenticate: ReturnType<typeof vi.fn> };
+  let requestLog: { record: ReturnType<typeof vi.fn> };
+  let rateLimits: { admit: ReturnType<typeof vi.fn> };
+  let headers: Record<string, string>;
   let guard: AuthorisationGuard;
   let metadata: Record<string, unknown>;
   let request: {
@@ -47,7 +54,14 @@ describe('AuthorisationGuard', () => {
     ({
       getHandler: () => 'handler',
       getClass: () => 'controller',
-      switchToHttp: () => ({ getRequest: () => request }),
+      switchToHttp: () => ({
+        getRequest: () => request,
+        getResponse: () => ({
+          setHeader: (name: string, value: string) => {
+            headers[name] = value;
+          },
+        }),
+      }),
     }) as unknown as ExecutionContext;
 
   beforeEach(() => {
@@ -61,12 +75,17 @@ describe('AuthorisationGuard', () => {
     sessions = { resolve: vi.fn() };
     permissions = { can: vi.fn(), canAnywhere: vi.fn() };
     apiClients = { authenticate: vi.fn() };
+    requestLog = { record: vi.fn().mockResolvedValue(undefined) };
+    rateLimits = { admit: vi.fn().mockResolvedValue({ allowed: true }) };
+    headers = {};
 
     guard = new AuthorisationGuard(
       reflector,
       sessions as unknown as SessionService,
       permissions as unknown as PermissionService,
       apiClients as unknown as ApiClientAuthService,
+      requestLog as unknown as ApiRequestLogService,
+      rateLimits as unknown as RateLimitService,
     );
   });
 
@@ -229,6 +248,7 @@ describe('AuthorisationGuard', () => {
           ipAddress: '203.0.113.7',
           endpoint: 'POST /api/v1/verification/vehicle/plate',
           requestId: 'req-1',
+          serverRequestId: headers['X-Server-Request-ID'],
         },
         'vehicle:verify:plate',
       );
@@ -286,6 +306,60 @@ describe('AuthorisationGuard', () => {
       );
       expect(apiClients.authenticate).not.toHaveBeenCalled();
       expect(sessions.resolve).not.toHaveBeenCalled();
+    });
+
+    it('gives every request an id of its own (proposal §14.3)', async () => {
+      apiClients.authenticate.mockRejectedValue(new UnauthorizedException());
+
+      await expect(guard.canActivate(contextFor())).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(headers['X-Server-Request-ID']).toMatch(/^[0-9a-f-]{36}$/);
+    });
+
+    it('refuses a request without its own request id, after the token, before the limits', async () => {
+      apiClients.authenticate.mockResolvedValue(client);
+      delete request.headers['x-request-id'];
+
+      await expect(guard.canActivate(contextFor())).rejects.toThrow(
+        ValidationException,
+      );
+      expect(apiClients.authenticate).toHaveBeenCalled();
+      expect(rateLimits.admit).not.toHaveBeenCalled();
+      expect(requestLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          resultClass: 'NO_REQUEST_ID',
+          statusCode: 400,
+          clientId: 'client-1',
+        }),
+      );
+    });
+
+    it('answers 429 with Retry-After when a limit refuses (criterion 7)', async () => {
+      apiClients.authenticate.mockResolvedValue(client);
+      rateLimits.admit.mockResolvedValue({
+        allowed: false,
+        refusal: 'RATE_LIMITED',
+        retryAfterSeconds: 2,
+      });
+
+      const refusal = await guard
+        .canActivate(contextFor())
+        .catch((error: unknown) => error);
+      expect(refusal).toBeInstanceOf(HttpException);
+      expect((refusal as HttpException).getStatus()).toBe(429);
+      expect(headers['Retry-After']).toBe('2');
+      expect(rateLimits.admit).toHaveBeenCalledWith(
+        client,
+        'vehicle:verify:plate',
+      );
+      expect(requestLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          resultClass: 'RATE_LIMITED',
+          statusCode: 429,
+          rateLimited: true,
+        }),
+      );
     });
 
     it('REFUSES a route that is also marked public, instead of opening it', async () => {

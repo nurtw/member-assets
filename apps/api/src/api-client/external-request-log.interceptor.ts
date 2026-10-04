@@ -15,6 +15,7 @@ import {
   type ExternalRequest,
 } from '../auth/require-scope.decorator.js';
 import { resolveRequestId } from '../common/error-response.js';
+import { RateLimitService } from '../rate-limit/rate-limit.service.js';
 import {
   ApiRequestLogService,
   type ApiRequestLogEntry,
@@ -31,6 +32,9 @@ import {
  *
  * A failure to write the row is logged and does not fail the request: the
  * check itself is in the audit trail, written before the answer was built.
+ *
+ * Once the row is written, a decided check goes to abuse detection, the
+ * second layer of Decision 8.1 (item 13).
  */
 @Injectable()
 export class ExternalRequestLogInterceptor implements NestInterceptor {
@@ -39,6 +43,7 @@ export class ExternalRequestLogInterceptor implements NestInterceptor {
   constructor(
     private readonly reflector: Reflector,
     private readonly requests: ApiRequestLogService,
+    private readonly rateLimits: RateLimitService,
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
@@ -58,6 +63,7 @@ export class ExternalRequestLogInterceptor implements NestInterceptor {
       requestId: resolveRequestId(
         Array.isArray(supplied) ? supplied[0] : supplied,
       ),
+      serverRequestId: request.serverRequestId ?? null,
       // The route pattern, never the URL: a query string is not logged.
       endpoint: `${request.method} ${route ?? request.path}`,
       scope:
@@ -75,9 +81,12 @@ export class ExternalRequestLogInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       mergeMap(async (body: unknown) => {
-        await this.write(
-          entry(request.externalOutcome?.resultClass ?? 'OK', success),
+        const logged = entry(
+          request.externalOutcome?.resultClass ?? 'OK',
+          success,
         );
+        await this.write(logged);
+        await this.observe(request, logged.requestId);
         return body;
       }),
       // An error from the pipes or the handler is logged, then passed on
@@ -90,6 +99,37 @@ export class ExternalRequestLogInterceptor implements NestInterceptor {
         );
       }),
     );
+  }
+
+  /**
+   * Hands a decided check to abuse detection (item 13), which may pause the
+   * organisation for its next request. This answer is already decided and is
+   * sent regardless; a failure here is logged, not raised.
+   */
+  private async observe(
+    request: ExternalRequest,
+    requestId: string,
+  ): Promise<void> {
+    const client = request.apiClient;
+    const outcome = request.externalOutcome;
+    if (!client || !outcome) {
+      return;
+    }
+    try {
+      await this.rateLimits.observe(
+        client,
+        {
+          resultClass: outcome.resultClass,
+          plate: outcome.presented?.plate ?? null,
+          code: outcome.presented?.code ?? null,
+        },
+        requestId,
+      );
+    } catch (error) {
+      this.logger.error(
+        `External request ${requestId} not observed: ${String(error)}`,
+      );
+    }
   }
 
   private async write(entry: ApiRequestLogEntry): Promise<void> {

@@ -63,6 +63,15 @@ export function resolveRequestId(supplied: string | undefined): string {
   return randomUUID();
 }
 
+/**
+ * Proposal §14.3 — an external request must carry its own request id (item
+ * 13): 1 to 200 printable characters, with no spaces. The internal routes
+ * still mint one when it is absent.
+ */
+export function isAcceptableRequestId(supplied: string | undefined): boolean {
+  return typeof supplied === 'string' && /^[\x21-\x7e]{1,200}$/.test(supplied);
+}
+
 export function buildErrorResponse(
   status: number,
   requestId: string,

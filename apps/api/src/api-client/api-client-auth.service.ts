@@ -31,6 +31,8 @@ export interface ExternalRequestContext {
   /** The method and the route pattern, for the access log. */
   endpoint: string;
   requestId: string;
+  /** Proposal §14.3 — the id the System gave the request. */
+  serverRequestId: string;
 }
 
 /** `lastUsedAt` is written at most this often per token. */
@@ -90,6 +92,8 @@ export class ApiClientAuthService {
             organisationName: true,
             status: true,
             allowedIpRanges: true,
+            rateLimitProfile: true,
+            dailyQuota: true,
             scopes: { select: { scope: true } },
             disclosureProfile: {
               select: { id: true, fields: { select: { fieldPath: true } } },
@@ -141,6 +145,8 @@ export class ApiClientAuthService {
       permittedFields:
         row.client.disclosureProfile?.fields.map((field) => field.fieldPath) ??
         [],
+      rateLimitProfile: row.client.rateLimitProfile,
+      dailyQuota: row.client.dailyQuota,
     };
   }
 
@@ -183,6 +189,7 @@ export class ApiClientAuthService {
     const statusCode = denial === 'SCOPE_DENIED' ? 403 : 401;
     await this.requests.record({
       requestId: context.requestId,
+      serverRequestId: context.serverRequestId,
       endpoint: context.endpoint,
       scope,
       resultClass: denial,

@@ -478,18 +478,54 @@ SELECT created_at, action,
  ORDER BY created_at DESC;
 ```
 
-**Issue no token to a real organisation before item 13.** The API has no rate limit or
-enumeration detection yet, so a token could be used to try plates or codes in bulk.
+### Limits, and an organisation the System has paused
+
+Every organisation is held to a **limit profile** (Settings → API access → Limits): its
+rates, burst, daily quota, and the thresholds abuse detection uses. Two are seeded:
+`STANDARD` (30 checks a minute, 1,000 a day) and `TRUSTED` (120 a minute, 5,000 a day).
+
+- **Changing a profile** needs `rate_limit.manage` and a reason. It applies to the next
+  request of every organisation holding it. Audited as `rate_limit_profile.update`.
+- **Giving an organisation another profile, or a daily quota of its own**, needs
+  `api_client.manage` and a reason, on the organisation's page. Audited as
+  `api_client.limits_change`.
+- **A paused organisation** is listed at the top of API access and on its page, with the
+  pattern that paused it. Its requests answer `429` until the pause ends. If the cause is
+  innocent, such as a fault in its software, **lift the pause** with a reason. If not,
+  **suspend** it. Audited as `api_client.pause` (no officer) and `api_client.pause_lift`.
+
+Organisations refused by a limit or a pause, today:
+
+```sql
+SELECT c.organisation_name, l.result_class, count(*)
+  FROM api_request_log l JOIN api_client c ON c.id = l.client_id
+ WHERE l.rate_limited AND l.created_at > now() - interval '1 day'
+ GROUP BY 1, 2 ORDER BY 3 DESC;
+```
+
+Every pause, with what raised it:
+
+```sql
+SELECT p.paused_at, c.organisation_name, p.signal, p.evidence,
+       p.paused_until, p.lifted_at, p.lift_reason
+  FROM api_client_pause p JOIN api_client c ON c.id = p.client_id
+ ORDER BY p.paused_at DESC LIMIT 50;
+```
+
+The detection thresholds are launch defaults the Union has not yet confirmed (`QUESTIONS.md`
+EXT-17).
 
 ### Finding why an external request was refused
 
-The organisation is told only `401` or `403`, with a request id. The reason is in
+The organisation is told only `401`, `403`, `400`, or `429`, with a request id, and its
+answer carries the System's own id in `X-Server-Request-ID`. The reason is in
 `api_request_log`, which never holds the token:
 
 ```sql
 SELECT created_at, endpoint, scope, result_class, status_code, ip_address
   FROM api_request_log
  WHERE request_id = '<request id the organisation quotes>'
+    OR server_request_id = '<X-Server-Request-ID it quotes>'
     OR client_id = '<client id>'
  ORDER BY created_at DESC
  LIMIT 50;

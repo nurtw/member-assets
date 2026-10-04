@@ -62,6 +62,15 @@ export class ExternalVerificationService {
     const presentedPlate = input.plateNumber
       ? normalizePlateNumber(input.plateNumber)
       : null;
+    // For abuse detection (item 13). A signed code, which holds a `.`, is in
+    // no sequence: only a Transpay barcode is passed.
+    const presented = {
+      plate: presentedPlate,
+      code:
+        input.stickerCode && !input.stickerCode.includes('.')
+          ? input.stickerCode
+          : null,
+    };
     const found = await this.records.vehicleCheck({
       criteria: check,
       presentedPlate,
@@ -88,6 +97,7 @@ export class ExternalVerificationService {
         outcome: {
           resultClass: 'INVALID_SIGNATURE',
           identifierScheme: found.scheme,
+          presented,
         },
       };
     }
@@ -125,6 +135,7 @@ export class ExternalVerificationService {
       outcome: {
         resultClass: verdict.matched ? 'MATCH' : 'NO_MATCH',
         identifierScheme: found.scheme,
+        presented,
       },
     };
   }

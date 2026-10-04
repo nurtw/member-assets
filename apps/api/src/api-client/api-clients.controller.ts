@@ -12,17 +12,21 @@ import {
 } from '@nestjs/common';
 import {
   approveApiClientSchema,
+  liftApiClientPauseSchema,
   registerApiClientSchema,
   revokeApiTokenSchema,
   rotateApiTokenSchema,
   setApiClientAccessSchema,
+  setApiClientLimitsSchema,
   setApiClientStatusSchema,
   updateApiClientSchema,
   type ApproveApiClientInput,
+  type LiftApiClientPauseInput,
   type RegisterApiClientInput,
   type RevokeApiTokenInput,
   type RotateApiTokenInput,
   type SetApiClientAccessInput,
+  type SetApiClientLimitsInput,
   type SetApiClientStatusInput,
   type UpdateApiClientInput,
 } from '@nurtw/contracts';
@@ -213,6 +217,61 @@ export class ApiClientsController {
   ) {
     return {
       client: await this.clients.setStatus(this.actor(request), id, body),
+    };
+  }
+
+  @RequirePermission('api_client.manage')
+  @Put(':id/limits')
+  @Documented({
+    summary: 'Set the limits an organisation is held to.',
+    description:
+      'PRD §14 (item 13). Names its limit profile, and a daily quota of its own where the ' +
+      'profile’s does not fit; `null` returns it to the profile’s. A reason is mandatory and ' +
+      'the change is audited before and after. It applies on the organisation’s next request.',
+    body: setApiClientLimitsSchema,
+    responses: {
+      404: 'No such organisation, or no such limit profile.',
+      409: 'The organisation’s access has been revoked, and its record is closed.',
+    },
+  })
+  async setLimits(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(setApiClientLimitsSchema))
+    body: SetApiClientLimitsInput,
+  ) {
+    return {
+      client: await this.clients.setLimits(this.actor(request), id, body),
+    };
+  }
+
+  @RequirePermission('api_client.manage')
+  @Post(':id/pause/lift')
+  @Documented({
+    summary: 'Lift the System’s pause on an organisation.',
+    description:
+      'Abuse detection pauses an organisation whose checks follow a pattern, for the minutes its ' +
+      'limit profile gives (PRD Requirement 14.2, the owner’s direction of 3 October 2026). ' +
+      'This ends the pause early. A reason is mandatory and the act is audited. To keep the ' +
+      'organisation out instead, suspend it.',
+    body: liftApiClientPauseSchema,
+    responses: {
+      404: 'No such organisation.',
+      409: 'The organisation is not paused.',
+    },
+  })
+  async liftPause(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(liftApiClientPauseSchema))
+    body: LiftApiClientPauseInput,
+  ) {
+    return {
+      client: await this.clients.liftPause(
+        this.actor(request),
+        id,
+        body.reason,
+      ),
     };
   }
 

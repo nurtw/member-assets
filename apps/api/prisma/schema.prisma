@@ -987,6 +987,7 @@ model User {
   apiClientsRegistered      ApiClient[]                @relation("ApiClientRegisteredBy")
   apiClientsApproved        ApiClient[]                @relation("ApiClientApprovedBy")
   apiTokensCreated          ApiToken[]                 @relation("ApiTokenCreatedBy")
+  apiPausesLifted           ApiClientPause[]           @relation("ApiClientPauseLiftedBy")
 
   @@map("user")
 }
@@ -1182,7 +1183,7 @@ model ApiClient {
   technicalContactEmail String  @map("technical_contact_email")
   technicalContactPhone String? @map("technical_contact_phone")
 
-  registeredByUserId String? @map("registered_by_user_id") @db.Uuid
+  registeredByUserId String?   @map("registered_by_user_id") @db.Uuid
   /// PRD §12.1's "named NURTW sponsor or approving officer" (Requirement 12.9).
   approvedByUserId   String?   @map("approved_by_user_id") @db.Uuid
   approvedAt         DateTime? @map("approved_at")
@@ -1199,9 +1200,11 @@ model ApiClient {
   /// PRD §12.1 — allowed source ranges where practical. Empty means any address.
   allowedIpRanges String[] @map("allowed_ip_ranges")
 
-  /// Set and enforced by item 13.
-  rateLimitProfile String? @map("rate_limit_profile")
-  dailyQuota       Int?    @map("daily_quota")
+  /// PRD §14 (item 13) — the limit profile the organisation is held to.
+  rateLimitProfile String @default("STANDARD") @map("rate_limit_profile")
+  /// A daily quota of its own, where its profile's does not fit. Null means
+  /// the profile's.
+  dailyQuota       Int?   @map("daily_quota")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1209,9 +1212,15 @@ model ApiClient {
   disclosureProfile DisclosureProfile? @relation(fields: [disclosureProfileId], references: [id], onDelete: Restrict)
   registeredByUser  User?              @relation("ApiClientRegisteredBy", fields: [registeredByUserId], references: [id], onDelete: SetNull)
   approvedByUser    User?              @relation("ApiClientApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  limitProfile      RateLimitProfile   @relation(fields: [rateLimitProfile], references: [code], onDelete: Restrict, onUpdate: Restrict)
   tokens            ApiToken[]
   scopes            ApiClientScope[]
   requests          ApiRequestLog[]
+  rateBuckets       ApiRateBucket[]
+  rateCounters      ApiRateCounter[]
+  abuseWindows      ApiAbuseWindow[]
+  sequenceStates    ApiSequenceState[]
+  pauses            ApiClientPause[]
 
   @@index([status])
   @@map("api_client")
@@ -1318,21 +1327,24 @@ model DisclosureField {
 
 /// PRD §24 `api_request` — usage and audit for external calls.
 model ApiRequestLog {
-  id          String  @id @default(uuid()) @db.Uuid
-  requestId   String  @map("request_id")
-  clientId    String? @map("client_id") @db.Uuid
+  id              String  @id @default(uuid()) @db.Uuid
+  requestId       String  @map("request_id")
+  clientId        String? @map("client_id") @db.Uuid
   /// PRD §17 — the access log names the token used. Its id, never its value.
   /// Null where the request presented no token this System issued.
-  tokenId     String? @map("token_id") @db.Uuid
+  tokenId         String? @map("token_id") @db.Uuid
   /// PRD §18 — the source address of API activity.
-  ipAddress   String? @map("ip_address")
-  endpoint    String
-  scope       String?
+  ipAddress       String? @map("ip_address")
+  endpoint        String
+  scope           String?
   /// Coarse outcome class. PRD Requirement 14.3 — the caller receives a generic
   /// negative; the distinction is recorded here and withheld from them.
-  resultClass String  @map("result_class")
-  statusCode  Int     @map("status_code")
-  rateLimited Boolean @default(false) @map("rate_limited")
+  resultClass     String  @map("result_class")
+  statusCode      Int     @map("status_code")
+  rateLimited     Boolean @default(false) @map("rate_limited")
+  /// Proposal §14.3 — the id the System gave the request, beside the caller's
+  /// own `request_id`. Returned as `X-Server-Request-ID`.
+  serverRequestId String? @map("server_request_id")
 
   /// PRD §26.4 — which identifier scheme resolved the lookup, so legacy exposure
   /// is measurable rather than assumed.
@@ -1346,6 +1358,129 @@ model ApiRequestLog {
   @@index([clientId, createdAt])
   @@index([requestId])
   @@map("api_request_log")
+}
+
+/// PRD §14, §23.12 — the numbers an external organisation is held to
+/// (item 13): its rates, burst, and quotas, and the thresholds abuse detection
+/// applies to it. A row, so the Union changes any of them without a release
+/// (Requirement 14.1, Decision 8.3). The code is fixed once created.
+model RateLimitProfile {
+  code        String  @id
+  label       String
+  description String?
+
+  verificationPerMinute Int  @map("verification_per_minute")
+  aggregatePerMinute    Int  @map("aggregate_per_minute")
+  burst                 Int
+  hourlyQuota           Int? @map("hourly_quota")
+  dailyQuota            Int  @map("daily_quota")
+
+  windowMinutes     Int @map("window_minutes")
+  forgeryThreshold  Int @map("forgery_threshold")
+  missThreshold     Int @map("miss_threshold")
+  missPercent       Int @map("miss_percent")
+  sequenceThreshold Int @map("sequence_threshold")
+  sequenceReach     Int @map("sequence_reach")
+  pauseMinutes      Int @map("pause_minutes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  clients ApiClient[]
+
+  @@map("rate_limit_profile")
+}
+
+/// A token bucket per organisation and route class (Decision 8.2). Written
+/// only by one atomic statement in `RateLimitService`, so two instances cannot
+/// both spend the last token. `allowed` is whether that statement let the
+/// last request through.
+model ApiRateBucket {
+  clientId   String   @map("client_id") @db.Uuid
+  routeClass String   @map("route_class")
+  tokens     Float
+  allowed    Boolean
+  updatedAt  DateTime @map("updated_at") @db.Timestamptz(3)
+
+  client ApiClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@id([clientId, routeClass])
+  @@map("api_rate_bucket")
+}
+
+/// Requests let through per organisation, per clock hour and per Lagos day.
+/// Pruned once the window has passed.
+model ApiRateCounter {
+  clientId    String   @map("client_id") @db.Uuid
+  /// `HOUR` or `DAY`.
+  period      String
+  windowStart DateTime @map("window_start") @db.Timestamptz(3)
+  count       Int
+
+  client ApiClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@id([clientId, period, windowStart])
+  @@index([windowStart])
+  @@map("api_rate_counter")
+}
+
+/// Abuse detection's counts for one organisation over one fixed window
+/// (Requirement 14.2): checks decided, non-matches, and forged codes.
+model ApiAbuseWindow {
+  clientId    String   @map("client_id") @db.Uuid
+  windowStart DateTime @map("window_start") @db.Timestamptz(3)
+  checks      Int
+  misses      Int
+  forgeries   Int
+
+  client ApiClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@id([clientId, windowStart])
+  @@index([windowStart])
+  @@map("api_abuse_window")
+}
+
+/// The last plate or Transpay barcode an organisation presented, as a stem and
+/// a number, and the run of non-matching steps it is in. One row per kind,
+/// overwritten on each check and pruned when stale: detection state, not a log
+/// of what was asked.
+model ApiSequenceState {
+  clientId  String   @map("client_id") @db.Uuid
+  /// `PLATE` or `CODE`.
+  kind      String
+  stem      String
+  number    BigInt
+  run       Int
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(3)
+
+  client ApiClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@id([clientId, kind])
+  @@map("api_sequence_state")
+}
+
+/// Each time abuse detection paused an organisation (the owner's direction of
+/// 3 October 2026). Kept after it ends or is lifted, so the history shows.
+/// A pause holds while `liftedAt` is null and `pausedUntil` is ahead.
+model ApiClientPause {
+  id          String   @id @default(uuid()) @db.Uuid
+  clientId    String   @map("client_id") @db.Uuid
+  /// An `AbuseSignal` from `@nurtw/domain`.
+  signal      String
+  pausedAt    DateTime @map("paused_at")
+  pausedUntil DateTime @map("paused_until")
+  /// The counts that raised it. Never an identifier.
+  evidence    Json
+
+  liftedAt       DateTime? @map("lifted_at")
+  liftedByUserId String?   @map("lifted_by_user_id") @db.Uuid
+  liftReason     String?   @map("lift_reason")
+
+  client   ApiClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  liftedBy User?     @relation("ApiClientPauseLiftedBy", fields: [liftedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([clientId, pausedAt])
+  @@map("api_client_pause")
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { DisclosureModule } from '../disclosure/disclosure.module.js';
+import { RateLimitModule } from '../rate-limit/rate-limit.module.js';
 import { ApiClientAuthService } from './api-client-auth.service.js';
 import { ApiClientService } from './api-client.service.js';
 import { ApiClientsController } from './api-clients.controller.js';
@@ -18,9 +19,12 @@ import { ApiTokenService } from './api-token.service.js';
  * This module imports no provider from `AuthModule`: an API token and a
  * session share no code path and no store (Decisions 9.1 and 9.8). The
  * decorators its controller carries are metadata, read by the one guard.
+ *
+ * `RateLimitModule` supplies an organisation's limits and pause for its
+ * record, and abuse detection for the external request log (item 13).
  */
 @Module({
-  imports: [DisclosureModule],
+  imports: [DisclosureModule, RateLimitModule],
   controllers: [ApiClientsController],
   providers: [
     ApiClientService,

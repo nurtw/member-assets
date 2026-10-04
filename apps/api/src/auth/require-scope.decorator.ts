@@ -31,6 +31,10 @@ export interface AuthenticatedApiClient {
    * A response is built by projecting through these (Decision 5.1).
    */
   readonly permittedFields: readonly string[];
+  /** The limit profile it is held to, read on this request (item 13). */
+  readonly rateLimitProfile: string;
+  /** Its own daily quota, or `null` for its profile's. */
+  readonly dailyQuota: number | null;
 }
 
 /**
@@ -42,11 +46,19 @@ export interface ExternalOutcome {
   readonly resultClass: string;
   /** PRD §26.4 — which scheme the presented code used, if one was. */
   readonly identifierScheme: 'SIGNED' | 'LEGACY' | null;
+  /**
+   * What was presented, for abuse detection only (item 13): the normalised
+   * plate, and a Transpay barcode. A signed code is never passed: it is in
+   * no sequence, and a forgery is counted by its outcome.
+   */
+  readonly presented?: { plate: string | null; code: string | null };
 }
 
 /** Set on the request once a token resolves, for scope routes to read. */
 export interface ExternalRequest extends Request {
   apiClient?: AuthenticatedApiClient;
+  /** Proposal §14.3 — the id the System gave this request. */
+  serverRequestId?: string;
   /** Set by the route, read by `ExternalRequestLogInterceptor`. */
   externalOutcome?: ExternalOutcome;
 }

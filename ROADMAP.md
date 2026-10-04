@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.5
-**Last revised:** 3 October 2026
+**Document version:** 1.6
+**Last revised:** 4 October 2026
 
 ---
 
@@ -40,7 +40,7 @@ Each item is independently completable and independently testable. Status values
 | 10 | internal-verification | §11 | done (browser check pending) | [plan](plans/10-internal-verification.md) |
 | 11 | api-clients-and-scopes | §12.1, §16 | done | [plan](plans/11-api-clients-and-scopes.md) |
 | 12 | external-verification-api | §12, §15 | done | [plan](plans/12-external-verification-api.md) |
-| 13 | rate-limiting-and-abuse | §14 | in-progress (domain rules and contracts pushed; API, screens, tests to come) | [plan](plans/13-rate-limiting-and-abuse.md) |
+| 13 | rate-limiting-and-abuse | §14 | done | [plan](plans/13-rate-limiting-and-abuse.md) |
 | 14 | aggregate-reporting | §13 | not-started | `plans/14-aggregate-reporting.md` |
 | 15 | go-live-hardening | §17, §21 | not-started | `plans/15-go-live-hardening.md` |
 | 16 | payments | §27 | done (link payments, settlement account) | `plans/16-payments.md` |
@@ -164,6 +164,12 @@ organisation should hold a token until item 13 adds rate limits.
 **13 — rate-limiting-and-abuse.** Quota enforcement and abuse detection as the two distinct
 layers of Decision 8.1, on shared external state per Decision 8.2, with runtime-configurable
 limits. Limit determinations at PRD §23.12. Unblocked.
+
+Delivered with limit profiles the Union changes on the API access screen, counters in
+Postgres (PRD 1.6, §23.24), and daily quotas of 1,000 and 5,000. Over a limit, an
+organisation is told `429` with `Retry-After`. Forged codes, plates or barcodes in sequence,
+and a run of non-matches pause it for an hour, which an API administrator can lift with a
+reason. External requests must send `X-Request-ID`. Organisations can now be given tokens.
 
 **14 — aggregate-reporting.** *PRD 1.2:* the total counts only vehicles both onboarded and
 declared, at `GET /api/v1/aggregates/vehicles` with a `vehicle_count` field and no
