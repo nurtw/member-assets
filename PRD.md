@@ -4,9 +4,9 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.8 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.8
-**Last revised:** 4 October 2026
+1.2 to 1.9 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.9
+**Last revised:** 5 October 2026
 
 ---
 
@@ -89,6 +89,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.6 | 4 October 2026 | Abuse detection pauses an organisation for a time (Requirement 14.4). An external request carries its own request id (Requirement 14.5). Rate-limit counters are kept in Postgres, and daily quotas start at 1,000 and 5,000. See §23.24. | The project owner (`QUESTIONS.md` EXT-14, EXT-15, EXT-16), 3 October 2026. |
 | 1.7 | 4 October 2026 | Filtered totals by zone or branch only, rounded to the nearest 10 (Requirement 13.6). Reporting periods are a month, quarter, or year (13.7). The grand total moves to its own route, and an organisation reads the names it filters by from a metadata route (13.8). See §23.25. | The project owner (`QUESTIONS.md` EXT-18, EXT-19), 4 October 2026. |
 | 1.8 | 4 October 2026 | Requirement 17.1 is defined by permission, not role. A new officer gets a temporary password (17.3). Failed sign-ins lock the account for a time (17.4). The Union may compose roles, never holding `vehicle.declare` or the settlement account. See §23.26. | The project owner (`QUESTIONS.md` GOV-16, GOV-17, GOV-19, GOV-20), 4 October 2026. |
+| 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. See §23.10, §23.22–§23.27, Requirement 27.7. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20), 5 October 2026. |
 
 ---
 
@@ -794,6 +795,10 @@ All four classes are eligible, subject to individual approval: law enforcement a
 agencies; insurance companies; financial institutions and asset financiers; and other
 NURTW councils and state chapters.
 
+*Revision 1.9:* none is onboarded before go-live. The first is a single pilot, and others
+follow once it has run cleanly for a while. Which organisation is the pilot is still open
+(`QUESTIONS.md` EXT-05).
+
 ### 23.11 Disclosure-profile assignment
 
 **Assigned per organisation at the point of approval**, and amendable thereafter without a
@@ -939,7 +944,8 @@ Determined 3 October 2026 (`QUESTIONS.md` VEH-27, VEH-28, PAY-18 to PAY-20).
 - **The levy stops after the month of retirement**, and **each month keeps the route type of
   its 1st** (PAY-19).
 - **A member's BVN** is asked for only if a Paystack test shows Paystack requires it for a
-  dedicated account. It is then passed straight to Paystack and never stored (PAY-20).
+  dedicated account. It is then passed straight to Paystack and never stored (PAY-20). The
+  same holds for the member's own bank account number *(revision 1.9)*.
 
 ### 23.23 External organisations and tokens *(revision 1.5)*
 
@@ -950,12 +956,32 @@ Determined 3 October 2026 (`QUESTIONS.md` EXT-06, EXT-07, EXT-10, EXT-11).
   (Requirement 12.8).
 - **The API administrator approves.** Holders of `api_client.manage`, the API administrator
   and the super administrator, register and approve. One officer may do both, and the
-  approver is recorded (Requirement 12.9).
+  approver is recorded (Requirement 12.9). From revision 1.9 an organisation may also apply
+  for itself (below); approval is unchanged.
 - **Reminders on the dashboard for now.** A token is flagged on the API access screen from 14
   days before it expires, and the administrator contacts the organisation. Emailed reminders
   follow once a mail service and the domains (GOV-08) are chosen (Requirement 12.6).
 - **Rotation with a chosen overlap.** The replaced token keeps working for none, one hour, 24
   hours, or seven days, as the officer chooses at each rotation (Requirement 12.10).
+- **Withdrawal** *(revision 1.9, EXT-08)*. For cause (misuse, a token suspected of leaking,
+  or a breach of the agreement) the API administrator suspends at once, without notice, and
+  records the reason. Access ended for no fault takes 30 days' written notice under the
+  data-sharing agreement. Revocation is final: a revoked organisation returns only by being
+  registered and approved again.
+- **Production only** *(revision 1.9, EXT-12)*. Proposal §12.1's "approved environments, such
+  as test and production" is met by production alone. No test environment is run.
+- **No holder's name outside** *(revision 1.9, EXT-13)*. No disclosure profile, seeded or
+  composed, may carry a member's name or photograph to an outside party.
+- **Organisations apply for themselves** *(revision 1.9, EXT-20)*. An organisation may apply
+  through a portal of its own; approval stays with the API administrator (Requirement 12.9),
+  who first confirms the applicant by telephone or letter while the System sends no mail.
+  - Portal accounts are kept apart from officers' and never hold an officer permission.
+  - An approved organisation sees its own usage, and creates, rotates, and revokes its own
+    tokens, shown once to it alone. Scopes, profile, and limits stay with the administrator.
+  - The open form is limited per address, pending applications are capped, and an
+    unapproved application expires after 30 days.
+
+  Roadmap item 29.
 
 ### 23.24 Rate limits and abuse detection *(revision 1.6)*
 
@@ -967,7 +993,8 @@ Determined 3 October 2026 (`QUESTIONS.md` EXT-14, EXT-15, EXT-16).
   whose rates and bursts are adopted at §23.12. An organisation may be given a daily quota of
   its own.
 - **Detection pauses.** A pattern pauses the organisation for an hour, a number on its limit
-  profile (Requirement 14.4). The detection thresholds are launch defaults pending EXT-17.
+  profile (Requirement 14.4). The detection thresholds are the launch defaults, kept for
+  launch and reviewed after the pilot organisation's first month *(revision 1.9, EXT-17)*.
 
 ### 23.25 Vehicle totals *(revision 1.7)*
 
@@ -986,13 +1013,26 @@ Determined 4 October 2026 (`QUESTIONS.md` GOV-16, GOV-17, GOV-19, GOV-20).
 
 - **Temporary passwords.** Shown once to the administrator, changed at first sign-in
   (Requirement 17.3).
-- **A second factor for privileged permissions** (Requirement 17.1), turned on by the Union
-  once its administrators have enrolled (GOV-18, open).
+- **A second factor for privileged permissions** (Requirement 17.1). Turned on at go-live,
+  as a gate: once the production API holds its key and every administrator has enrolled,
+  and before officers begin real work. Go-live is not signed off while it is off (GOV-18,
+  answered 5 October 2026).
 - **Nobody gives what they do not hold, and nobody changes their own access.** A role or a
   permission is given only within a scope where the giver holds all of it.
 - **Composed roles at launch.** A role the Union composes may never hold `vehicle.declare`
   or `payment.manage_settlement`. The roles of §16 cannot be changed.
 - **No database lock on audit events yet.** The application never changes or deletes one.
+
+### 23.27 Go-live *(revision 1.9)*
+
+Determined 5 October 2026 (`QUESTIONS.md` GOV-11, partly answered; GOV-18).
+
+- **No parallel running.** The System is authoritative from the day of go-live. The previous
+  system is kept read-only for reference for a while, and nothing new is entered there.
+- **The date is fixed once these gates are met:** roadmap item 15 done; the real branches
+  (ORG-05); the card artwork and the signing officers' signatures (CARD-05, CARD-07); the
+  second-factor requirement on (GOV-18, §23.26); and the domains (GOV-08). The date then
+  becomes the `dues.go_live_date` setting (Requirement 27.13).
 
 ---
 
@@ -1215,7 +1255,8 @@ payment link. NURTW dues may be paid by payment link or by dedicated virtual acc
 A member's dedicated account is assigned with the NURTW subaccount, so its money splits at
 Paystack and settles straight to NURTW. The contractor never holds Union funds. Because the
 payer chooses the amount, Paystack applies the subaccount's **fixed percentage** to
-dedicated-account payments rather than Requirements 27.3–27.4. That percentage is a setting.
+dedicated-account payments rather than Requirements 27.3–27.4. That percentage is a setting,
+chosen as Paystack's dedicated-account fee rate plus 0.5 per cent *(revision 1.9, PAY-11)*.
 The ₦200 cap and the fee-on-top cannot apply to a transfer the payer initiates. The System
 therefore:
 

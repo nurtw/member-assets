@@ -381,9 +381,10 @@ account, and the contractor percentage of dedicated-account money (item 23). The
 percentage **ships unset**, because `QUESTIONS.md` **PAY-11** says Paystack's
 dedicated-account pricing must first be confirmed from the dashboard.
 
-1. Confirm the pricing in the Paystack dashboard. Choose a percentage that covers
-   Paystack's dedicated-account fee plus the contractor's share: Paystack takes its fee
-   out of that percentage, not on top of it.
+1. Confirm the pricing in the Paystack dashboard, and ask Paystack to enable dedicated
+   accounts on the business. The percentage is Paystack's dedicated-account fee rate plus
+   0.5 per cent (`QUESTIONS.md` PAY-11, 5 October 2026). Paystack takes its fee out of
+   that percentage, not on top of it.
 2. Set it with a super administrator's session, the password, and a reason:
 
    ```http

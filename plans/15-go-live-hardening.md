@@ -42,3 +42,5 @@ until a host exists. Anything deferred by the Union (GOV-04).
 - [ ] A backup is restored into a scratch database, and the time taken is recorded.
 - [ ] Each acceptance criterion names a passing test, or says what is missing.
 - [ ] The incident document and runbook say who does what, with open contacts marked.
+- [ ] The go-live checklist holds the second-factor requirement as a gate (GOV-18), and the
+      diagnostics route reports whether it is on.

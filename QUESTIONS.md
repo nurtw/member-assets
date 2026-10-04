@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.9
-**Last revised:** 4 October 2026
+**Document version:** 1.10
+**Last revised:** 5 October 2026
 
 ---
 
@@ -51,10 +51,10 @@ thing a year later.
 | Cards (CARD) | 5 | 3 | — | 8 |
 | Vehicles and stickers (VEH) | 22 | 6 | 1 | 29 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
-| External organisations (EXT) | 13 | 6 | — | 19 |
+| External organisations (EXT) | 18 | 2 | — | 20 |
 | Payments (PAY) | 20 | 0 | — | 20 |
-| Governance and go-live (GOV) | 8 | 11 | 1 | 20 |
-| **Total** | **81** | **41** | **2** | **124** |
+| Governance and go-live (GOV) | 9 | 10 | 1 | 20 |
+| **Total** | **87** | **36** | **2** | **125** |
 
 ### Blocking production use right now
 
@@ -856,7 +856,7 @@ read that report.
 
 ## 9. Open — external organisations (items 11–12)
 
-### EXT-05 · First organisations to onboard ⏳
+### EXT-05 · First organisations to onboard ⏳ (partly answered)
 
 **Question.** Which specific organisations should be onboarded first, and who is the named
 technical contact at each?
@@ -864,8 +864,13 @@ technical contact at each?
 **Why it is needed.** PRD §23.10 determined all four classes are eligible *subject to
 individual approval*. This asks for the individuals.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer (partial).** **One pilot, after go-live.** No outside organisation is onboarded
+before go-live. The first is a single pilot; others follow once it has run cleanly for a
+while. **Still outstanding: which organisation is the pilot, and its contact's role.** The
+contact's telephone and email go into the System when it is registered, not into this
+register.
+**Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD §23.10.
 
 ### EXT-06 · Who approves an external organisation ✅
 
@@ -895,13 +900,18 @@ until the Union has one.
 **Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
 recommendation. **Recorded at.** PRD Requirement 12.8, §23.23.
 
-### EXT-08 · Withdrawal of access ⏳
+### EXT-08 · Withdrawal of access ✅
 
 **Question.** On what grounds is an external organisation's access withdrawn, and who
 decides? Is there a notice period?
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **At once for cause; with notice otherwise.** For misuse, a token suspected of
+leaking, or a breach of the data-sharing agreement, the API administrator suspends the
+organisation at once, without notice, and records the reason. Access ended for no fault
+takes 30 days' written notice, which the data-sharing agreement states. Revocation is final:
+a revoked organisation comes back only by being registered and approved again.
+**Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD §23.23.
 
 ### EXT-09 · Public verification page presentation ⏳
 
@@ -937,7 +947,7 @@ instead, which is immediate.
 **Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
 recommendation. **Recorded at.** PRD Requirement 12.10, §23.23.
 
-### EXT-12 · A test environment for outside organisations ⏳
+### EXT-12 · A test environment for outside organisations ✅
 
 **Question.** Proposal §12.1 lists "approved environments, such as test and production" for
 each client. Should organisations get a separate test environment, with test tokens and
@@ -947,10 +957,13 @@ synthetic records, to build against before they touch real data?
 records. A test environment means a second deployment with its own database, which has a
 hosting cost.
 
-**Answer.** _Outstanding._ Item 11 issues production tokens only.
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **Production only.** No separate test environment. Item 11's production tokens
+stand, and an organisation's first request is against real records. The approving officer
+can still start an organisation on a narrow disclosure profile and a low daily quota.
+**Answered on.** 5 October 2026. **Answered by.** Project owner. **Recorded at.** PRD
+§23.23.
 
-### EXT-13 · Whether an outside membership check may carry the holder's name ⏳
+### EXT-13 · Whether an outside membership check may carry the holder's name ✅
 
 **Question.** An outside organisation's membership check confirms that a card or membership
 number is valid. It cannot show whether the person presenting the card is its holder,
@@ -962,8 +975,12 @@ how a genuine number copied onto someone else's card is caught. Externally the S
 follows the proposal and discloses no name. Allowing it would mean a PRD revision, since the
 name is personal data and is today held back from every outside party.
 
-**Answer.** _Outstanding._ Item 12 discloses no name.
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **No name, ever.** No profile, seeded or composed, may carry the holder's name or
+photograph to an outside party. An outside membership check confirms only that the number
+is valid; its limitation already says it "does not establish identity beyond what the Union
+has recorded". Item 12 stands unchanged.
+**Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD §23.23.
 
 ### EXT-14 · Where the rate-limit counters are kept ✅
 
@@ -998,7 +1015,7 @@ reason, or suspend the organisation.
 **Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
 recommendation. **Recorded at.** PRD Requirement 14.4, §23.24.
 
-### EXT-17 · Abuse-detection thresholds ⏳
+### EXT-17 · Abuse-detection thresholds ✅
 
 **Question.** Item 13 pauses an organisation that, within ten minutes, sends five forged
 sticker codes, or five plates or sticker numbers in sequence that match nothing, or at least
@@ -1008,9 +1025,12 @@ checks. Are these the right starting thresholds?
 **Why it is needed.** Set too low, an honest integrator is paused; too high, a scraper is not.
 They are launch defaults chosen by the project, not figures the Union gave.
 
-**Answer.** _Outstanding._ Every threshold is a number on the limit profile, changed on the
-API access screen without a release.
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **Keep them for launch, and review after the pilot.** After the pilot
+organisation's first month (EXT-05), the API administrator reviews any pauses and adjusts the
+numbers on the Limits tab. Every threshold is a number on the limit profile, changed without
+a release.
+**Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD §23.24.
 
 ### EXT-18 · Guarding totals against subtraction ✅
 
@@ -1033,6 +1053,38 @@ periods?
 now if it has not ended.
 **Answered on.** 4 October 2026. **Answered by.** Project owner, adopting the
 recommendation. **Recorded at.** PRD Requirement 13.7, §23.25.
+
+### EXT-20 · How an organisation applies for itself ✅
+
+**Direction.** An outside organisation should be able to apply for access by itself, and see
+a dashboard of its own usage. The API administrator must still approve it. Given by the
+project owner on 5 October 2026; roadmap item 29. Recorded at PRD §23.23.
+
+**Still to decide before item 29 is planned:**
+
+- Who signs in to the portal, and whether those accounts are kept apart from officers'.
+- How an applicant's email is confirmed while the System sends no mail (GOV-08).
+- What an approved organisation may do there itself: see usage only, or also manage its
+  own tokens.
+- How the open application form is kept from being flooded.
+
+**Answer.**
+
+- **Separate organisation accounts**, with their own table, sign-in, and cookie. They are
+  kept apart from officers' and can never hold an officer permission.
+- **The API administrator confirms the applicant** by telephone or letter before approving.
+  No email step until a mail service and domain exist (GOV-08); then an emailed confirmation
+  is added.
+- **Usage and its own tokens.** An approved organisation sees its usage, and creates,
+  rotates, and revokes its own tokens. A token is shown once, to the organisation only, so no
+  Union officer handles a live one. Scopes, disclosure profile, and limits stay set by the
+  administrator.
+- **Limits and expiry on the form**: a few applications per address per hour, a cap on
+  pending applications, and expiry of an unapproved application after 30 days. A challenge
+  service is added only if the form is abused.
+
+**Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
+recommendations. **Recorded at.** PRD §23.23.
 
 ---
 
@@ -1076,9 +1128,11 @@ is its Data Protection Officer or designated contact for data-protection matters
 verification page?
 
 **Why it is needed.** The verification page's address is printed or encoded on physical
-stickers. Changing it later invalidates stickers already in the field.
+stickers. Changing it later invalidates stickers already in the field. Email from the
+System (token reminders, EXT-10; an applicant's confirmation, EXT-20) is sent from it too.
 
-**Answer.** _Outstanding._
+**Answer.** _Outstanding._ Put to the project owner on 5 October 2026 and left open. No
+signed sticker should be printed until it is answered.
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
 ### GOV-09 · Incident contact and escalation ⏳
@@ -1100,13 +1154,19 @@ the Union's risk decision, not an engineering preference.
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
-### GOV-11 · Go-live date and parallel running ⏳
+### GOV-11 · Go-live date and parallel running ⏳ (partly answered)
 
 **Question.** What is the target go-live date, and will the previous system run in parallel
 for a period? If so, which is authoritative during that period?
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer (partial).** **No parallel running.** The System is authoritative from the day of
+go-live. The previous system is kept read-only for reference for a while, and nothing new is
+entered there. **The date is fixed once the gates are met:** item 15 done, the real branches
+(ORG-05), the card artwork and signatures (CARD-05, CARD-07), the second factor on (GOV-18),
+and the domains (GOV-08). **Still outstanding: the date itself**, which then becomes the
+`dues.go_live_date` setting.
+**Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD §23.27.
 
 ### GOV-12 · Officer training and support ⏳
 
@@ -1159,7 +1219,7 @@ set a second factor up if they wish.
 **Answered on.** 4 October 2026. **Answered by.** Project owner, adopting the
 recommendation. **Recorded at.** PRD Requirement 17.1, §23.26.
 
-### GOV-18 · When the second-factor requirement is turned on ⏳
+### GOV-18 · When the second-factor requirement is turned on ✅
 
 **Question.** The requirement ships off, so that no administrator is locked out before
 setting an authenticator up. When is it turned on?
@@ -1168,8 +1228,11 @@ setting an authenticator up. When is it turned on?
 Turning it on needs each administrator to have enrolled, and the deployment to hold
 `MFA_ENCRYPTION_KEY`.
 
-**Answer.** _Outstanding._ An administrator turns it on under Officers → Security.
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **At go-live, as a gate.** The production API is given `MFA_ENCRYPTION_KEY`,
+every administrator enrols, and an administrator turns the requirement on under Officers →
+Security before officers begin real work. Go-live is not signed off while it is off.
+**Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD §23.26.
 
 ### GOV-19 · Roles the Union composes ✅
 
@@ -1421,6 +1484,14 @@ enabled on the Paystack business, which is done on request.
 **Answered on.** 22 September 2026. **Answered by.** Project owner.
 **Recorded at.** PRD Requirement 27.7, §23.20.
 
+**How the percentage is chosen (5 October 2026).** **Paystack's dedicated-account fee rate,
+plus 0.5 per cent**, the contractor's share on payment links (PAY-10), without the ₦200 cap,
+which Paystack cannot apply here. The figure is set once the owner has read the fee off the
+Paystack dashboard and Paystack has enabled dedicated accounts. It is entered by a super
+administrator on a Settlement screen (approved the same day), which needs their password and
+a reason. Until then the percentage stays unset and no dedicated account is assigned.
+**Answered by.** Project owner, adopting the recommendation.
+
 ### PAY-12 · Allocating a dedicated-account payment across dues ✅
 
 **Question.** A member sends money to their dedicated account without saying what it is
@@ -1583,6 +1654,12 @@ stored or logged.
 **Answered on.** 3 October 2026. **Answered by.** Project owner, adopting the
 recommendation. **Recorded at.** PRD §23.22.
 
+**The member's bank account number (5 October 2026).** If Paystack's check also wants the
+member's own bank account number, **the same rule applies**: asked only at assignment and
+only if Paystack requires it, passed straight to Paystack, never stored or logged, and built
+only once the test shows it is needed. The test waits on PAY-11: dedicated accounts enabled
+and the percentage set. **Answered by.** Project owner, adopting the recommendation.
+
 ---
 
 ## 12. Deferred by the Union
@@ -1677,6 +1754,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 5 October 2026 | The project owner went through the open questions. Answered: GOV-18 (a go-live gate), EXT-08 (at once for cause, 30 days' notice otherwise), EXT-12 (production only), EXT-13 (no name, ever), EXT-17 (keep, review after the pilot). Partly answered: EXT-05 (one pilot after go-live; which one open) and GOV-11 (no parallel running; the date waits on named gates). Added to answered ones: PAY-11 (the percentage is Paystack's fee plus 0.5 per cent, set on a new Settlement screen) and PAY-20 (a bank account number follows the BVN rule). GOV-08 left open. New EXT-20, organisations applying for themselves, given and answered the same day (roadmap item 29). PRD revised to 1.9. |
 | 4 October 2026 (item 28) | Officer accounts and multi-factor sign-in were found unbuilt. The project owner answered GOV-16 (a temporary password at first sign-in), GOV-17 (a second factor for privileged permissions), GOV-19 (composed roles at launch), and GOV-20 (no database lock on audit events yet). New GOV-18, when the second-factor requirement is turned on, open. PRD revised to 1.8. |
 | 4 October 2026 (item 14) | The project owner answered EXT-18 (totals by zone or branch only, rounded to the nearest 10) and EXT-19 (month, quarter, and year periods), adopting the recommendations. PRD revised to 1.7. |
 | 4 October 2026 (item 13) | The project owner answered three new questions by adopting the recommendations: EXT-14 (rate-limit counters in Postgres), EXT-15 (daily quotas of 1,000 and 5,000), and EXT-16 (detection pauses an organisation for an hour). New EXT-17, the detection thresholds, open. PRD revised to 1.6. |
