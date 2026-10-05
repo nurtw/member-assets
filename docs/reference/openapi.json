@@ -16745,7 +16745,7 @@
       },
       "post": {
         "summary": "Start a payment from a pay link.",
-        "description": "Answers the Paystack page to send the payer to. The return address, if given, must be on the web application. The due is credited only once Paystack confirms the payment, like any other (Requirement 27.5). No officer is recorded.\n\n**Authentication:** none. This route is deliberately public.",
+        "description": "Answers the Paystack page to send the payer to. The return address, if given, must be on the web application. The due is credited only once Paystack confirms the payment, like any other (Requirement 27.5). No officer is recorded. If Paystack does not start the payment, the answer is 503 and nothing was taken.\n\n**Authentication:** none. This route is deliberately public.",
         "operationId": "PublicPayController_start",
         "tags": [
           "PublicPay"
@@ -16925,7 +16925,7 @@
     "/api/v1/payments/initiate": {
       "post": {
         "summary": "Start a payment for a fee type.",
-        "description": "Computes the processing fee (Requirement 27.3), creates the payment record, and returns a Paystack payment-link URL. A sticker fee always settles wholly to the contractor; a due split with NURTW requires the settlement account to already be configured.\n\n**Permission required:** `payment.initiate`.",
+        "description": "Computes the processing fee (Requirement 27.3), creates the payment record, and returns a Paystack payment-link URL. A sticker fee always settles wholly to the contractor; a due split with NURTW requires the settlement account to already be configured. If Paystack does not start the payment, the record is closed as failed and the answer is 503: nothing was taken, and the caller may try again.\n\n**Permission required:** `payment.initiate`.",
         "operationId": "PaymentsController_initiate",
         "tags": [
           "Payments"

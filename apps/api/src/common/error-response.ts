@@ -40,6 +40,8 @@ const GENERIC_MESSAGES: Readonly<Record<number, string>> = {
   [HttpStatus.FORBIDDEN]: 'This request is not permitted.',
   [HttpStatus.NOT_FOUND]: 'No matching resource was found.',
   [HttpStatus.TOO_MANY_REQUESTS]: 'Rate limit exceeded.',
+  [HttpStatus.SERVICE_UNAVAILABLE]:
+    'The service cannot complete this request at present.',
 };
 
 const FALLBACK_MESSAGE = 'The request could not be processed.';

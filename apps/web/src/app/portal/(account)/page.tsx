@@ -80,11 +80,20 @@ export default function PortalOverviewPage() {
                       <span className="font-medium">
                         {organisation.disclosureProfile.label}
                       </span>
-                      <ul className="mt-1 list-disc pl-5 text-black/70">
-                        {organisation.disclosureProfile.fields.map((field) => (
-                          <li key={field}>{fieldLabel(field)}</li>
-                        ))}
-                      </ul>
+                      {organisation.disclosureProfile.fields.length === 0 ? (
+                        <p className="mt-1 italic text-black/60">
+                          No record field. A response confirms a match and
+                          nothing more.
+                        </p>
+                      ) : (
+                        <ul className="mt-1 list-disc pl-5 text-black/70">
+                          {organisation.disclosureProfile.fields.map(
+                            (field) => (
+                              <li key={field}>{fieldLabel(field)}</li>
+                            ),
+                          )}
+                        </ul>
+                      )}
                       <p className="mt-2 text-xs text-black/55">
                         A match confirms only that an NURTW record exists under
                         the criteria checked. It is not evidence of ownership,

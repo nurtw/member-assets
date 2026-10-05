@@ -159,7 +159,13 @@ export function ExactPaymentLink({
                         caught.requestId,
                         caught.details,
                       )
-                    : caught,
+                    : caught.status === 503
+                      ? new ApiError(
+                          503,
+                          "Paystack did not start the payment. Nothing has been taken. Try again in a few minutes.",
+                          caught.requestId,
+                        )
+                      : caught,
                 );
               }
             } finally {

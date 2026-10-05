@@ -59,7 +59,9 @@ export class PaymentsController {
     description:
       'Computes the processing fee (Requirement 27.3), creates the payment record, and returns ' +
       'a Paystack payment-link URL. A sticker fee always settles wholly to the contractor; a ' +
-      'due split with NURTW requires the settlement account to already be configured.',
+      'due split with NURTW requires the settlement account to already be configured. If ' +
+      'Paystack does not start the payment, the record is closed as failed and the answer is ' +
+      '503: nothing was taken, and the caller may try again.',
     body: initiatePaymentSchema,
   })
   async initiate(

@@ -88,6 +88,7 @@ describe('Pay links (e2e)', () => {
   const cookies: Record<string, string> = {};
   const fetchCalls: FetchCall[] = [];
   const verifiedAmounts = new Map<string, number>();
+  let paystackRefuses = false;
 
   beforeAll(async () => {
     await cleanUp();
@@ -138,6 +139,12 @@ describe('Pay links (e2e)', () => {
         fetchCalls.push({ url, method, body });
 
         if (url.includes('/transaction/initialize')) {
+          if (paystackRefuses) {
+            return jsonResponse(
+              { status: false, message: 'Refused by the stub' },
+              400,
+            );
+          }
           return jsonResponse({
             status: true,
             message: 'ok',
@@ -513,6 +520,33 @@ describe('Pay links (e2e)', () => {
       expect(after.outstandingKobo).toBe(
         before.outstandingKobo - payment.dueKobo,
       );
+    });
+
+    it('closes the payment as failed when Paystack will not start it', async () => {
+      const link = (await linkFor('vehicle', owingVehicleId)).body;
+      paystackRefuses = true;
+      let response;
+      try {
+        response = await request(server)
+          .post(`/api/v1/pay/${link.code}`)
+          .send({ feeTypeCode: 'LEVY', payerEmail: 'driver@example.test' });
+      } finally {
+        paystackRefuses = false;
+      }
+      // The provider is unavailable: a status a screen can explain, not a 500.
+      expect(response.status).toBe(503);
+      expect(response.body.error).not.toHaveProperty('details');
+
+      const latest = await prisma.payment.findFirstOrThrow({
+        where: { subjectId: owingVehicleId },
+        orderBy: { createdAt: 'desc' },
+      });
+      // Nothing can ever confirm it, so it is not left pending.
+      expect(latest.status).toBe('FAILED');
+      const audit = await prisma.auditEvent.findFirst({
+        where: { action: 'payment.initiate_failed', subjectId: latest.id },
+      });
+      expect(audit?.afterValue).toMatchObject({ payLinkId: link.id });
     });
 
     it('refuses a fee the link does not offer, and starts nothing', async () => {

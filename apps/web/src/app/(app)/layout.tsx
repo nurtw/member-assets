@@ -43,7 +43,8 @@ const NAVIGATION: { href: string; label: string; permissions: string[] }[] = [
  * avoids offering a button that would refuse.
  */
 function Shell({ children }: { children: ReactNode }) {
-  const { user, account, loading, holds, signOut } = useSession();
+  const { user, account, permissions, loading, holds, signOut } =
+    useSession();
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -229,7 +230,33 @@ function Shell({ children }: { children: ReactNode }) {
             </p>
           </div>
         ) : null}
-        {children}
+        {permissions.length === 0 && !mustChange && pathname !== "/account" ? (
+          // An officer with no role yet holds no permission at all, so there
+          // is no screen to show. Say so, rather than render one the API
+          // will refuse. Asked of the permissions, not the links: a composed
+          // role may open a screen the navigation does not list.
+          <div className="max-w-xl rounded-lg border border-[var(--border-subtle)] bg-white p-6">
+            <h1 className="text-lg font-semibold tracking-tight">
+              Your account has no access yet
+            </h1>
+            <p className="mt-2 text-sm text-black/70">
+              You are signed in, but no role has been given to this account, so
+              there is nothing here for you to open. Ask your administrator to
+              give you a role, then sign in again.
+            </p>
+            <p className="mt-3 text-sm">
+              <Link
+                href="/account"
+                className="font-medium underline underline-offset-2"
+              >
+                Your account
+              </Link>{" "}
+              is where you change your password and set up a second factor.
+            </p>
+          </div>
+        ) : (
+          children
+        )}
       </main>
 
       <footer className="border-t border-[var(--border-subtle)] px-4 py-4">

@@ -834,6 +834,9 @@ Item 03 built the tables and the guard. Everything that writes to them is item 2
   `SettlementService.getActive` as the dedicated-account suite does.
 - **`PaymentsService.quote` prices a fee and `initiate` charges it.** A payment from a
   link has no `initiatedByUserId`.
+- **A payment Paystack will not start is closed `FAILED` and answers 503**, audited as
+  `payment.initiate_failed`. Never leave it `PENDING`: no payment page exists, so nothing
+  could ever confirm it. The screens explain a 503 as the provider's, not the payer's.
 - **The public sticker page (PRD §23.13) is not built.** It waits on GOV-08, and gets
   the same button when it is.
 
@@ -881,6 +884,23 @@ its own tokens (EXT-20). Approval and access stay with `api_client.manage`.
   and base are settings (`aggregate.suppression_floor`, `aggregate.rounding_base`).
 - **No external answer mentions declaration** (Requirement 12.7), not even in the statement.
   The audit event (`aggregate.external.*`) keeps the exact count beside the answer.
+
+### Clicking through the app
+
+There is no browser in the test suite. To drive the real screens, run the built API and
+web app against the **local** database and script a browser:
+
+- **Force the API onto the local database.** `apps/api/.env` points at Neon. Export
+  `DATABASE_URL` for the local database before `node dist/main.js`; the environment wins
+  over `.env`. Confirm by signing in as an account that exists only locally.
+- **The local database holds the imported legacy records**, which are real people's.
+  Create synthetic records to click through, capture only those, and remove them after.
+- **A test administrator** comes from the seed with `SEED_ADMIN_EMAIL` and
+  `SEED_ADMIN_PASSWORD` set for one run. Remove the account afterwards.
+- **A settlement account left in the local database breaks `payments.e2e-spec.ts`**,
+  which expects none. Remove any stand-in before running the suite.
+- `playwright-core` with `channel: 'chrome'` drives the installed Chrome; nothing is
+  downloaded. Keep the driver outside the repository.
 
 ### Notes that will bite you otherwise
 

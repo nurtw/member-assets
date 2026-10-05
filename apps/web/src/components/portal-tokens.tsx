@@ -160,54 +160,60 @@ export function PortalTokensSection({ onChanged }: { onChanged: () => void }) {
       ) : null}
 
       {tokens.length > 0 ? (
-        <table className="w-full text-left text-sm">
-          <thead className="text-xs uppercase tracking-wide text-black/50">
-            <tr>
-              <th scope="col" className="py-1.5 font-medium">
-                Token
-              </th>
-              <th scope="col" className="py-1.5 font-medium">
-                State
-              </th>
-              <th scope="col" className="py-1.5 font-medium">
-                Expires
-              </th>
-              <th scope="col" className="py-1.5 font-medium">
-                Last used
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {tokens.map((token) => (
-              <tr
-                key={token.id}
-                className="border-t border-[var(--border-subtle)]"
-              >
-                <td className="py-2 font-mono text-xs">{token.prefix}…</td>
-                <td className="py-2">
-                  <StatusChip status={token.state} />
-                  <span className="sr-only">{STATES[token.state]}</span>
-                  {token.state === "RETIRING" && token.retiresAt ? (
-                    <span className="block text-xs text-black/55">
-                      Works until {moment(token.retiresAt)}
-                    </span>
-                  ) : null}
-                </td>
-                <td className="py-2">
-                  {shortDay(token.expiresAt)}
-                  {token.expiringSoon ? (
-                    <span className="block text-xs font-medium text-[var(--verdict-caution)]">
-                      Expires soon: replace it
-                    </span>
-                  ) : null}
-                </td>
-                <td className="py-2 text-black/65">
-                  {token.lastUsedAt ? moment(token.lastUsedAt) : "Never"}
-                </td>
+        // Wider than a phone: it scrolls sideways inside its own box, so
+        // the page itself never does.
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[30rem] text-left text-sm">
+            <thead className="text-xs uppercase tracking-wide text-black/50">
+              <tr>
+                <th scope="col" className="py-1.5 font-medium">
+                  Token
+                </th>
+                <th scope="col" className="py-1.5 font-medium">
+                  State
+                </th>
+                <th scope="col" className="py-1.5 font-medium">
+                  Expires
+                </th>
+                <th scope="col" className="py-1.5 font-medium">
+                  Last used
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {tokens.map((token) => (
+                <tr
+                  key={token.id}
+                  className="border-t border-[var(--border-subtle)]"
+                >
+                  <td className="whitespace-nowrap py-2 pr-4 font-mono text-xs">
+                    {token.prefix}…
+                  </td>
+                  <td className="py-2">
+                    <StatusChip status={token.state} />
+                    <span className="sr-only">{STATES[token.state]}</span>
+                    {token.state === "RETIRING" && token.retiresAt ? (
+                      <span className="block text-xs text-black/55">
+                        Works until {moment(token.retiresAt)}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="py-2">
+                    {shortDay(token.expiresAt)}
+                    {token.expiringSoon ? (
+                      <span className="block text-xs font-medium text-[var(--verdict-caution)]">
+                        Expires soon: replace it
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="py-2 text-black/65">
+                    {token.lastUsedAt ? moment(token.lastUsedAt) : "Never"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
 
       {data?.canManage && !current ? (

@@ -475,6 +475,17 @@ each request. Beyond them the page answers 429 with `Retry-After`. Many payers b
 office connection share its address, so raise the second figure if an office reports
 being stopped.
 
+**"The payment could not be started just now."** Paystack refused to start the payment,
+or could not be reached. Nothing was taken. The record is closed as failed and audited as
+`payment.initiate_failed`; the payer or officer simply tries again. If it keeps happening,
+check the settlement account still exists at Paystack and that the secret key is the one
+for that Paystack business:
+
+```sql
+SELECT created_at, after_value FROM audit_event
+ WHERE action = 'payment.initiate_failed' ORDER BY created_at DESC LIMIT 20;
+```
+
 **The page says "Payments are not open yet"** while the NURTW settlement account is not
 set (above). **`CORS_ORIGINS` must include the web application's address**, or starting a
 payment is refused: Paystack returns the payer to that address.

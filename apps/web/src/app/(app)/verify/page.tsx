@@ -492,7 +492,7 @@ function PayNow({
   return (
     <div className="mt-4 grid gap-5">
       {vehicle ? (
-        <div className="grid gap-3">
+        <div className="grid gap-3 rounded-md border border-[var(--border-subtle)] p-4">
           <h3 className="text-sm font-semibold">
             Monthly levy · one month is {naira(vehicle.currentAmountKobo)}
           </h3>
@@ -508,7 +508,7 @@ function PayNow({
         </div>
       ) : null}
       {member ? (
-        <div className="grid gap-3">
+        <div className="grid gap-3 rounded-md border border-[var(--border-subtle)] p-4">
           <h3 className="text-sm font-semibold">
             Membership fee · one year is {naira(member.currentAmountKobo)}
           </h3>

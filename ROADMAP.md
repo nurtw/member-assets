@@ -55,10 +55,10 @@ Each item is independently completable and independently testable. Status values
 | 25 | dues-answers | §27.13 | done | [plan](plans/25-dues-answers.md) |
 | 26 | letter-reissue | §9A.6 | done | [plan](plans/26-letter-reissue.md) |
 | 27 | transpay-stock-intake | §9A.4 | deferred by the owner | [plan](plans/27-transpay-stock-intake.md) |
-| 28 | officer-accounts-and-mfa | §16, §17.1 | done (requirement off until GOV-18; browser check pending) | [plan](plans/28-officer-accounts-and-mfa.md) |
-| 29 | organisation-portal | §12, §23.23 | done (browser check pending) | [plan](plans/29-organisation-portal.md) |
-| 30 | settlement-screen | §27.7, §27.12 | done (browser check pending) | [plan](plans/30-settlement-screen.md) |
-| 31 | pay-now | §27.8 (rev. 1.9) | done (browser check pending) | [plan](plans/31-pay-now.md) |
+| 28 | officer-accounts-and-mfa | §16, §17.1 | done (requirement off until GOV-18; clicked through 5 Oct, second-factor enrolment not) | [plan](plans/28-officer-accounts-and-mfa.md) |
+| 29 | organisation-portal | §12, §23.23 | done (clicked through 5 Oct) | [plan](plans/29-organisation-portal.md) |
+| 30 | settlement-screen | §27.7, §27.12 | done (clicked through 5 Oct; no account saved at Paystack) | [plan](plans/30-settlement-screen.md) |
+| 31 | pay-now | §27.8 (rev. 1.9) | done (clicked through 5 Oct; not through to a Paystack payment) | [plan](plans/31-pay-now.md) |
 
 ### Item summaries
 
@@ -277,6 +277,13 @@ member's dedicated account), and a personal pay link for each vehicle and member
 a public payment page never saying what is owed. The public sticker page (§23.13) is not
 built and waits on GOV-08; it gets the same button when it is. Comes after item 30, before
 item 15.
+
+**Click-through of 5 October 2026.** The officers' screens, the settlement screen, Pay now
+and the public pay page, and the organisation portal were driven in a browser against the
+local stack. It led to four fixes: an officer with no role is told so instead of being
+shown a refusal; a payment Paystack will not start is closed as failed and answers 503;
+and two phone layouts in the portal. Not reached: second-factor enrolment, a card or
+sticker issued, a registration completed, and a payment taken through to Paystack.
 
 **Also on 3 October 2026 (PRD 1.4, VEH-28).** A vehicle's declaration status is shown only
 to holders of `vehicle.declare`, on every screen and route. This amended items 07 and 10.

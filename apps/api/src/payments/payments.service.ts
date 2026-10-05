@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { calculateFees, DEFAULT_FEE_SCHEDULES } from '@nurtw/domain';
 import { randomUUID } from 'node:crypto';
 
@@ -132,19 +136,48 @@ export class PaymentsService {
       },
     });
 
-    const transaction = await this.paystack.initializeTransaction({
-      email: input.payerEmail,
-      amountKobo: totalChargedKobo,
-      reference,
-      subaccountCode,
-      transactionChargeKobo,
-      callbackUrl: input.callbackUrl,
-      metadata: {
-        feeTypeCode: feeType.code,
-        subjectType: input.subjectType,
-        subjectId: input.subjectId,
-      },
-    });
+    let transaction: Awaited<
+      ReturnType<PaystackClient['initializeTransaction']>
+    >;
+    try {
+      transaction = await this.paystack.initializeTransaction({
+        email: input.payerEmail,
+        amountKobo: totalChargedKobo,
+        reference,
+        subaccountCode,
+        transactionChargeKobo,
+        callbackUrl: input.callbackUrl,
+        metadata: {
+          feeTypeCode: feeType.code,
+          subjectType: input.subjectType,
+          subjectId: input.subjectId,
+        },
+      });
+    } catch {
+      // Paystack refused, or could not be reached: no payment page exists, so
+      // nothing can ever confirm this record. It is closed as failed rather
+      // than left pending for good, and the caller is told the provider is
+      // unavailable, which a screen can explain (the 500 this used to be
+      // could not).
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: 'FAILED' },
+      });
+      await this.audit.record({
+        action: 'payment.initiate_failed',
+        subjectType: 'payment',
+        subjectId: payment.id,
+        actorUserId: input.initiatedByUserId,
+        after: {
+          feeTypeCode: feeType.code,
+          reference,
+          ...(input.payLinkId ? { payLinkId: input.payLinkId } : {}),
+        },
+      });
+      throw new ServiceUnavailableException(
+        'The payment provider did not start the payment.',
+      );
+    }
 
     await this.audit.record({
       action: 'payment.initiate',

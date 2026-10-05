@@ -394,10 +394,10 @@ function Breakdown({ usage }: { usage: PortalUsage }) {
           <th scope="col" className="py-1.5 font-medium">
             Outcome
           </th>
-          <th scope="col" className="py-1.5 text-right font-medium">
+          <th scope="col" className="py-1.5 pl-3 text-right font-medium">
             Requests
           </th>
-          <th scope="col" className="py-1.5 text-right font-medium">
+          <th scope="col" className="py-1.5 pl-3 text-right font-medium">
             Share
           </th>
         </tr>
@@ -416,10 +416,10 @@ function Breakdown({ usage }: { usage: PortalUsage }) {
                 </span>
               ) : null}
             </th>
-            <td className="py-2 text-right font-medium tabular-nums">
+            <td className="py-2 pl-3 text-right font-medium tabular-nums">
               {count(usage.totals[name])}
             </td>
-            <td className="py-2 text-right tabular-nums text-black/60">
+            <td className="py-2 pl-3 text-right tabular-nums text-black/60">
               {usage.total > 0
                 ? `${Math.round((usage.totals[name] / usage.total) * 100)}%`
                 : "—"}

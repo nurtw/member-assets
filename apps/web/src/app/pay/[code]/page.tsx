@@ -124,13 +124,19 @@ function Pay() {
               "Too many payments were started from this connection. Wait a while and try again.",
               problem.requestId,
             )
-          : problem.status === 404
+          : problem.status === 503
             ? new ApiError(
-                404,
-                "This pay link is no longer in use. Ask your NURTW office for the current one.",
+                503,
+                "The payment could not be started just now. Nothing has been taken. Please try again in a few minutes.",
                 problem.requestId,
               )
-            : problem,
+            : problem.status === 404
+              ? new ApiError(
+                  404,
+                  "This pay link is no longer in use. Ask your NURTW office for the current one.",
+                  problem.requestId,
+                )
+              : problem,
       );
       setBusy(false);
     }

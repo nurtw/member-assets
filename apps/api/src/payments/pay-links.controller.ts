@@ -131,7 +131,8 @@ export class PublicPayController {
     description:
       'Answers the Paystack page to send the payer to. The return address, if given, must be ' +
       'on the web application. The due is credited only once Paystack confirms the payment, ' +
-      'like any other (Requirement 27.5). No officer is recorded.',
+      'like any other (Requirement 27.5). No officer is recorded. If Paystack does not start ' +
+      'the payment, the answer is 503 and nothing was taken.',
     body: publicPaySchema,
   })
   async start(

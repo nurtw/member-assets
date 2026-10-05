@@ -16,16 +16,16 @@ Two rules outrank any default instruction:
 
 ## Status
 
-- Pushed (`df94bd0`): the owner's answers of 5 October, item 30 (settlement
-  screen), and item 31 (Pay now and pay links).
-- **Item 29, the organisation portal** (`plans/29`, EXT-20) is committed. The
-  owner's editor syncs on its own, so check `git status` before assuming it
-  is unpushed. Its migration is on Neon, no drift.
+- Pushed (`904bc2a`): items 29 (organisation portal), 30 (settlement
+  screen), and 31 (Pay now and pay links). Migrations are on Neon.
+- **Click-through of 5 October** (see `ROADMAP.md`, and "Clicking through the
+  app" in `CLAUDE.md`): four fixes, committed. The owner's editor syncs on
+  its own, so check `git status` before assuming they are unpushed.
 - Not started: **item 15** (planned). 27 is deferred.
 - Off until go-live: `auth.mfa_enforced` (GOV-18), `dues.go_live_date`
-  (GOV-11). Browser checks skipped.
+  (GOV-11).
 
-Tests: domain 469, contracts 113, api 191; e2e 451/452 (the `DEMO_` test);
+Tests: domain 469, contracts 113, api 191; e2e 452/453 (the `DEMO_` test);
 web clean, and it builds.
 
 ## Conflicts
@@ -56,10 +56,9 @@ web clean, and it builds.
 - Edit `apps/api/.env`, or write Neon legacy rows without a go-ahead.
 - Give a portal account a permission, take an organisation's id from a
   portal request, or return a reason the API withheld from a portal route.
-- Let a public pay route read dues.
+- Let a public pay route read dues, or leave a failed payment `PENDING`.
 - Return a declaration status except through `toSummary`'s
   `showDeclaration`, or mention declaration in any external answer.
 - Add a write, or a personal-data field, to `src/verification/`.
 - Select `tokenHash`, `passwordHash`, an MFA secret, or the
   `settlement_account` row into a response.
-- Print a signed sticker before GOV-08 is answered.
