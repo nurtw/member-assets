@@ -2,7 +2,7 @@
 
 **Last revised:** 5 October 2026
 
-> Cold-start contract. Overwritten every session.
+> Cold-start contract, overwritten every session.
 
 ## Cold start
 
@@ -16,12 +16,11 @@ Two rules outrank any default instruction:
 
 ## Status
 
-- Pushed: item 28 and the HANDOFF fix (`4a4a0b7`).
-- **Committed locally, not pushed** until the owner agrees:
-  - the owner's answers of 5 October (PRD 1.9)
-  - **item 30, settlement screen** (`plans/30`): Settings → Settlement
-  - **item 31, Pay now and pay links** (`plans/31`, PAY-21)
-- Item 31's migration is on Neon, no drift.
+- Pushed (`42ffa72`): the owner's answers of 5 October (PRD 1.9), and
+  **item 30, settlement screen** (`plans/30`): Settings → Settlement.
+- **Item 31, Pay now and pay links** (`plans/31`, PAY-21) is committed. The
+  owner's editor syncs on its own, so check `git status` before assuming it
+  is unpushed. Its migration is on Neon, no drift.
 - Not started: **item 29, organisation portal** (EXT-20 answered; plan it
   when the owner says) and **item 15** (planned; the owner paused before
   it). 27 is deferred.
@@ -39,15 +38,15 @@ web clean, and it builds.
 ## Known issues — don't re-attempt these fixes
 
 - `master-data.e2e` "seeds no designations" fails (8 `DEMO_` designations).
-- A full e2e run can time out a transaction here. Rerun that suite alone.
-- `ECONNREFUSED` on 5433: Docker Desktop stopped; start it.
+- A full e2e run can time out a transaction. Rerun that suite alone.
+- `ECONNREFUSED` on 5433: start Docker Desktop.
 - Run Prisma from `apps/api` with `CHECKPOINT_DISABLE=1`.
-- CRLF files (most root docs, `seed.ts`, `app.module.ts`): edit with the Edit
+- CRLF files (most root docs, `seed.ts`, `app.module.ts`): use the Edit
   tool or Python bytes.
 
 ## Next steps
 
-1. Push once the owner agrees.
+1. Push whatever `git status` shows ahead, once the owner agrees.
 2. Item 15 or item 29, whichever the owner chooses.
 3. Owner: set the settlement account (Settings → Settlement); GOV-08; the
    EXT-05 pilot; the GOV-11 date; PAY-11's Paystack figure; ORG-05, ORG-06,
