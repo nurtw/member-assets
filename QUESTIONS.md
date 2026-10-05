@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.14
+**Document version:** 1.15
 **Last revised:** 5 October 2026
 
 ---
@@ -1147,9 +1147,18 @@ no limit.
 **Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
 recommendation. **Recorded at.** PRD §23.23, Requirement 12.11 (revision 1.10).
 
-**Planned (item 33), with the choices the project made:** a link lasts 14 days, and its
-page may be opened 30 times a minute from one address; both are settings. The code is not
-a credential, as a pay link's is not (`ARCHITECTURE.md` Decision 9.15).
+**Built as (item 33), with the choices the project made:**
+
+- **A link lasts 14 days**, and its page may be opened 30 times a minute from one address.
+  Both are settings.
+- **The code is not a credential** (`ARCHITECTURE.md` Decision 9.17), as a pay link's is
+  not. It is stored as it is, so the same link can be sent again.
+- **A link no longer open says so**, and the organisation may still apply without it. An
+  application sent on a closed link is taken uninvited and told nothing different.
+- **The System sends nothing.** The administrator sends the link from their own WhatsApp,
+  SMS, or mail, or shows its QR code.
+- **The contact on an invitation is optional**, and is for the administrator's own use when
+  confirming the applicant.
 
 ---
 

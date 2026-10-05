@@ -82,6 +82,12 @@ const STATUS_TONES: Record<string, Tone> = {
   RETIRING: "caution",
   // Officer accounts (item 28). A deactivated account is closed, not denied.
   DEACTIVATED: "neutral",
+  // Invitations (item 33). Open is waiting on the organisation; used did its
+  // work; expired and withdrawn are closed, not refused. An organisation whose
+  // token has run out reads EXPIRED too, and is as neutral.
+  OPEN: "waiting",
+  USED: "affirm",
+  EXPIRED: "neutral",
 };
 
 export function StatusChip({

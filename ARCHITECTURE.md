@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.7
+**Document version:** 1.8
 **Last revised:** 5 October 2026
 **Authority:** Subordinate to `PRD.md`. Where this document and the PRD conflict, the PRD prevails.
 
@@ -485,6 +485,24 @@ can satisfy no permission whatever is later added to the catalogue.
   classes onto what the caller's own answers told it, so the dashboard cannot become the
   oracle Requirement 14.3 forbids.
 
+**Decision 9.17 — an invitation's code is not a credential *(item 33)*.** The API
+administrator may invite a named organisation by a link whose code opens the portal's
+application form addressed to it (PRD Requirement 12.11, revision 1.10). Holding the code
+gives nothing an anonymous visitor lacks but the organisation's name on the form: the
+application is limited, confirmed by telephone or letter, and decided exactly as any other.
+The code is therefore stored as it is, as a pay link's is (Decision 9.15), so the
+administrator can send the same link again. It is sixteen random bytes, kept out of audit
+events, and removed from logged URLs.
+
+- **Its standing is worked out, never stored.** Open, used, expired, or withdrawn follows
+  from its dates (`invitationStanding`), as a token's expiry does.
+- **Used once, by one statement.** A single conditional update inside the application's
+  transaction marks it used only while it is open, so two applications arriving on one link
+  at the same moment cannot both claim it. The other goes in uninvited.
+- **A closed link answers like no link.** Unknown, used, expired, and withdrawn codes get
+  the same 404, and an application sent on one is taken without it and told nothing
+  different.
+
 ---
 
 ## 10. Data protection
@@ -759,3 +777,10 @@ device. Each verdict colour has an ink, a surface, and a solid step, because in 
 theme ink must be light while a fill behind white text must stay dark (`DESIGN.md` §8).
 Printed matter, such as a QR code, sits on a white "paper" token in both themes. If a
 content security policy is added (item 15), it must allow the theme script by its hash.
+
+The following were added by item 33, 5 October 2026 (PRD revision 1.10):
+
+| Matter | Determination | Decision |
+|---|---|---|
+| Inviting an organisation | A personal link to the application form: used once, expiring, withdrawable; it confirms nobody | 9.17, PRD Requirement 12.11 |
+| The invitation's code | Not a credential: stored as it is, never audited, redacted from logs | 9.17 |

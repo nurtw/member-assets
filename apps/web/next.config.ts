@@ -53,6 +53,25 @@ const nextConfig: NextConfig = {
    * blocking regardless of what any browser decides to restrict next.
    * `src/lib/api.ts` calls only relative paths now; see its comment.
    */
+  /**
+   * Item 33: outside organisations have a page of their own. The addresses
+   * they had under Settings → API access still lead there.
+   */
+  async redirects() {
+    return [
+      {
+        source: "/settings/api-access",
+        destination: "/organisations",
+        permanent: true,
+      },
+      {
+        source: "/settings/api-access/:rest*",
+        destination: "/organisations/:rest*",
+        permanent: true,
+      },
+    ];
+  },
+
   async rewrites() {
     return [
       {

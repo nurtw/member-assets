@@ -31,6 +31,7 @@ import {
   type PortalMe,
   type PortalTokens,
   type PortalUsage,
+  type PublicInvitation,
   type ResetPortalPasswordInput,
   type RevokeApiTokenInput,
   type RotateApiTokenInput,
@@ -52,6 +53,7 @@ import {
   type PortalPrincipal,
   type PortalRequest,
 } from './portal-account.decorator.js';
+import { InvitationService } from './invitation.service.js';
 import { PORTAL_USAGE_DEFAULT_DAYS, PortalService } from './portal.service.js';
 
 function principalOf(request: PortalRequest): PortalPrincipal {
@@ -67,6 +69,15 @@ function contextOf(request: Request) {
     ipAddress: request.ip,
     requestId: request.header('x-request-id'),
   };
+}
+
+/** The `days` query of a usage route: a whole number of at least one. */
+function usageDays(days: string | undefined): number {
+  const asked = days === undefined ? PORTAL_USAGE_DEFAULT_DAYS : Number(days);
+  if (!Number.isInteger(asked) || asked < 1) {
+    throw new BadRequestException();
+  }
+  return asked;
 }
 
 function portalCookie(request: Request): string | null {
@@ -87,7 +98,10 @@ function portalCookie(request: Request): string | null {
  */
 @Controller('portal')
 export class PortalController {
-  constructor(private readonly portal: PortalService) {}
+  constructor(
+    private readonly portal: PortalService,
+    private readonly invitations: InvitationService,
+  ) {}
 
   @Public()
   @Post('applications')
@@ -110,6 +124,31 @@ export class PortalController {
   ): Promise<PortalApplicationReceived> {
     try {
       return await this.portal.apply(body, contextOf(request));
+    } catch (error) {
+      if (error instanceof PublicRateLimitedException) {
+        response.setHeader('Retry-After', String(error.retryAfterSeconds));
+      }
+      throw error;
+    }
+  }
+
+  @Public()
+  @Get('invitations/:code')
+  @Documented({
+    summary: 'Who an invitation’s link addresses the application form to.',
+    description:
+      'The organisation’s name and when the link stops working (item 33). An unknown, used, ' +
+      'expired, or withdrawn code answers the same 404. Limited per address; over the limit, ' +
+      '429 with `Retry-After`. An invitation confirms nobody: an application made through it ' +
+      'is confirmed and decided as any other.',
+  })
+  async invitation(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+    @Param('code') code: string,
+  ): Promise<PublicInvitation> {
+    try {
+      return await this.invitations.publicView(code, request.ip);
     } catch (error) {
       if (error instanceof PublicRateLimitedException) {
         response.setHeader('Retry-After', String(error.retryAfterSeconds));
@@ -222,11 +261,7 @@ export class PortalController {
     @Req() request: PortalRequest,
     @Query('days') days?: string,
   ): Promise<PortalUsage> {
-    const asked = days === undefined ? PORTAL_USAGE_DEFAULT_DAYS : Number(days);
-    if (!Number.isInteger(asked) || asked < 1) {
-      throw new BadRequestException();
-    }
-    return this.portal.usage(principalOf(request), asked);
+    return this.portal.usage(principalOf(request), usageDays(days));
   }
 
   @PortalAccount()
@@ -355,5 +390,35 @@ export class PortalAccountsController {
     body: ResetPortalPasswordInput,
   ): Promise<IssuedPortalPassword> {
     return this.portal.resetPassword(actorOf(request), id, body.reason);
+  }
+}
+
+/**
+ * An organisation's usage, as the API administrator sees it (item 33): the
+ * counts its own portal shows, in the same terms, and no more.
+ */
+@Controller('api-clients/:id/usage')
+export class ApiClientUsageController {
+  constructor(private readonly portal: PortalService) {}
+
+  @RequirePermission('api_client.read')
+  @Get()
+  @Documented({
+    summary: 'An organisation’s requests, by day.',
+    description:
+      'What the organisation sees in its own portal: counts by Lagos day, in the terms the ' +
+      'API answered in. No identifier that was looked up is held or shown.',
+    query: [
+      {
+        name: 'days',
+        description: 'How many days back, up to 90. Thirty if left out.',
+      },
+    ],
+  })
+  usage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('days') days?: string,
+  ): Promise<PortalUsage> {
+    return this.portal.clientUsage(id, usageDays(days));
   }
 }

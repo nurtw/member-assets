@@ -330,6 +330,15 @@ export {
 } from './api-client/portal.js';
 
 export {
+  INVITATION_CODE_PATTERN,
+  INVITATION_STANDINGS,
+  invitationExpiresAt,
+  invitationStanding,
+  isInvitationCode,
+  type InvitationStanding,
+} from './api-client/invitation.js';
+
+export {
   ipInRange,
   ipInRanges,
   isValidIpRange,

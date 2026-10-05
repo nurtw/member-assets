@@ -221,4 +221,19 @@ describe('redactUrl', () => {
     );
     expect(redactUrl('/api/v1/payments/initiate')).toBe('/api/v1/payments/initiate');
   });
+
+  it("redacts an invitation's code from the path (item 33)", () => {
+    const code = 'AbCdEfGhIjKlMnOpQrSt_-';
+    expect(redactUrl(`/api/v1/portal/invitations/${code}`)).toBe(
+      '/api/v1/portal/invitations/[redacted]',
+    );
+    // The officers' routes carry an identifier, not a code.
+    expect(
+      redactUrl(
+        '/api/v1/organisation-invitations/7d1f0c2e-1b2a-4c3d-8e4f-5a6b7c8d9e0f/withdrawal',
+      ),
+    ).toBe(
+      '/api/v1/organisation-invitations/7d1f0c2e-1b2a-4c3d-8e4f-5a6b7c8d9e0f/withdrawal',
+    );
+  });
 });

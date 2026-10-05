@@ -216,6 +216,8 @@ export interface ApiClientSummary {
   pausedUntil: string | null;
   /** It applied for itself through the portal (item 29), not through an officer. */
   selfRegistered: boolean;
+  /** It applied through an invitation's link (item 33). */
+  invited: boolean;
   createdAt: string;
 }
 
@@ -244,6 +246,12 @@ export interface ApiClientDetail extends ApiClientSummary {
   applicationExpiresAt: string | null;
   /** Its portal sign-in, if it has one (item 29). */
   portalAccount: PortalAccountSummary | null;
+  /** The invitation it applied through, and who sent it (item 33). */
+  invitation: {
+    id: string;
+    invitedBy: string | null;
+    invitedAt: string;
+  } | null;
 }
 
 /** `GET /api-clients`. */

@@ -32,10 +32,18 @@ const API_TOKEN_SHAPE = /nurtw_[a-z0-9]{8}_[A-Za-z0-9_-]{20,}/g;
  */
 const PAY_LINK_PATH = /(\/pay\/)[A-Za-z0-9_-]{22}(?![A-Za-z0-9_-])/g;
 
+/**
+ * An invitation's code, as it sits in `/portal/invitations/{code}` (item 33).
+ * Not a credential either (Decision 9.17), and kept out of logs the same way.
+ */
+const INVITATION_PATH =
+  /(\/portal\/invitations\/)[A-Za-z0-9_-]{22}(?![A-Za-z0-9_-])/g;
+
 function withoutTokens(text: string): string {
   return text
     .replace(API_TOKEN_SHAPE, REDACTED)
-    .replace(PAY_LINK_PATH, `$1${REDACTED}`);
+    .replace(PAY_LINK_PATH, `$1${REDACTED}`)
+    .replace(INVITATION_PATH, `$1${REDACTED}`);
 }
 
 function sanitisedQuery(query: Request['query']): string {

@@ -58,13 +58,45 @@ Emailing an invitation (no mail service until GOV-08). An invitation that replac
 telephone or letter confirmation, or lifts a limit. More than one portal account.
 
 ## Definition of done
-- [ ] Organisations is in the sidebar, and the old addresses redirect.
-- [ ] An administrator creates an invitation, then copies it, shares it, or shows its QR
+- [x] Organisations is in the sidebar, and the old addresses redirect.
+- [x] An administrator creates an invitation, then copies it, shares it, or shows its QR
       code. It expires, it can be withdrawn with a reason, and each act is audited without
       the code.
-- [ ] The link opens the form with the name filled in and is used once. The application
+- [x] The link opens the form with the name filled in and is used once. The application
       shows who invited it.
-- [ ] An unknown, used, expired, or withdrawn code gets the same answer, and viewing is
+- [x] An unknown, used, expired, or withdrawn code gets the same answer, and viewing is
       limited per address.
-- [ ] Approving an invited application still needs the confirmation.
-- [ ] Tests pass, `openapi.json` is regenerated, and it is clicked through in both themes.
+- [x] Approving an invited application still needs the confirmation.
+- [x] Tests pass, `openapi.json` is regenerated, and it is clicked through in both themes.
+
+**Decided while building (5 October 2026):**
+
+- **The officers' routes are `/organisation-invitations`**, apart from `/api-clients`, so no
+  address there can be taken for an organisation's id. Reading needs `api_client.read`;
+  inviting and withdrawing need `api_client.manage`.
+- **The invitation records its own use** (`used_at`, `api_client_id`), set by one
+  conditional update inside the application's transaction. Two applications arriving on one
+  link at the same moment cannot both claim it. The plan had the organisation pointing at
+  the invitation instead.
+- **A closed link still lets the organisation apply**, uninvited, and the form says so.
+- **Usage for the administrator is a new read-only route**, `GET /api-clients/:id/usage`,
+  over the portal's own projection.
+- **One organisation's page is seven tabs:** Overview, Approve (Access once approved),
+  Tokens, Usage, Limits, Portal account, and Settings. The open tab is in the address. The
+  notices about its standing stay above the tabs.
+- **Registering directly has a page of its own** (`/organisations/new`).
+- **Sending is from the officer's own apps:** copy, WhatsApp, SMS, email, or the QR code.
+  The System sends nothing.
+- **The migration is on Neon** (26 migrations, no drift).
+
+**Clicked through (5 October 2026)** on the local stack with synthetic names: the old
+address redirecting; inviting, and the link with its QR code and ways to send; the form
+addressed to the organisation; the application listed as invited; approval refused until
+the applicant is confirmed, then given; every tab, and a reload keeping the tab; a used
+link saying so; withdrawing with a reason; search and filters; both themes, and a phone. No
+contrast failure. The first run found one fault, since fixed: an empty name showed the
+validator's own wording.
+
+**Not clicked through:** the WhatsApp, SMS, and email buttons beyond their addresses (they
+open the officer's own apps), an expired link (the tests cover it), and the per-address
+limit on a link's page (the tests cover it).

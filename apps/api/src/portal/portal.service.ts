@@ -58,6 +58,7 @@ import {
   SettingsService,
 } from '../settings/settings.service.js';
 import { generateTemporaryPassword } from '../users/users.service.js';
+import { InvitationService } from './invitation.service.js';
 import type { PortalPrincipal } from './portal-account.decorator.js';
 import {
   PORTAL_ACCOUNT_SELECT,
@@ -129,6 +130,7 @@ export class PortalService implements OnModuleInit, OnModuleDestroy {
     private readonly clients: ApiClientService,
     private readonly tokens: ApiTokenService,
     private readonly rateLimits: RateLimitService,
+    private readonly invitations: InvitationService,
   ) {}
 
   onModuleInit(): void {
@@ -239,6 +241,15 @@ export class PortalService implements OnModuleInit, OnModuleDestroy {
           },
           select: { id: true },
         });
+        // An open invitation is used by this application (item 33); any other
+        // code is ignored. Either way the applicant is told the same.
+        const invitationId = await this.invitations.useInTransaction(
+          tx,
+          input.invitationCode,
+          client.id,
+          context,
+          now,
+        );
         await this.audit.record(
           {
             action: 'api_client.apply',
@@ -250,6 +261,7 @@ export class PortalService implements OnModuleInit, OnModuleDestroy {
               status: 'PENDING',
               selfRegistered: true,
               portalAccountId: account.id,
+              invited: invitationId !== null,
             },
             requestId: context.requestId,
             ipAddress: context.ipAddress,
@@ -426,10 +438,37 @@ export class PortalService implements OnModuleInit, OnModuleDestroy {
    * The organisation's own requests, by Lagos day. Counted in the database,
    * so a busy organisation's month is a few hundred rows here, not its log.
    */
-  async usage(
+  usage(
     principal: PortalPrincipal,
     days: number,
     now: Date = new Date(),
+  ): Promise<PortalUsage> {
+    return this.usageFor(principal.apiClientId, days, now);
+  }
+
+  /**
+   * The same counts, for the API administrator (item 33): what the
+   * organisation itself sees in its portal, and no more.
+   */
+  async clientUsage(
+    apiClientId: string,
+    days: number,
+    now: Date = new Date(),
+  ): Promise<PortalUsage> {
+    const client = await this.prisma.apiClient.findUnique({
+      where: { id: apiClientId },
+      select: { id: true },
+    });
+    if (!client) {
+      throw new NotFoundException();
+    }
+    return this.usageFor(apiClientId, days, now);
+  }
+
+  private async usageFor(
+    apiClientId: string,
+    days: number,
+    now: Date,
   ): Promise<PortalUsage> {
     const span = Math.min(Math.max(1, Math.trunc(days)), PORTAL_USAGE_MAX_DAYS);
     const today = lagosDay(now);
@@ -455,7 +494,7 @@ export class PortalService implements OnModuleInit, OnModuleDestroy {
       SELECT to_char(created_at + interval '1 hour', 'YYYY-MM-DD') AS day,
              result_class, status_code, rate_limited, count(*)::int AS n
         FROM api_request_log
-       WHERE client_id = ${principal.apiClientId}::uuid
+       WHERE client_id = ${apiClientId}::uuid
          AND created_at >= ${startText}::timestamp
        GROUP BY 1, 2, 3, 4`;
 

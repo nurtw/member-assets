@@ -114,9 +114,10 @@ describe("activeItem", () => {
 
 describe("breadcrumbs", () => {
   it("names the group and the screen, the screen not a link", () => {
-    expect(
-      breadcrumbs("/settings/api-access/limits", OFFICER_NAVIGATION),
-    ).toEqual([{ label: "Partners" }, { label: "Limits" }]);
+    expect(breadcrumbs("/organisations/limits", OFFICER_NAVIGATION)).toEqual([
+      { label: "Partners" },
+      { label: "Limits" },
+    ]);
   });
 
   it("calls a record's page Details, beneath a link to its list", () => {

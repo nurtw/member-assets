@@ -13,6 +13,7 @@ import {
   MAX_PASSWORD_LENGTH,
   MIN_PASSWORD_LENGTH,
   type ApiClientStatus,
+  type InvitationStanding,
   type PortalUsageClass,
 } from '@nurtw/domain';
 import { z } from 'zod';
@@ -62,6 +63,12 @@ export const portalApplicationSchema = z.object({
     .min(7, 'A telephone number is required, to confirm the application.')
     .max(40),
   password: newPassword,
+  /**
+   * The code from an invitation's link (item 33, EXT-21). An open invitation
+   * is used by this application; any other code is ignored, and the
+   * application goes in uninvited. Either way the answer is the same.
+   */
+  invitationCode: z.string().trim().max(64).optional(),
 });
 export type PortalApplicationInput = z.infer<typeof portalApplicationSchema>;
 
@@ -213,4 +220,77 @@ export interface PortalTokens {
   tokens: ApiTokenSummary[];
   /** `false` until the organisation is approved and active. */
   canManage: boolean;
+}
+
+// --- Invitations (item 33) ----------------------------------------------------
+
+/**
+ * `POST /organisation-invitations` (PRD Requirement 12.11, revision 1.10;
+ * EXT-21). The name is who the form will be addressed to; the contact, if
+ * given, is whom the administrator expects to hear from. An invitation
+ * confirms nobody: the application it produces is confirmed by telephone or
+ * letter and decided as any other.
+ */
+export const createInvitationSchema = z.object({
+  organisationName: z
+    .string()
+    .trim()
+    .min(2, 'The organisation’s name is required.')
+    .max(200),
+  contactName: personName.optional(),
+  contactEmail: email.optional(),
+  contactPhone: z
+    .string()
+    .trim()
+    .min(7, 'Give the whole telephone number.')
+    .max(40)
+    .optional(),
+  note: z
+    .string()
+    .trim()
+    .max(500, 'Keep the note under 500 characters.')
+    .optional(),
+});
+export type CreateInvitationInput = z.infer<typeof createInvitationSchema>;
+
+/** `POST /organisation-invitations/:id/withdrawal`. */
+export const withdrawInvitationSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(4, 'Give a reason of at least 4 characters.')
+    .max(1000, 'A reason may not exceed 1000 characters.'),
+});
+export type WithdrawInvitationInput = z.infer<typeof withdrawInvitationSchema>;
+
+export interface InvitationSummary {
+  id: string;
+  /** The link is `/portal/apply?invite={code}` on the web application. */
+  code: string;
+  organisationName: string;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  note: string | null;
+  /** Worked out from the dates, never stored. */
+  standing: InvitationStanding;
+  createdAt: string;
+  expiresAt: string;
+  createdBy: string | null;
+  /** The application it produced; its organisation, while that record exists. */
+  used: { at: string; apiClientId: string | null } | null;
+  withdrawn: { at: string; by: string | null; reason: string | null } | null;
+}
+
+/** `GET /organisation-invitations`. Newest first. */
+export interface InvitationList {
+  invitations: InvitationSummary[];
+  /** How long a new link lasts, in days (`portal.invitation_expiry_days`). */
+  expiryDays: number;
+}
+
+/** `GET /portal/invitations/:code`: who the form is addressed to, and until when. */
+export interface PublicInvitation {
+  organisationName: string;
+  expiresAt: string;
 }

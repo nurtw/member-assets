@@ -1,18 +1,24 @@
 "use client";
 
-import { portalApplicationSchema } from "@nurtw/contracts";
+import {
+  portalApplicationSchema,
+  type PublicInvitation,
+} from "@nurtw/contracts";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type FormEvent } from "react";
+import useSWR from "swr";
 
+import { shortDay } from "@/components/api-access";
 import { PortalFrame } from "@/components/portal-shell";
 import {
   Button,
   ErrorNotice,
   Field,
+  Notice,
   TextArea,
   TextInput,
 } from "@/components/ui";
-import { ApiError, api } from "@/lib/api";
+import { ApiError, api, fetcher } from "@/lib/api";
 
 /**
  * An outside organisation applies for access (PRD §23.23, revision 1.9;
@@ -22,8 +28,29 @@ import { ApiError, api } from "@/lib/api";
  * API administrator has confirmed who sent it and approved it. The answer
  * shown afterwards is the same for every application, so the form does not
  * reveal which addresses already hold an account.
+ *
+ * Opened from an invitation's link (`?invite=`, item 33), the form is
+ * addressed to the organisation invited and sends the code with the
+ * application. An invitation confirms nobody, and a link no longer open
+ * changes nothing: the application goes in all the same.
  */
+
+/** The code in the address, read in the browser: this page is prerendered. */
+function useInviteCode(): string | null {
+  return useSyncExternalStore(
+    () => () => {},
+    () => new URLSearchParams(window.location.search).get("invite"),
+    () => null,
+  );
+}
+
 export default function PortalApplyPage() {
+  const inviteCode = useInviteCode();
+  const { data: invitation, error: invitationError } = useSWR<PublicInvitation>(
+    inviteCode ? `/portal/invitations/${inviteCode}` : null,
+    fetcher,
+    { shouldRetryOnError: false, revalidateOnFocus: false },
+  );
   const [form, setForm] = useState({
     organisationName: "",
     businessPurpose: "",
@@ -37,6 +64,19 @@ export default function PortalApplyPage() {
   const [busy, setBusy] = useState(false);
   const [received, setReceived] = useState(false);
 
+  // An invitation fills in the name it was made out to, once, and leaves it
+  // the applicant's to correct. Adjusted during render, not in an effect, so
+  // the empty field is never painted first.
+  const [filledFrom, setFilledFrom] = useState<string | null>(null);
+  if (invitation && inviteCode && filledFrom !== inviteCode) {
+    setFilledFrom(inviteCode);
+    setForm((current) =>
+      current.organisationName
+        ? current
+        : { ...current, organisationName: invitation.organisationName },
+    );
+  }
+
   const set = (key: keyof typeof form) => (value: string) =>
     setForm((current) => ({ ...current, [key]: value }));
 
@@ -44,7 +84,9 @@ export default function PortalApplyPage() {
     event.preventDefault();
     setFailure(null);
     // The same schema the API applies, so a mistake is caught before it is sent.
-    const parsed = portalApplicationSchema.safeParse(form);
+    const parsed = portalApplicationSchema.safeParse(
+      invitation && inviteCode ? { ...form, invitationCode: inviteCode } : form,
+    );
     if (!parsed.success) {
       const found: Record<string, string> = {};
       for (const issue of parsed.error.issues) {
@@ -129,6 +171,21 @@ export default function PortalApplyPage() {
         noValidate
         className="grid gap-4 rounded-lg border border-line bg-surface p-6"
       >
+        {invitation ? (
+          <Notice
+            tone="info"
+            title={`The Union invited ${invitation.organisationName} to apply`}
+          >
+            This link is for {invitation.organisationName} alone and works until{" "}
+            {shortDay(invitation.expiresAt)}. The Union still confirms and
+            decides every application.
+          </Notice>
+        ) : inviteCode && invitationError ? (
+          <Notice tone="caution" title="This invitation link is no longer open">
+            It has been used, withdrawn, or has run out. You can still apply
+            below, or ask the Union for a new link.
+          </Notice>
+        ) : null}
         <p className="text-sm text-muted-foreground">
           For organisations that need to check vehicles or memberships against
           the Union&apos;s records. The Union approves each one, and decides

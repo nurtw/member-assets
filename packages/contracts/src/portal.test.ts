@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   applicantConfirmationSchema,
   approveApiClientSchema,
+  createInvitationSchema,
   createPortalAccountSchema,
   portalApplicationSchema,
   portalChangePasswordSchema,
   portalLoginSchema,
   resetPortalPasswordSchema,
+  withdrawInvitationSchema,
 } from './index.js';
 
 const APPLICATION = {
@@ -133,5 +135,56 @@ describe('the administrator’s side of the portal', () => {
       resetPortalPasswordSchema.safeParse({ reason: 'Password forgotten' })
         .success,
     ).toBe(true);
+  });
+});
+
+describe('inviting an organisation (item 33)', () => {
+  it('needs only the name, and trims what was typed', () => {
+    expect(
+      createInvitationSchema.parse({ organisationName: ' Road Agency ' }),
+    ).toEqual({ organisationName: 'Road Agency' });
+  });
+
+  it('lower-cases a contact address, and refuses one that is not an address', () => {
+    expect(
+      createInvitationSchema.parse({
+        organisationName: 'Road Agency',
+        contactEmail: ' Desk@Agency.Example ',
+      }).contactEmail,
+    ).toBe('desk@agency.example');
+    expect(
+      createInvitationSchema.safeParse({
+        organisationName: 'Road Agency',
+        contactEmail: 'not an address',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('carries no access, and no code, whatever is sent', () => {
+    const parsed = createInvitationSchema.parse({
+      organisationName: 'Road Agency',
+      code: 'abcdefghijklmnopqrstuv',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      scopes: ['vehicle:verify:plate'],
+      status: 'ACTIVE',
+    });
+    expect(Object.keys(parsed)).toEqual(['organisationName']);
+  });
+
+  it('withdraws only with a reason', () => {
+    expect(withdrawInvitationSchema.safeParse({ reason: 'no' }).success).toBe(
+      false,
+    );
+    expect(
+      withdrawInvitationSchema.parse({ reason: ' Sent to the wrong desk ' }),
+    ).toEqual({ reason: 'Sent to the wrong desk' });
+  });
+
+  it('lets an application carry an invitation’s code, and nothing else of it', () => {
+    const parsed = portalApplicationSchema.parse({
+      ...APPLICATION,
+      invitationCode: ' abcdefghijklmnopqrstuv ',
+    });
+    expect(parsed.invitationCode).toBe('abcdefghijklmnopqrstuv');
   });
 });

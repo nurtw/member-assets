@@ -153,8 +153,9 @@ A route carrying neither an explicit permission requirement nor an explicit publ
 declaration is **refused**, not allowed. Every route declares exactly one of a permission, a
 scope, the organisation portal, or public access. The public surface is health, login,
 logout, signed media links, the payment provider's webhook, the two routes behind a
-personal pay link (`GET` and `POST /pay/{code}`), and the portal's application, sign-in,
-and sign-out routes. The test suite fails if another appears.
+personal pay link (`GET` and `POST /pay/{code}`), the portal's application, sign-in, and
+sign-out routes, and the page behind an invitation's link
+(`GET /portal/invitations/{code}`). The test suite fails if another appears.
 
 **The organisation portal** (`/portal/...`) is a fifth kind of route. It is authenticated by
 the portal's own session cookie, `nurtw_portal_session`, and nothing else: an officer's
@@ -165,6 +166,16 @@ and takes no organisation's id from the caller.
 The pay routes are public because holding a pay link is what lets a payer pay. They
 answer with the subject's label and the published amounts, never with what is owed or
 paid. They are limited per address, and a limit answers `429` with `Retry-After`.
+
+**Invitations.** The API administrator may invite a named organisation to apply
+(`POST /organisation-invitations`, under `api_client.manage`). The answer carries a code,
+and the link to send is `/portal/apply?invite={code}` on the web application.
+`GET /portal/invitations/{code}` is public because the organisation invited has no account
+yet. It answers with the organisation's name and the link's expiry, and with the same `404`
+for an unknown, used, expired, or withdrawn code. `POST /portal/applications` takes the
+code as `invitationCode`: an open invitation is used by that application, once, and any
+other code is ignored. An invitation confirms nobody and lifts no limit. The application is
+confirmed and decided as any other.
 
 ---
 

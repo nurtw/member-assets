@@ -1005,6 +1005,8 @@ model User {
   apiTokensCreated          ApiToken[]                 @relation("ApiTokenCreatedBy")
   apiPausesLifted           ApiClientPause[]           @relation("ApiClientPauseLiftedBy")
   recoveryCodes             UserRecoveryCode[]
+  invitationsCreated        PortalInvitation[]         @relation("PortalInvitationCreatedBy")
+  invitationsWithdrawn      PortalInvitation[]         @relation("PortalInvitationWithdrawnBy")
 
   @@map("user")
 }
@@ -1274,6 +1276,8 @@ model ApiClient {
   sequenceStates    ApiSequenceState[]
   pauses            ApiClientPause[]
   portalAccount     PortalAccount?
+  /// The invitation it applied through, if any (item 33, EXT-21).
+  invitation        PortalInvitation?
 
   @@index([status])
   @@map("api_client")
@@ -1329,6 +1333,46 @@ model PortalSession {
 
   @@index([portalAccountId])
   @@map("portal_session")
+}
+
+/// An invitation for a named organisation to apply through the portal (PRD
+/// Requirement 12.11, revision 1.10; `QUESTIONS.md` EXT-21 — item 33).
+///
+/// Whether it is open, used, expired, or withdrawn is worked out from these
+/// dates, never stored. `usedAt` and `apiClientId` are set together, by one
+/// conditional update in the application's transaction, so a link is used
+/// once however many arrive at the same moment.
+///
+/// The code is not a credential (`ARCHITECTURE.md` Decision 9.17): an
+/// invitation confirms nobody and lifts no limit. It is stored as it is, kept
+/// out of audit events, and redacted from logged URLs.
+model PortalInvitation {
+  id   String @id @default(uuid()) @db.Uuid
+  code String @unique
+
+  organisationName String  @map("organisation_name")
+  contactName      String? @map("contact_name")
+  contactEmail     String? @map("contact_email")
+  contactPhone     String? @map("contact_phone")
+  note             String?
+
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  expiresAt       DateTime @map("expires_at")
+
+  usedAt      DateTime? @map("used_at")
+  apiClientId String?   @unique @map("api_client_id") @db.Uuid
+
+  withdrawnAt       DateTime? @map("withdrawn_at")
+  withdrawnByUserId String?   @map("withdrawn_by_user_id") @db.Uuid
+  withdrawReason    String?   @map("withdraw_reason")
+
+  createdByUser   User?      @relation("PortalInvitationCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  withdrawnByUser User?      @relation("PortalInvitationWithdrawnBy", fields: [withdrawnByUserId], references: [id], onDelete: SetNull)
+  apiClient       ApiClient? @relation(fields: [apiClientId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@map("portal_invitation")
 }
 
 /// PRD Requirement 12.1–12.2 — tokens are stored as hashes. The secret is shown

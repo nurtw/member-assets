@@ -68,22 +68,31 @@ function niceCeiling(peak: number): number {
 
 export function PortalUsageSection({
   limits,
+  source = "/portal/usage",
+  description = "Your organisation's own requests to the API, counted by day in Lagos time. No plate, sticker, or membership number you looked up is kept or shown.",
 }: {
-  limits: PortalMe["organisation"]["limits"];
+  limits: Pick<
+    NonNullable<PortalMe["organisation"]["limits"]>,
+    "usedToday" | "dailyQuota"
+  > | null;
+  /**
+   * Where the counts come from. The portal reads its own; the API
+   * administrator reads an organisation's (item 33), which is the same
+   * projection and no more.
+   */
+  source?: string;
+  description?: string;
 }) {
   const [days, setDays] = useState(30);
   const [asTable, setAsTable] = useState(false);
   const { data, error } = useSWR<PortalUsage>(
-    `/portal/usage?days=${days}`,
+    `${source}?days=${days}`,
     fetcher,
     { keepPreviousData: true },
   );
 
   return (
-    <Section
-      title="Usage"
-      description="Your organisation's own requests to the API, counted by day in Lagos time. No plate, sticker, or membership number you looked up is kept or shown."
-    >
+    <Section title="Usage" description={description}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="w-48">
           <label htmlFor="usageRange" className="sr-only">

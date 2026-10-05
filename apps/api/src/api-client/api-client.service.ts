@@ -77,6 +77,14 @@ const SUMMARY_SELECT = {
   disclosureProfile: { select: { id: true, code: true, label: true } },
   scopes: { select: { scope: true } },
   tokens: { select: TOKEN_SELECT, orderBy: { createdAt: 'desc' } },
+  // The invitation it applied through (item 33), and who sent it.
+  invitation: {
+    select: {
+      id: true,
+      createdAt: true,
+      createdByUser: { select: { fullName: true } },
+    },
+  },
 } as const;
 
 const DETAIL_SELECT = {
@@ -772,6 +780,7 @@ export class ApiClientService {
       currentToken: tokens.find((token) => token.state === 'CURRENT') ?? null,
       pausedUntil: pausedUntil?.toISOString() ?? null,
       selfRegistered: row.selfRegistered,
+      invited: row.invitation !== null,
       createdAt: row.createdAt.toISOString(),
     };
   }
@@ -814,6 +823,13 @@ export class ApiClientService {
           : null,
       portalAccount: row.portalAccount
         ? toPortalAccountSummary(row.portalAccount, now)
+        : null,
+      invitation: row.invitation
+        ? {
+            id: row.invitation.id,
+            invitedBy: row.invitation.createdByUser?.fullName ?? null,
+            invitedAt: row.invitation.createdAt.toISOString(),
+          }
         : null,
     };
   }

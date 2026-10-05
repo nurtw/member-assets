@@ -542,10 +542,12 @@ SELECT l.letter_reference, l.superseded_at, n.letter_reference AS replaced_by,
 
 ### Admitting an external organisation
 
-From **API access** on the dashboard, or `/api/v1/api-clients`. Three acts, in this order:
+From **Partners → Organisations** in the sidebar, or `/api/v1/api-clients`. Three acts, in
+this order:
 
-1. **Register** it (`api_client.manage`): the organisation, its purpose, its technical
-   contact, and any address ranges it will call from. It is pending and can do nothing.
+1. **Register** it (`api_client.manage`), with **Register directly**: the organisation, its
+   purpose, its technical contact, and any address ranges it will call from. It is pending
+   and can do nothing. (Or invite it to enter its own details: see below.)
 2. **Approve** it (`api_client.manage`): choose a disclosure profile and only the scopes its
    purpose needs, and record the data-sharing agreement's reference and signing date. No
    agreement, no approval (`QUESTIONS.md` EXT-07). The approving officer is recorded.
@@ -564,13 +566,13 @@ organisation that can do nothing, and a portal account that can see only that.
 
 **Deciding an application** (`api_client.manage`):
 
-1. **API access** lists "Applications from the portal". Open one.
+1. **Organisations** lists "Applications awaiting a decision". Open one.
 2. **Confirm who applied**, by telephoning the number given or by writing to the
    organisation. Nobody at the Union has checked it until you do, and the System sends no
    mail.
-3. **Approve** as for any organisation (above), and say how the applicant was confirmed:
-   by telephone or by letter. The approval is refused without it. Or refuse the application
-   under **Status**, with a reason.
+3. **Approve** on its **Approve** tab, as for any organisation (above), and say how the
+   applicant was confirmed: by telephone or by letter. The approval is refused without it.
+   Or refuse the application under **Settings**, with a reason.
 
 An application nobody decides **lapses after 30 days** (`portal.application_expiry_days`).
 The organisation's record is kept, marked revoked with that reason, and its portal account
@@ -609,6 +611,46 @@ audited as before, with the organisation as the actor in place of an officer:
 ```sql
 SELECT action, subject_id, created_at FROM audit_event
  WHERE actor_api_client_id = '<organisation id>' ORDER BY created_at DESC;
+```
+
+### Inviting an organisation to apply
+
+Item 33 (`QUESTIONS.md` EXT-21). For an organisation that should enter its own details.
+
+1. **Organisations → Invite organisation** (`api_client.manage`). Name the organisation.
+   A contact's name, phone, and email are optional, and a note is for the Union's own
+   record.
+2. **Send the link.** The dialog shows the link and its QR code, with buttons that open
+   your own WhatsApp, SMS, or mail with a message written in. The System sends nothing
+   itself.
+3. **The organisation opens the link** and finds the application form addressed to it. It
+   still applies, and you still confirm it by telephone or letter and approve it as above.
+   **An invitation confirms nobody:** whoever held the link could have applied.
+
+A link **works once** and lasts **14 days** (`portal.invitation_expiry_days`). Its page may
+be opened 30 times a minute from one address (`portal.invitation_views_per_minute`).
+
+**Invitations** lists every link with what became of it: open, used, expired, or
+withdrawn. An open one can be **sent again** (the same link) or **withdrawn**, with a
+reason; a withdrawn link stops working at once and cannot be reopened. A used one leads to
+the application it produced. A link that is no longer open tells the organisation so and
+lets it apply without one.
+
+To change how long links last:
+
+```sql
+INSERT INTO system_setting (key, value, description, updated_at)
+VALUES ('portal.invitation_expiry_days', '30',
+        'Days an invitation link lasts (EXT-21).', now())
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+```
+
+Audited as `portal_invitation.create`, `portal_invitation.use`, and
+`portal_invitation.withdraw`. The link's code is never in the audit trail:
+
+```sql
+SELECT action, subject_id, actor_user_id, reason, created_at FROM audit_event
+ WHERE action LIKE 'portal_invitation.%' ORDER BY created_at DESC LIMIT 50;
 ```
 
 ### Replacing and revoking API tokens

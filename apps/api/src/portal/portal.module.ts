@@ -3,8 +3,11 @@ import { Module } from '@nestjs/common';
 import { ApiClientModule } from '../api-client/api-client.module.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { RateLimitModule } from '../rate-limit/rate-limit.module.js';
+import { InvitationService } from './invitation.service.js';
+import { InvitationsController } from './invitations.controller.js';
 import { PortalSessionModule } from './portal-session.service.js';
 import {
+  ApiClientUsageController,
   PortalAccountsController,
   PortalController,
 } from './portal.controller.js';
@@ -19,7 +22,12 @@ import { PortalService } from './portal.service.js';
  */
 @Module({
   imports: [ApiClientModule, AuditModule, RateLimitModule, PortalSessionModule],
-  controllers: [PortalController, PortalAccountsController],
-  providers: [PortalService],
+  controllers: [
+    PortalController,
+    PortalAccountsController,
+    ApiClientUsageController,
+    InvitationsController,
+  ],
+  providers: [PortalService, InvitationService],
 })
 export class PortalModule {}

@@ -338,9 +338,10 @@ covers every route the moment it exists. A route carrying neither `@Public()` no
 every route added without thought would become a hole nobody notices until an audit.
 
 - `@RequirePermission('vehicle.declare')` — names a *permission*, never a role.
-- `@Public()` — health, login, logout, the signed media link, the Paystack webhook, and
-  the pay page's two routes (item 31). `test/openapi.e2e-spec.ts` pins the list. The QR
-  verification page (PRD §23.13) is not built yet.
+- `@Public()` — health, login, logout, the signed media link, the Paystack webhook, the
+  pay page's two routes (item 31), and an invitation's page (item 33).
+  `test/openapi.e2e-spec.ts` pins the list. The QR verification page (PRD §23.13) is not
+  built yet.
 - `@SignedIn()` — any session, no permission: the officer's own account only (item 28).
   `test/openapi.e2e-spec.ts` pins the list.
 - `@RequireScope('vehicle:verify:plate')` — an **external** route (item 11), reached by API
@@ -873,6 +874,31 @@ its own tokens (EXT-20). Approval and access stay with `api_client.manage`.
   returned once.
 - **Tests** switch the limits and the lockout threshold by spying on
   `SettingsService.getPositiveInteger`.
+
+### Organisations and invitations (item 33)
+
+The officers' screens for outside organisations are `/organisations` (the list, the
+invitations, one organisation in tabs, profiles, and limits). The addresses under
+`/settings/api-access` redirect there.
+
+- **An invitation confirms nobody and lifts no limit** (EXT-21). It opens the portal's form
+  addressed to one organisation. Approving an invited application still needs
+  `applicantConfirmation`, and the form's limits still apply. Never let a code skip either.
+- **Its standing is worked out, never stored** (`invitationStanding` in `packages/domain`).
+- **Used once, by one statement.** `InvitationService.useInTransaction` is a conditional
+  `updateMany` inside the application's transaction. Never read the invitation and then
+  write it. Withdrawing is the same shape.
+- **The code is not a credential** (Decision 9.17). It is stored as it is so the link can
+  be sent again. It never goes in an audit event, and `redactUrl` removes it from logged
+  URLs.
+- **`GET /portal/invitations/:code` is public**, and answers the same 404 for an unknown,
+  used, expired, or withdrawn code. It is limited by `portal.invitation_views_per_minute`
+  (30). A link lasts `portal.invitation_expiry_days` (14). Both fall back in code; a suite
+  switches them by spying on `SettingsService.getPositiveInteger`.
+- **`GET /api-clients/:id/usage`** gives an officer the portal's own projection
+  (`portalUsageClass`), and no more.
+- **The System sends nothing.** The invite dialog opens the officer's own WhatsApp, SMS, or
+  mail with the message written in, and draws the QR code in the browser.
 
 ### Vehicle totals (item 14)
 

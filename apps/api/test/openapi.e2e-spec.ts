@@ -134,10 +134,16 @@ describe('API reference (e2e)', () => {
     // The pay routes (item 31, PRD Requirement 27.8 revision 1.9) are public
     // because holding a pay link is what lets a payer pay. They read no dues,
     // reveal nothing beyond the published amounts, and are limited per address.
+    //
+    // An invitation's page (item 33, Requirement 12.11 revision 1.10) is public
+    // because the organisation invited has no account yet. It says only whom
+    // the form is addressed to and until when, answers every closed link
+    // alike, and is limited per address. An invitation confirms nobody.
     expect(publicRoutes).toEqual([
       'GET /api/v1/health',
       'GET /api/v1/media/:id/content',
       'GET /api/v1/pay/:code',
+      'GET /api/v1/portal/invitations/:code',
       'POST /api/v1/auth/login',
       'POST /api/v1/auth/logout',
       'POST /api/v1/pay/:code',
