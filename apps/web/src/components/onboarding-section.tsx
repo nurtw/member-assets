@@ -5,7 +5,11 @@ import type {
   OnboardingState,
   VehicleDetail,
 } from "@nurtw/contracts";
-import { normalizePlateNumber, type LegacyBarcodeReading } from "@nurtw/domain";
+import {
+  NEW_STICKERS_IN_USE,
+  normalizePlateNumber,
+  type LegacyBarcodeReading,
+} from "@nurtw/domain";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -32,12 +36,9 @@ import { useSession } from "@/lib/session";
 
 type Method = "LEGACY" | "SIGNED";
 
-/**
- * The owner's direction of 3 October 2026: no new NURTW stickers for now, so
- * onboarding is by reattaching a Transpay sticker. The new-sticker path stays
- * built, and switching it back on is this one flag.
- */
-const NEW_STICKERS_IN_USE = false;
+// New NURTW stickers are paused (VEH-20). The flag lives in `@nurtw/domain`
+// beside `stickerOffer`, so this panel, the vehicle's banner, and the prompt
+// after adding a vehicle change together when it is switched (item 35).
 
 const FEE_FOR: Record<Method, string> = {
   LEGACY: "STICKER_REATTACHMENT",

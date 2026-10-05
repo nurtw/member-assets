@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.13
+**Document version:** 1.14
 **Last revised:** 5 October 2026
 
 ---
@@ -814,7 +814,17 @@ whose Transpay sticker is on the register gets the full prompt: pay the fee, the
 (Requirement 9A.4).
 
 **Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
-recommendation. **Recorded at.** Roadmap item 35, and PRD §9A when it is built.
+recommendation. **Recorded at.** PRD Requirement 9A.7 (revision 1.11).
+
+**Built as (item 35), with the choices the project made:**
+
+- **The prompt appears after "finish"**, both on Vehicles → New and at the end of a
+  registration's vehicle step, never after "add another". A registration's list of vehicles
+  added offers "Assign sticker" against each.
+- **It is shown only to an officer who can attach a sticker.** Anyone else sees the banner,
+  which says who can.
+- **The onboarding panel moved up**, under the vehicle's details, where the banner's button
+  leads.
 
 ---
 

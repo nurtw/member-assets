@@ -59,10 +59,15 @@ export default function NewVehiclePage() {
             // declaration and its conflicting counterpart rather than
             // silently landing on it as if nothing unusual happened.
             setDisputed(true);
-            setTimeout(() => router.push(`/vehicles/${vehicle.id}`), 2500);
+            setTimeout(
+              () => router.push(`/vehicles/${vehicle.id}?added=1`),
+              2500,
+            );
             return;
           }
-          router.push(`/vehicles/${vehicle.id}`);
+          // Item 35: the vehicle's page opens on a prompt to assign its
+          // sticker.
+          router.push(`/vehicles/${vehicle.id}?added=1`);
         }}
       />
     </div>

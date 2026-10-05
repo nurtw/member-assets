@@ -44,12 +44,37 @@ Lifting the pause on new stickers (VEH-20). Printing stickers. Adding Transpay's
 conditions of a reattachment (Requirement 9A.4), or to who may attach.
 
 ## Definition of done
-- [ ] A vehicle without a sticker shows the banner on every view. For an officer with
+- [x] A vehicle without a sticker shows the banner on every view. For an officer with
       `sticker.attach`, its button reaches the onboarding panel.
-- [ ] Finishing adding a vehicle ends on the prompt, which closes and stays closed for that
+- [x] Finishing adding a vehicle ends on the prompt, which closes and stays closed for that
       visit.
-- [ ] While new stickers are paused, a vehicle without a register barcode is told so, and
+- [x] While new stickers are paused, a vehicle without a register barcode is told so, and
       no payment is offered.
-- [ ] Attaching a sticker removes the banner.
-- [ ] Words and icons carry the state in both themes. Lint, typecheck, build, and the web
+- [x] Attaching a sticker removes the banner: it reads the vehicle's onboarding, which the
+      panel reloads after attaching. Not seen in a browser (below).
+- [x] Words and icons carry the state in both themes. Lint, typecheck, build, and the web
       tests pass, and it is clicked through.
+
+**Decided while building (5 October 2026):**
+
+- **The prompt follows "finish" in both places a vehicle is added:** Vehicles → New, and a
+  registration's vehicle step, where closing it carries on to the application as before.
+  "Add another" never prompts; the registration's list of vehicles added offers "Assign
+  sticker" against each instead.
+- **Only an officer who can attach a sticker sees the prompt.** Anyone else sees the
+  banner, which says who can.
+- **`?added=1` and `?assign=1` are spent on first use**, so a reload never prompts again.
+- **A notice can carry its own icon and one action** (`Notice`), used here for the sticker
+  icon and the "Assign sticker" button.
+- **PRD 1.11** records the direction as Requirement 9A.7.
+
+**Clicked through (5 October 2026)** on the local stack, with synthetic plates and one
+synthetic register entry: the prompt and banner where nothing can be given (no payment
+offered), the prompt and banner where the register holds the sticker, "Assign sticker"
+bringing the panel into view with the focus, the registration step's prompt, and
+`?assign=1`. Both themes, and a phone. No console error or failed request.
+
+**Not clicked through:** the banner as an officer without `sticker.attach` (its plain
+branch), and attaching a sticker to watch the banner go, which needs a confirmed Paystack
+payment. The API's attachment tests cover the onboarding being set; the banner's hiding on
+it is not tested in a browser.

@@ -588,8 +588,12 @@ record the same plate at once. Preserve it too.
   no API route can add to it. `plans/27-transpay-stock-intake.md` holds the deferred
   direction to change that; do not build it before the owner takes it up.
 - **New NURTW stickers are paused** (VEH-20, 3 October 2026). The onboarding screen offers
-  reattachment only, behind `NEW_STICKERS_IN_USE` in `onboarding-section.tsx`. The API
-  path stays built.
+  reattachment only, behind `NEW_STICKERS_IN_USE` in `@nurtw/domain` (`sticker/offer.ts`).
+  The API path stays built.
+- **A vehicle without a sticker says so** (item 35, Requirement 9A.7). `stickerOffer` in
+  `@nurtw/domain` decides what it can be given; `StickerBanner` shows it on the vehicle's
+  page, and `StickerPromptDialog` after a vehicle is added (`?added=1`). `?assign=1` goes
+  straight to the onboarding panel. Where nothing can be given, nothing is charged.
 - **`legacySecurityCode` is never selected** (Requirement 9A.5). Sticker responses go
   through `STICKER_RESPONSE` in `sticker.service.ts`, an explicit select. Never return a
   whole sticker row.

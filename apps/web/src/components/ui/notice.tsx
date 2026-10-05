@@ -47,32 +47,44 @@ export function Notice({
   title,
   children,
   role,
+  icon,
+  action,
   className,
 }: {
   tone?: NoticeTone;
   title: string;
   children?: ReactNode;
   role?: "alert" | "status";
+  /** In place of the tone's own icon, where a better one says what it is about. */
+  icon?: LucideIcon;
+  /** The one thing to do about it: beside the text, or beneath it on a phone. */
+  action?: ReactNode;
   className?: string;
 }) {
   const style = NOTICE_TONES[tone];
-  const Icon = style.icon;
+  const Icon = icon ?? style.icon;
   return (
     <div
       role={role}
       className={cn(
-        "flex gap-3 rounded-lg border px-4 py-3 text-sm",
+        "flex flex-col gap-3 rounded-lg border px-4 py-3 text-sm sm:flex-row sm:items-center",
         style.box,
         className,
       )}
     >
-      <Icon className={cn("mt-0.5 size-4 shrink-0", style.title)} aria-hidden />
-      <div className="min-w-0 flex-1">
-        <p className={cn("font-semibold", style.title)}>{title}</p>
-        {children ? (
-          <div className="mt-1 text-foreground">{children}</div>
-        ) : null}
+      <div className="flex min-w-0 flex-1 gap-3">
+        <Icon
+          className={cn("mt-0.5 size-4 shrink-0", style.title)}
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          <p className={cn("font-semibold", style.title)}>{title}</p>
+          {children ? (
+            <div className="mt-1 text-foreground">{children}</div>
+          ) : null}
+        </div>
       </div>
+      {action ? <div className="shrink-0 pl-7 sm:pl-0">{action}</div> : null}
     </div>
   );
 }

@@ -234,6 +234,14 @@ export {
 } from './sticker/qr-signing.js';
 
 export {
+  NEW_STICKERS_IN_USE,
+  STICKER_OFFERS,
+  stickerCanBeGiven,
+  stickerOffer,
+  type StickerOffer,
+} from './sticker/offer.js';
+
+export {
   MATCH_STATEMENTS,
   NOT_VERIFIED_REASONS,
   NO_MATCH_STATEMENT,

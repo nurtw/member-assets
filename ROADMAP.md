@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.12
+**Document version:** 1.13
 **Last revised:** 5 October 2026
 
 ---
@@ -62,7 +62,7 @@ Each item is independently completable and independently testable. Status values
 | 32 | app-shell-and-themes | `DESIGN.md` §3–§6 | done (clicked through 5 Oct) | [plan](plans/32-app-shell-and-themes.md) |
 | 33 | organisations-and-invitations | §12, Req. 12.11 (rev. 1.10) | planned | [plan](plans/33-organisations-and-invitations.md) |
 | 34 | screen-restructure | `DESIGN.md` §5 | planned | [plan](plans/34-screen-restructure.md) |
-| 35 | sticker-prompt | §9A (VEH-30) | planned | [plan](plans/35-sticker-prompt.md) |
+| 35 | sticker-prompt | §9A.7 (VEH-30) | done (clicked through 5 Oct) | [plan](plans/35-sticker-prompt.md) |
 
 ### Item summaries
 
@@ -365,8 +365,8 @@ VEH-26, MIG-04, MIG-07, PAY-14 to PAY-17).
 32 --+-> 35 -> 33 -> 34
 ```
 
-Order of work, as the owner chose: 32 (done), then 35, 33, and 34. Item 15 is independent
-of them.
+Order of work, as the owner chose: 32 and 35 (done), then 33, then 34. Item 15 is
+independent of them.
 
 ## Open questions
 

@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import useSWR from "swr";
 
+import { StickerPromptDialog } from "@/components/sticker-prompt";
 import { Button, ErrorNotice, StatusChip } from "@/components/ui";
 import { VehicleForm, type SavedVehicle } from "@/components/vehicle-form";
 import { ApiError, fetcher } from "@/lib/api";
@@ -29,6 +30,8 @@ export default function ApplicantVehiclesPage() {
   const router = useRouter();
   const { holds } = useSession();
   const [saved, setSaved] = useState<SavedVehicle[]>([]);
+  // Item 35 (VEH-30): finishing ends on a prompt to assign the sticker.
+  const [justSaved, setJustSaved] = useState<SavedVehicle | null>(null);
 
   const { data, error, isLoading } = useSWR<{ application: ApplicationDetail }>(
     `/applications/${params.id}`,
@@ -95,6 +98,14 @@ export default function ApplicantVehiclesPage() {
               <li key={vehicle.id} className="flex items-center gap-3 text-sm">
                 <span className="font-mono">{vehicle.plateNumberDisplay}</span>
                 {vehicle.status ? <StatusChip status={vehicle.status} /> : null}
+                {holds("sticker.attach") ? (
+                  <Link
+                    href={`/vehicles/${vehicle.id}?assign=1`}
+                    className="ml-auto font-medium text-link underline-offset-2 hover:underline"
+                  >
+                    Assign sticker
+                  </Link>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -113,6 +124,10 @@ export default function ApplicantVehiclesPage() {
             setSaved((current) => [...current, vehicle]);
             return;
           }
+          if (holds("sticker.attach")) {
+            setJustSaved(vehicle);
+            return;
+          }
           router.push(applicationHref);
         }}
         extraActions={
@@ -123,6 +138,16 @@ export default function ApplicantVehiclesPage() {
           </Link>
         }
       />
+
+      {justSaved ? (
+        <StickerPromptDialog
+          vehicleId={justSaved.id}
+          plate={justSaved.plateNumberDisplay}
+          open
+          onAssign={() => router.push(`/vehicles/${justSaved.id}?assign=1`)}
+          onLater={() => router.push(applicationHref)}
+        />
+      ) : null}
     </div>
   );
 }

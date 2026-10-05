@@ -2,13 +2,18 @@
 
 import type { MasterDataEntry, VehicleDetail } from "@nurtw/contracts";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
 
 import { VehicleDuesPanel } from "@/components/dues-panel";
 import { MemberPicker } from "@/components/member-picker";
 import { OnboardingSection } from "@/components/onboarding-section";
+import {
+  StickerBanner,
+  StickerPromptDialog,
+  onboardingKey,
+} from "@/components/sticker-prompt";
 import {
   Button,
   ErrorNotice,
@@ -48,6 +53,13 @@ function Detail({ label, value }: { label: string; value: string | null }) {
   );
 }
 
+/** Item 35 — to the onboarding panel, where a sticker is assigned. */
+function goToOnboarding() {
+  const panel = document.getElementById("onboarding");
+  panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+  panel?.focus({ preventScroll: true });
+}
+
 export default function VehicleDetailPage() {
   const params = useParams<{ id: string }>();
   const { holds } = useSession();
@@ -64,6 +76,22 @@ export default function VehicleDetailPage() {
   const [declareOwnerAddress, setDeclareOwnerAddress] = useState("");
   // VEH-27 — why the letter is being reissued.
   const [letterReason, setLetterReason] = useState("");
+  // Item 35 (VEH-30). Adding a vehicle arrives here with ?added=1 and a
+  // prompt to assign its sticker; the registration flow sends ?assign=1 to
+  // go straight to the onboarding panel. Either is spent on first use.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const justAdded = searchParams.get("added") === "1";
+  const sentToAssign = searchParams.get("assign") === "1";
+  const [promptClosed, setPromptClosed] = useState(false);
+  const { data: onboardingData } = useSWR(
+    sentToAssign && holds("sticker.attach") ? onboardingKey(params.id) : null,
+    fetcher,
+  );
+
+  function spendArrival() {
+    router.replace(`/vehicles/${params.id}`, { scroll: false });
+  }
 
   const { data, error, isLoading, mutate } = useSWR<{ vehicle: VehicleDetail }>(
     `/vehicles/${params.id}`,
@@ -71,6 +99,17 @@ export default function VehicleDetailPage() {
   );
 
   const vehicle = data?.vehicle ?? null;
+
+  // Sent to assign a sticker: once the vehicle and its onboarding state are
+  // both here, the panel is on the page, so go to it, then spend the address.
+  const vehicleLoaded = vehicle !== null;
+  useEffect(() => {
+    if (sentToAssign && vehicleLoaded && onboardingData) {
+      goToOnboarding();
+      router.replace(`/vehicles/${params.id}`, { scroll: false });
+    }
+  }, [sentToAssign, vehicleLoaded, onboardingData, router, params.id]);
+
   const loadError = error instanceof ApiError ? error : null;
   const isOnRecord = vehicle?.status === "ON_RECORD";
   const canDeclare = isOnRecord && holds("vehicle.declare");
@@ -176,6 +215,30 @@ export default function VehicleDetailPage() {
         />
       ) : null}
 
+      <StickerBanner
+        vehicleId={vehicle.id}
+        attached={vehicle.onboarding !== null}
+        onAssign={goToOnboarding}
+      />
+
+      {holds("sticker.attach") && vehicle.onboarding === null ? (
+        <StickerPromptDialog
+          vehicleId={vehicle.id}
+          plate={vehicle.plateNumberDisplay}
+          open={justAdded && !promptClosed}
+          onAssign={() => {
+            setPromptClosed(true);
+            spendArrival();
+            // After the dialog has handed focus back.
+            window.setTimeout(goToOnboarding, 50);
+          }}
+          onLater={() => {
+            setPromptClosed(true);
+            spendArrival();
+          }}
+        />
+      ) : null}
+
       {isOnRecord ? (
         <div className="rounded-md border border-line bg-surface-muted px-4 py-3 text-sm">
           <p className="font-semibold">On record, not declared</p>
@@ -252,6 +315,13 @@ export default function VehicleDetailPage() {
           </div>
         ) : null}
       </Section>
+
+      {/* Item 35 — under the details, where the banner's button leads. */}
+      <div id="onboarding" tabIndex={-1} className="scroll-mt-20 outline-none">
+        {holds("sticker.attach") ? (
+          <OnboardingSection vehicle={vehicle} onChanged={() => mutate()} />
+        ) : null}
+      </div>
 
       <Section
         title="Owner"
@@ -343,10 +413,6 @@ export default function VehicleDetailPage() {
             </Button>
           </div>
         </Section>
-      ) : null}
-
-      {holds("sticker.attach") ? (
-        <OnboardingSection vehicle={vehicle} onChanged={() => mutate()} />
       ) : null}
 
       <VehicleDuesPanel vehicleId={vehicle.id} />

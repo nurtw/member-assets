@@ -4,8 +4,8 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.10 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.10
+1.2 to 1.11 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.11
 **Last revised:** 5 October 2026
 
 ---
@@ -91,6 +91,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.8 | 4 October 2026 | Requirement 17.1 is defined by permission, not role. A new officer gets a temporary password (17.3). Failed sign-ins lock the account for a time (17.4). The Union may compose roles, never holding `vehicle.declare` or the settlement account. See §23.26. | The project owner (`QUESTIONS.md` GOV-16, GOV-17, GOV-19, GOV-20), 4 October 2026. |
 | 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. Payment is offered wherever a vehicle is checked, and through a personal pay link that never says what is owed. See §23.10, §23.22–§23.27, Requirements 12.11, 27.7 and 27.8. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20, PAY-21), 5 October 2026. |
 | 1.10 | 5 October 2026 | The API administrator may invite a named organisation by a personal link that opens the application form addressed to it. A link is used once, expires, and may be withdrawn; the application it produces is confirmed and decided as any other. See §23.23 and Requirement 12.11. | The project owner (`QUESTIONS.md` EXT-21), 5 October 2026. |
+| 1.11 | 5 October 2026 | A vehicle without a sticker says so on its page each time it is opened, and adding a vehicle ends on a prompt to buy and attach its sticker, which may be closed. While new NURTW stickers are not issued, a vehicle the register holds no barcode for is told so, and nothing is charged. See Requirement 9A.7. | The project owner (`QUESTIONS.md` VEH-30), 5 October 2026. |
 
 ---
 
@@ -389,6 +390,18 @@ wording does not invalidate letters already issued.
   letter, giving a reason, after a driver is linked or the vehicle moves unit. The new letter
   is a fresh snapshot under a new reference. The one it replaces is kept as printed, marked
   superseded, and no longer downloads.
+
+**Requirement 9A.7 — asking for the sticker** *(revision 1.11, VEH-30)*. Assigning a
+sticker must not be hidden.
+
+- **A banner on the vehicle's page**, each time it is opened, while no sticker is attached:
+  what the vehicle can be given, in words, with the way to buy and attach it.
+- **A prompt after adding a vehicle**, to buy and attach its sticker. It may be closed; the
+  banner carries on asking.
+- **Nothing charged without a sticker to give.** While new NURTW stickers are not issued
+  (VEH-20), a vehicle the Transpay register holds no barcode for is told so, and no payment
+  is offered. A vehicle whose barcode is on the register is offered the reattachment fee, and
+  reattached under Requirement 9A.4.
 
 ---
 
