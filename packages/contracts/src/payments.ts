@@ -15,6 +15,12 @@ export const initiatePaymentSchema = z.object({
 });
 export type InitiatePaymentInput = z.infer<typeof initiatePaymentSchema>;
 
+/** A Nigerian bank account number (NUBAN): ten digits. */
+const accountNumberSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{10}$/, 'An account number is ten digits.');
+
 /**
  * PRD Requirement 27.12 — the account name is never accepted from the
  * caller; the service resolves it from Paystack and returns it for
@@ -23,17 +29,53 @@ export type InitiatePaymentInput = z.infer<typeof initiatePaymentSchema>;
 export const setSettlementAccountSchema = z.object({
   bankCode: z.string().trim().min(1, 'A bank is required.'),
   bankName: z.string().trim().min(1, 'A bank name is required.'),
-  accountNumber: z
-    .string()
-    .trim()
-    .min(10, 'A valid account number is required.')
-    .max(10, 'A valid account number is required.'),
+  accountNumber: accountNumberSchema,
   password: z.string().min(1, 'Your password is required to make this change.'),
   reason: z.string().trim().min(1, 'A reason is required for this change.'),
 });
 export type SetSettlementAccountInput = z.infer<
   typeof setSettlementAccountSchema
 >;
+
+/**
+ * `POST /payments/settlement/resolve` (item 30). Requirement 27.12: the
+ * account name is shown for confirmation before anything is saved.
+ */
+export const resolveSettlementAccountSchema = z.object({
+  bankCode: z.string().trim().min(1, 'A bank is required.'),
+  accountNumber: accountNumberSchema,
+});
+export type ResolveSettlementAccountInput = z.infer<
+  typeof resolveSettlementAccountSchema
+>;
+
+/** The name Paystack holds for an account. */
+export interface ResolvedSettlementAccount {
+  accountName: string;
+}
+
+/** One bank from Paystack's list (`GET /payments/banks`). */
+export interface PaystackBank {
+  code: string;
+  name: string;
+}
+
+/**
+ * `GET /payments/settlement` (item 30). The account number is shown by its
+ * last four digits only: the screen needs to say which account it is, not
+ * to hand the whole number to everyone who opens it.
+ */
+export interface SettlementState {
+  account: {
+    bankCode: string;
+    bankName: string;
+    accountName: string;
+    accountNumberLast4: string;
+    updatedAt: string;
+  } | null;
+  /** The contractor's percentage of dedicated-account money; `null` while unset (PAY-11). */
+  dedicatedPercentage: number | null;
+}
 
 export const refundPaymentSchema = z.object({
   reason: z.string().trim().min(1, 'A reason is required for a refund.'),

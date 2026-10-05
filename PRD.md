@@ -89,7 +89,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.6 | 4 October 2026 | Abuse detection pauses an organisation for a time (Requirement 14.4). An external request carries its own request id (Requirement 14.5). Rate-limit counters are kept in Postgres, and daily quotas start at 1,000 and 5,000. See §23.24. | The project owner (`QUESTIONS.md` EXT-14, EXT-15, EXT-16), 3 October 2026. |
 | 1.7 | 4 October 2026 | Filtered totals by zone or branch only, rounded to the nearest 10 (Requirement 13.6). Reporting periods are a month, quarter, or year (13.7). The grand total moves to its own route, and an organisation reads the names it filters by from a metadata route (13.8). See §23.25. | The project owner (`QUESTIONS.md` EXT-18, EXT-19), 4 October 2026. |
 | 1.8 | 4 October 2026 | Requirement 17.1 is defined by permission, not role. A new officer gets a temporary password (17.3). Failed sign-ins lock the account for a time (17.4). The Union may compose roles, never holding `vehicle.declare` or the settlement account. See §23.26. | The project owner (`QUESTIONS.md` GOV-16, GOV-17, GOV-19, GOV-20), 4 October 2026. |
-| 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. See §23.10, §23.22–§23.27, Requirement 27.7. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20), 5 October 2026. |
+| 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. Payment is offered wherever a vehicle is checked, and through a personal pay link that never says what is owed. See §23.10, §23.22–§23.27, Requirements 27.7 and 27.8. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20, PAY-21), 5 October 2026. |
 
 ---
 
@@ -1273,6 +1273,21 @@ paid, owed, or in arrears is shown on internal scan and search results, beside t
 verification result rather than in place of it. It appears in no external API response, on
 no public page, and in no disclosure profile. Dues do not block card renewal; the officer
 issuing a card sees the member's dues status instead (PAY-05).
+
+*Revision 1.9 (PAY-21):* payment is offered wherever a vehicle is checked, and the status
+rule above is unchanged.
+
+- **On an internal check**, beside what is owed, an officer can create the Paystack link
+  (shown as a QR code to scan and as a link) and see the member's dedicated account and the
+  amount to send.
+- **For the public, a personal pay link** for each vehicle and each member: unguessable,
+  with a QR code, sent by an officer and replaceable. It opens a payment page that offers
+  published amounts only and never says what is owed or paid.
+- **On the public sticker page (§23.13)**, once it is built, every result that names a
+  vehicle carries the same "Pay NURTW dues" button, whether or not anything is owed.
+
+The payment route is a separate public route in the payments module. The verification path
+stays read-only. Roadmap item 31.
 
 **Requirement 27.9 — the ledger is append-only.** Payments and dues are never edited or
 deleted. A correction or refund is a reversing entry (§4.8). Whether a due is paid derives

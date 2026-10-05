@@ -33,6 +33,8 @@ const prisma = new PrismaClient({
 
 const TAG = 'e2e-fixture-payments';
 const PASSWORD = 'e2e-fixture-password-1';
+/** An account number the stubbed Paystack cannot resolve. */
+const UNKNOWN_ACCOUNT = '0000000000';
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 
 if (!PAYSTACK_SECRET_KEY) {
@@ -139,10 +141,31 @@ describe('Payments (e2e)', () => {
           });
         }
         if (url.includes('/bank/resolve')) {
+          if (url.includes(`account_number=${UNKNOWN_ACCOUNT}`)) {
+            return new Response(
+              JSON.stringify({ status: false, message: 'Could not resolve account name.' }),
+              { status: 422, headers: { 'Content-Type': 'application/json' } },
+            );
+          }
           return jsonResponse({
             status: true,
             message: 'ok',
             data: { account_name: 'NURTW ANAMBRA TEST ACCOUNT' },
+          });
+        }
+        if (url.includes('/bank?')) {
+          // Two pages by cursor, with an inactive bank that must be dropped.
+          const second = url.includes('next=page-2');
+          return jsonResponse({
+            status: true,
+            message: 'ok',
+            data: second
+              ? [{ code: '011', name: 'First Bank of Nigeria', active: true, is_deleted: false }]
+              : [
+                  { code: '058', name: 'Guaranty Trust Bank', active: true, is_deleted: false },
+                  { code: '999', name: 'Closed Bank', active: false, is_deleted: false },
+                ],
+            meta: { next: second ? null : 'page-2' },
           });
         }
         if (url.includes('/subaccount') && method === 'POST') {
@@ -411,8 +434,119 @@ describe('Payments (e2e)', () => {
       expect(account?.bankCode).toBe('011');
     });
 
-    it('refuses a wrong password and audits the failed attempt', async () => {
+    it('shows the account by its last four digits, with the percentage (item 30)', async () => {
+      const response = await request(server)
+        .get('/api/v1/payments/settlement')
+        .set('Cookie', cookies.settler!)
+        .expect(200);
+      expect(response.body.account).toMatchObject({
+        bankCode: '011',
+        bankName: 'First Bank',
+        accountName: 'NURTW ANAMBRA TEST ACCOUNT',
+        accountNumberLast4: '3210',
+      });
+      expect(response.body).toHaveProperty('dedicatedPercentage');
+      expect(JSON.stringify(response.body)).not.toContain('9876543210');
+      expect(JSON.stringify(response.body)).not.toContain('ACCT_');
+    });
+
+    it('answers a save with the same state, never the row', async () => {
+      const response = await request(server)
+        .post('/api/v1/payments/settlement')
+        .set('Cookie', cookies.settler!)
+        .send({
+          bankCode: '011',
+          bankName: 'First Bank',
+          accountNumber: '9876543210',
+          password: PASSWORD,
+          reason: 'e2e fixture: save again',
+        })
+        .expect(201);
+      expect(response.body.account.accountNumberLast4).toBe('3210');
+      expect(JSON.stringify(response.body)).not.toContain('9876543210');
+      expect(response.body.account).not.toHaveProperty('subaccountCode');
+    });
+
+    it("lists Paystack's active banks by name, across pages", async () => {
+      const response = await request(server)
+        .get('/api/v1/payments/banks')
+        .set('Cookie', cookies.settler!)
+        .expect(200);
+      expect(response.body.banks).toEqual([
+        { code: '011', name: 'First Bank of Nigeria' },
+        { code: '058', name: 'Guaranty Trust Bank' },
+      ]);
+    });
+
+    it('looks up an account name without saving, audited without the name', async () => {
+      const response = await request(server)
+        .post('/api/v1/payments/settlement/resolve')
+        .set('Cookie', cookies.settler!)
+        .send({ bankCode: '058', accountNumber: '0123456789' })
+        .expect(200);
+      expect(response.body).toEqual({ accountName: 'NURTW ANAMBRA TEST ACCOUNT' });
+
+      const account = await prisma.settlementAccount.findFirst({
+        where: { isActive: true },
+      });
+      expect(account?.bankCode).toBe('011');
+
+      const settler = await prisma.user.findFirstOrThrow({
+        where: { email: `settler.${TAG}@nurtw.test` },
+      });
+      const audit = await prisma.auditEvent.findFirst({
+        where: { action: 'payment.settlement.resolve', actorUserId: settler.id },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(audit?.afterValue).toMatchObject({
+        bankCode: '058',
+        accountNumberLast4: '6789',
+        outcome: 'RESOLVED',
+      });
+      expect(JSON.stringify(audit?.afterValue)).not.toContain('0123456789');
+      expect(JSON.stringify(audit?.afterValue)).not.toContain('NURTW ANAMBRA');
+    });
+
+    it('says when Paystack cannot find the account, on lookup and on save', async () => {
+      const lookup = await request(server)
+        .post('/api/v1/payments/settlement/resolve')
+        .set('Cookie', cookies.settler!)
+        .send({ bankCode: '058', accountNumber: UNKNOWN_ACCOUNT })
+        .expect(400);
+      expect(lookup.body.error.details[0].field).toBe('accountNumber');
+
+      const save = await request(server)
+        .post('/api/v1/payments/settlement')
+        .set('Cookie', cookies.settler!)
+        .send({
+          bankCode: '058',
+          bankName: 'GTBank',
+          accountNumber: UNKNOWN_ACCOUNT,
+          password: PASSWORD,
+          reason: 'e2e fixture: unknown account',
+        })
+        .expect(400);
+      expect(save.body.error.details[0].field).toBe('accountNumber');
+    });
+
+    it('keeps the new routes from anyone without payment.manage_settlement', async () => {
       await request(server)
+        .get('/api/v1/payments/settlement')
+        .set('Cookie', cookies.payer!)
+        .expect(403);
+      await request(server)
+        .get('/api/v1/payments/banks')
+        .set('Cookie', cookies.bystander!)
+        .expect(403);
+      await request(server)
+        .post('/api/v1/payments/settlement/resolve')
+        .set('Cookie', cookies.payer!)
+        .send({ bankCode: '058', accountNumber: '0123456789' })
+        .expect(403);
+    });
+
+    it('refuses a wrong password and audits the failed attempt', async () => {
+      const response = await request(server)
         .post('/api/v1/payments/settlement')
         .set('Cookie', cookies.settler!)
         .send({
@@ -423,6 +557,9 @@ describe('Payments (e2e)', () => {
           reason: 'e2e fixture: should fail',
         })
         .expect(400);
+      expect(response.body.error.details).toEqual([
+        { field: 'password', message: 'Incorrect password.' },
+      ]);
 
       const failure = await prisma.auditEvent.findFirst({
         where: {

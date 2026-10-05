@@ -52,9 +52,9 @@ thing a year later.
 | Vehicles and stickers (VEH) | 22 | 6 | 1 | 29 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 18 | 2 | — | 20 |
-| Payments (PAY) | 20 | 0 | — | 20 |
+| Payments (PAY) | 21 | 0 | — | 21 |
 | Governance and go-live (GOV) | 9 | 10 | 1 | 20 |
-| **Total** | **87** | **36** | **2** | **125** |
+| **Total** | **88** | **36** | **2** | **126** |
 
 ### Blocking production use right now
 
@@ -1660,6 +1660,39 @@ only if Paystack requires it, passed straight to Paystack, never stored or logge
 only once the test shows it is needed. The test waits on PAY-11: dedicated accounts enabled
 and the percentage set. **Answered by.** Project owner, adopting the recommendation.
 
+### PAY-21 · Paying from a check ✅
+
+**Direction.** "If the vehicle or member is checked publicly on the verify page or
+wherever, let there be a pay-now button somewhere so that they can click to transfer or
+visit the link for payment. Payment should be easily accessible." Given by the project owner
+on 5 October 2026.
+
+**The conflict it raised.** Dues are internal (Requirement 27.8), so a public button that
+showed what is owed would tell anyone who scans a sticker whether its driver is behind. And
+a check is read-only, so a check cannot itself create a payment.
+
+**Answer.** **Both of the following, built together** (roadmap item 31):
+
+- **Officer screens.** Beside what is owed on an internal check, a Pay now button creates
+  the Paystack link, shown as a QR code the driver scans to pay on their own phone and as a
+  link to send. Where the member has a dedicated account, it shows that account and the
+  exact amount to transfer.
+- **Personal pay links, for the public.** Each vehicle and each member has its own
+  unguessable pay link, with a QR code. It opens a public page offering the published levy
+  or yearly fee, and never says what is owed or paid. Officers send it by WhatsApp or SMS
+  from the Pay now button, and can replace it if it is misused. The page and its route
+  belong to the payments module, not to verification, which stays read-only.
+
+**Why links and not the sticker page.** The public sticker page (§23.13) is not built: its
+address is printed in each sticker's QR code, so it waits on the domains (GOV-08), and the
+only stickers that carry such a code are paused (VEH-20). Transpay barcodes open no page.
+When the sticker page is built, every result that names a vehicle carries the same "Pay
+NURTW dues" button, whether or not anything is owed.
+
+**Answered on.** 5 October 2026. **Answered by.** Project owner: both options at first, then
+personal pay links once told the sticker page does not exist. **Recorded at.** PRD
+Requirement 27.8 (revision 1.9).
+
 ---
 
 ## 12. Deferred by the Union
@@ -1754,7 +1787,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
-| 5 October 2026 | The project owner went through the open questions. Answered: GOV-18 (a go-live gate), EXT-08 (at once for cause, 30 days' notice otherwise), EXT-12 (production only), EXT-13 (no name, ever), EXT-17 (keep, review after the pilot). Partly answered: EXT-05 (one pilot after go-live; which one open) and GOV-11 (no parallel running; the date waits on named gates). Added to answered ones: PAY-11 (the percentage is Paystack's fee plus 0.5 per cent, set on a new Settlement screen) and PAY-20 (a bank account number follows the BVN rule). GOV-08 left open. New EXT-20, organisations applying for themselves, given and answered the same day (roadmap item 29). PRD revised to 1.9. |
+| 5 October 2026 | The project owner went through the open questions. Answered: GOV-18 (a go-live gate), EXT-08 (at once for cause, 30 days' notice otherwise), EXT-12 (production only), EXT-13 (no name, ever), EXT-17 (keep, review after the pilot). Partly answered: EXT-05 (one pilot after go-live; which one open) and GOV-11 (no parallel running; the date waits on named gates). Added to answered ones: PAY-11 (the percentage is Paystack's fee plus 0.5 per cent, set on a new Settlement screen) and PAY-20 (a bank account number follows the BVN rule). GOV-08 left open. New EXT-20, organisations applying for themselves, given and answered the same day (roadmap item 29). New PAY-21, a pay-now button on officer checks and a personal pay link for the public, never showing what is owed (roadmap item 31). PRD revised to 1.9. |
 | 4 October 2026 (item 28) | Officer accounts and multi-factor sign-in were found unbuilt. The project owner answered GOV-16 (a temporary password at first sign-in), GOV-17 (a second factor for privileged permissions), GOV-19 (composed roles at launch), and GOV-20 (no database lock on audit events yet). New GOV-18, when the second-factor requirement is turned on, open. PRD revised to 1.8. |
 | 4 October 2026 (item 14) | The project owner answered EXT-18 (totals by zone or branch only, rounded to the nearest 10) and EXT-19 (month, quarter, and year periods), adopting the recommendations. PRD revised to 1.7. |
 | 4 October 2026 (item 13) | The project owner answered three new questions by adopting the recommendations: EXT-14 (rate-limit counters in Postgres), EXT-15 (daily quotas of 1,000 and 5,000), and EXT-16 (detection pauses an organisation for an hour). New EXT-17, the detection thresholds, open. PRD revised to 1.6. |

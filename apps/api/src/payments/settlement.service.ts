@@ -1,6 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import type { PaystackBank, SettlementState } from '@nurtw/contracts';
 
 import { AuditService } from '../audit/audit.service.js';
+import { ValidationException } from '../common/zod-validation.pipe.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   DEDICATED_CONTRACTOR_PERCENTAGE,
@@ -29,6 +31,26 @@ export interface SetSettlementAccountInput {
   requestId?: string;
 }
 
+export interface ResolveSettlementAccountInput {
+  bankCode: string;
+  accountNumber: string;
+  actorUserId: string;
+  ipAddress?: string;
+  requestId?: string;
+}
+
+/** Paystack's bank list changes rarely; an hour saves a call per page load. */
+const BANK_LIST_TTL_MS = 60 * 60 * 1000;
+
+/**
+ * The answers the screen explains (item 30). Each describes the request just
+ * sent, never the record set, so naming the field is within Requirement 14.3,
+ * as item 28's password checks are.
+ */
+export function wrongPassword(): ValidationException {
+  return new ValidationException([{ field: 'password', message: 'Incorrect password.' }]);
+}
+
 /**
  * The NURTW settlement account (Requirement 27.12, `QUESTIONS.md` PAY-13).
  *
@@ -48,10 +70,55 @@ export class SettlementService {
     private readonly settings: SettingsService,
   ) {}
 
+  private bankCache: { banks: PaystackBank[]; fetchedAt: number } | null = null;
+
   async getActive() {
     return this.prisma.settlementAccount.findFirst({
       where: { isActive: true },
     });
+  }
+
+  /**
+   * What the settings screen shows (item 30). The account number goes out as
+   * its last four digits: enough to say which account it is.
+   */
+  async state(): Promise<SettlementState> {
+    const account = await this.prisma.settlementAccount.findFirst({
+      where: { isActive: true },
+      select: {
+        bankCode: true,
+        bankName: true,
+        accountName: true,
+        accountNumber: true,
+        updatedAt: true,
+      },
+    });
+    return {
+      account: account
+        ? {
+            bankCode: account.bankCode,
+            bankName: account.bankName,
+            accountName: account.accountName,
+            accountNumberLast4: account.accountNumber.slice(-4),
+            updatedAt: account.updatedAt.toISOString(),
+          }
+        : null,
+      dedicatedPercentage: await this.settings.getPercentage(
+        DEDICATED_CONTRACTOR_PERCENTAGE,
+      ),
+    };
+  }
+
+  /** Paystack's banks, by name (Requirement 27.12). */
+  async banks(now: number = Date.now()): Promise<PaystackBank[]> {
+    if (this.bankCache && now - this.bankCache.fetchedAt < BANK_LIST_TTL_MS) {
+      return this.bankCache.banks;
+    }
+    const banks = (await this.paystack.listBanks()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+    this.bankCache = { banks, fetchedAt: now };
+    return banks;
   }
 
   /**
@@ -63,12 +130,47 @@ export class SettlementService {
   }
 
   /**
+   * The confirmation step the screen takes before saving (item 30). A lookup
+   * turns an account number into a person's name, so it is audited, without
+   * the name and with only the last four digits.
+   */
+  async resolve(input: ResolveSettlementAccountInput): Promise<{ accountName: string }> {
+    let resolved: { accountName: string } | null = null;
+    try {
+      resolved = await this.resolveAccountName(input.accountNumber, input.bankCode);
+    } catch {
+      resolved = null;
+    }
+    await this.audit.record({
+      action: 'payment.settlement.resolve',
+      subjectType: 'settlement_account',
+      actorUserId: input.actorUserId,
+      ipAddress: input.ipAddress,
+      requestId: input.requestId,
+      after: {
+        bankCode: input.bankCode,
+        accountNumberLast4: input.accountNumber.slice(-4),
+        outcome: resolved ? 'RESOLVED' : 'NOT_RESOLVED',
+      },
+    });
+    if (!resolved) {
+      throw new ValidationException([
+        {
+          field: 'accountNumber',
+          message: 'Paystack could not find this account at that bank.',
+        },
+      ]);
+    }
+    return resolved;
+  }
+
+  /**
    * Creates the subaccount on the first call, or updates the SAME
    * subaccount's bank details on every later call. Never creates a second
    * subaccount — that would strand dedicated accounts and payment links
    * already settling to the first one.
    */
-  async set(input: SetSettlementAccountInput) {
+  async set(input: SetSettlementAccountInput): Promise<SettlementState> {
     const existing = await this.getActive();
 
     let resolved: { accountName: string };
@@ -92,9 +194,12 @@ export class SettlementService {
           outcome: 'REJECTED_BY_PAYSTACK',
         },
       });
-      throw new BadRequestException(
-        'Paystack could not resolve this account. No change was made.',
-      );
+      throw new ValidationException([
+        {
+          field: 'accountNumber',
+          message: 'Paystack could not find this account at that bank. No change was made.',
+        },
+      ]);
     }
 
     const before = existing
@@ -162,7 +267,9 @@ export class SettlementService {
       },
     });
 
-    return saved;
+    // The state, never the row: the row carries the whole account number and
+    // the subaccount code, which no screen needs back.
+    return this.state();
   }
 
   /**
@@ -192,9 +299,12 @@ export class SettlementService {
         ...auditBase,
         after: { percentage: input.percentage, outcome: 'REJECTED_NO_SETTLEMENT_ACCOUNT' },
       });
-      throw new BadRequestException(
-        'Add the NURTW settlement account before setting its percentage.',
-      );
+      throw new ValidationException([
+        {
+          field: 'percentage',
+          message: 'Add the NURTW settlement account before setting its percentage.',
+        },
+      ]);
     }
 
     try {
@@ -208,9 +318,12 @@ export class SettlementService {
         subjectId: account.id,
         after: { percentage: input.percentage, outcome: 'REJECTED_BY_PAYSTACK' },
       });
-      throw new BadRequestException(
-        'Paystack did not accept the percentage. No change was made.',
-      );
+      throw new ValidationException([
+        {
+          field: 'percentage',
+          message: 'Paystack did not accept the percentage. No change was made.',
+        },
+      ]);
     }
 
     await this.settings.set(

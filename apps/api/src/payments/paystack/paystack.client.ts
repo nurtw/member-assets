@@ -55,12 +55,56 @@ export class PaystackClient {
 
     if (!response.ok || !payload.status) {
       // Paystack's own message only; never echo the request body, which may
-      // carry a bank account number.
-      this.logger.warn(`Paystack ${path} failed: ${payload.message}`);
+      // carry a bank account number. The query string is dropped for the
+      // same reason: `/bank/resolve` carries the number there.
+      this.logger.warn(`Paystack ${path.split('?')[0]} failed: ${payload.message}`);
       throw new Error(`Paystack request failed: ${payload.message}`);
     }
 
     return payload.data;
+  }
+
+  /**
+   * Paystack's active Nigerian banks (Requirement 27.12: the bank is chosen
+   * from Paystack's list). Read a page at a time by cursor; the cap stops a
+   * misbehaving cursor from looping forever.
+   */
+  async listBanks(): Promise<{ code: string; name: string }[]> {
+    const banks: { code: string; name: string }[] = [];
+    let next: string | null = null;
+    for (let page = 0; page < 20; page += 1) {
+      const query = new URLSearchParams({
+        country: 'nigeria',
+        use_cursor: 'true',
+        perPage: '100',
+      });
+      if (next) {
+        query.set('next', next);
+      }
+      const response = await fetch(`${this.baseUrl()}/bank?${query.toString()}`, {
+        headers: { Authorization: `Bearer ${this.secretKey()}` },
+      });
+      const payload = (await response.json()) as {
+        status: boolean;
+        message: string;
+        data: { code: string; name: string; active?: boolean; is_deleted?: boolean }[];
+        meta?: { next?: string | null };
+      };
+      if (!response.ok || !payload.status) {
+        this.logger.warn(`Paystack /bank failed: ${payload.message}`);
+        throw new Error(`Paystack request failed: ${payload.message}`);
+      }
+      for (const bank of payload.data) {
+        if (bank.active !== false && bank.is_deleted !== true) {
+          banks.push({ code: bank.code, name: bank.name });
+        }
+      }
+      next = payload.meta?.next ?? null;
+      if (!next) {
+        break;
+      }
+    }
+    return banks;
   }
 
   /** Initialise a payment-link transaction. Amount is in kobo. */

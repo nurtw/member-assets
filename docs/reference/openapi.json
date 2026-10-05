@@ -16069,6 +16069,129 @@
         }
       }
     },
+    "/api/v1/payments/banks": {
+      "get": {
+        "summary": "Paystack's list of banks.",
+        "description": "Requirement 27.12: the settlement bank is chosen from this list, never typed. Active Nigerian banks, by name, read from Paystack and kept for an hour.\n\n**Permission required:** `payment.manage_settlement`.",
+        "operationId": "PaymentsController_banks",
+        "tags": [
+          "Payments"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold payment.manage_settlement in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/payments/initiate": {
       "post": {
         "summary": "Start a payment for a fee type.",
@@ -16237,9 +16360,130 @@
       }
     },
     "/api/v1/payments/settlement": {
+      "get": {
+        "summary": "The NURTW settlement account and the dedicated-account percentage.",
+        "description": "What the settings screen shows (item 30): the bank, the account name Paystack holds, the last four digits of the account number, and the contractor percentage of dedicated-account money (PAY-11). The whole account number is never returned.\n\n**Permission required:** `payment.manage_settlement`.",
+        "operationId": "PaymentsController_settlementState",
+        "tags": [
+          "Payments"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold payment.manage_settlement in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "summary": "Add or change the NURTW settlement account.",
-        "description": "Requires password re-entry (Requirement 27.12, PAY-13). No second approver — the control is the audit trail, which records this attempt whether it succeeds or fails. The first save creates the Paystack subaccount; every later save updates that same subaccount.\n\n**Permission required:** `payment.manage_settlement`.",
+        "description": "Requires password re-entry (Requirement 27.12, PAY-13). No second approver — the control is the audit trail, which records this attempt whether it succeeds or fails. The first save creates the Paystack subaccount; every later save updates that same subaccount. Answers with the settlement state. A wrong password answers 400 naming `password`; an account Paystack cannot find, 400 naming `accountNumber`.\n\n**Permission required:** `payment.manage_settlement`.",
         "operationId": "PaymentsController_setSettlementAccount",
         "tags": [
           "Payments"
@@ -16262,8 +16506,7 @@
                   },
                   "accountNumber": {
                     "type": "string",
-                    "minLength": 10,
-                    "maxLength": 10
+                    "pattern": "^\\d{10}$"
                   },
                   "password": {
                     "type": "string",
@@ -16403,7 +16646,7 @@
     "/api/v1/payments/settlement/dedicated-percentage": {
       "put": {
         "summary": "Set the contractor's percentage of dedicated-account money.",
-        "description": "PRD Requirement 27.7, PAY-11 — Paystack applies the NURTW subaccount’s fixed percentage to every transfer into a dedicated account; this sets it, at Paystack first and then in settings. Payment links are unaffected: each carries its own split (Requirement 27.4). Guarded like the settlement account: password re-entry, a mandatory reason, and an audit entry whether it succeeds or fails.\n\n**Permission required:** `payment.manage_settlement`.",
+        "description": "PRD Requirement 27.7, PAY-11 — Paystack applies the NURTW subaccount’s fixed percentage to every transfer into a dedicated account; this sets it, at Paystack first and then in settings. Payment links are unaffected: each carries its own split (Requirement 27.4). Guarded like the settlement account: password re-entry, a mandatory reason, and an audit entry whether it succeeds or fails. A wrong password answers 400 naming `password`; no settlement account, or a refusal by Paystack, 400 naming `percentage`.\n\n**Permission required:** `payment.manage_settlement`.",
         "operationId": "PaymentsController_setDedicatedPercentage",
         "tags": [
           "Payments"
@@ -16435,6 +16678,154 @@
                   "percentage",
                   "password",
                   "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold payment.manage_settlement in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/settlement/resolve": {
+      "post": {
+        "summary": "Look up the name Paystack holds for an account.",
+        "description": "Requirement 27.12: the account name is shown for confirmation before anything is saved. Nothing is saved here. Audited, with the last four digits and without the name. An account Paystack cannot find answers 400 naming `accountNumber`.\n\n**Permission required:** `payment.manage_settlement`.",
+        "operationId": "PaymentsController_resolveSettlementAccount",
+        "tags": [
+          "Payments"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "bankCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "accountNumber": {
+                    "type": "string",
+                    "pattern": "^\\d{10}$"
+                  }
+                },
+                "required": [
+                  "bankCode",
+                  "accountNumber"
                 ]
               }
             }

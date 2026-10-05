@@ -57,7 +57,8 @@ Each item is independently completable and independently testable. Status values
 | 27 | transpay-stock-intake | §9A.4 | deferred by the owner | [plan](plans/27-transpay-stock-intake.md) |
 | 28 | officer-accounts-and-mfa | §16, §17.1 | done (requirement off until GOV-18; browser check pending) | [plan](plans/28-officer-accounts-and-mfa.md) |
 | 29 | organisation-portal | §12, §23.23 | not-started (design questions open, EXT-20) | — |
-| 30 | settlement-screen | §27.7, §27.12 | not-started (approved 5 October 2026, before item 15) | — |
+| 30 | settlement-screen | §27.7, §27.12 | done (browser check pending) | [plan](plans/30-settlement-screen.md) |
+| 31 | pay-now | §27.8 (rev. 1.9) | not-started (approved 5 October 2026, after item 30) | — |
 
 ### Item summaries
 
@@ -268,6 +269,13 @@ are answered before it is planned.
 Settings page for the NURTW settlement account and the dedicated-account percentage
 (PAY-11), over the two routes item 16 and item 23 built. Today both are reachable only by
 calling the API directly.
+
+**31 — pay-now.** *PRD Requirement 27.8 (revision 1.9), PAY-21; approved 5 October 2026.*
+A Pay now button beside what is owed on an officer's check (a QR code and link, and the
+member's dedicated account), and a personal pay link for each vehicle and member that opens
+a public payment page never saying what is owed. The public sticker page (§23.13) is not
+built and waits on GOV-08; it gets the same button when it is. Comes after item 30, before
+item 15.
 
 **Also on 3 October 2026 (PRD 1.4, VEH-28).** A vehicle's declaration status is shown only
 to holders of `vehicle.declare`, on every screen and route. This amended items 07 and 10.

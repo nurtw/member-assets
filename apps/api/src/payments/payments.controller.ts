@@ -1,7 +1,8 @@
 import {
-  BadRequestException,
   Body,
   Controller,
+  Get,
+  HttpCode,
   Post,
   Put,
   Req,
@@ -9,11 +10,16 @@ import {
 } from '@nestjs/common';
 import {
   initiatePaymentSchema,
+  resolveSettlementAccountSchema,
   setDedicatedPercentageSchema,
   setSettlementAccountSchema,
   type InitiatePaymentInput,
+  type PaystackBank,
+  type ResolvedSettlementAccount,
+  type ResolveSettlementAccountInput,
   type SetDedicatedPercentageInput,
   type SetSettlementAccountInput,
+  type SettlementState,
 } from '@nurtw/contracts';
 
 import { AuditService } from '../audit/audit.service.js';
@@ -26,7 +32,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { DedicatedAccountService } from './dedicated-account.service.js';
 import { PaymentsService } from './payments.service.js';
 import { PaystackClient } from './paystack/paystack.client.js';
-import { SettlementService } from './settlement.service.js';
+import { SettlementService, wrongPassword } from './settlement.service.js';
 
 /**
  * Payments (PRD §27). Record-scoped permission checks are not applied here:
@@ -117,20 +123,76 @@ export class PaymentsController {
   }
 
   @RequirePermission('payment.manage_settlement')
+  @Get('settlement')
+  @Documented({
+    summary: 'The NURTW settlement account and the dedicated-account percentage.',
+    description:
+      'What the settings screen shows (item 30): the bank, the account name Paystack holds, the ' +
+      'last four digits of the account number, and the contractor percentage of ' +
+      'dedicated-account money (PAY-11). The whole account number is never returned.',
+  })
+  settlementState(): Promise<SettlementState> {
+    return this.settlement.state();
+  }
+
+  @RequirePermission('payment.manage_settlement')
+  @Get('banks')
+  @Documented({
+    summary: "Paystack's list of banks.",
+    description:
+      'Requirement 27.12: the settlement bank is chosen from this list, never typed. Active ' +
+      'Nigerian banks, by name, read from Paystack and kept for an hour.',
+  })
+  async banks(): Promise<{ banks: PaystackBank[] }> {
+    return { banks: await this.settlement.banks() };
+  }
+
+  @RequirePermission('payment.manage_settlement')
+  @Post('settlement/resolve')
+  @HttpCode(200)
+  @Documented({
+    summary: 'Look up the name Paystack holds for an account.',
+    description:
+      'Requirement 27.12: the account name is shown for confirmation before anything is saved. ' +
+      'Nothing is saved here. Audited, with the last four digits and without the name. An ' +
+      'account Paystack cannot find answers 400 naming `accountNumber`.',
+    body: resolveSettlementAccountSchema,
+  })
+  resolveSettlementAccount(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(resolveSettlementAccountSchema))
+    body: ResolveSettlementAccountInput,
+  ): Promise<ResolvedSettlementAccount> {
+    const userId = request.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+    return this.settlement.resolve({
+      bankCode: body.bankCode,
+      accountNumber: body.accountNumber,
+      actorUserId: userId,
+      ipAddress: request.ip,
+      requestId: request.header('x-request-id'),
+    });
+  }
+
+  @RequirePermission('payment.manage_settlement')
   @Post('settlement')
   @Documented({
     summary: 'Add or change the NURTW settlement account.',
     description:
       'Requires password re-entry (Requirement 27.12, PAY-13). No second approver — the control ' +
       'is the audit trail, which records this attempt whether it succeeds or fails. The first ' +
-      'save creates the Paystack subaccount; every later save updates that same subaccount.',
+      'save creates the Paystack subaccount; every later save updates that same subaccount. ' +
+      'Answers with the settlement state. A wrong password answers 400 naming `password`; an ' +
+      'account Paystack cannot find, 400 naming `accountNumber`.',
     body: setSettlementAccountSchema,
   })
   async setSettlementAccount(
     @Req() request: AuthenticatedRequest,
     @Body(new ZodValidationPipe(setSettlementAccountSchema))
     body: SetSettlementAccountInput,
-  ) {
+  ): Promise<SettlementState> {
     const userId = request.user?.id;
     if (!userId) {
       throw new UnauthorizedException();
@@ -151,7 +213,7 @@ export class PaymentsController {
         requestId: request.header('x-request-id'),
         after: { outcome: 'REJECTED_WRONG_PASSWORD' },
       });
-      throw new BadRequestException('Incorrect password.');
+      throw wrongPassword();
     }
 
     return this.settlement.set({
@@ -174,7 +236,8 @@ export class PaymentsController {
       'to every transfer into a dedicated account; this sets it, at Paystack first and then in ' +
       'settings. Payment links are unaffected: each carries its own split (Requirement 27.4). ' +
       'Guarded like the settlement account: password re-entry, a mandatory reason, and an ' +
-      'audit entry whether it succeeds or fails.',
+      'audit entry whether it succeeds or fails. A wrong password answers 400 naming ' +
+      '`password`; no settlement account, or a refusal by Paystack, 400 naming `percentage`.',
     body: setDedicatedPercentageSchema,
   })
   async setDedicatedPercentage(
@@ -200,7 +263,7 @@ export class PaymentsController {
         requestId: request.header('x-request-id'),
         after: { percentage: body.percentage, outcome: 'REJECTED_WRONG_PASSWORD' },
       });
-      throw new BadRequestException('Incorrect password.');
+      throw wrongPassword();
     }
 
     return this.settlement.setDedicatedPercentage({

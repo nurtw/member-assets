@@ -374,6 +374,23 @@ each past month of levy at the amount in force when it fell due (item 22). A
 direct edit leaves no history row, so the System would treat the new amount as
 having applied all along, and every month already paid would show a shortfall.
 
+### Setting or changing the NURTW settlement account
+
+**Settings → Settlement** (item 30), for an officer holding `payment.manage_settlement`:
+the super administrator, unless it has been expressly granted.
+
+1. Choose the bank from Paystack's list and type the ten-digit account number.
+2. Press **Look up the account name**. Paystack's name for the account appears. Go on
+   only if it is the Union's own account.
+3. Give a reason and your password, and save.
+
+The first save creates the NURTW subaccount at Paystack; every later save updates that
+same subaccount, so nothing already issued needs reissuing (Requirement 27.12). **A change
+redirects all of the Union's dues from then on**, including money collected and not yet
+paid out. Every attempt is audited as `payment.settlement.update`, and each lookup as
+`payment.settlement.resolve` (with the last four digits, never the name). The screen shows
+the account by its last four digits only.
+
 ### Switching on dedicated accounts
 
 A dedicated account cannot be assigned until both of these exist: the NURTW settlement
@@ -385,12 +402,10 @@ dedicated-account pricing must first be confirmed from the dashboard.
    accounts on the business. The percentage is Paystack's dedicated-account fee rate plus
    0.5 per cent (`QUESTIONS.md` PAY-11, 5 October 2026). Paystack takes its fee out of
    that percentage, not on top of it.
-2. Set it with a super administrator's session, the password, and a reason:
-
-   ```http
-   PUT /api/v1/payments/settlement/dedicated-percentage
-   { "percentage": 1.5, "password": "…", "reason": "Pricing confirmed from the dashboard" }
-   ```
+2. Set it on **Settings → Settlement**, with your password and a reason. The screen works
+   an example through at the percentage typed: what a member sends to cover a ₦1,000 due,
+   and how it splits. (The route behind it is
+   `PUT /api/v1/payments/settlement/dedicated-percentage`.)
 
    This updates the NURTW subaccount's `percentage_charge` at Paystack first, then the
    `payments.dedicated_account.contractor_percentage` setting. **Never edit that setting

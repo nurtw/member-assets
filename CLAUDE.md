@@ -650,6 +650,11 @@ record the same plate at once. Preserve it too.
 - **The contractor percentage is changed only through
   `PUT /payments/settlement/dedicated-percentage`**, which updates the subaccount at
   Paystack first. It ships unset (PAY-11), and assignment is refused until it is set.
+  The rule for choosing it is Paystack's dedicated-account fee rate plus 0.5 per cent.
+- **Settings → Settlement** (item 30) sits over those routes and `GET /payments/settlement`,
+  `GET /payments/banks`, and `POST /payments/settlement/resolve`. Responses carry the
+  account number's **last four digits only** (`SettlementState`); never return the
+  `settlement_account` row. A lookup is audited without the name.
 - Paystack is sent only the email, names, and phone. No BVN is collected. PAY-20: only if
   a Paystack test shows it is required, and then it is passed straight through and never
   stored or logged.

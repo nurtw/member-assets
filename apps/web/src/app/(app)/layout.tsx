@@ -22,6 +22,11 @@ const NAVIGATION: { href: string; label: string; permissions: string[] }[] = [
   { href: "/vehicles", label: "Vehicles", permissions: ["vehicle.read"] },
   { href: "/settings/fees", label: "Fees", permissions: ["payment.read"] },
   {
+    href: "/settings/settlement",
+    label: "Settlement",
+    permissions: ["payment.manage_settlement"],
+  },
+  {
     href: "/settings/api-access",
     label: "API access",
     permissions: ["api_client.read", "disclosure_profile.read"],
