@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.6
+**Document version:** 1.7
 **Last revised:** 5 October 2026
 **Authority:** Subordinate to `PRD.md`. Where this document and the PRD conflict, the PRD prevails.
 
@@ -26,6 +26,7 @@ without that departure being raised in `HANDOFF.md` and the decision formally re
 | Database | PostgreSQL (Neon) | The legacy export is PostgreSQL. Neon's branching supports a database branch per preview deployment. |
 | API hosting | DigitalOcean | Selected by the owner. Deployed as a container. |
 | Web hosting | Vercel | Selected by the owner. |
+| Web interface | Tailwind CSS v4, Radix primitives, lucide icons | Item 32: one frame and one set of colour tokens for every screen, in a light and a dark theme (§17). |
 
 ---
 
@@ -718,3 +719,43 @@ The following were added by revision 1.9, 5 October 2026:
 | Paying from a check | A Pay now button on internal checks; personal pay links for the public, never saying what is owed | 9.15, PRD Requirement 27.8 |
 | The settlement screen | The bank from Paystack's list, the name shown before saving, the account number by its last four digits | PRD Requirement 27.12 |
 | The organisation portal | Its own accounts, session, and kind of route; approval and access stay with the administrator; usage projected | 9.16, PRD §23.23 |
+
+The following were added by item 32, 5 October 2026 (the owner's direction; `DESIGN.md` 1.1):
+
+| Matter | Determination | Decision |
+|---|---|---|
+| The frame | One sidebar, command menu, and breadcrumb trail, read from one navigation table | 17.1 |
+| Components | Radix primitives under source kept in the repository | 17.2 |
+| Colour and themes | Every colour a token; Light, Dark, and System as token sets, applied before the first paint | 17.3 |
+
+---
+
+## 17. Web interface *(item 32)*
+
+**Decision 17.1 — one frame, read from one navigation table.** Every signed-in screen sits in
+one frame: a sidebar grouped by task, a breadcrumb trail, and a command menu. All three read
+one typed table, `apps/web/src/lib/navigation.ts`, so they cannot disagree. Filtering that
+table by permission is a courtesy and never the control: the API's guard is the control
+(Decision 9.9), and a hidden link is only a button not offered. The command menu reaches
+screens and actions, and never searches records, because the System is not a directory
+(PRD §2.2). The organisation portal uses the same frame with a table of its own, and nothing
+of the officers' frame is mounted there (Decision 9.16).
+
+**Decision 17.2 — components on Radix primitives, with their source in the repository.**
+Dialogs, menus, tooltips, tabs, and the command menu are built on Radix primitives, which
+handle focus, keyboard behaviour, and ARIA; icons are lucide, the command list is cmdk, and
+toasts are sonner. The components themselves (`apps/web/src/components/ui/`) are source in
+this repository, in the manner of shadcn/ui, rather than a component library's package. They
+can be changed here without waiting for anyone's release, and nothing in them is coloured by
+a library's own palette.
+
+**Decision 17.3 — every colour is a token, and a theme is a set of tokens.** Components use
+only the tokens declared in `apps/web/src/app/globals.css`; a test fails on any raw colour
+class. Light is the base. System is no attribute at all: the stylesheet follows
+`prefers-color-scheme`. An explicit Light or Dark is `data-theme` on the root element, set by
+an inline script in `<head>` before the first paint (Next 16's guide to preventing a flash
+before hydration) from a value kept in the browser's storage, as a convenience of that
+device. Each verdict colour has an ink, a surface, and a solid step, because in the dark
+theme ink must be light while a fill behind white text must stay dark (`DESIGN.md` §8).
+Printed matter, such as a QR code, sits on a white "paper" token in both themes. If a
+content security policy is added (item 15), it must allow the theme script by its hash.

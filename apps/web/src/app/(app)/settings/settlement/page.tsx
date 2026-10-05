@@ -41,7 +41,7 @@ export default function SettlementPage() {
     <div className="grid max-w-3xl gap-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Settlement</h1>
-        <p className="mt-1 text-sm text-black/60">
+        <p className="mt-1 text-sm text-muted-foreground">
           Where the Union&apos;s share of every payment is paid, and the
           contractor&apos;s percentage of money sent to members&apos; dedicated
           accounts.
@@ -58,7 +58,9 @@ export default function SettlementPage() {
           requestId={loadError.requestId}
         />
       ) : null}
-      {isLoading ? <p className="text-sm text-black/50">Loading…</p> : null}
+      {isLoading ? (
+        <p className="text-sm text-faint-foreground">Loading…</p>
+      ) : null}
 
       {data ? (
         <>
@@ -157,27 +159,24 @@ function AccountSection({
     >
       {current ? (
         <dl className="grid gap-1 text-sm sm:grid-cols-[10rem_1fr]">
-          <dt className="text-black/55">Bank</dt>
+          <dt className="text-faint-foreground">Bank</dt>
           <dd className="font-medium">{current.bankName}</dd>
-          <dt className="text-black/55">Account name</dt>
+          <dt className="text-faint-foreground">Account name</dt>
           <dd className="font-medium">{current.accountName}</dd>
-          <dt className="text-black/55">Account number</dt>
+          <dt className="text-faint-foreground">Account number</dt>
           <dd className="font-mono">ending {current.accountNumberLast4}</dd>
-          <dt className="text-black/55">Last changed</dt>
+          <dt className="text-faint-foreground">Last changed</dt>
           <dd>{moment(current.updatedAt)}</dd>
         </dl>
       ) : (
-        <p className="rounded-md border border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] px-3 py-2 text-sm">
+        <p className="rounded-md border border-verdict-caution/40 bg-verdict-caution-surface px-3 py-2 text-sm">
           <span className="font-semibold">Not set.</span> Dues shared with NURTW
           cannot be paid, and no dedicated account can be opened, until it is.
         </p>
       )}
 
       {saved ? (
-        <p
-          role="status"
-          className="text-sm font-medium text-[var(--verdict-affirm)]"
-        >
+        <p role="status" className="text-sm font-medium text-verdict-affirm">
           Saved. Paystack now settles the Union&apos;s share to this account.
         </p>
       ) : null}
@@ -249,10 +248,12 @@ function AccountSection({
 
       {confirmedName ? (
         <>
-          <div className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 py-3 text-sm">
-            <p className="text-black/60">Paystack holds this account as</p>
+          <div className="rounded-md border border-line bg-surface-muted px-4 py-3 text-sm">
+            <p className="text-muted-foreground">
+              Paystack holds this account as
+            </p>
             <p className="mt-0.5 text-base font-semibold">{confirmedName}</p>
-            <p className="mt-1 text-black/60">
+            <p className="mt-1 text-muted-foreground">
               Save only if this is the Union&apos;s own account.
             </p>
           </div>
@@ -370,7 +371,7 @@ function PercentageSection({
           </>
         )}
       </p>
-      <p className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-black/70">
+      <p className="rounded-md border border-line bg-surface-muted px-3 py-2 text-sm text-muted-foreground">
         The Union&apos;s rule (PAY-11): Paystack&apos;s dedicated-account fee
         rate, read from the Paystack dashboard, plus 0.5 per cent. Paystack must
         also have enabled dedicated accounts on the business.
@@ -378,7 +379,7 @@ function PercentageSection({
       {shown !== null ? <Example percentage={shown} /> : null}
 
       {!state.account ? (
-        <p className="text-sm italic text-black/55">
+        <p className="text-sm italic text-faint-foreground">
           Add the settlement account first: the percentage is set on it.
         </p>
       ) : (
@@ -386,7 +387,7 @@ function PercentageSection({
           {saved ? (
             <p
               role="status"
-              className="text-sm font-medium text-[var(--verdict-affirm)]"
+              className="text-sm font-medium text-verdict-affirm"
             >
               Saved, at Paystack and here.
             </p>
@@ -461,7 +462,7 @@ function Example({ percentage }: { percentage: number }) {
   const send = amountToSendKobo(due, percentage);
   const credit = dedicatedCreditKobo(send, percentage);
   return (
-    <p className="text-sm text-black/70">
+    <p className="text-sm text-muted-foreground">
       At {percentage}%, to cover a {naira(due)} due a member sends{" "}
       <span className="font-semibold">{naira(send)}</span>. NURTW receives{" "}
       {naira(credit)}, and {naira(send - credit)} goes to the contractor&apos;s

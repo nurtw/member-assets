@@ -78,12 +78,12 @@ export function MemberPicker({
   if (selectedId) {
     return (
       <Field label={label} htmlFor={htmlFor} hint={hint}>
-        <div className="flex items-center justify-between gap-3 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 py-2 text-sm">
+        <div className="flex items-center justify-between gap-3 rounded-md border border-line bg-surface-muted px-3 py-2 text-sm">
           <span>{selectedLabel}</span>
           <button
             type="button"
             onClick={onClear}
-            className="text-xs font-medium text-black/55 underline hover:text-black/80"
+            className="text-xs font-medium text-faint-foreground underline hover:text-muted-foreground"
           >
             Change
           </button>
@@ -108,11 +108,13 @@ export function MemberPicker({
           autoComplete="off"
         />
         {open ? (
-          <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-[var(--border-subtle)] bg-white text-sm shadow-md">
+          <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md border border-line bg-surface text-sm shadow-md">
             {searching ? (
-              <li className="px-3 py-2 text-black/50">Searching…</li>
+              <li className="px-3 py-2 text-faint-foreground">Searching…</li>
             ) : results.length === 0 ? (
-              <li className="px-3 py-2 text-black/50">No members found.</li>
+              <li className="px-3 py-2 text-faint-foreground">
+                No members found.
+              </li>
             ) : (
               results.map((member) => {
                 const label = [
@@ -132,10 +134,10 @@ export function MemberPicker({
                         setQuery("");
                         setDismissed(true);
                       }}
-                      className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left hover:bg-[var(--surface-muted)]"
+                      className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left hover:bg-surface-muted"
                     >
                       <span className="font-medium">{label}</span>
-                      <span className="text-xs text-black/55">
+                      <span className="text-xs text-faint-foreground">
                         {member.membershipNumber ?? "No membership number"} ·{" "}
                         {member.organisation.name}
                       </span>

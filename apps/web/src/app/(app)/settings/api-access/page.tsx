@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 
-import { ApiAccessTabs, moment, shortDay } from "@/components/api-access";
+import { moment, shortDay } from "@/components/api-access";
 import {
   Button,
   ErrorNotice,
@@ -217,15 +217,13 @@ export default function ApiAccessPage() {
   return (
     <div className="grid max-w-5xl gap-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">API access</h1>
-        <p className="mt-1 text-sm text-black/60">
+        <h1 className="text-xl font-semibold tracking-tight">Organisations</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Outside organisations approved to check the Union’s records through
           the API, what each may ask, and the token it holds. Every change needs
           a reason and is recorded in the audit trail.
         </p>
       </div>
-
-      <ApiAccessTabs />
 
       {loadError ? (
         <ErrorNotice
@@ -235,7 +233,7 @@ export default function ApiAccessPage() {
       ) : null}
 
       {applied.length > 0 ? (
-        <div className="rounded-md border border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] px-4 py-3 text-sm">
+        <div className="rounded-md border border-verdict-caution/40 bg-verdict-caution-surface px-4 py-3 text-sm">
           <p className="font-semibold">Applications from the portal</p>
           <p className="mt-1">
             These organisations applied for themselves and can do nothing yet.
@@ -259,8 +257,8 @@ export default function ApiAccessPage() {
       ) : null}
 
       {paused.length > 0 ? (
-        <div className="rounded-md border border-[var(--verdict-deny)]/30 bg-[var(--verdict-deny-surface)] px-4 py-3 text-sm">
-          <p className="font-semibold text-[var(--verdict-deny)]">
+        <div className="rounded-md border border-verdict-deny/30 bg-verdict-deny-surface px-4 py-3 text-sm">
+          <p className="font-semibold text-verdict-deny">
             Paused by abuse detection
           </p>
           <p className="mt-1">
@@ -285,8 +283,8 @@ export default function ApiAccessPage() {
       ) : null}
 
       {expiring.length > 0 ? (
-        <div className="rounded-md border border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] px-4 py-3 text-sm">
-          <p className="font-semibold text-[var(--verdict-caution)]">
+        <div className="rounded-md border border-verdict-caution/40 bg-verdict-caution-surface px-4 py-3 text-sm">
+          <p className="font-semibold text-verdict-caution">
             Tokens to replace soon
           </p>
           <p className="mt-1">
@@ -311,19 +309,19 @@ export default function ApiAccessPage() {
       ) : null}
 
       {isLoading ? (
-        <p className="text-sm text-black/50">Loading…</p>
+        <p className="text-sm text-faint-foreground">Loading…</p>
       ) : canRead && clients.length === 0 && !loadError ? (
-        <div className="rounded-lg border border-dashed border-[var(--border-subtle)] p-10 text-center">
+        <div className="rounded-lg border border-dashed border-line p-10 text-center">
           <p className="text-sm font-medium">No organisations yet</p>
-          <p className="mt-1 text-sm text-black/55">
+          <p className="mt-1 text-sm text-faint-foreground">
             An organisation registered here appears in this list, pending
             approval.
           </p>
         </div>
       ) : clients.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)] bg-white">
+        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
           <table className="w-full min-w-[52rem] text-sm">
-            <thead className="border-b border-[var(--border-subtle)] bg-[var(--surface-muted)] text-left">
+            <thead className="border-b border-line bg-surface-muted text-left">
               <tr>
                 <th className="px-4 py-2.5 font-semibold">Organisation</th>
                 <th className="px-4 py-2.5 font-semibold">Status</th>
@@ -336,16 +334,16 @@ export default function ApiAccessPage() {
               {clients.map((client) => (
                 <tr
                   key={client.id}
-                  className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--surface-muted)]/60"
+                  className="border-b border-line last:border-0 hover:bg-surface-muted/60"
                 >
                   <td className="px-4 py-3">
                     <Link
                       href={`/settings/api-access/${client.id}`}
-                      className="font-medium text-[var(--nurtw-navy)] underline-offset-2 hover:underline"
+                      className="font-medium text-link underline-offset-2 hover:underline"
                     >
                       {client.organisationName}
                     </Link>
-                    <span className="block text-xs text-black/45">
+                    <span className="block text-xs text-faint-foreground">
                       {client.selfRegistered ? "Applied" : "Registered"}{" "}
                       {shortDay(client.createdAt)}
                       {client.selfRegistered ? " through the portal" : ""}
@@ -354,15 +352,15 @@ export default function ApiAccessPage() {
                   <td className="px-4 py-3">
                     <StatusChip status={client.status} />
                     {client.pausedUntil ? (
-                      <span className="mt-1 block text-xs font-semibold text-[var(--verdict-deny)]">
+                      <span className="mt-1 block text-xs font-semibold text-verdict-deny">
                         Paused until {moment(client.pausedUntil)}
                       </span>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 text-black/70">
+                  <td className="px-4 py-3 text-muted-foreground">
                     {client.disclosureProfile?.label ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-black/70">
+                  <td className="px-4 py-3 text-muted-foreground">
                     {client.scopes.length === 0 ? "—" : client.scopes.length}
                   </td>
                   <td className="px-4 py-3">
@@ -371,7 +369,7 @@ export default function ApiAccessPage() {
                         <span className="font-mono text-xs">
                           {client.currentToken.prefix}…
                         </span>
-                        <span className="block text-xs text-black/55">
+                        <span className="block text-xs text-faint-foreground">
                           {client.currentToken.expiringSoon
                             ? "Replace soon · "
                             : ""}
@@ -379,7 +377,7 @@ export default function ApiAccessPage() {
                         </span>
                       </>
                     ) : (
-                      <span className="text-xs italic text-black/45">
+                      <span className="text-xs italic text-faint-foreground">
                         None in use
                       </span>
                     )}

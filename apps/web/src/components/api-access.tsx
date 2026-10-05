@@ -7,17 +7,15 @@ import {
   type ApiScope,
   type DisclosureFieldCheck,
 } from "@nurtw/contracts";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui";
 import { ApiError } from "@/lib/api";
-import { useSession } from "@/lib/session";
 
 /**
- * Pieces shared by the API access screens (item 11): the tabs, the one-time
- * token panel, and the scope and field pickers.
+ * Pieces shared by the API access screens (item 11): the one-time token
+ * panel, and the scope and field pickers. The sidebar names each screen
+ * (item 32), so they carry no tabs of their own.
  */
 
 /** "3 Oct 2026", or a dash. */
@@ -72,61 +70,6 @@ export function scopeDescription(scope: string): string {
   return API_SCOPE_DESCRIPTIONS[scope as ApiScope] ?? scope;
 }
 
-/** Organisations | Disclosure profiles | Limits, as the officer may see them. */
-export function ApiAccessTabs() {
-  const pathname = usePathname();
-  const { holds } = useSession();
-  const onProfiles = pathname.startsWith("/settings/api-access/profiles");
-  const onLimits = pathname.startsWith("/settings/api-access/limits");
-
-  const tabs = [
-    {
-      href: "/settings/api-access",
-      label: "Organisations",
-      permission: "api_client.read",
-      active: !onProfiles && !onLimits,
-    },
-    {
-      href: "/settings/api-access/profiles",
-      label: "Disclosure profiles",
-      permission: "disclosure_profile.read",
-      active: onProfiles,
-    },
-    {
-      href: "/settings/api-access/limits",
-      label: "Limits",
-      permission: "api_client.read",
-      active: onLimits,
-    },
-  ].filter((tab) => holds(tab.permission));
-
-  if (tabs.length < 2) {
-    return null;
-  }
-  return (
-    <nav
-      aria-label="API access"
-      className="flex gap-1 border-b border-[var(--border-subtle)]"
-    >
-      {tabs.map((tab) => (
-        <Link
-          key={tab.href}
-          href={tab.href}
-          aria-current={tab.active ? "page" : undefined}
-          className={
-            "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition " +
-            (tab.active
-              ? "border-[var(--nurtw-green)] text-[var(--nurtw-green-deep)]"
-              : "border-transparent text-black/60 hover:text-black")
-          }
-        >
-          {tab.label}
-        </Link>
-      ))}
-    </nav>
-  );
-}
-
 /**
  * A token, shown the one time it exists outside the organisation's hands
  * (PRD Requirement 12.1).
@@ -149,7 +92,7 @@ export function OneTimeToken({
   return (
     <section
       aria-labelledby="one-time-token-title"
-      className="rounded-lg border-2 border-[var(--verdict-caution)] bg-[var(--verdict-caution-surface)] p-5"
+      className="rounded-lg border-2 border-verdict-caution bg-verdict-caution-surface p-5"
     >
       <h2 id="one-time-token-title" className="text-base font-semibold">
         Copy this token now — it will not be shown again
@@ -161,7 +104,7 @@ export function OneTimeToken({
         or revoke it.
       </p>
       <p
-        className="mt-3 select-all break-all rounded-md border border-[var(--border-subtle)] bg-white px-3 py-2 font-mono text-sm"
+        className="mt-3 select-all break-all rounded-md border border-line bg-surface px-3 py-2 font-mono text-sm"
         aria-label="API token"
       >
         {token}
@@ -211,11 +154,11 @@ export function ScopePicker({
     <fieldset className="grid gap-2">
       <legend className="text-sm font-medium">
         Scopes
-        <span className="ml-1 text-[var(--verdict-deny)]" aria-hidden>
+        <span className="ml-1 text-verdict-deny" aria-hidden>
           *
         </span>
       </legend>
-      <p className="text-xs text-black/55">
+      <p className="text-xs text-faint-foreground">
         What the organisation may ask. Grant only what its stated purpose needs.
       </p>
       {API_SCOPES.map((scope) => {
@@ -225,7 +168,7 @@ export function ScopePicker({
           <label
             key={scope}
             htmlFor={id}
-            className="flex cursor-pointer items-start gap-2.5 rounded-md border border-[var(--border-subtle)] px-3 py-2"
+            className="flex cursor-pointer items-start gap-2.5 rounded-md border border-line px-3 py-2"
           >
             <input
               id={id}
@@ -245,7 +188,7 @@ export function ScopePicker({
               <span className="block text-sm">
                 {API_SCOPE_DESCRIPTIONS[scope]}
               </span>
-              <span className="block font-mono text-xs text-black/50">
+              <span className="block font-mono text-xs text-faint-foreground">
                 {scope}
               </span>
             </span>
@@ -280,13 +223,13 @@ export function FieldPicker({
   return (
     <fieldset className="grid gap-3">
       <legend className="text-sm font-medium">Fields disclosed</legend>
-      <p className="text-xs text-black/55">
+      <p className="text-xs text-faint-foreground">
         A response carries the match result and only the fields ticked here.
         Tick none for a profile that confirms a match and says nothing more.
       </p>
       {(Object.keys(CHECK_HEADINGS) as DisclosureFieldCheck[]).map((check) => (
         <div key={check} className="grid gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-black/45">
+          <p className="text-xs font-semibold uppercase tracking-wide text-faint-foreground">
             {CHECK_HEADINGS[check]}
           </p>
           {fields
@@ -298,7 +241,7 @@ export function FieldPicker({
                 <label
                   key={field}
                   htmlFor={id}
-                  className="flex cursor-pointer items-start gap-2.5 rounded-md border border-[var(--border-subtle)] px-3 py-2"
+                  className="flex cursor-pointer items-start gap-2.5 rounded-md border border-line px-3 py-2"
                 >
                   <input
                     id={id}
@@ -317,7 +260,7 @@ export function FieldPicker({
                     <span className="block text-sm font-medium">
                       {entry.label}
                     </span>
-                    <span className="block text-xs text-black/55">
+                    <span className="block text-xs text-faint-foreground">
                       {entry.description}
                     </span>
                   </span>
@@ -334,7 +277,7 @@ export function FieldPicker({
 export function ProfileFields({ fields }: { fields: readonly string[] }) {
   if (fields.length === 0) {
     return (
-      <p className="text-sm italic text-black/55">
+      <p className="text-sm italic text-faint-foreground">
         No record field. A response confirms a match and nothing more.
       </p>
     );
@@ -344,7 +287,7 @@ export function ProfileFields({ fields }: { fields: readonly string[] }) {
       {fields.map((field) => (
         <li
           key={field}
-          className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-2.5 py-0.5 text-xs"
+          className="rounded-full border border-line bg-surface-muted px-2.5 py-0.5 text-xs"
         >
           {fieldLabel(field)}
         </li>

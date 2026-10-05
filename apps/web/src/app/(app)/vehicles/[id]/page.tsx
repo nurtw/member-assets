@@ -34,14 +34,14 @@ import { useSession } from "@/lib/session";
 function Detail({ label, value }: { label: string; value: string | null }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-black/45">
+      <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
         {label}
       </dt>
       <dd className="mt-0.5 text-sm">
         {value && value.length > 0 ? (
           value
         ) : (
-          <span className="italic text-black/35">Not stated</span>
+          <span className="italic text-faint-foreground">Not stated</span>
         )}
       </dd>
     </div>
@@ -116,7 +116,7 @@ export default function VehicleDetailPage() {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-black/50">Loading…</p>;
+    return <p className="text-sm text-faint-foreground">Loading…</p>;
   }
 
   if (!vehicle) {
@@ -150,7 +150,7 @@ export default function VehicleDetailPage() {
       <div>
         <Link
           href="/vehicles"
-          className="text-sm text-black/55 underline-offset-2 hover:underline"
+          className="text-sm text-faint-foreground underline-offset-2 hover:underline"
         >
           ← Vehicles
         </Link>
@@ -162,7 +162,7 @@ export default function VehicleDetailPage() {
               keyed on the status below disappears with it. */}
           {vehicle.status ? <StatusChip status={vehicle.status} /> : null}
           {vehicle.isLegacyImport ? (
-            <span className="text-xs italic text-black/40">
+            <span className="text-xs italic text-faint-foreground">
               from the legacy migration
             </span>
           ) : null}
@@ -177,7 +177,7 @@ export default function VehicleDetailPage() {
       ) : null}
 
       {isOnRecord ? (
-        <div className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 py-3 text-sm">
+        <div className="rounded-md border border-line bg-surface-muted px-4 py-3 text-sm">
           <p className="font-semibold">On record, not declared</p>
           <p className="mt-1">
             This vehicle is recorded with the Union but has not been declared.
@@ -188,8 +188,8 @@ export default function VehicleDetailPage() {
       ) : null}
 
       {isDisputed ? (
-        <div className="rounded-md border border-[var(--verdict-caution)]/30 bg-[var(--verdict-caution-surface)] px-4 py-3 text-sm">
-          <p className="font-semibold text-[var(--verdict-caution)]">
+        <div className="rounded-md border border-verdict-caution/30 bg-verdict-caution-surface px-4 py-3 text-sm">
+          <p className="font-semibold text-verdict-caution">
             Disputed
           </p>
           <p className="mt-1">
@@ -247,7 +247,7 @@ export default function VehicleDetailPage() {
           ) : null}
         </dl>
         {vehicle.notes ? (
-          <div className="border-t border-[var(--border-subtle)] pt-4">
+          <div className="border-t border-line pt-4">
             <Detail label="Notes" value={vehicle.notes} />
           </div>
         ) : null}
@@ -375,7 +375,7 @@ export default function VehicleDetailPage() {
             </Button>
           </div>
           {holds("sticker.attach") ? (
-            <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+            <div className="grid gap-3 border-t border-line pt-4">
               <Field
                 label="Reason for reissuing"
                 htmlFor="letterReason"

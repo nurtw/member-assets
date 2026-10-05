@@ -136,7 +136,7 @@ export function PortalUsageSection({
           <Breakdown usage={data} />
         </>
       ) : !error ? (
-        <p className="text-sm text-black/50">Loading…</p>
+        <p className="text-sm text-faint-foreground">Loading…</p>
       ) : null}
     </Section>
   );
@@ -144,8 +144,8 @@ export function PortalUsageSection({
 
 function Figure({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-[var(--border-subtle)] px-4 py-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-black/50">
+    <div className="rounded-md border border-line px-4 py-3">
+      <p className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
         {label}
       </p>
       <p className="mt-1 text-3xl font-semibold tabular-nums">{value}</p>
@@ -157,13 +157,13 @@ function Figure({ label, value }: { label: string; value: string }) {
 function QuotaMeter({ used, quota }: { used: number; quota: number }) {
   const share = quota > 0 ? Math.min(1, used / quota) : 0;
   return (
-    <div className="rounded-md border border-[var(--border-subtle)] px-4 py-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-black/50">
+    <div className="rounded-md border border-line px-4 py-3">
+      <p className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
         Today, of your daily quota
       </p>
       <p className="mt-1 text-3xl font-semibold tabular-nums">
         {count(used)}
-        <span className="text-base font-normal text-black/55">
+        <span className="text-base font-normal text-faint-foreground">
           {" "}
           of {count(quota)}
         </span>
@@ -174,14 +174,14 @@ function QuotaMeter({ used, quota }: { used: number; quota: number }) {
         aria-valuemax={quota}
         aria-valuenow={Math.min(used, quota)}
         aria-label="Requests today against the daily quota"
-        className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--chart-series)]/15"
+        className="mt-2 h-2 overflow-hidden rounded-full bg-chart-series/15"
       >
         <div
-          className="h-full rounded-full bg-[var(--chart-series)]"
+          className="h-full rounded-full bg-chart-series"
           style={{ width: `${share * 100}%` }}
         />
       </div>
-      <p className="mt-1.5 text-xs text-black/55">
+      <p className="mt-1.5 text-xs text-faint-foreground">
         The quota starts again at midnight, Lagos time.
       </p>
     </div>
@@ -205,7 +205,7 @@ function DailyChart({ days }: { days: PortalUsageDay[] }) {
       <figcaption className="text-sm font-medium">Requests by day</figcaption>
       <div className="grid grid-cols-[auto_1fr] gap-x-2">
         <div
-          className="flex h-40 flex-col justify-between text-right text-[11px] tabular-nums text-black/50"
+          className="flex h-40 flex-col justify-between text-right text-[11px] tabular-nums text-faint-foreground"
           aria-hidden
         >
           <span className="-translate-y-1.5">{count(ceiling)}</span>
@@ -218,9 +218,9 @@ function DailyChart({ days }: { days: PortalUsageDay[] }) {
             className="pointer-events-none absolute inset-0 flex flex-col justify-between"
             aria-hidden
           >
-            <span className="border-t border-black/[0.07]" />
-            <span className="border-t border-black/[0.07]" />
-            <span className="border-t border-black/25" />
+            <span className="border-t border-chart-grid" />
+            <span className="border-t border-chart-grid" />
+            <span className="border-t border-chart-axis" />
           </div>
           <div
             className="absolute inset-0 flex items-end"
@@ -237,12 +237,12 @@ function DailyChart({ days }: { days: PortalUsageDay[] }) {
                 // The whole band is the target, not the thin mark.
                 className={
                   "group relative flex h-full min-w-0 flex-1 items-end justify-center px-px outline-none " +
-                  (active === index ? "bg-black/[0.04]" : "")
+                  (active === index ? "bg-chart-hover" : "")
                 }
               >
                 {index === peakIndex && active === null ? (
                   <span
-                    className="absolute left-1/2 -translate-x-1/2 text-[11px] font-medium tabular-nums text-[var(--foreground)]"
+                    className="absolute left-1/2 -translate-x-1/2 text-[11px] font-medium tabular-nums text-foreground"
                     style={{
                       bottom: `calc(${(day.total / ceiling) * 100}% + 2px)`,
                     }}
@@ -251,7 +251,7 @@ function DailyChart({ days }: { days: PortalUsageDay[] }) {
                   </span>
                 ) : null}
                 <span
-                  className="block w-full max-w-6 rounded-t bg-[var(--chart-series)] group-focus-visible:ring-2 group-focus-visible:ring-[var(--foreground)]"
+                  className="block w-full max-w-6 rounded-t bg-chart-series group-focus-visible:ring-2 group-focus-visible:ring-foreground"
                   style={{
                     height: `${(day.total / ceiling) * 100}%`,
                     minHeight: day.total > 0 ? 2 : 0,
@@ -263,7 +263,7 @@ function DailyChart({ days }: { days: PortalUsageDay[] }) {
         </div>
         <span />
         <div
-          className="relative mt-1 h-4 text-[11px] text-black/50"
+          className="relative mt-1 h-4 text-[11px] text-faint-foreground"
           aria-hidden
         >
           {marks.map((index, position) => (
@@ -291,7 +291,7 @@ function DailyChart({ days }: { days: PortalUsageDay[] }) {
             <span className="font-semibold">{shortDate(shown.day)}</span>:{" "}
             {count(shown.total)} request{shown.total === 1 ? "" : "s"}
             {shown.total > 0 ? (
-              <span className="text-black/60">
+              <span className="text-muted-foreground">
                 {" "}
                 —{" "}
                 {CLASSES.filter((usage) => shown.byClass[usage] > 0)
@@ -304,7 +304,7 @@ function DailyChart({ days }: { days: PortalUsageDay[] }) {
             ) : null}
           </>
         ) : (
-          <span className="text-black/50">
+          <span className="text-faint-foreground">
             Point at a day, or move to it with the keyboard, for its figures.
           </span>
         )}
@@ -316,10 +316,10 @@ function DailyChart({ days }: { days: PortalUsageDay[] }) {
 function DailyTable({ days }: { days: PortalUsageDay[] }) {
   const newestFirst = [...days].reverse();
   return (
-    <div className="max-h-80 overflow-auto rounded-md border border-[var(--border-subtle)]">
+    <div className="max-h-80 overflow-auto rounded-md border border-line">
       <table className="w-full text-left text-sm">
         <caption className="sr-only">Requests by day, newest first</caption>
-        <thead className="sticky top-0 bg-[var(--surface-muted)] text-xs uppercase tracking-wide text-black/55">
+        <thead className="sticky top-0 bg-surface-muted text-xs uppercase tracking-wide text-faint-foreground">
           <tr>
             <th scope="col" className="px-3 py-2 font-medium">
               Day
@@ -340,10 +340,7 @@ function DailyTable({ days }: { days: PortalUsageDay[] }) {
         </thead>
         <tbody>
           {newestFirst.map((day) => (
-            <tr
-              key={day.day}
-              className="border-t border-[var(--border-subtle)]"
-            >
+            <tr key={day.day} className="border-t border-line">
               <th
                 scope="row"
                 className="whitespace-nowrap px-3 py-1.5 font-normal"
@@ -356,7 +353,7 @@ function DailyTable({ days }: { days: PortalUsageDay[] }) {
               {CLASSES.map((usage) => (
                 <td
                   key={usage}
-                  className="px-3 py-1.5 text-right tabular-nums text-black/70"
+                  className="px-3 py-1.5 text-right tabular-nums text-muted-foreground"
                 >
                   {count(day.byClass[usage])}
                 </td>
@@ -389,7 +386,7 @@ function Breakdown({ usage }: { usage: PortalUsage }) {
       <caption className="pb-2 text-left text-sm font-medium">
         What they came to
       </caption>
-      <thead className="text-xs uppercase tracking-wide text-black/50">
+      <thead className="text-xs uppercase tracking-wide text-faint-foreground">
         <tr>
           <th scope="col" className="py-1.5 font-medium">
             Outcome
@@ -404,14 +401,11 @@ function Breakdown({ usage }: { usage: PortalUsage }) {
       </thead>
       <tbody>
         {rows.map((name) => (
-          <tr
-            key={name}
-            className="border-t border-[var(--border-subtle)] align-top"
-          >
+          <tr key={name} className="border-t border-line align-top">
             <th scope="row" className="py-2 font-normal">
               {PORTAL_USAGE_LABELS[name]}
               {EXPLAINED[name] ? (
-                <span className="block text-xs text-black/55">
+                <span className="block text-xs text-faint-foreground">
                   {EXPLAINED[name]}
                 </span>
               ) : null}
@@ -419,7 +413,7 @@ function Breakdown({ usage }: { usage: PortalUsage }) {
             <td className="py-2 pl-3 text-right font-medium tabular-nums">
               {count(usage.totals[name])}
             </td>
-            <td className="py-2 pl-3 text-right tabular-nums text-black/60">
+            <td className="py-2 pl-3 text-right tabular-nums text-muted-foreground">
               {usage.total > 0
                 ? `${Math.round((usage.totals[name] / usage.total) * 100)}%`
                 : "—"}

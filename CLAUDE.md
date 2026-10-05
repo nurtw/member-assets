@@ -254,7 +254,7 @@ pnpm workspace. `apps/mobile` is anticipated and slots in without restructuring.
 
 ```
 apps/api        NestJS 12 · TypeScript 6 · vitest · oxlint
-apps/web        Next.js 16 App Router · React 19 · Tailwind v4 · eslint
+apps/web        Next.js 16 App Router · React 19 · Tailwind v4 · Radix · eslint · vitest
 packages/domain     framework-independent rules (no Nest, Prisma, or Next imports)
 packages/contracts  shared types, statuses, scopes; depends on domain
 ```
@@ -658,7 +658,7 @@ record the same plate at once. Preserve it too.
   `PUT /payments/settlement/dedicated-percentage`**, which updates the subaccount at
   Paystack first. It ships unset (PAY-11), and assignment is refused until it is set.
   The rule for choosing it is Paystack's dedicated-account fee rate plus 0.5 per cent.
-- **Settings → Settlement** (item 30) sits over those routes and `GET /payments/settlement`,
+- **Payments → Settlement** (item 30) sits over those routes and `GET /payments/settlement`,
   `GET /payments/banks`, and `POST /payments/settlement/resolve`. Responses carry the
   account number's **last four digits only** (`SettlementState`); never return the
   `settlement_account` row. A lookup is audited without the name.
@@ -885,6 +885,30 @@ its own tokens (EXT-20). Approval and access stay with `api_client.manage`.
 - **No external answer mentions declaration** (Requirement 12.7), not even in the statement.
   The audit event (`aggregate.external.*`) keeps the exact count beside the answer.
 
+### The shell and themes (item 32)
+
+Every signed-in screen sits in `AppFrame` (`components/shell/`): a sidebar, breadcrumbs,
+and a command menu. The kit is `components/ui/` (`import { … } from "@/components/ui"`;
+dialogs, menus, and the sheet from their own files). See `DESIGN.md` §8–§9 and
+`ARCHITECTURE.md` §17.
+
+- **Every colour is a token.** `src/lib/colour-tokens.test.ts` fails on `bg-white`,
+  `text-black/60`, a palette colour, a hex value, or a `-[var(--…)]` class. Use
+  `bg-surface`, `bg-surface-muted`, `text-muted-foreground`, `text-faint-foreground`,
+  `border-line`, `border-line-strong` (a control's outline), `text-link`, `text-brand-text`,
+  `bg-primary`, `text-on-solid`, and the verdict utilities.
+- **A verdict fill behind white text is `-solid`** (`bg-verdict-deny-solid`). The ink
+  (`text-verdict-deny`) is for text on a surface. In the dark theme the two differ, so
+  using ink as a fill puts white text on a pale colour.
+- **A QR code, or anything printed, sits on `bg-paper`**: white in both themes.
+- **A new screen goes in `OFFICER_NAVIGATION` and `OFFICER_LANDING_ORDER`**
+  (`lib/navigation.ts`); a test fails if the two disagree. The table is a courtesy, never
+  the control.
+- **The command menu reaches screens and actions only.** Never make it search records.
+- **The theme script** in `app/layout.tsx` runs before the first paint. If item 15 adds a
+  content security policy, allow it by its hash.
+- **The web has unit tests** for its pure modules: `pnpm --filter web test`.
+
 ### Clicking through the app
 
 There is no browser in the test suite. To drive the real screens, run the built API and
@@ -893,6 +917,12 @@ web app against the **local** database and script a browser:
 - **Force the API onto the local database.** `apps/api/.env` points at Neon. Export
   `DATABASE_URL` for the local database before `node dist/main.js`; the environment wins
   over `.env`. Confirm by signing in as an account that exists only locally.
+- **Check the ports first, and never go through the owner's servers.** The owner may be
+  running `pnpm dev` on 3000 and 3001, and that API reads `.env`, so it writes to **Neon**.
+  Run your own API and web on free ports (3101 and 3200 worked on 5 October; another
+  stack's container takes 3100 whenever it restarts). Build the web with
+  `NEXT_PUBLIC_API_BASE_URL` set to your API, because the rewrite is fixed at build time
+  (`.next/routes-manifest.json`), and build it again without that afterwards.
 - **The local database holds the imported legacy records**, which are real people's.
   Create synthetic records to click through, capture only those, and remove them after.
 - **A test administrator** comes from the seed with `SEED_ADMIN_EMAIL` and

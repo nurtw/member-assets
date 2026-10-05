@@ -6,11 +6,7 @@ import { useState } from "react";
 import useSWR from "swr";
 
 import { explained } from "@/components/api-access";
-import {
-  OfficerTabs,
-  TemporaryPassword,
-  levelLabel,
-} from "@/components/officers";
+import { TemporaryPassword, levelLabel } from "@/components/officers";
 import {
   Button,
   ErrorNotice,
@@ -123,13 +119,11 @@ export default function OfficersPage() {
     <div className="grid max-w-5xl gap-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Officers</h1>
-        <p className="mt-1 text-sm text-black/60">
+        <p className="mt-1 text-sm text-muted-foreground">
           Who may sign in, and what each may do. Every change needs a reason and
           is recorded in the audit trail.
         </p>
       </div>
-
-      <OfficerTabs />
 
       {issued ? (
         <TemporaryPassword
@@ -145,12 +139,14 @@ export default function OfficersPage() {
           requestId={loadError.requestId}
         />
       ) : null}
-      {isLoading ? <p className="text-sm text-black/50">Loading…</p> : null}
+      {isLoading ? (
+        <p className="text-sm text-faint-foreground">Loading…</p>
+      ) : null}
 
       {users.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)] bg-white">
+        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
           <table className="w-full min-w-[44rem] text-sm">
-            <thead className="border-b border-[var(--border-subtle)] bg-[var(--surface-muted)] text-left">
+            <thead className="border-b border-line bg-surface-muted text-left">
               <tr>
                 <th className="px-4 py-2.5 font-semibold">Officer</th>
                 <th className="px-4 py-2.5 font-semibold">Status</th>
@@ -162,16 +158,16 @@ export default function OfficersPage() {
               {users.map((user) => (
                 <tr
                   key={user.id}
-                  className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--surface-muted)]/60"
+                  className="border-b border-line last:border-0 hover:bg-surface-muted/60"
                 >
                   <td className="px-4 py-3">
                     <Link
                       href={`/settings/users/${user.id}`}
-                      className="font-medium text-[var(--nurtw-navy)] underline-offset-2 hover:underline"
+                      className="font-medium text-link underline-offset-2 hover:underline"
                     >
                       {user.fullName}
                     </Link>
-                    <span className="block text-xs text-black/55">
+                    <span className="block text-xs text-faint-foreground">
                       {user.email}
                     </span>
                   </td>
@@ -180,20 +176,22 @@ export default function OfficersPage() {
                       status={user.isActive ? "ACTIVE" : "DEACTIVATED"}
                     />
                     {user.mustChangePassword ? (
-                      <span className="mt-1 block text-xs text-black/55">
+                      <span className="mt-1 block text-xs text-faint-foreground">
                         On a temporary password
                       </span>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 text-black/75">
+                  <td className="px-4 py-3 text-muted-foreground">
                     {user.roles.length === 0 ? (
-                      <span className="text-xs italic text-black/45">None</span>
+                      <span className="text-xs italic text-faint-foreground">
+                        None
+                      </span>
                     ) : (
                       <ul className="grid gap-0.5">
                         {user.roles.map((role) => (
                           <li key={role.id}>
                             {role.role.label}
-                            <span className="text-xs text-black/50">
+                            <span className="text-xs text-faint-foreground">
                               {" "}
                               · {role.organisation.name} (
                               {levelLabel(role.organisation.level)})
@@ -203,7 +201,7 @@ export default function OfficersPage() {
                       </ul>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-black/75">
+                  <td className="px-4 py-3 text-muted-foreground">
                     {user.secondFactorEnrolled ? "Set up" : "Not set up"}
                   </td>
                 </tr>

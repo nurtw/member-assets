@@ -69,7 +69,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-full flex-1 items-center justify-center bg-[var(--surface-muted)] px-4 py-12">
+    <main className="flex min-h-full flex-1 items-center justify-center bg-surface-muted px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element -- a small, static public asset; next/image's build-time optimisation buys nothing here. */}
@@ -81,12 +81,12 @@ export default function LoginPage() {
           <h1 className="text-xl font-semibold tracking-tight">
             NURTW Membership System
           </h1>
-          <p className="mt-1 text-sm text-black/60">Anambra State Council</p>
+          <p className="mt-1 text-sm text-muted-foreground">Anambra State Council</p>
         </div>
 
         <form
           onSubmit={onSubmit}
-          className="grid gap-4 rounded-lg border border-[var(--border-subtle)] bg-white p-6"
+          className="grid gap-4 rounded-lg border border-line bg-surface p-6"
         >
           {error ? (
             <ErrorNotice
@@ -132,7 +132,7 @@ export default function LoginPage() {
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 aria-pressed={showPassword}
                 tabIndex={-1}
-                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-black/45 hover:text-black/70"
+                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-faint-foreground hover:text-muted-foreground"
               >
                 {showPassword ? <EyeOffIcon /> : <EyeIcon />}
               </button>
@@ -164,11 +164,11 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-xs leading-relaxed text-black/50">
+        <p className="mt-6 text-center text-xs leading-relaxed text-faint-foreground">
           Access is restricted to authorised officers of the Union. Activity on
           this System is recorded.
         </p>
-        <p className="mt-2 text-center text-xs text-black/50">
+        <p className="mt-2 text-center text-xs text-faint-foreground">
           An outside organisation?{" "}
           <Link href="/portal/login" className="underline underline-offset-2">
             Use the organisation portal

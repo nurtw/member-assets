@@ -104,7 +104,7 @@ export function PortalTokensSection({ onChanged }: { onChanged: () => void }) {
       {issued ? (
         <div
           aria-labelledby="portal-token-title"
-          className="rounded-lg border-2 border-[var(--verdict-caution)] bg-[var(--verdict-caution-surface)] p-5"
+          className="rounded-lg border-2 border-verdict-caution bg-verdict-caution-surface p-5"
         >
           <h3 id="portal-token-title" className="text-base font-semibold">
             Copy this token now — it will not be shown again
@@ -115,7 +115,7 @@ export function PortalTokensSection({ onChanged }: { onChanged: () => void }) {
             here.
           </p>
           <p
-            className="mt-3 select-all break-all rounded-md border border-[var(--border-subtle)] bg-white px-3 py-2 font-mono text-sm"
+            className="mt-3 select-all break-all rounded-md border border-line bg-surface px-3 py-2 font-mono text-sm"
             aria-label="API token"
           >
             {issued}
@@ -153,7 +153,7 @@ export function PortalTokensSection({ onChanged }: { onChanged: () => void }) {
       ) : null}
 
       {data && !data.canManage ? (
-        <p className="text-sm italic text-black/55">
+        <p className="text-sm italic text-faint-foreground">
           Tokens can be created once the Union has approved your organisation
           and while it is active.
         </p>
@@ -164,7 +164,7 @@ export function PortalTokensSection({ onChanged }: { onChanged: () => void }) {
         // the page itself never does.
         <div className="overflow-x-auto">
           <table className="w-full min-w-[30rem] text-left text-sm">
-            <thead className="text-xs uppercase tracking-wide text-black/50">
+            <thead className="text-xs uppercase tracking-wide text-faint-foreground">
               <tr>
                 <th scope="col" className="py-1.5 font-medium">
                   Token
@@ -182,10 +182,7 @@ export function PortalTokensSection({ onChanged }: { onChanged: () => void }) {
             </thead>
             <tbody>
               {tokens.map((token) => (
-                <tr
-                  key={token.id}
-                  className="border-t border-[var(--border-subtle)]"
-                >
+                <tr key={token.id} className="border-t border-line">
                   <td className="whitespace-nowrap py-2 pr-4 font-mono text-xs">
                     {token.prefix}…
                   </td>
@@ -193,7 +190,7 @@ export function PortalTokensSection({ onChanged }: { onChanged: () => void }) {
                     <StatusChip status={token.state} />
                     <span className="sr-only">{STATES[token.state]}</span>
                     {token.state === "RETIRING" && token.retiresAt ? (
-                      <span className="block text-xs text-black/55">
+                      <span className="block text-xs text-faint-foreground">
                         Works until {moment(token.retiresAt)}
                       </span>
                     ) : null}
@@ -201,12 +198,12 @@ export function PortalTokensSection({ onChanged }: { onChanged: () => void }) {
                   <td className="py-2">
                     {shortDay(token.expiresAt)}
                     {token.expiringSoon ? (
-                      <span className="block text-xs font-medium text-[var(--verdict-caution)]">
+                      <span className="block text-xs font-medium text-verdict-caution">
                         Expires soon: replace it
                       </span>
                     ) : null}
                   </td>
-                  <td className="py-2 text-black/65">
+                  <td className="py-2 text-muted-foreground">
                     {token.lastUsedAt ? moment(token.lastUsedAt) : "Never"}
                   </td>
                 </tr>
@@ -234,7 +231,7 @@ export function PortalTokensSection({ onChanged }: { onChanged: () => void }) {
       ) : null}
 
       {data?.canManage && current ? (
-        <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+        <div className="grid gap-3 border-t border-line pt-4">
           <h3 className="text-sm font-semibold">Replace the token in use</h3>
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-64 flex-1">
@@ -278,9 +275,9 @@ export function PortalTokensSection({ onChanged }: { onChanged: () => void }) {
       ) : null}
 
       {revocable.length > 0 ? (
-        <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+        <div className="grid gap-3 border-t border-line pt-4">
           <h3 className="text-sm font-semibold">Revoke a token</h3>
-          <p className="text-sm text-black/60">
+          <p className="text-sm text-muted-foreground">
             For a token that may have leaked. It stops at once, and cannot be
             brought back.
           </p>

@@ -6,7 +6,6 @@ import { useState } from "react";
 import useSWR from "swr";
 
 import { explained } from "@/components/api-access";
-import { OfficerTabs } from "@/components/officers";
 import {
   Button,
   ErrorNotice,
@@ -49,11 +48,11 @@ function PermissionPicker({
     <fieldset className="grid gap-2">
       <legend className="text-sm font-medium">
         Permissions
-        <span className="ml-1 text-[var(--verdict-deny)]" aria-hidden>
+        <span className="ml-1 text-verdict-deny" aria-hidden>
           *
         </span>
       </legend>
-      <p className="text-xs text-black/55">
+      <p className="text-xs text-faint-foreground">
         What a holder of the role may do. Give only what the work needs.
         Declaring a vehicle and changing the settlement account are not offered:
         each is granted to a named officer, never through a role.
@@ -66,7 +65,7 @@ function PermissionPicker({
             <label
               key={entry.code}
               htmlFor={id}
-              className="flex cursor-pointer items-start gap-2.5 rounded-md border border-[var(--border-subtle)] px-3 py-2"
+              className="flex cursor-pointer items-start gap-2.5 rounded-md border border-line px-3 py-2"
             >
               <input
                 id={id}
@@ -83,7 +82,7 @@ function PermissionPicker({
               />
               <span>
                 <span className="block text-sm">{entry.description}</span>
-                <span className="block font-mono text-xs text-black/50">
+                <span className="block font-mono text-xs text-faint-foreground">
                   {entry.code}
                   {needsSecondFactor(entry.code)
                     ? " · needs a second factor"
@@ -172,7 +171,7 @@ function RoleForm({
         onChange={setPermissions}
       />
       {role && role.assignmentCount > 0 ? (
-        <p className="rounded-md border border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] px-3 py-2 text-sm">
+        <p className="rounded-md border border-verdict-caution/40 bg-verdict-caution-surface px-3 py-2 text-sm">
           {role.assignmentCount === 1
             ? "One assignment names this role."
             : `${role.assignmentCount} assignments name this role.`}{" "}
@@ -259,14 +258,12 @@ export default function RolesPage() {
   return (
     <div className="grid max-w-3xl gap-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Officers</h1>
-        <p className="mt-1 text-sm text-black/60">
+        <h1 className="text-xl font-semibold tracking-tight">Roles</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           A role is a named set of permissions. It is given to an officer for a
           part of the Union, on the officer’s own page.
         </p>
       </div>
-
-      <OfficerTabs />
 
       {loadError ? (
         <ErrorNotice
@@ -274,7 +271,9 @@ export default function RolesPage() {
           requestId={loadError.requestId}
         />
       ) : null}
-      {isLoading ? <p className="text-sm text-black/50">Loading…</p> : null}
+      {isLoading ? (
+        <p className="text-sm text-faint-foreground">Loading…</p>
+      ) : null}
 
       {roles.map((role) => (
         <Section
@@ -282,9 +281,9 @@ export default function RolesPage() {
           title={role.label}
           description={role.description ?? undefined}
         >
-          <div className="flex flex-wrap items-center gap-2 text-xs text-black/55">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-faint-foreground">
             <span className="font-mono">{role.code}</span>
-            <span className="rounded-full border border-[var(--border-subtle)] px-2 py-0.5">
+            <span className="rounded-full border border-line px-2 py-0.5">
               {role.isSystem
                 ? "Standard (PRD §16) — cannot be changed"
                 : "Composed by the Union"}
@@ -313,7 +312,7 @@ export default function RolesPage() {
                   <li key={code}>
                     {describe(code)}
                     {isGrantOnly(code) ? (
-                      <span className="text-xs text-black/50">
+                      <span className="text-xs text-faint-foreground">
                         {" "}
                         (this role only)
                       </span>

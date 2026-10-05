@@ -238,7 +238,7 @@ export default function NewApplicationPage() {
         <h1 className="text-xl font-semibold tracking-tight">
           Membership registration
         </h1>
-        <p className="mt-1 text-sm text-black/60">
+        <p className="mt-1 text-sm text-muted-foreground">
           Transcribe the completed Membership / Registration / Guarantorship
           form. The application is saved as a draft and may be amended until it
           is submitted for review.
@@ -375,10 +375,10 @@ export default function NewApplicationPage() {
           </Field>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-black/70">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <input
             type="checkbox"
-            className="h-4 w-4 rounded border-[var(--border-subtle)] accent-[var(--nurtw-green)]"
+            className="h-4 w-4 rounded border-line accent-primary"
             onChange={(event) => {
               if (event.target.checked) {
                 copyApplicantAddressToNextOfKin();
@@ -432,7 +432,7 @@ export default function NewApplicationPage() {
       </Section>
 
       <Section title="Section D — Guarantor">
-        <p className="text-xs text-black/50">
+        <p className="text-xs text-faint-foreground">
           Optional. Leave every field blank if this application has no guarantor.
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
@@ -481,12 +481,12 @@ export default function NewApplicationPage() {
           specification and marked, rather than paraphrased into something the
           Union never wrote.
         */}
-        <fieldset className="rounded-md border border-[var(--border-subtle)] p-4">
+        <fieldset className="rounded-md border border-line p-4">
           <legend className="px-1 text-sm font-medium">
             Do you have any collateral to secure the tricycle/motorcycle for one
             year?
           </legend>
-          <p className="mb-3 text-xs text-black/50">
+          <p className="mb-3 text-xs text-faint-foreground">
             Wording awaiting confirmation against the printed form.
           </p>
           <div className="flex gap-6">
@@ -500,7 +500,7 @@ export default function NewApplicationPage() {
                   name="gHasCollateral"
                   checked={form.gHasCollateral === option.value}
                   onChange={() => set("gHasCollateral")(option.value)}
-                  className="h-4 w-4 accent-[var(--nurtw-green)]"
+                  className="h-4 w-4 accent-primary"
                 />
                 {option.label}
               </label>
@@ -535,7 +535,7 @@ export default function NewApplicationPage() {
         </Button>
       </div>
 
-      <p className="text-xs leading-relaxed text-black/50">
+      <p className="text-xs leading-relaxed text-faint-foreground">
         Next of kin and guarantor details are held separately from card data and
         are never disclosed through a verification enquiry.
       </p>

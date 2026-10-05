@@ -380,8 +380,8 @@ having applied all along, and every month already paid would show a shortfall.
 
 ### Setting or changing the NURTW settlement account
 
-**Settings → Settlement** (item 30), for an officer holding `payment.manage_settlement`:
-the super administrator, unless it has been expressly granted.
+**Payments → Settlement** in the sidebar (item 30), for an officer holding
+`payment.manage_settlement`: the super administrator, unless it has been expressly granted.
 
 1. Choose the bank from Paystack's list and type the ten-digit account number.
 2. Press **Look up the account name**. Paystack's name for the account appears. Go on
@@ -406,7 +406,7 @@ dedicated-account pricing must first be confirmed from the dashboard.
    accounts on the business. The percentage is Paystack's dedicated-account fee rate plus
    0.5 per cent (`QUESTIONS.md` PAY-11, 5 October 2026). Paystack takes its fee out of
    that percentage, not on top of it.
-2. Set it on **Settings → Settlement**, with your password and a reason. The screen works
+2. Set it on **Payments → Settlement**, with your password and a reason. The screen works
    an example through at the percentage typed: what a member sends to cover a ₦1,000 due,
    and how it splits. (The route behind it is
    `PUT /api/v1/payments/settlement/dedicated-percentage`.)
@@ -648,7 +648,7 @@ SELECT created_at, action,
 
 ### Limits, and an organisation the System has paused
 
-Every organisation is held to a **limit profile** (Settings → API access → Limits): its
+Every organisation is held to a **limit profile** (Partners → Limits in the sidebar): its
 rates, burst, daily quota, and the thresholds abuse detection uses. Two are seeded:
 `STANDARD` (30 checks a minute, 1,000 a day) and `TRUSTED` (120 a minute, 5,000 a day).
 

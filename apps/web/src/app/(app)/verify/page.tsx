@@ -160,8 +160,8 @@ function VerdictPanel({
     <div
       role="status"
       className={
-        "rounded-xl px-5 py-6 text-white sm:px-8 " +
-        (matched ? "bg-[var(--verdict-affirm)]" : "bg-[var(--verdict-deny)]")
+        "rounded-xl px-5 py-6 text-on-solid sm:px-8 " +
+        (matched ? "bg-verdict-affirm-solid" : "bg-verdict-deny-solid")
       }
     >
       <div className="flex items-center gap-4">
@@ -210,7 +210,7 @@ function VerdictPanel({
       </div>
       <p className="mt-4 text-base font-medium">{statement}</p>
       {lines.length > 0 ? (
-        <ul className="mt-4 grid gap-2 border-t border-white/30 pt-4 text-base">
+        <ul className="mt-4 grid gap-2 border-t border-on-solid/30 pt-4 text-base">
           {lines.map((line) => (
             <li key={line} className="flex gap-2">
               <span aria-hidden>•</span>
@@ -226,7 +226,7 @@ function VerdictPanel({
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-black/45">
+      <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
         {label}
       </dt>
       <dd className="mt-0.5 text-base">{children}</dd>
@@ -249,7 +249,7 @@ function VehicleFacts({ fields }: { fields: Fields }) {
   const isLegacy = fields.identifier_scheme === "LEGACY";
 
   return (
-    <section className="rounded-lg border border-[var(--border-subtle)] bg-white p-5">
+    <section className="rounded-lg border border-line bg-surface p-5">
       <h2 className="text-base font-semibold">What the System holds</h2>
       <dl className="mt-4 grid gap-4 sm:grid-cols-2">
         {fields.plate_number ? (
@@ -277,11 +277,13 @@ function VehicleFacts({ fields }: { fields: Fields }) {
             <span className="flex flex-wrap items-center gap-2">
               <StatusChip status={fields.sticker_status} />
               {fields.attached_at ? (
-                <span className="text-sm text-black/60">
+                <span className="text-sm text-muted-foreground">
                   attached {day(fields.attached_at)}
                 </span>
               ) : (
-                <span className="text-sm text-black/60">not attached</span>
+                <span className="text-sm text-muted-foreground">
+                  not attached
+                </span>
               )}
             </span>
           </Fact>
@@ -326,7 +328,7 @@ function MembershipFacts({ fields }: { fields: Fields }) {
     return null;
   }
   return (
-    <section className="rounded-lg border border-[var(--border-subtle)] bg-white p-5">
+    <section className="rounded-lg border border-line bg-surface p-5">
       <h2 className="text-base font-semibold">What the System holds</h2>
       <dl className="mt-4 grid gap-4 sm:grid-cols-2">
         {fields.member_name ? (
@@ -334,7 +336,7 @@ function MembershipFacts({ fields }: { fields: Fields }) {
             <span className="font-semibold">{fields.member_name}</span>
             {/* The name is shown so a genuine number on someone else's card
                 is caught. */}
-            <span className="mt-0.5 block text-sm text-black/60">
+            <span className="mt-0.5 block text-sm text-muted-foreground">
               Check this against the name on the card.
             </span>
           </Fact>
@@ -431,9 +433,9 @@ function Dues({
     return null;
   }
   return (
-    <section className="rounded-lg border border-[var(--border-subtle)] bg-white p-5">
+    <section className="rounded-lg border border-line bg-surface p-5">
       <h2 className="text-base font-semibold">Dues</h2>
-      <p className="mt-1 text-sm text-black/60">
+      <p className="mt-1 text-sm text-muted-foreground">
         Shown to NURTW staff only. Dues never change the verification result.
       </p>
       <dl className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -492,7 +494,7 @@ function PayNow({
   return (
     <div className="mt-4 grid gap-5">
       {vehicle ? (
-        <div className="grid gap-3 rounded-md border border-[var(--border-subtle)] p-4">
+        <div className="grid gap-3 rounded-md border border-line p-4">
           <h3 className="text-sm font-semibold">
             Monthly levy · one month is {naira(vehicle.currentAmountKobo)}
           </h3>
@@ -508,7 +510,7 @@ function PayNow({
         </div>
       ) : null}
       {member ? (
-        <div className="grid gap-3 rounded-md border border-[var(--border-subtle)] p-4">
+        <div className="grid gap-3 rounded-md border border-line p-4">
           <h3 className="text-sm font-semibold">
             Membership fee · one year is {naira(member.currentAmountKobo)}
           </h3>
@@ -521,7 +523,7 @@ function PayNow({
           <DedicatedAccountSummary memberId={member.memberId} />
         </div>
       ) : null}
-      <p className="text-xs text-black/55">
+      <p className="text-xs text-faint-foreground">
         A payment shows here once Paystack confirms it. Check again to see it.
       </p>
     </div>
@@ -545,12 +547,12 @@ function explainError(error: ApiError, what: "vehicles" | "cards"): ApiError {
 }
 
 const inputClass =
-  "w-full rounded-lg border border-[var(--border-subtle)] bg-white px-4 py-3 text-lg " +
-  "outline-none transition focus:border-[var(--nurtw-green)] focus:ring-2 focus:ring-[var(--nurtw-green)]/25";
+  "w-full rounded-lg border border-line bg-surface px-4 py-3 text-lg " +
+  "outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/25";
 
 function FieldError({ message }: { message: string | undefined }) {
   return message ? (
-    <p role="alert" className="text-sm font-medium text-[var(--verdict-deny)]">
+    <p role="alert" className="text-sm font-medium text-verdict-deny">
       {message}
     </p>
   ) : null;
@@ -558,7 +560,7 @@ function FieldError({ message }: { message: string | undefined }) {
 
 function Reference({ reference, at }: { reference: string; at: string }) {
   return (
-    <p className="font-mono text-xs text-black/55">
+    <p className="font-mono text-xs text-faint-foreground">
       Reference {reference} · checked at {time(at)}
     </p>
   );
@@ -624,7 +626,7 @@ function VehicleCheck() {
 
   return (
     <div className="grid gap-6">
-      <p className="text-sm text-black/60">
+      <p className="text-sm text-muted-foreground">
         Enter the plate, the sticker&apos;s code, or both. Both together also
         check that the sticker belongs to the plate.
       </p>
@@ -654,7 +656,7 @@ function VehicleCheck() {
           <label htmlFor="code" className="text-sm font-medium">
             Sticker code
           </label>
-          <p className="text-xs text-black/55">
+          <p className="text-xs text-faint-foreground">
             Scan the sticker&apos;s code into this box, or type the number on a
             Transpay sticker.
           </p>
@@ -714,7 +716,7 @@ function VehicleCheck() {
             <Reference reference={result.reference} at={result.verifiedAt} />
             <VehicleFacts fields={result.fields} />
             <Dues vehicle={result.dues.vehicle} member={result.dues.member} />
-            <p className="text-xs text-black/55">{result.limitation}</p>
+            <p className="text-xs text-faint-foreground">{result.limitation}</p>
           </>
         ) : null}
       </div>
@@ -767,7 +769,7 @@ function MembershipCheck() {
 
   return (
     <div className="grid gap-6">
-      <p className="text-sm text-black/60">
+      <p className="text-sm text-muted-foreground">
         Enter the card number or the membership number printed on the card.
       </p>
 
@@ -834,7 +836,7 @@ function MembershipCheck() {
             <Reference reference={result.reference} at={result.verifiedAt} />
             <MembershipFacts fields={result.fields} />
             <Dues vehicle={null} member={result.dues.member} />
-            <p className="text-xs text-black/55">{result.limitation}</p>
+            <p className="text-xs text-faint-foreground">{result.limitation}</p>
           </>
         ) : null}
       </div>
@@ -863,7 +865,7 @@ export default function VerifyPage() {
         <div
           role="tablist"
           aria-label="What to verify"
-          className="grid grid-cols-2 gap-2 rounded-lg bg-[var(--surface-muted)] p-1"
+          className="grid grid-cols-2 gap-2 rounded-lg bg-surface-muted p-1"
         >
           {tabs.map((tab) => (
             <button
@@ -875,8 +877,8 @@ export default function VerifyPage() {
               className={
                 "h-12 rounded-md text-base font-semibold transition " +
                 (mode === tab.key
-                  ? "bg-white text-[var(--nurtw-green-deep)] shadow-sm"
-                  : "text-black/60 hover:text-black/80")
+                  ? "bg-surface text-brand-text shadow-sm"
+                  : "text-muted-foreground hover:text-muted-foreground")
               }
             >
               {tab.label}

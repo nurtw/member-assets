@@ -54,7 +54,7 @@ export default function PortalAccountPage() {
     <div className="grid max-w-xl gap-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Account</h1>
-        <p className="mt-1 text-sm text-black/60">
+        <p className="mt-1 text-sm text-muted-foreground">
           {me.account.fullName} · {me.account.email}
         </p>
       </div>
@@ -62,7 +62,7 @@ export default function PortalAccountPage() {
       {me.account.mustChangePassword ? (
         <p
           role="status"
-          className="rounded-md border border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] px-4 py-3 text-sm"
+          className="rounded-md border border-verdict-caution/40 bg-verdict-caution-surface px-4 py-3 text-sm"
         >
           <span className="font-semibold">Choose your own password.</span> You
           signed in with a temporary one from the Union. Nothing else in the
@@ -84,7 +84,7 @@ export default function PortalAccountPage() {
           {saved ? (
             <p
               role="status"
-              className="text-sm font-medium text-[var(--verdict-affirm)]"
+              className="text-sm font-medium text-verdict-affirm"
             >
               Password changed.
             </p>

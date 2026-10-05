@@ -1,74 +1,17 @@
 "use client";
 
 import type { OrganisationTreeNode } from "@nurtw/contracts";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useState } from "react";
 import useSWR from "swr";
 
 import { Button, Field, Select } from "@/components/ui";
 import { fetcher } from "@/lib/api";
-import { useSession } from "@/lib/session";
 
 /**
- * Pieces shared by the officer screens (item 28): the tabs, the one-time
- * password panel, and the organisation picker.
+ * Pieces shared by the officer screens (item 28): the one-time password
+ * panel, and the organisation picker. The sidebar names each screen (item
+ * 32), so they carry no tabs of their own.
  */
-
-/** Officers | Roles | Security, as the officer may see them. */
-export function OfficerTabs() {
-  const pathname = usePathname();
-  const { holds } = useSession();
-  const onRoles = pathname.startsWith("/settings/users/roles");
-  const onSecurity = pathname.startsWith("/settings/users/security");
-
-  const tabs = [
-    {
-      href: "/settings/users",
-      label: "Officers",
-      permission: "user.read",
-      active: !onRoles && !onSecurity,
-    },
-    {
-      href: "/settings/users/roles",
-      label: "Roles",
-      permission: "role.read",
-      active: onRoles,
-    },
-    {
-      href: "/settings/users/security",
-      label: "Security",
-      permission: "system_setting.manage",
-      active: onSecurity,
-    },
-  ].filter((tab) => holds(tab.permission));
-
-  if (tabs.length < 2) {
-    return null;
-  }
-  return (
-    <nav
-      aria-label="Officers"
-      className="flex gap-1 border-b border-[var(--border-subtle)]"
-    >
-      {tabs.map((tab) => (
-        <Link
-          key={tab.href}
-          href={tab.href}
-          aria-current={tab.active ? "page" : undefined}
-          className={
-            "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition " +
-            (tab.active
-              ? "border-[var(--nurtw-green)] text-[var(--nurtw-green-deep)]"
-              : "border-transparent text-black/60 hover:text-black")
-          }
-        >
-          {tab.label}
-        </Link>
-      ))}
-    </nav>
-  );
-}
 
 /**
  * A temporary password, shown the one time it exists outside its hash.
@@ -91,7 +34,7 @@ export function TemporaryPassword({
   return (
     <section
       aria-labelledby="temporary-password-title"
-      className="rounded-lg border-2 border-[var(--verdict-caution)] bg-[var(--verdict-caution-surface)] p-5"
+      className="rounded-lg border-2 border-verdict-caution bg-verdict-caution-surface p-5"
     >
       <h2 id="temporary-password-title" className="text-base font-semibold">
         Pass this temporary password on now — it will not be shown again
@@ -102,7 +45,7 @@ export function TemporaryPassword({
         another.
       </p>
       <p
-        className="mt-3 select-all rounded-md border border-[var(--border-subtle)] bg-white px-3 py-2 font-mono text-base tracking-wide"
+        className="mt-3 select-all rounded-md border border-line bg-surface px-3 py-2 font-mono text-base tracking-wide"
         aria-label="Temporary password"
       >
         {password}

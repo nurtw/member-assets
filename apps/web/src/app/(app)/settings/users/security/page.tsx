@@ -6,7 +6,6 @@ import { useState } from "react";
 import useSWR, { mutate as mutateGlobal } from "swr";
 
 import { explained } from "@/components/api-access";
-import { OfficerTabs } from "@/components/officers";
 import {
   Button,
   ErrorNotice,
@@ -42,14 +41,12 @@ export default function SecurityPage() {
   return (
     <div className="grid max-w-3xl gap-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Officers</h1>
-        <p className="mt-1 text-sm text-black/60">
+        <h1 className="text-xl font-semibold tracking-tight">Security</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Whether administrative work needs a second factor: a code from an
           authenticator app, as well as a password.
         </p>
       </div>
-
-      <OfficerTabs />
 
       {loadError ? (
         <ErrorNotice
@@ -61,7 +58,9 @@ export default function SecurityPage() {
           requestId={loadError.requestId}
         />
       ) : null}
-      {isLoading ? <p className="text-sm text-black/50">Loading…</p> : null}
+      {isLoading ? (
+        <p className="text-sm text-faint-foreground">Loading…</p>
+      ) : null}
 
       {data ? (
         <>
@@ -84,7 +83,7 @@ export default function SecurityPage() {
               />
             ) : null}
             {!enforced && !verified ? (
-              <p className="rounded-md border border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] px-3 py-2 text-sm">
+              <p className="rounded-md border border-verdict-caution/40 bg-verdict-caution-surface px-3 py-2 text-sm">
                 Set up and prove your own second factor first, on{" "}
                 <Link
                   href="/account"
@@ -144,7 +143,7 @@ export default function SecurityPage() {
             description="Active officers who hold an administrative permission and have not set a second factor up. Each must set one up on their own account page."
           >
             {without.length === 0 ? (
-              <p className="text-sm italic text-black/55">
+              <p className="text-sm italic text-faint-foreground">
                 None. Every officer with administrative permissions has a second
                 factor.
               </p>
@@ -154,11 +153,14 @@ export default function SecurityPage() {
                   <li key={officer.id}>
                     <Link
                       href={`/settings/users/${officer.id}`}
-                      className="font-medium text-[var(--nurtw-navy)] underline-offset-2 hover:underline"
+                      className="font-medium text-link underline-offset-2 hover:underline"
                     >
                       {officer.fullName}
                     </Link>
-                    <span className="text-black/55"> · {officer.email}</span>
+                    <span className="text-faint-foreground">
+                      {" "}
+                      · {officer.email}
+                    </span>
                   </li>
                 ))}
               </ul>

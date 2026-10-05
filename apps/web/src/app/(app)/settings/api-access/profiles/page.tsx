@@ -4,12 +4,7 @@ import type { DisclosureProfileSummary } from "@nurtw/contracts";
 import { useState } from "react";
 import useSWR from "swr";
 
-import {
-  ApiAccessTabs,
-  FieldPicker,
-  ProfileFields,
-  explained,
-} from "@/components/api-access";
+import { FieldPicker, ProfileFields, explained } from "@/components/api-access";
 import {
   Button,
   ErrorNotice,
@@ -142,7 +137,7 @@ function AmendForm({
     [...fields].sort().join() !== [...profile.fields].sort().join();
 
   return (
-    <div className="grid gap-4 border-t border-[var(--border-subtle)] pt-4">
+    <div className="grid gap-4 border-t border-line pt-4">
       {error ? (
         <ErrorNotice message={error.message} requestId={error.requestId} />
       ) : null}
@@ -170,7 +165,7 @@ function AmendForm({
         onChange={setFields}
       />
       {changedFields && profile.clientCount > 0 ? (
-        <p className="rounded-md border border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] px-3 py-2 text-sm">
+        <p className="rounded-md border border-verdict-caution/40 bg-verdict-caution-surface px-3 py-2 text-sm">
           {profile.clientCount === 1
             ? "One organisation holds this profile."
             : `${profile.clientCount} organisations hold this profile.`}{" "}
@@ -251,8 +246,10 @@ export default function DisclosureProfilesPage() {
   return (
     <div className="grid max-w-3xl gap-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">API access</h1>
-        <p className="mt-1 text-sm text-black/60">
+        <h1 className="text-xl font-semibold tracking-tight">
+          Disclosure profiles
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           A disclosure profile sets what an outside organisation is told about a
           record beyond the fact that it matched. Personal details, contact
           details, and anything about declaration or dues can never be
@@ -260,15 +257,15 @@ export default function DisclosureProfilesPage() {
         </p>
       </div>
 
-      <ApiAccessTabs />
-
       {loadError ? (
         <ErrorNotice
           message={loadError.message}
           requestId={loadError.requestId}
         />
       ) : null}
-      {isLoading ? <p className="text-sm text-black/50">Loading…</p> : null}
+      {isLoading ? (
+        <p className="text-sm text-faint-foreground">Loading…</p>
+      ) : null}
 
       {profiles.map((profile) => (
         <Section
@@ -277,18 +274,20 @@ export default function DisclosureProfilesPage() {
           description={profile.description ?? undefined}
         >
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="font-mono text-black/55">{profile.code}</span>
+            <span className="font-mono text-faint-foreground">
+              {profile.code}
+            </span>
             {profile.isSystem ? (
-              <span className="rounded-full border border-[var(--border-subtle)] px-2 py-0.5">
+              <span className="rounded-full border border-line px-2 py-0.5">
                 Standard (PRD §15) — cannot be changed
               </span>
             ) : null}
             {!profile.isActive ? (
-              <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-2 py-0.5">
+              <span className="rounded-full border border-line bg-surface-muted px-2 py-0.5">
                 Withdrawn — not offered
               </span>
             ) : null}
-            <span className="text-black/55">
+            <span className="text-faint-foreground">
               {profile.clientCount === 0
                 ? "Held by no organisation"
                 : profile.clientCount === 1

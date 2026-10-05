@@ -1,41 +1,27 @@
 "use client";
 
+import { Bus, FilePlus2, LogOut, Monitor, Moon, Sun, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
+import { AccountMenu } from "@/components/shell/account-menu";
+import { AppFrame, type CommandAction } from "@/components/shell/app-frame";
+import { Brand } from "@/components/shell/brand";
+import { setThemeChoice } from "@/components/shell/theme";
+import { Card, Notice } from "@/components/ui";
+import {
+  OFFICER_ACCOUNT_ITEMS,
+  OFFICER_LANDING_ORDER,
+  OFFICER_NAVIGATION,
+  landingHref,
+  visibleNavigation,
+} from "@/lib/navigation";
 import { SessionProvider, useSession } from "@/lib/session";
 
 /**
- * In order of precedence as well as display: an officer lands on the first
- * screen here they may use, so a verification officer, who also reads
- * vehicles, lands on Verify.
- */
-const NAVIGATION: { href: string; label: string; permissions: string[] }[] = [
-  { href: "/applications", label: "Applications", permissions: ["application.read"] },
-  {
-    href: "/verify",
-    label: "Verify",
-    permissions: ["verification.perform", "verification.membership"],
-  },
-  { href: "/cards", label: "Cards", permissions: ["card.read"] },
-  { href: "/vehicles", label: "Vehicles", permissions: ["vehicle.read"] },
-  { href: "/settings/fees", label: "Fees", permissions: ["payment.read"] },
-  {
-    href: "/settings/settlement",
-    label: "Settlement",
-    permissions: ["payment.manage_settlement"],
-  },
-  {
-    href: "/settings/api-access",
-    label: "API access",
-    permissions: ["api_client.read", "disclosure_profile.read"],
-  },
-  { href: "/settings/users", label: "Officers", permissions: ["user.read", "role.read"] },
-];
-
-/**
- * The authenticated shell.
+ * The authenticated shell (item 32): the officers' sidebar, breadcrumbs, and
+ * command menu around every screen.
  *
  * Navigation is filtered by the permissions the signed-in officer actually
  * holds — but that is a courtesy, not a control. Every route behind this shell
@@ -43,16 +29,14 @@ const NAVIGATION: { href: string; label: string; permissions: string[] }[] = [
  * avoids offering a button that would refuse.
  */
 function Shell({ children }: { children: ReactNode }) {
-  const { user, account, permissions, loading, holds, signOut } =
-    useSession();
+  const { user, account, permissions, loading, holds, signOut } = useSession();
   const pathname = usePathname();
   const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
 
-  const links = user
-    ? NAVIGATION.filter((link) => link.permissions.some(holds))
-    : [];
-  const home = links[0]?.href ?? "/applications";
+  const groups = user ? visibleNavigation(OFFICER_NAVIGATION, holds) : [];
+  const home = user
+    ? (landingHref(OFFICER_NAVIGATION, OFFICER_LANDING_ORDER, holds) ?? "/applications")
+    : "/applications";
 
   // Signing in, and the root, land on /applications. An officer who cannot
   // read applications — a verification officer, typically — goes to the first
@@ -73,22 +57,10 @@ function Shell({ children }: { children: ReactNode }) {
     }
   }, [mustChange, pathname, router]);
 
-  // A route change is a navigation the officer just chose; leaving the menu
-  // open over the new page would cover it. Adjusted during render, not an
-  // effect — React docs' "adjusting state when a prop changes" pattern:
-  // comparing against a value tracked in state lets this reset happen before
-  // the menu-open paint commits, rather than flashing open-then-closed
-  // across two renders the way a `useEffect` would.
-  const [menuClosedFor, setMenuClosedFor] = useState(pathname);
-  if (pathname !== menuClosedFor) {
-    setMenuClosedFor(pathname);
-    setMenuOpen(false);
-  }
-
   if (loading) {
     return (
-      <div className="flex min-h-full flex-1 items-center justify-center">
-        <p className="text-sm text-black/50">Loading…</p>
+      <div className="flex min-h-dvh flex-1 items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading…</p>
       </div>
     );
   }
@@ -99,173 +71,119 @@ function Shell({ children }: { children: ReactNode }) {
     return null;
   }
 
+  const actions: CommandAction[] = [];
+  if (holds("member.create")) {
+    actions.push({
+      id: "new-application",
+      label: "New application",
+      icon: FilePlus2,
+      keywords: ["register", "member", "membership"],
+      run: () => router.push("/applications/new"),
+    });
+  }
+  if (holds("vehicle.declare") || holds("vehicle.record")) {
+    actions.push({
+      id: "new-vehicle",
+      label: holds("vehicle.declare") ? "Declare a vehicle" : "Record a vehicle",
+      icon: Bus,
+      keywords: ["plate", "vehicle", "record"],
+      run: () => router.push("/vehicles/new"),
+    });
+  }
+  actions.push(
+    {
+      id: "account",
+      label: "Your account",
+      icon: UserRound,
+      keywords: ["password", "second factor", "authenticator"],
+      run: () => router.push("/account"),
+    },
+    {
+      id: "theme-light",
+      label: "Use the light theme",
+      icon: Sun,
+      keywords: ["theme", "appearance"],
+      run: () => setThemeChoice("light"),
+    },
+    {
+      id: "theme-dark",
+      label: "Use the dark theme",
+      icon: Moon,
+      keywords: ["theme", "appearance"],
+      run: () => setThemeChoice("dark"),
+    },
+    {
+      id: "theme-system",
+      label: "Follow the device's theme",
+      icon: Monitor,
+      keywords: ["theme", "appearance", "system"],
+      run: () => setThemeChoice("system"),
+    },
+    {
+      id: "sign-out",
+      label: "Sign out",
+      icon: LogOut,
+      keywords: ["log out", "leave"],
+      run: () => void signOut(),
+    },
+  );
+
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <header className="border-b border-[var(--border-subtle)] bg-white">
-        <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
-          <Link href={home} className="flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element -- a small, static public asset; next/image's build-time optimisation buys nothing here. */}
-            <img src="/logo.png" alt="NURTW emblem" className="h-8 w-8 object-contain" />
-            <span className="text-sm font-semibold tracking-tight">
-              NURTW Anambra
-            </span>
+    <AppFrame
+      brand={(collapsed) => (
+        <Brand href={home} title="NURTW Anambra" subtitle="State Council" collapsed={collapsed} />
+      )}
+      groups={groups}
+      extraItems={[...OFFICER_ACCOUNT_ITEMS]}
+      footer={(collapsed) => (
+        <AccountMenu
+          name={user.fullName}
+          detail={user.email}
+          collapsed={collapsed}
+          links={[{ href: "/account", label: "Your account", icon: UserRound }]}
+          onSignOut={() => void signOut()}
+        />
+      )}
+      actions={actions}
+    >
+      {account?.secondFactor.required &&
+      !account.secondFactor.verified &&
+      pathname !== "/account" ? (
+        <Notice
+          tone="caution"
+          title="A second factor is needed for administrative work"
+          className="mb-6"
+        >
+          {account.secondFactor.enrolled
+            ? "Enter a code from your authenticator app to use administrative functions in this session."
+            : "Set up an authenticator app to use administrative functions. Everything else works as usual."}{" "}
+          <Link href="/account" className="font-medium underline underline-offset-2">
+            Go to your account
           </Link>
-
-          {/* Below `sm`, the links, the officer's name, and Sign out move into
-              the collapsible panel below — inline they either wrapped onto a
-              second line or ran under the logo, depending on name length. */}
-          <nav className="hidden items-center gap-1 sm:flex">
-            {links.map((link) => {
-              const active = pathname.startsWith(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  aria-current={active ? "page" : undefined}
-                  className={
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition " +
-                    (active
-                      ? "bg-[var(--surface-muted)] text-[var(--nurtw-green-deep)]"
-                      : "text-black/65 hover:bg-[var(--surface-muted)]")
-                  }
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="ml-auto hidden items-center gap-3 sm:flex">
-            <Link
-              href="/account"
-              className="text-sm text-black/60 underline-offset-2 hover:underline"
-            >
-              {user.fullName}
-            </Link>
-            <button
-              type="button"
-              onClick={() => void signOut()}
-              className="rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm font-medium transition hover:bg-[var(--surface-muted)]"
-            >
-              Sign out
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setMenuOpen((current) => !current)}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
-            className="ml-auto flex h-9 w-9 items-center justify-center rounded-md border border-[var(--border-subtle)] sm:hidden"
-          >
-            <span className="sr-only">{menuOpen ? "Close menu" : "Open menu"}</span>
-            {menuOpen ? (
-              <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" aria-hidden>
-                <path d="M4 4l12 12M16 4 4 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" aria-hidden>
-                <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            )}
-          </button>
-        </div>
-
-        {menuOpen ? (
-          <div className="border-t border-[var(--border-subtle)] px-4 py-3 sm:hidden">
-            <nav className="flex flex-col gap-1">
-              {links.map((link) => {
-                const active = pathname.startsWith(link.href);
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    aria-current={active ? "page" : undefined}
-                    className={
-                      "rounded-md px-3 py-2 text-sm font-medium transition " +
-                      (active
-                        ? "bg-[var(--surface-muted)] text-[var(--nurtw-green-deep)]"
-                        : "text-black/65 hover:bg-[var(--surface-muted)]")
-                    }
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </nav>
-            <div className="mt-3 flex items-center justify-between border-t border-[var(--border-subtle)] pt-3">
-              <Link
-                href="/account"
-                className="text-sm text-black/60 underline-offset-2 hover:underline"
-              >
-                {user.fullName}
-              </Link>
-              <button
-                type="button"
-                onClick={() => void signOut()}
-                className="rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-sm font-medium transition hover:bg-[var(--surface-muted)]"
-              >
-                Sign out
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </header>
-
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-        {account?.secondFactor.required &&
-        !account.secondFactor.verified &&
-        pathname !== "/account" ? (
-          <div className="mb-6 rounded-md border border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] px-4 py-3 text-sm">
-            <p className="font-semibold text-[var(--verdict-caution)]">
-              A second factor is needed for administrative work
-            </p>
-            <p className="mt-1">
-              {account.secondFactor.enrolled
-                ? "Enter a code from your authenticator app to use administrative functions in this session."
-                : "Set up an authenticator app to use administrative functions. Everything else works as usual."}{" "}
-              <Link href="/account" className="font-medium underline underline-offset-2">
-                Go to your account
-              </Link>
-            </p>
-          </div>
-        ) : null}
-        {permissions.length === 0 && !mustChange && pathname !== "/account" ? (
-          // An officer with no role yet holds no permission at all, so there
-          // is no screen to show. Say so, rather than render one the API
-          // will refuse. Asked of the permissions, not the links: a composed
-          // role may open a screen the navigation does not list.
-          <div className="max-w-xl rounded-lg border border-[var(--border-subtle)] bg-white p-6">
-            <h1 className="text-lg font-semibold tracking-tight">
-              Your account has no access yet
-            </h1>
-            <p className="mt-2 text-sm text-black/70">
-              You are signed in, but no role has been given to this account, so
-              there is nothing here for you to open. Ask your administrator to
-              give you a role, then sign in again.
-            </p>
-            <p className="mt-3 text-sm">
-              <Link
-                href="/account"
-                className="font-medium underline underline-offset-2"
-              >
-                Your account
-              </Link>{" "}
-              is where you change your password and set up a second factor.
-            </p>
-          </div>
-        ) : (
-          children
-        )}
-      </main>
-
-      <footer className="border-t border-[var(--border-subtle)] px-4 py-4">
-        <p className="mx-auto max-w-6xl text-xs text-black/45">
-          National Union of Road Transport Workers, Anambra State Council.
-          Activity on this System is recorded.
-        </p>
-      </footer>
-    </div>
+        </Notice>
+      ) : null}
+      {permissions.length === 0 && !mustChange && pathname !== "/account" ? (
+        // An officer with no role yet holds no permission at all, so there
+        // is no screen to show. Say so, rather than render one the API
+        // will refuse. Asked of the permissions, not the links: a composed
+        // role may open a screen the navigation does not list.
+        <Card className="max-w-xl p-6">
+          <h1 className="text-lg font-semibold tracking-tight">Your account has no access yet</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            You are signed in, but no role has been given to this account, so there is nothing
+            here for you to open. Ask your administrator to give you a role, then sign in again.
+          </p>
+          <p className="mt-3 text-sm">
+            <Link href="/account" className="font-medium underline underline-offset-2">
+              Your account
+            </Link>{" "}
+            is where you change your password and set up a second factor.
+          </p>
+        </Card>
+      ) : (
+        children
+      )}
+    </AppFrame>
   );
 }
 

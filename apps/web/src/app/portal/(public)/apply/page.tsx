@@ -86,7 +86,7 @@ export default function PortalApplyPage() {
   if (received) {
     return (
       <PortalFrame title="Application received" wide>
-        <div className="grid gap-3 rounded-lg border border-[var(--border-subtle)] bg-white p-6 text-sm">
+        <div className="grid gap-3 rounded-lg border border-line bg-surface p-6 text-sm">
           <p>
             Thank you. Your application does nothing yet: the Union&apos;s API
             administrator decides every application.
@@ -105,7 +105,7 @@ export default function PortalApplyPage() {
               your usage.
             </li>
           </ol>
-          <p className="text-black/60">
+          <p className="text-muted-foreground">
             An application that is not approved within 30 days lapses, and you
             may apply again.
           </p>
@@ -127,9 +127,9 @@ export default function PortalApplyPage() {
       <form
         onSubmit={submit}
         noValidate
-        className="grid gap-4 rounded-lg border border-[var(--border-subtle)] bg-white p-6"
+        className="grid gap-4 rounded-lg border border-line bg-surface p-6"
       >
-        <p className="text-sm text-black/65">
+        <p className="text-sm text-muted-foreground">
           For organisations that need to check vehicles or memberships against
           the Union&apos;s records. The Union approves each one, and decides
           what it may ask and see.
@@ -231,7 +231,7 @@ export default function PortalApplyPage() {
         <Button type="submit" disabled={busy}>
           {busy ? "Sending…" : "Send the application"}
         </Button>
-        <p className="text-xs leading-relaxed text-black/55">
+        <p className="text-xs leading-relaxed text-faint-foreground">
           Already applied?{" "}
           <Link href="/portal/login" className="underline underline-offset-2">
             Sign in

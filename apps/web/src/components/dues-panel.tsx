@@ -52,7 +52,7 @@ function monthName(label: string): string {
 function Figure({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-black/45">
+      <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
         {label}
       </dt>
       <dd className="mt-0.5 text-sm">{value}</dd>
@@ -107,7 +107,7 @@ export function ExactPaymentLink({
   }
 
   return (
-    <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+    <div className="grid gap-3 border-t border-line pt-4">
       {error ? (
         <ErrorNotice message={error.message} requestId={error.requestId} />
       ) : null}
@@ -247,7 +247,7 @@ export function VehicleDuesPanel({ vehicleId }: { vehicleId: string }) {
 
       {dues.unpaidMonths.length > 0 ? (
         <table className="w-full text-left text-sm">
-          <thead className="text-xs uppercase tracking-wide text-black/45">
+          <thead className="text-xs uppercase tracking-wide text-faint-foreground">
             <tr>
               <th className="py-1.5 font-medium">Month</th>
               <th className="py-1.5 font-medium">Levy</th>
@@ -257,10 +257,7 @@ export function VehicleDuesPanel({ vehicleId }: { vehicleId: string }) {
           </thead>
           <tbody>
             {dues.unpaidMonths.map((month) => (
-              <tr
-                key={month.month}
-                className="border-t border-[var(--border-subtle)]"
-              >
+              <tr key={month.month} className="border-t border-line">
                 <td className="py-1.5">{monthName(month.month)}</td>
                 <td className="py-1.5">{naira(month.amountKobo)}</td>
                 <td className="py-1.5">{naira(month.paidKobo)}</td>

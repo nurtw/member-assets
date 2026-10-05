@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.0
-**Last revised:** 9 September 2026
+**Document version:** 1.1
+**Last revised:** 5 October 2026
 **Authority:** Subordinate to `PRD.md`. Technical decisions remain in `ARCHITECTURE.md`.
 
 ---
@@ -109,11 +109,12 @@ card itself sets the banner.
 Tailwind CSS v4 with the `@theme` directive, tokens declared in
 `apps/web/src/app/globals.css`. Components consume semantic tokens rather than raw hex
 values, so that replacing the provisional palette with sampled values is a single-file
-change.
+change, and so that every screen works in both themes (§8). A test,
+`apps/web/src/lib/colour-tokens.test.ts`, fails on any raw colour class (`bg-white`,
+`text-black/60`, a palette colour, or a literal value).
 
-Dark mode is deferred. The primary surfaces are a daylight roadside portal and an office
-dashboard, and the card identity is inherently light. It can be added later without
-rework because the tokens are already indirected.
+*Revision 1.1.* Dark mode was deferred here until 5 October 2026, when the owner asked for
+it. §8 sets out how it is done.
 
 ## 7. Findings from the card artwork
 
@@ -160,3 +161,51 @@ official artwork at item 06.
 Name, Address, Designation, State, Branch, Unit — matching PRD §8 exactly. Three signature
 lines: President, General Secretary, Holder's Signature, matching PRD §23.7. The passport
 photograph sits upper right, over a watermark of the emblem and a map of Nigeria.
+
+## 8. Themes *(revision 1.1)*
+
+The owner's direction of 5 October 2026 asked for a dark theme as well as the light one.
+
+- **Light, Dark, and System.** System is the default: the device's own setting decides. The
+  choice is made in the account menu or the command menu and kept on that device. It is
+  applied before the first paint, so a dark screen never flashes white.
+- **Dark is its own set of steps, not an inversion.** Every pair has been checked for WCAG
+  2.2 AA in both themes: body, secondary, and tertiary text; a control's outline (3:1);
+  the focus ring; links; each verdict's ink on its own surface; white on each solid fill;
+  and the chart's mark against its surface (3:1).
+- **A verdict keeps its three cues in both themes** (§3). Its colour has three steps: ink
+  for text and outlines, a tinted surface behind that ink, and a solid fill that carries
+  white text. In the light theme ink and solid are one colour. In the dark theme they part,
+  because ink must be light to read on a dark surface, while a fill behind white text must
+  stay dark. §3's greyscale test applies to both themes.
+- **Printed matter stays white.** A QR code, and anything else a scanner or a printer
+  reads, sits on a white "paper" surface in both themes.
+- **The chart's series has a step for each theme**, each checked with the data-visualisation
+  palette validator against that theme's surface.
+- **§4 still governs the roadside.** A phone in bright sun reads best in the light theme.
+  System follows the device; an officer may choose Light whatever the device says.
+
+## 9. The application shell *(revision 1.1)*
+
+The same direction asked for the whole interface to be structured professionally and
+intuitively, with a sidebar in the manner of Vercel's console, "to the M.A.N.G.O.
+standard". That was read, and confirmed by the owner the same day, as the finish of the
+large technology firms' own consoles (Vercel, Linear, Stripe): neutral surfaces, one accent
+colour (the Union's green), quiet borders, dense type, and everything reachable from the
+keyboard.
+
+- **One frame for every signed-in screen.** A sidebar holds the emblem and the Union's
+  name, a search button, the screens grouped by task (Verify; Membership; Vehicles;
+  Payments; Partners; Administration), and the officer's own menu at the foot (their
+  account, the theme, signing out). It collapses to icons, and becomes a drawer on a phone,
+  so a screen such as Verify keeps the whole width.
+- **The top bar carries the breadcrumbs**: the group, the screen, and anything beneath it.
+- **The command menu** (Ctrl K, or ⌘K on an Apple device) reaches screens and actions. It
+  searches no records: the System is not a directory (PRD §2.2).
+- **Public pages keep no navigation** (§5): signing in, an organisation's application, the
+  pay page, and the public sticker page when it is built.
+- **A status chip carries a word and an icon** as well as its tone (§3, rule 5).
+- **The organisation portal** sits in the same frame with its own, shorter navigation and
+  no command menu.
+
+The patterns each page is built from are added here by roadmap item 34.

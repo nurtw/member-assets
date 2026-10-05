@@ -55,12 +55,41 @@ Restructuring each screen's layout (item 34). Organisations and invitations (ite
 new route or data. The PDFs (cards, letters, forms), and the public sticker page (GOV-08).
 
 ## Definition of done
-- [ ] Every officer screen is in the sidebar shell, with a drawer on a phone. Every
+- [x] Every officer screen is in the sidebar shell, with a drawer on a phone. Every
       control is reachable by keyboard, and Ctrl K reaches every screen the officer may
       open.
-- [ ] Light, Dark, and System, with no flash on load and the choice remembered.
-- [ ] No raw colour class remains, and the check passes.
-- [ ] Verdicts carry a word, an icon, and colour. Greyscale screenshots read correctly in
+- [x] Light, Dark, and System, with no flash on load and the choice remembered.
+- [x] No raw colour class remains, and the check passes.
+- [x] Verdicts carry a word, an icon, and colour. Greyscale screenshots read correctly in
       both themes, and axe finds no contrast failure on the main screens in either.
-- [ ] QR codes and card proofs sit on white in the dark theme.
-- [ ] Lint, typecheck, build, and the web tests pass; the API suites are unchanged.
+- [x] QR codes and card proofs sit on white in the dark theme.
+- [x] Lint, typecheck, build, and the web tests pass; the API suites are unchanged.
+
+**Decided while building (5 October 2026):**
+
+- **The in-page tabs went.** API access and Officers each had a tab bar for their three
+  screens. The sidebar now names all six, so the tabs were removed, and each page's heading
+  matches its sidebar entry: Organisations, Disclosure profiles, Limits, Officers, Roles,
+  Security. Their addresses are unchanged until item 33.
+- **Landing is unchanged.** Signing in still lands on Applications, or on Verify for a
+  verification officer. That order is kept apart from the sidebar's.
+- **A verdict colour has three steps:** ink, surface, and solid (`DESIGN.md` §8).
+- **A control's outline reaches 3:1** (`line-strong`), in both themes.
+- **The sidebar is 256 pixels**, collapses to a 56-pixel rail, and remembers which on the
+  device. The portal's frame has no command menu.
+- **A status chip has an icon** for each tone: a tick, a cross, an alert, a clock for
+  awaiting a decision, and a dashed circle for closed or neutral.
+- **The web's first unit tests:** 25, covering the navigation table, the theme choice and
+  its script, and the colour check.
+- **One existing fault fixed on the way:** the Limits page put a heading inside a list of
+  terms, which axe reported.
+
+**Clicked through (5 October 2026)** against the local stack, on ports of its own because
+the owner's development servers held 3000 and 3001. Every officer screen in both themes,
+the phone drawer and command menu, the account menu's theme choice (dark from the first
+paint, on a light device and the other way round), Verify's verdicts in colour and in
+greyscale, the public pages, a pay link, and the portal. No contrast failure, console
+error, or failed request. Screens listing real records were captured with those records
+masked out.
+
+**Pending:** the page patterns (item 34). The Organisations page and invitations (item 33).

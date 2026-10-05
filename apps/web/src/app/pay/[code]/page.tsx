@@ -20,7 +20,7 @@ import { ApiError, api, fetcher } from "@/lib/api";
  */
 export default function PayPage() {
   return (
-    <main className="flex min-h-full flex-1 items-start justify-center bg-[var(--surface-muted)] px-4 py-10">
+    <main className="flex min-h-full flex-1 items-start justify-center bg-surface-muted px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element -- a small, static public asset; next/image's build-time optimisation buys nothing here. */}
@@ -32,7 +32,9 @@ export default function PayPage() {
           <h1 className="text-xl font-semibold tracking-tight">
             Pay NURTW dues
           </h1>
-          <p className="mt-1 text-sm text-black/60">Anambra State Council</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Anambra State Council
+          </p>
         </div>
         {/* `useSearchParams` needs a boundary to render under. */}
         <Suspense fallback={<Notice>Loading…</Notice>}>
@@ -45,7 +47,7 @@ export default function PayPage() {
 
 function Notice({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-[var(--border-subtle)] bg-white p-6 text-sm">
+    <div className="rounded-lg border border-line bg-surface p-6 text-sm">
       {children}
     </div>
   );
@@ -79,7 +81,7 @@ function Pay() {
               ? "Too many tries from this connection."
               : "The page could not be loaded."}
         </p>
-        <p className="mt-1 text-black/65">
+        <p className="mt-1 text-muted-foreground">
           {status === 404
             ? "It may have been replaced. Ask your NURTW office for the current one."
             : status === 429
@@ -146,7 +148,7 @@ function Pay() {
     return (
       <Notice>
         <p className="font-semibold">Thank you.</p>
-        <p className="mt-1 text-black/70">
+        <p className="mt-1 text-muted-foreground">
           If your payment went through, Paystack has sent a receipt to your
           email, and NURTW counts the payment as soon as Paystack confirms it.
           Keep the receipt.
@@ -167,22 +169,22 @@ function Pay() {
   return (
     <form
       onSubmit={pay}
-      className="grid gap-4 rounded-lg border border-[var(--border-subtle)] bg-white p-6"
+      className="grid gap-4 rounded-lg border border-line bg-surface p-6"
     >
       <div>
-        <p className="text-xs font-medium uppercase tracking-wide text-black/45">
+        <p className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
           {data.subjectType === "vehicle"
             ? "Paying for vehicle"
             : "Paying for member"}
         </p>
         <p className="mt-0.5 text-lg font-semibold">{data.label}</p>
-        <p className="mt-1 text-sm text-black/60">
+        <p className="mt-1 text-sm text-muted-foreground">
           Check this is yours before you pay.
         </p>
       </div>
 
       {!data.open || !option ? (
-        <p className="rounded-md border border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] px-3 py-2 text-sm">
+        <p className="rounded-md border border-verdict-caution/40 bg-verdict-caution-surface px-3 py-2 text-sm">
           Payments are not open yet. Please try again later, or ask your NURTW
           office.
         </p>
@@ -200,7 +202,7 @@ function Pay() {
             {data.options.map((entry) => (
               <label
                 key={entry.feeTypeCode}
-                className="flex cursor-pointer items-start gap-3 rounded-md border border-[var(--border-subtle)] px-3 py-2.5 text-sm"
+                className="flex cursor-pointer items-start gap-3 rounded-md border border-line px-3 py-2.5 text-sm"
               >
                 <input
                   type="radio"
@@ -211,7 +213,7 @@ function Pay() {
                 />
                 <span>
                   <span className="font-medium">{entry.label}</span>
-                  <span className="block text-black/60">
+                  <span className="block text-muted-foreground">
                     {naira(entry.dueKobo)} + {naira(entry.feeKobo)} processing
                     fee
                   </span>
@@ -242,7 +244,7 @@ function Pay() {
               : `Pay ${naira(option.totalKobo)} with Paystack`}
           </Button>
 
-          <p className="text-xs leading-relaxed text-black/55">
+          <p className="text-xs leading-relaxed text-faint-foreground">
             Each payment is one{" "}
             {data.subjectType === "vehicle" ? "month" : "year"}. This page does
             not show earlier payments; your NURTW office can tell you where your

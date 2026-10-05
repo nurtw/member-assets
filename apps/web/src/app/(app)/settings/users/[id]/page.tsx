@@ -78,7 +78,7 @@ function Entries({
   children: ReactNode[];
 }) {
   return children.length === 0 ? (
-    <p className="text-sm italic text-black/55">{empty}</p>
+    <p className="text-sm italic text-faint-foreground">{empty}</p>
   ) : (
     <ul className="grid gap-2">{children}</ul>
   );
@@ -96,16 +96,18 @@ function ScopedEntry({
   disabled: boolean;
 }) {
   return (
-    <li className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-[var(--border-subtle)] px-3 py-2">
+    <li className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-line px-3 py-2">
       <div className="text-sm">
         <p className="font-medium">{describe(entry.permission)}</p>
-        <p className="font-mono text-xs text-black/50">{entry.permission}</p>
-        <p className="text-xs text-black/60">
+        <p className="font-mono text-xs text-faint-foreground">
+          {entry.permission}
+        </p>
+        <p className="text-xs text-muted-foreground">
           {entry.organisation.name} ({levelLabel(entry.organisation.level)}) ·{" "}
           {shortDay(entry.createdAt)}
           {entry.by ? ` · by ${entry.by.fullName}` : ""}
         </p>
-        <p className="text-xs text-black/60">Reason: {entry.reason}</p>
+        <p className="text-xs text-muted-foreground">Reason: {entry.reason}</p>
       </div>
       {onRemove ? (
         <Button
@@ -175,7 +177,7 @@ export default function OfficerPage() {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-black/50">Loading…</p>;
+    return <p className="text-sm text-faint-foreground">Loading…</p>;
   }
   if (!officer) {
     return (
@@ -208,7 +210,7 @@ export default function OfficerPage() {
       <div>
         <Link
           href="/settings/users"
-          className="text-sm text-black/55 underline-offset-2 hover:underline"
+          className="text-sm text-faint-foreground underline-offset-2 hover:underline"
         >
           ← Officers
         </Link>
@@ -218,7 +220,7 @@ export default function OfficerPage() {
           </h1>
           <StatusChip status={officer.isActive ? "ACTIVE" : "DEACTIVATED"} />
         </div>
-        <p className="mt-1 text-sm text-black/60">
+        <p className="mt-1 text-sm text-muted-foreground">
           {officer.email} · added {shortDay(officer.createdAt)}
         </p>
       </div>
@@ -239,7 +241,7 @@ export default function OfficerPage() {
       ) : null}
 
       {isSelf ? (
-        <p className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 py-3 text-sm">
+        <p className="rounded-md border border-line bg-surface-muted px-4 py-3 text-sm">
           This is your own account. Another administrator changes your roles,
           permissions, and status. Your password and second factor are under{" "}
           <Link
@@ -260,11 +262,11 @@ export default function OfficerPage() {
           {officer.roles.map((role) => (
             <li
               key={role.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--border-subtle)] px-3 py-2"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-line px-3 py-2"
             >
               <div className="text-sm">
                 <p className="font-medium">{role.role.label}</p>
-                <p className="text-xs text-black/60">
+                <p className="text-xs text-muted-foreground">
                   {role.organisation.name} (
                   {levelLabel(role.organisation.level)}) · since{" "}
                   {shortDay(role.createdAt)}
@@ -293,7 +295,7 @@ export default function OfficerPage() {
         </Entries>
 
         {canManage && !isSelf ? (
-          <div className="grid gap-4 border-t border-[var(--border-subtle)] pt-4">
+          <div className="grid gap-4 border-t border-line pt-4">
             <Field label="Give a role" htmlFor="roleCode" required>
               <Select
                 id="roleCode"
@@ -310,13 +312,13 @@ export default function OfficerPage() {
               </Select>
             </Field>
             {chosenRole ? (
-              <div className="rounded-md bg-[var(--surface-muted)] px-3 py-2 text-xs">
+              <div className="rounded-md bg-surface-muted px-3 py-2 text-xs">
                 {chosenRole.description ? (
-                  <p className="mb-1.5 text-black/65">
+                  <p className="mb-1.5 text-muted-foreground">
                     {chosenRole.description}
                   </p>
                 ) : null}
-                <p className="text-black/60">
+                <p className="text-muted-foreground">
                   {chosenRole.permissions.map(describe).join(" · ")}
                 </p>
               </div>
@@ -368,7 +370,7 @@ export default function OfficerPage() {
         description="A permission granted to this officer alone, beyond their roles, or revoked from them whatever their roles give. A revocation always wins."
       >
         <div className="grid gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-black/45">
+          <p className="text-xs font-semibold uppercase tracking-wide text-faint-foreground">
             Granted
           </p>
           <Entries empty="None granted.">
@@ -395,7 +397,7 @@ export default function OfficerPage() {
           </Entries>
         </div>
         <div className="grid gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-black/45">
+          <p className="text-xs font-semibold uppercase tracking-wide text-faint-foreground">
             Revoked
           </p>
           <Entries empty="None revoked.">
@@ -424,7 +426,7 @@ export default function OfficerPage() {
         </div>
 
         {(canGrant || canRevoke) && !isSelf ? (
-          <div className="grid gap-4 border-t border-[var(--border-subtle)] pt-4">
+          <div className="grid gap-4 border-t border-line pt-4">
             <Field label="Permission" htmlFor="permission" required>
               <Select
                 id="permission"
@@ -512,7 +514,7 @@ export default function OfficerPage() {
         >
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-black/45">
+              <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
                 Password
               </dt>
               <dd className="mt-0.5">
@@ -522,7 +524,7 @@ export default function OfficerPage() {
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-black/45">
+              <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
                 Second factor
               </dt>
               <dd className="mt-0.5">
@@ -604,7 +606,7 @@ export default function OfficerPage() {
               {officer.isActive ? "Deactivate" : "Reactivate"}
             </Button>
           </div>
-          <p className="text-xs text-black/55">
+          <p className="text-xs text-faint-foreground">
             Deactivating signs the officer out at once and keeps the account and
             its history. Removing the second factor is for a lost phone: the
             officer sets it up again.

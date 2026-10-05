@@ -46,7 +46,7 @@ export default function PortalLoginPage() {
     <PortalFrame title="Sign in">
       <form
         onSubmit={submit}
-        className="grid gap-4 rounded-lg border border-[var(--border-subtle)] bg-white p-6"
+        className="grid gap-4 rounded-lg border border-line bg-surface p-6"
       >
         {error ? (
           <ErrorNotice
@@ -82,7 +82,7 @@ export default function PortalLoginPage() {
           {busy ? "Signing in…" : "Sign in"}
         </Button>
       </form>
-      <p className="mt-5 text-center text-xs leading-relaxed text-black/55">
+      <p className="mt-5 text-center text-xs leading-relaxed text-faint-foreground">
         Not yet applied?{" "}
         <Link href="/portal/apply" className="underline underline-offset-2">
           Apply for API access

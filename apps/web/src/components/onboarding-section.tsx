@@ -131,8 +131,8 @@ export function OnboardingSection({
     const { attachment } = state;
     return (
       <Section title="Onboarding">
-        <div className="rounded-md border border-[var(--verdict-affirm)]/30 bg-[var(--verdict-affirm-surface)] px-4 py-3 text-sm">
-          <p className="font-semibold text-[var(--verdict-affirm)]">Onboarded</p>
+        <div className="rounded-md border border-verdict-affirm/30 bg-verdict-affirm-surface px-4 py-3 text-sm">
+          <p className="font-semibold text-verdict-affirm">Onboarded</p>
           <p className="mt-1">
             {attachment.kind === "LEGACY"
               ? "Transpay sticker reattached"
@@ -143,13 +143,13 @@ export function OnboardingSection({
         </div>
         <dl className="grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-black/45">
+            <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
               Sticker number
             </dt>
             <dd className="mt-0.5 font-mono text-sm">{attachment.stickerNumber}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-black/45">
+            <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
               Sticker status
             </dt>
             <dd className="mt-0.5 text-sm">{attachment.stickerStatus.replace(/_/g, " ")}</dd>
@@ -221,7 +221,7 @@ export function OnboardingSection({
               </Button>
             </div>
           ) : (
-            <p className="text-sm text-black/60">
+            <p className="text-sm text-muted-foreground">
               Ask an officer who can amend vehicles to set one.
             </p>
           )}
@@ -230,7 +230,7 @@ export function OnboardingSection({
         <>
           <fieldset className="grid gap-2">
             <legend className="text-sm font-medium">How is it being onboarded?</legend>
-            <p className="text-xs text-black/55">
+            <p className="text-xs text-faint-foreground">
               {state.registerHoldsBarcodeForPlate
                 ? "The Transpay register holds a barcode for this plate. If the vehicle carries that sticker, reattach it."
                 : NEW_STICKERS_IN_USE
@@ -262,7 +262,7 @@ export function OnboardingSection({
                 />
                 {label}
                 {value === "SIGNED" && !NEW_STICKERS_IN_USE ? (
-                  <span className="text-xs text-black/45">(not in use yet)</span>
+                  <span className="text-xs text-faint-foreground">(not in use yet)</span>
                 ) : null}
               </label>
             ))}
@@ -429,7 +429,7 @@ export function OnboardingSection({
                       </Button>
                     </div>
                   ) : (
-                    <p className="text-sm text-black/60">
+                    <p className="text-sm text-muted-foreground">
                       Ask an officer who can start payments to create a payment link.
                     </p>
                   )}

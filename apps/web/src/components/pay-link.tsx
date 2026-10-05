@@ -74,13 +74,13 @@ export function PersonalPayLink({
     ? `Pay NURTW dues for ${link.summary.label} here: ${link.url}`
     : "";
   const action =
-    "rounded-md border border-[var(--border-subtle)] bg-white px-3 py-1.5 text-sm font-medium hover:bg-[var(--surface-muted)]";
+    "rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium hover:bg-surface-muted";
 
   return (
-    <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+    <div className="grid gap-3 border-t border-line pt-4">
       <div>
         <h3 className="text-sm font-semibold">Pay link to send</h3>
-        <p className="mt-0.5 text-sm text-black/60">
+        <p className="mt-0.5 text-sm text-muted-foreground">
           The payer opens it on their own phone and pays by card or transfer.
           The page shows the published amount, never what is owed.
         </p>
@@ -115,14 +115,14 @@ export function PersonalPayLink({
             alt={`QR code for the pay link of ${link.summary.label}`}
             width={176}
             height={176}
-            className="rounded-md border border-[var(--border-subtle)] bg-white p-1"
+            className="rounded-md border border-line bg-paper p-1"
           />
           <div className="grid min-w-0 gap-3">
             <p className="text-sm">
               For <span className="font-semibold">{link.summary.label}</span>.
               The payer scans the code, or opens the link:
             </p>
-            <p className="break-all rounded-md bg-[var(--surface-muted)] px-3 py-2 font-mono text-xs">
+            <p className="break-all rounded-md bg-surface-muted px-3 py-2 font-mono text-xs">
               {link.url}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -153,7 +153,7 @@ export function PersonalPayLink({
             </div>
 
             {!replacing ? (
-              <p className="text-xs text-black/55">
+              <p className="text-xs text-faint-foreground">
                 Sent to the wrong person?{" "}
                 <button
                   type="button"

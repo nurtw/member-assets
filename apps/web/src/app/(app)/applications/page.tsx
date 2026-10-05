@@ -56,7 +56,7 @@ export default function ApplicationsPage() {
           <h1 className="text-xl font-semibold tracking-tight">
             Membership applications
           </h1>
-          <p className="mt-1 text-sm text-black/60">
+          <p className="mt-1 text-sm text-muted-foreground">
             Applications within your area of responsibility.
           </p>
         </div>
@@ -64,7 +64,7 @@ export default function ApplicationsPage() {
         {holds("member.create") ? (
           <Link
             href="/applications/new"
-            className="inline-flex items-center rounded-md bg-[var(--nurtw-green)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--nurtw-green-deep)]"
+            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-on-solid transition hover:bg-primary-hover"
           >
             Register an applicant
           </Link>
@@ -95,20 +95,20 @@ export default function ApplicationsPage() {
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-black/50">Loading…</p>
+        <p className="text-sm text-faint-foreground">Loading…</p>
       ) : applications.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[var(--border-subtle)] p-10 text-center">
+        <div className="rounded-lg border border-dashed border-line p-10 text-center">
           <p className="text-sm font-medium">No applications to show</p>
-          <p className="mt-1 text-sm text-black/55">
+          <p className="mt-1 text-sm text-faint-foreground">
             {status
               ? "No application in your area of responsibility has that status."
               : "Applications you register will appear here."}
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)] bg-white">
+        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
           <table className="w-full min-w-[46rem] text-sm">
-            <thead className="border-b border-[var(--border-subtle)] bg-[var(--surface-muted)] text-left">
+            <thead className="border-b border-line bg-surface-muted text-left">
               <tr>
                 <th className="px-4 py-2.5 font-semibold">Applicant</th>
                 <th className="px-4 py-2.5 font-semibold">Application no.</th>
@@ -121,27 +121,27 @@ export default function ApplicationsPage() {
               {applications.map((application) => (
                 <tr
                   key={application.id}
-                  className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--surface-muted)]/60"
+                  className="border-b border-line last:border-0 hover:bg-surface-muted/60"
                 >
                   <td className="px-4 py-3">
                     <Link
                       href={`/applications/${application.id}`}
-                      className="font-medium text-[var(--nurtw-navy)] underline-offset-2 hover:underline"
+                      className="font-medium text-link underline-offset-2 hover:underline"
                     >
                       {application.member.surname},{" "}
                       {application.member.firstName}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-black/70">
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                     {application.applicationNumber}
                   </td>
-                  <td className="px-4 py-3 text-black/70">
+                  <td className="px-4 py-3 text-muted-foreground">
                     {application.member.organisation.name}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-black/70">
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                     {/* Absent until approval, and said so rather than left blank. */}
                     {application.member.membershipNumber ?? (
-                      <span className="font-sans italic text-black/40">
+                      <span className="font-sans italic text-faint-foreground">
                         Not yet issued
                       </span>
                     )}

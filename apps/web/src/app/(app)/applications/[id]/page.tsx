@@ -38,14 +38,14 @@ import { useSession } from "@/lib/session";
 function Detail({ label, value }: { label: string; value: string | null }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-black/45">
+      <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
         {label}
       </dt>
       <dd className="mt-0.5 text-sm">
         {value && value.length > 0 ? (
           value
         ) : (
-          <span className="italic text-black/35">Not stated</span>
+          <span className="italic text-faint-foreground">Not stated</span>
         )}
       </dd>
     </div>
@@ -148,7 +148,7 @@ export default function ApplicationDetailPage() {
   }
 
   if (loading) {
-    return <p className="text-sm text-black/50">Loading…</p>;
+    return <p className="text-sm text-faint-foreground">Loading…</p>;
   }
 
   if (!application) {
@@ -179,7 +179,7 @@ export default function ApplicationDetailPage() {
       <div>
         <Link
           href="/applications"
-          className="text-sm text-black/55 underline-offset-2 hover:underline"
+          className="text-sm text-faint-foreground underline-offset-2 hover:underline"
         >
           ← Applications
         </Link>
@@ -190,7 +190,7 @@ export default function ApplicationDetailPage() {
           <StatusChip status={application.status} />
           <StatusChip status={member.status} />
         </div>
-        <p className="mt-1 font-mono text-xs text-black/55">
+        <p className="mt-1 font-mono text-xs text-faint-foreground">
           Application {application.applicationNumber}
         </p>
       </div>
@@ -203,8 +203,8 @@ export default function ApplicationDetailPage() {
       ) : null}
 
       {application.status === "REJECTED" && application.rejectionReason ? (
-        <div className="rounded-md border border-[var(--verdict-deny)]/30 bg-[var(--verdict-deny-surface)] px-4 py-3">
-          <p className="text-sm font-semibold text-[var(--verdict-deny)]">
+        <div className="rounded-md border border-verdict-deny/30 bg-verdict-deny-surface px-4 py-3">
+          <p className="text-sm font-semibold text-verdict-deny">
             Application refused
           </p>
           <p className="mt-1 text-sm">{application.rejectionReason}</p>
@@ -327,15 +327,15 @@ export default function ApplicationDetailPage() {
               {vehicles.map((vehicle) => (
                 <li
                   key={vehicle.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--border-subtle)] px-3 py-2"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line px-3 py-2"
                 >
                   <Link
                     href={`/vehicles/${vehicle.id}`}
-                    className="font-mono text-sm font-medium text-[var(--nurtw-navy)] underline-offset-2 hover:underline"
+                    className="font-mono text-sm font-medium text-link underline-offset-2 hover:underline"
                   >
                     {vehicle.plateNumberDisplay}
                   </Link>
-                  <span className="text-sm text-black/60">
+                  <span className="text-sm text-muted-foreground">
                     {vehicle.routeType?.label ?? "No route type"}
                   </span>
                   {/* VEH-28 — present only for a holder of vehicle.declare. */}
@@ -344,7 +344,7 @@ export default function ApplicationDetailPage() {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-black/55">No vehicle recorded.</p>
+            <p className="text-sm text-faint-foreground">No vehicle recorded.</p>
           )}
           {canAddVehicle ? (
             <div>
@@ -401,12 +401,12 @@ export default function ApplicationDetailPage() {
               {cards.map((card) => (
                 <li
                   key={card.id}
-                  className="flex flex-wrap items-center gap-3 rounded-md border border-[var(--border-subtle)] px-3 py-2"
+                  className="flex flex-wrap items-center gap-3 rounded-md border border-line px-3 py-2"
                 >
                   <StatusChip status={card.status} />
-                  <span className="font-mono text-xs text-black/70">
+                  <span className="font-mono text-xs text-muted-foreground">
                     {card.cardNumber ?? (
-                      <span className="font-sans italic text-black/40">
+                      <span className="font-sans italic text-faint-foreground">
                         Not yet issued
                       </span>
                     )}
@@ -421,11 +421,11 @@ export default function ApplicationDetailPage() {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-black/55">No card has been prepared.</p>
+            <p className="text-sm text-faint-foreground">No card has been prepared.</p>
           )}
 
           {!liveCard && holds("card.issue") ? (
-            <div className="grid gap-4 border-t border-[var(--border-subtle)] pt-4">
+            <div className="grid gap-4 border-t border-line pt-4">
               <Field
                 label="Address as printed on the card"
                 htmlFor="cardAddress"

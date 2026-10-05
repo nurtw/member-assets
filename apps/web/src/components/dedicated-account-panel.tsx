@@ -80,7 +80,7 @@ const UNASSIGNABLE: Record<DedicatedAccountUnassignableReason, string> = {
 function Figure({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-black/45">
+      <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
         {label}
       </dt>
       <dd className="mt-0.5 text-sm">{value}</dd>
@@ -188,7 +188,7 @@ export function DedicatedAccountPanel({ memberId }: { memberId: string }) {
         <>
           <dl className="grid gap-4 sm:grid-cols-3">
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-black/45">
+              <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
                 Account number
               </dt>
               <dd className="mt-0.5 font-mono text-lg font-semibold tracking-wider">
@@ -221,7 +221,7 @@ export function DedicatedAccountPanel({ memberId }: { memberId: string }) {
               </p>
             ))}
             {state.contractorPercentage !== null ? (
-              <p className="text-black/60">
+              <p className="text-muted-foreground">
                 Paystack keeps {state.contractorPercentage}% of each transfer
                 for processing, so these amounts are a little more than the dues
                 themselves.
@@ -237,7 +237,7 @@ export function DedicatedAccountPanel({ memberId }: { memberId: string }) {
 
           {state.transfers.length > 0 ? (
             <table className="w-full text-left text-sm">
-              <thead className="text-xs uppercase tracking-wide text-black/45">
+              <thead className="text-xs uppercase tracking-wide text-faint-foreground">
                 <tr>
                   <th className="py-1.5 font-medium">Received</th>
                   <th className="py-1.5 font-medium">Sent</th>
@@ -249,7 +249,7 @@ export function DedicatedAccountPanel({ memberId }: { memberId: string }) {
                 {state.transfers.map((transfer) => (
                   <tr
                     key={transfer.reference}
-                    className="border-t border-[var(--border-subtle)] align-top"
+                    className="border-t border-line align-top"
                   >
                     <td className="py-1.5">{day(transfer.receivedAt)}</td>
                     <td className="py-1.5">{naira(transfer.amountKobo)}</td>
@@ -263,7 +263,7 @@ export function DedicatedAccountPanel({ memberId }: { memberId: string }) {
                           </li>
                         ))}
                         {transfer.heldKobo > 0 ? (
-                          <li className="text-black/60">
+                          <li className="text-muted-foreground">
                             Held: {naira(transfer.heldKobo)}
                           </li>
                         ) : null}
@@ -274,7 +274,7 @@ export function DedicatedAccountPanel({ memberId }: { memberId: string }) {
               </tbody>
             </table>
           ) : (
-            <p className="text-sm text-black/60">
+            <p className="text-sm text-muted-foreground">
               Nothing has been received yet.
             </p>
           )}
@@ -309,7 +309,7 @@ export function DedicatedAccountSummary({ memberId }: { memberId: string }) {
   const send = state.owedNow.sendKobo;
 
   return (
-    <div className="grid gap-1 border-t border-[var(--border-subtle)] pt-4 text-sm">
+    <div className="grid gap-1 border-t border-line pt-4 text-sm">
       <h3 className="font-semibold">Or by bank transfer</h3>
       <p>
         <span className="font-mono text-base font-semibold tracking-wider">
@@ -317,7 +317,7 @@ export function DedicatedAccountSummary({ memberId }: { memberId: string }) {
         </span>{" "}
         · {state.account.bankName} · {state.account.accountName}
       </p>
-      <p className="text-black/60">
+      <p className="text-muted-foreground">
         {send !== null && send > 0
           ? `To clear what is owed now, send ${naira(send)}.`
           : "Anything sent is held towards the next due."}{" "}

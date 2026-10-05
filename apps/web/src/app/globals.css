@@ -1,17 +1,25 @@
 @import "tailwindcss";
 
 /**
- * NURTW design tokens — see DESIGN.md.
+ * NURTW design tokens: see DESIGN.md (§2 palette, §3 verdicts, §6 themes).
  *
  * Palette values are PROVISIONAL. They are inferred from a daylight photograph of
  * the physical membership card and must be replaced with values sampled from the
  * Union's official artwork before anything is printed (DESIGN.md §2).
  *
- * Because components consume the semantic tokens below rather than raw hex values,
- * that replacement is a change to this file alone.
+ * Components consume the tokens below, never a raw colour, so a palette change is
+ * a change to this file alone, and every screen works in both themes.
+ * `src/lib/colour-tokens.test.ts` fails on a raw colour class.
+ *
+ * Themes (item 32). Light is the base. Dark applies when the device asks for it
+ * and nobody has chosen Light, or when somebody has chosen Dark: the inline
+ * script in `app/layout.tsx` sets `data-theme` before the first paint. Every
+ * pair below was checked for WCAG 2.2 AA contrast in both themes.
  */
 :root {
-  /* Brand — identity only. Never used as the sole carrier of a verdict. */
+  color-scheme: light;
+
+  /* Brand: identity only. Never the sole carrier of a verdict (DESIGN.md §3). */
   --nurtw-green: #008751;
   --nurtw-green-deep: #00603a;
   --nurtw-red: #c1121f;
@@ -20,40 +28,172 @@
 
   /* Surfaces */
   --background: #ffffff;
-  --foreground: #14181f;
-  --surface-muted: #f4f6f5;
-  --border-subtle: #dfe4e2;
+  --surface: #ffffff;
+  --surface-muted: #f5f5f5;
+  --surface-raised: #ffffff;
+  --sidebar: #fafafa;
+  /* Always white, in both themes: QR codes and card proofs are printed matter. */
+  --paper: #ffffff;
+  --overlay: rgb(0 0 0 / 0.45);
+
+  /* Text */
+  --foreground: #171717;
+  --muted-foreground: #5e5e5e;
+  --faint-foreground: #6b6b6b;
+  /* Text on a solid brand or verdict fill. */
+  --on-solid: #ffffff;
+  --link: #1b2a6b;
+  --brand-text: #00603a;
+
+  /* Lines. A control's own outline must reach 3:1 (WCAG 1.4.11); a divider need not. */
+  --border-subtle: #e5e5e5;
+  --border-strong: #8c8c8c;
+  --ring: #008751;
+
+  /* The primary action is the Union's green (DESIGN.md §2). */
+  --primary: #008751;
+  --primary-hover: #00603a;
 
   /**
-   * Verdict tokens — deliberately NOT the brand colours.
+   * Verdict tokens: deliberately NOT the brand colours.
    *
    * DESIGN.md §3: red and green are the brand, and they are also the worst
    * possible pair for red-green colour vision deficiency. A verdict is carried by
    * word, shape, AND colour together; these tokens are only the third of those.
-   * They are darker and heavier than the brand tones so a verdict panel reads as
-   * distinct from branded chrome, and survives bright outdoor sunlight.
+   *
+   * Each verdict has three: ink (text and outlines), a tinted surface behind that
+   * ink, and a solid fill that carries white text (the Verify panel, a dangerous
+   * button). In the light theme ink and solid are one colour; in the dark theme
+   * ink must be light and a solid must stay dark, so they part.
    */
   --verdict-affirm: #0b6b3a;
   --verdict-affirm-surface: #eaf4ee;
+  --verdict-affirm-solid: #0b6b3a;
   --verdict-deny: #8a1220;
   --verdict-deny-surface: #fbecee;
+  --verdict-deny-solid: #8a1220;
   --verdict-caution: #8a5a00;
   --verdict-caution-surface: #fdf3e2;
+  --verdict-caution-solid: #8a5a00;
 
   /*
    * The one hue a chart draws its single series in (the portal's usage, item
    * 29). A lighter step of the Union's navy: the brand navy itself is too dark
-   * for a chart mark, and green and red are kept for verdicts. Checked against
-   * this surface for contrast and lightness.
+   * for a chart mark, and green and red are kept for verdicts. Each theme's step
+   * passes the dataviz validator against that theme's surface.
    */
   --chart-series: #3447a3;
+  --chart-grid: #ececec;
+  --chart-axis: #a3a3a3;
+  --chart-hover: rgb(0 0 0 / 0.04);
+}
+
+/*
+ * The dark steps, twice over: once for a device that asks for dark when nobody
+ * has chosen Light, once for an explicit choice of Dark. CSS cannot share one
+ * block between a media query and a selector.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --background: #0a0a0a;
+    --surface: #111111;
+    --surface-muted: #1c1c1c;
+    --surface-raised: #171717;
+    --sidebar: #0f0f0f;
+    --overlay: rgb(0 0 0 / 0.6);
+    --foreground: #ededed;
+    --muted-foreground: #a1a1a1;
+    --faint-foreground: #8f8f8f;
+    --link: #9fb1ff;
+    --brand-text: #3fbf83;
+    --border-subtle: #262626;
+    --border-strong: #6b6b6b;
+    --ring: #3fbf83;
+    --verdict-affirm: #5fd39a;
+    --verdict-affirm-surface: #0d2a1c;
+    --verdict-affirm-solid: #0e7c45;
+    --verdict-deny: #ff8f99;
+    --verdict-deny-surface: #3a0f14;
+    --verdict-deny-solid: #a11a2b;
+    --verdict-caution: #f2c063;
+    --verdict-caution-surface: #33240a;
+    --verdict-caution-solid: #8a5a00;
+    --chart-series: #6f83f2;
+    --chart-grid: #262626;
+    --chart-axis: #6b6b6b;
+    --chart-hover: rgb(255 255 255 / 0.06);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --surface: #111111;
+  --surface-muted: #1c1c1c;
+  --surface-raised: #171717;
+  --sidebar: #0f0f0f;
+  --overlay: rgb(0 0 0 / 0.6);
+  --foreground: #ededed;
+  --muted-foreground: #a1a1a1;
+  --faint-foreground: #8f8f8f;
+  --link: #9fb1ff;
+  --brand-text: #3fbf83;
+  --border-subtle: #262626;
+  --border-strong: #6b6b6b;
+  --ring: #3fbf83;
+  --verdict-affirm: #5fd39a;
+  --verdict-affirm-surface: #0d2a1c;
+  --verdict-affirm-solid: #0e7c45;
+  --verdict-deny: #ff8f99;
+  --verdict-deny-surface: #3a0f14;
+  --verdict-deny-solid: #a11a2b;
+  --verdict-caution: #f2c063;
+  --verdict-caution-surface: #33240a;
+  --verdict-caution-solid: #8a5a00;
+  --chart-series: #6f83f2;
+  --chart-grid: #262626;
+  --chart-axis: #6b6b6b;
+  --chart-hover: rgb(255 255 255 / 0.06);
+}
+
+/*
+ * `dark:` for the rare case a token cannot express. Prefer a token: a `dark:`
+ * class is one more place a theme can be forgotten.
+ */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
-  --color-border-subtle: var(--border-subtle);
+  --color-surface-raised: var(--surface-raised);
+  --color-sidebar: var(--sidebar);
+  --color-paper: var(--paper);
+  --color-overlay: var(--overlay);
+
+  --color-muted-foreground: var(--muted-foreground);
+  --color-faint-foreground: var(--faint-foreground);
+  --color-on-solid: var(--on-solid);
+  --color-link: var(--link);
+  --color-brand-text: var(--brand-text);
+
+  --color-line: var(--border-subtle);
+  --color-line-strong: var(--border-strong);
+  --color-ring: var(--ring);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
 
   --color-nurtw-green: var(--nurtw-green);
   --color-nurtw-green-deep: var(--nurtw-green-deep);
@@ -63,24 +203,84 @@
 
   --color-verdict-affirm: var(--verdict-affirm);
   --color-verdict-affirm-surface: var(--verdict-affirm-surface);
+  --color-verdict-affirm-solid: var(--verdict-affirm-solid);
   --color-verdict-deny: var(--verdict-deny);
   --color-verdict-deny-surface: var(--verdict-deny-surface);
+  --color-verdict-deny-solid: var(--verdict-deny-solid);
   --color-verdict-caution: var(--verdict-caution);
   --color-verdict-caution-surface: var(--verdict-caution-surface);
+  --color-verdict-caution-solid: var(--verdict-caution-solid);
+
+  --color-chart-series: var(--chart-series);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
+  --color-chart-hover: var(--chart-hover);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
 }
 
-/**
- * Dark mode is deferred (DESIGN.md §6). The primary surfaces are a daylight
- * roadside portal and an office dashboard, and the card identity is inherently
- * light. The scaffold's prefers-color-scheme block is removed rather than left
- * half-implemented, because a partially themed verdict panel is worse than none.
- */
+/* Short, quiet motion for menus, dialogs, and the phone's navigation drawer. */
+@theme {
+  --animate-fade-in: fade-in 140ms ease-out;
+  --animate-pop-in: pop-in 160ms ease-out;
+  --animate-slide-in-left: slide-in-left 200ms ease-out;
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes slide-in-left {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+}
+
+@layer base {
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans), system-ui, sans-serif;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 25%, transparent);
+  }
+
+  /* A visible focus for anything a component did not style itself. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

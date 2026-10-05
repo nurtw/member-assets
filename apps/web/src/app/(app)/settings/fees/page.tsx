@@ -75,7 +75,7 @@ function AmountEditor({
           <p className="text-sm">{label}</p>
           <p className="text-base font-semibold">
             {currentKobo === null ? (
-              <span className="text-sm font-normal italic text-black/45">
+              <span className="text-sm font-normal italic text-faint-foreground">
                 Uses the default
               </span>
             ) : (
@@ -100,7 +100,7 @@ function AmountEditor({
   }
 
   return (
-    <div className="grid gap-3 rounded-md border border-[var(--border-subtle)] p-3">
+    <div className="grid gap-3 rounded-md border border-line p-3">
       {error ? (
         <ErrorNotice message={error.message} requestId={error.requestId} />
       ) : null}
@@ -183,7 +183,7 @@ export default function FeeSettingsPage() {
     <div className="grid max-w-3xl gap-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Fees</h1>
-        <p className="mt-1 text-sm text-black/60">
+        <p className="mt-1 text-sm text-muted-foreground">
           What each payment costs. Changes take effect for payments started
           afterwards; a payment already started keeps its amount. Every change
           needs a reason and is recorded in the audit trail.
@@ -194,7 +194,7 @@ export default function FeeSettingsPage() {
         <ErrorNotice message={loadError.message} requestId={loadError.requestId} />
       ) : null}
 
-      {isLoading ? <p className="text-sm text-black/50">Loading…</p> : null}
+      {isLoading ? <p className="text-sm text-faint-foreground">Loading…</p> : null}
 
       {feeTypes.map((feeType) => {
         // Only vehicle-charged fees can differ by route type; the levy is the
@@ -213,7 +213,7 @@ export default function FeeSettingsPage() {
                 : "Settles to the contractor."
             }${feeType.active ? "" : " Not currently offered."}`}
           >
-            <div className="divide-y divide-[var(--border-subtle)]">
+            <div className="divide-y divide-line">
               {canManage ? (
                 <AmountEditor
                   label={pricedByRoute ? "Default amount" : "Amount"}

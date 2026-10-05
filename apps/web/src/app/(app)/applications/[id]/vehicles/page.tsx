@@ -41,7 +41,7 @@ export default function ApplicantVehiclesPage() {
   const applicationHref = `/applications/${params.id}`;
 
   if (isLoading) {
-    return <p className="text-sm text-black/50">Loading…</p>;
+    return <p className="text-sm text-faint-foreground">Loading…</p>;
   }
 
   if (!application) {
@@ -73,13 +73,13 @@ export default function ApplicantVehiclesPage() {
   return (
     <div className="grid max-w-2xl gap-6">
       <div>
-        <p className="text-xs font-medium uppercase tracking-wide text-black/45">
+        <p className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
           Registration · Step 2 of 2
         </p>
         <h1 className="mt-1 text-xl font-semibold tracking-tight">
           Add a vehicle for {memberLabel}
         </h1>
-        <p className="mt-1 text-sm text-black/60">
+        <p className="mt-1 text-sm text-muted-foreground">
           Application {application.applicationNumber} is saved
           {member.status === "PENDING" ? " and awaiting approval" : ""}. Add the
           vehicle this member drives, or skip this step if they have none. A
@@ -88,7 +88,7 @@ export default function ApplicantVehiclesPage() {
       </div>
 
       {saved.length > 0 ? (
-        <div className="rounded-md border border-[var(--border-subtle)] bg-white px-4 py-3">
+        <div className="rounded-md border border-line bg-surface px-4 py-3">
           <p className="text-sm font-semibold">Added so far</p>
           <ul className="mt-2 grid gap-1.5">
             {saved.map((vehicle) => (

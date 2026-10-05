@@ -63,7 +63,7 @@ const TOKEN_STATES: Record<string, string> = {
 function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-black/45">
+      <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
         {label}
       </dt>
       <dd className="mt-0.5 text-sm">{children}</dd>
@@ -72,7 +72,7 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function Missing({ children = "Not recorded" }: { children?: ReactNode }) {
-  return <span className="italic text-black/35">{children}</span>;
+  return <span className="italic text-faint-foreground">{children}</span>;
 }
 
 /** Today in Lagos, as `YYYY-MM-DD`: an agreement cannot be signed later. */
@@ -114,9 +114,11 @@ function ProfileChoice({
         </Select>
       </Field>
       {chosen ? (
-        <div className="rounded-md bg-[var(--surface-muted)] px-3 py-2">
+        <div className="rounded-md bg-surface-muted px-3 py-2">
           {chosen.description ? (
-            <p className="mb-2 text-xs text-black/60">{chosen.description}</p>
+            <p className="mb-2 text-xs text-muted-foreground">
+              {chosen.description}
+            </p>
           ) : null}
           <ProfileFields fields={chosen.fields} />
         </div>
@@ -234,7 +236,7 @@ export default function ApiClientPage() {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-black/50">Loading…</p>;
+    return <p className="text-sm text-faint-foreground">Loading…</p>;
   }
 
   if (!client) {
@@ -277,7 +279,7 @@ export default function ApiClientPage() {
       <div>
         <Link
           href="/settings/api-access"
-          className="text-sm text-black/55 underline-offset-2 hover:underline"
+          className="text-sm text-faint-foreground underline-offset-2 hover:underline"
         >
           ← API access
         </Link>
@@ -374,11 +376,11 @@ export default function ApiClientPage() {
           </div>
           <Detail label="Technical contact">
             {client.technicalContact.name}
-            <span className="block text-black/60">
+            <span className="block text-muted-foreground">
               {client.technicalContact.email}
             </span>
             {client.technicalContact.phone ? (
-              <span className="block text-black/60">
+              <span className="block text-muted-foreground">
                 {client.technicalContact.phone}
               </span>
             ) : null}
@@ -400,7 +402,7 @@ export default function ApiClientPage() {
             {client.agreementReference ? (
               <>
                 {client.agreementReference}
-                <span className="block text-black/60">
+                <span className="block text-muted-foreground">
                   Signed {shortDay(client.agreementDate)}
                 </span>
               </>
@@ -413,7 +415,7 @@ export default function ApiClientPage() {
               <>
                 {shortDay(client.approvedAt)}
                 {client.approvedBy ? (
-                  <span className="block text-black/60">
+                  <span className="block text-muted-foreground">
                     by {client.approvedBy.fullName}
                   </span>
                 ) : null}
@@ -425,12 +427,12 @@ export default function ApiClientPage() {
           <Detail label="Registered">
             {shortDay(client.createdAt)}
             {client.registeredBy ? (
-              <span className="block text-black/60">
+              <span className="block text-muted-foreground">
                 by {client.registeredBy.fullName}
               </span>
             ) : null}
             {client.selfRegistered ? (
-              <span className="block text-black/60">
+              <span className="block text-muted-foreground">
                 by the organisation itself, through the portal
               </span>
             ) : null}
@@ -442,7 +444,7 @@ export default function ApiClientPage() {
                   .via as keyof typeof APPLICANT_CONFIRMATION_LABELS
               ] ?? client.applicantConfirmation.via}
               {client.applicantConfirmation.note ? (
-                <span className="block text-black/60">
+                <span className="block text-muted-foreground">
                   {client.applicantConfirmation.note}
                 </span>
               ) : null}
@@ -478,7 +480,7 @@ export default function ApiClientPage() {
                   {client.scopes.map((scope) => (
                     <li key={scope}>
                       {scopeDescription(scope)}{" "}
-                      <span className="font-mono text-xs text-black/50">
+                      <span className="font-mono text-xs text-faint-foreground">
                         {scope}
                       </span>
                     </li>
@@ -499,14 +501,16 @@ export default function ApiClientPage() {
           <Detail label="Daily quota">
             {client.limits.dailyQuota.toLocaleString("en-GB")}
             {client.limits.dailyQuotaOverride !== null ? (
-              <span className="block text-black/60">
+              <span className="block text-muted-foreground">
                 Its own, not the profile’s
               </span>
             ) : null}
           </Detail>
           <Detail label="Used today">
             {client.limits.usedToday.toLocaleString("en-GB")}
-            <span className="block text-black/60">Since midnight in Lagos</span>
+            <span className="block text-muted-foreground">
+              Since midnight in Lagos
+            </span>
           </Detail>
           {client.pause && !client.pause.active ? (
             <div className="sm:col-span-3">
@@ -520,7 +524,7 @@ export default function ApiClientPage() {
         </dl>
 
         {client.pause?.active && canManage ? (
-          <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+          <div className="grid gap-3 border-t border-line pt-4">
             <Field
               label="Reason for lifting the pause"
               htmlFor="liftReason"
@@ -555,7 +559,7 @@ export default function ApiClientPage() {
         ) : null}
 
         {canManage && !isRevoked ? (
-          <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+          <div className="grid gap-3 border-t border-line pt-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Limit profile" htmlFor="limitProfile" required>
                 <Select
@@ -756,7 +760,7 @@ export default function ApiClientPage() {
               <dl className="grid gap-4 sm:grid-cols-2">
                 <Detail label="Signs in as">
                   {client.portalAccount.fullName}
-                  <span className="block text-black/60">
+                  <span className="block text-muted-foreground">
                     {client.portalAccount.email}
                   </span>
                 </Detail>
@@ -767,12 +771,12 @@ export default function ApiClientPage() {
                     <Missing>Never</Missing>
                   )}
                   {client.portalAccount.mustChangePassword ? (
-                    <span className="block text-black/60">
+                    <span className="block text-muted-foreground">
                       On a temporary password
                     </span>
                   ) : null}
                   {client.portalAccount.locked ? (
-                    <span className="block text-black/60">
+                    <span className="block text-muted-foreground">
                       Locked for a time after failed sign-ins
                     </span>
                   ) : null}
@@ -812,7 +816,7 @@ export default function ApiClientPage() {
             </>
           ) : (
             <>
-              <p className="text-sm text-black/60">
+              <p className="text-sm text-muted-foreground">
                 This organisation has no portal account. Give it one, and pass
                 the temporary password to its contact.
               </p>
@@ -934,13 +938,13 @@ export default function ApiClientPage() {
           description="A token is shown once, when it is issued or replaced. The prefix identifies it here and in the audit trail; it cannot be used to make a request."
         >
           {client.tokens.length === 0 ? (
-            <p className="text-sm italic text-black/55">
+            <p className="text-sm italic text-faint-foreground">
               No token has been issued.
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[36rem] text-sm">
-                <thead className="border-b border-[var(--border-subtle)] text-left">
+                <thead className="border-b border-line text-left">
                   <tr>
                     <th className="py-2 pr-3 font-semibold">Token</th>
                     <th className="py-2 pr-3 font-semibold">State</th>
@@ -953,7 +957,7 @@ export default function ApiClientPage() {
                   {client.tokens.map((token) => (
                     <tr
                       key={token.id}
-                      className="border-b border-[var(--border-subtle)] last:border-0"
+                      className="border-b border-line last:border-0"
                     >
                       <td className="py-2 pr-3 font-mono text-xs">
                         {token.prefix}…
@@ -964,15 +968,15 @@ export default function ApiClientPage() {
                           {TOKEN_STATES[token.state]}
                         </span>
                         {token.state === "RETIRING" && token.retiresAt ? (
-                          <span className="block text-xs text-black/55">
+                          <span className="block text-xs text-faint-foreground">
                             stops {moment(token.retiresAt)}
                           </span>
                         ) : null}
                       </td>
-                      <td className="py-2 pr-3 text-black/70">
+                      <td className="py-2 pr-3 text-muted-foreground">
                         {shortDay(token.createdAt)}
                       </td>
-                      <td className="py-2 pr-3 text-black/70">
+                      <td className="py-2 pr-3 text-muted-foreground">
                         {shortDay(token.expiresAt)}
                         {token.expiringSoon ? (
                           <span className="block text-xs font-medium">
@@ -980,7 +984,7 @@ export default function ApiClientPage() {
                           </span>
                         ) : null}
                       </td>
-                      <td className="py-2 text-black/70">
+                      <td className="py-2 text-muted-foreground">
                         {token.lastUsedAt ? (
                           moment(token.lastUsedAt)
                         ) : (
@@ -995,7 +999,7 @@ export default function ApiClientPage() {
           )}
 
           {canTokens && isApproved && !current ? (
-            <div className="border-t border-[var(--border-subtle)] pt-4">
+            <div className="border-t border-line pt-4">
               <Button
                 type="button"
                 disabled={busy}
@@ -1014,7 +1018,7 @@ export default function ApiClientPage() {
           ) : null}
 
           {canTokens && isApproved && current ? (
-            <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+            <div className="grid gap-3 border-t border-line pt-4">
               <Field
                 label="Replace the token in use"
                 htmlFor="overlap"
@@ -1054,7 +1058,7 @@ export default function ApiClientPage() {
           ) : null}
 
           {canTokens && revocable.length > 0 ? (
-            <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+            <div className="grid gap-3 border-t border-line pt-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   label="Revoke a token"
@@ -1394,12 +1398,12 @@ function Notice({
 }) {
   const styles =
     tone === "deny"
-      ? "border-[var(--verdict-deny)]/30 bg-[var(--verdict-deny-surface)] text-[var(--verdict-deny)]"
-      : "border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] text-[var(--verdict-caution)]";
+      ? "border-verdict-deny/30 bg-verdict-deny-surface text-verdict-deny"
+      : "border-verdict-caution/40 bg-verdict-caution-surface text-verdict-caution";
   return (
     <div className={`rounded-md border px-4 py-3 text-sm ${styles}`}>
       <p className="font-semibold">{title}</p>
-      <p className="mt-1 text-[var(--foreground)]">{children}</p>
+      <p className="mt-1 text-foreground">{children}</p>
     </div>
   );
 }

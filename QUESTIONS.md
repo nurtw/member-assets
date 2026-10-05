@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.12
+**Document version:** 1.13
 **Last revised:** 5 October 2026
 
 ---
@@ -49,12 +49,12 @@ thing a year later.
 | Structure and master data (ORG) | 4 | 3 | — | 7 |
 | Membership and registration (MEM) | 4 | 10 | — | 14 |
 | Cards (CARD) | 5 | 3 | — | 8 |
-| Vehicles and stickers (VEH) | 22 | 6 | 1 | 29 |
+| Vehicles and stickers (VEH) | 23 | 6 | 1 | 30 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 21 | 0 | — | 21 |
 | Governance and go-live (GOV) | 9 | 10 | 1 | 20 |
-| **Total** | **89** | **36** | **2** | **127** |
+| **Total** | **90** | **36** | **2** | **128** |
 
 ### Blocking production use right now
 
@@ -797,6 +797,24 @@ added by scanning, the controls move to whoever may add them. To settle then:
 
 **Deferred on.** 3 October 2026. **By.** Project owner. **Recorded at.** —. Nothing is
 built; until it is, nothing is added to the register.
+
+### VEH-30 · Making sticker assignment obvious ✅
+
+**Direction.** Assigning a sticker was hard to find. A vehicle without one should say so in
+a banner whenever it is viewed, and adding a vehicle should end on a prompt to buy its
+sticker, which can be closed. Given by the project owner on 5 October 2026; roadmap item 35.
+
+**Question.** While new NURTW stickers are paused (VEH-20) and the register is closed
+(VEH-21), what do the banner and the prompt do for a vehicle the Transpay register holds no
+barcode for?
+
+**Answer.** **Say so, and charge nothing.** They say the vehicle has no sticker yet and that
+new NURTW stickers are not being issued, and no payment is offered until they are. A vehicle
+whose Transpay sticker is on the register gets the full prompt: pay the fee, then reattach
+(Requirement 9A.4).
+
+**Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** Roadmap item 35, and PRD §9A when it is built.
 
 ---
 
@@ -1834,6 +1852,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 5 October 2026 (stickers) | New VEH-30: a banner on every vehicle without a sticker, and a prompt after adding one, given and answered the same day. While new stickers are paused, a vehicle with no Transpay barcode on the register is told so and charged nothing (roadmap item 35). |
 | 5 October 2026 (interface) | New EXT-21: the API administrator invites an organisation by a personal link, given and answered the same day (roadmap item 33). PRD revised to 1.10. The owner also directed a redesign of the interface, with a sidebar and a dark theme (items 32 and 34). That is not a Union question; it is recorded in `DESIGN.md`. |
 | 5 October 2026 | The project owner went through the open questions. Answered: GOV-18 (a go-live gate), EXT-08 (at once for cause, 30 days' notice otherwise), EXT-12 (production only), EXT-13 (no name, ever), EXT-17 (keep, review after the pilot). Partly answered: EXT-05 (one pilot after go-live; which one open) and GOV-11 (no parallel running; the date waits on named gates). Added to answered ones: PAY-11 (the percentage is Paystack's fee plus 0.5 per cent, set on a new Settlement screen) and PAY-20 (a bank account number follows the BVN rule). GOV-08 left open. New EXT-20, organisations applying for themselves, given and answered the same day (roadmap item 29). New PAY-21, a pay-now button on officer checks and a personal pay link for the public, never showing what is owed (roadmap item 31). PRD revised to 1.9. |
 | 4 October 2026 (item 28) | Officer accounts and multi-factor sign-in were found unbuilt. The project owner answered GOV-16 (a temporary password at first sign-in), GOV-17 (a second factor for privileged permissions), GOV-19 (composed roles at launch), and GOV-20 (no database lock on audit events yet). New GOV-18, when the second-factor requirement is turned on, open. PRD revised to 1.8. |

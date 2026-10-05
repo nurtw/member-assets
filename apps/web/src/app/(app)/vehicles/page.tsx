@@ -62,7 +62,7 @@ export default function VehiclesPage() {
           <h1 className="text-xl font-semibold tracking-tight">
             Vehicles
           </h1>
-          <p className="mt-1 text-sm text-black/60">
+          <p className="mt-1 text-sm text-muted-foreground">
             {seesDeclarations
               ? "Vehicles within your area of responsibility, declared and on record. A declaration is never created by a verification enquiry — only through this screen."
               : "Vehicles within your area of responsibility."}
@@ -118,20 +118,20 @@ export default function VehiclesPage() {
       ) : null}
 
       {isLoading ? (
-        <p className="text-sm text-black/50">Loading…</p>
+        <p className="text-sm text-faint-foreground">Loading…</p>
       ) : vehicles.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[var(--border-subtle)] p-10 text-center">
+        <div className="rounded-lg border border-dashed border-line p-10 text-center">
           <p className="text-sm font-medium">No vehicles to show</p>
-          <p className="mt-1 text-sm text-black/55">
+          <p className="mt-1 text-sm text-faint-foreground">
             {status || debouncedQ
               ? "No vehicle in your area of responsibility matches that search."
               : "Vehicles in your area of responsibility will appear here."}
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[var(--border-subtle)] bg-white">
+        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
           <table className="w-full min-w-[52rem] text-sm">
-            <thead className="border-b border-[var(--border-subtle)] bg-[var(--surface-muted)] text-left">
+            <thead className="border-b border-line bg-surface-muted text-left">
               <tr>
                 <th className="px-4 py-2.5 font-semibold">Plate</th>
                 <th className="px-4 py-2.5 font-semibold">Type</th>
@@ -150,31 +150,31 @@ export default function VehiclesPage() {
               {vehicles.map((vehicle) => (
                 <tr
                   key={vehicle.id}
-                  className="border-b border-[var(--border-subtle)] last:border-0 hover:bg-[var(--surface-muted)]/60"
+                  className="border-b border-line last:border-0 hover:bg-surface-muted/60"
                 >
                   <td className="px-4 py-3">
                     <Link
                       href={`/vehicles/${vehicle.id}`}
-                      className="font-mono text-sm font-medium text-[var(--nurtw-navy)] underline-offset-2 hover:underline"
+                      className="font-mono text-sm font-medium text-link underline-offset-2 hover:underline"
                     >
                       {vehicle.plateNumberDisplay}
                     </Link>
                     {vehicle.isLegacyImport ? (
-                      <span className="ml-2 text-xs italic text-black/40">
+                      <span className="ml-2 text-xs italic text-faint-foreground">
                         legacy
                       </span>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 text-black/70">
+                  <td className="px-4 py-3 text-muted-foreground">
                     {vehicle.vehicleCategory?.label ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-black/70">
+                  <td className="px-4 py-3 text-muted-foreground">
                     {vehicle.routeType?.label ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-black/70">
+                  <td className="px-4 py-3 text-muted-foreground">
                     {vehicle.organisation.name}
                   </td>
-                  <td className="px-4 py-3 text-black/70">
+                  <td className="px-4 py-3 text-muted-foreground">
                     {vehicle.declaredByMember
                       ? `${vehicle.declaredByMember.surname}, ${vehicle.declaredByMember.firstName}`
                       : "—"}
@@ -183,7 +183,7 @@ export default function VehiclesPage() {
                     <>
                       {/* A row outside the officer's declare scope carries
                           neither field: a dash, never "not declared". */}
-                      <td className="px-4 py-3 text-black/70">
+                      <td className="px-4 py-3 text-muted-foreground">
                         {vehicle.status === undefined
                           ? "—"
                           : vehicle.declaredAt

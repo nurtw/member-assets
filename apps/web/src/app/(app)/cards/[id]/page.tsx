@@ -31,14 +31,14 @@ import { useSession } from "@/lib/session";
 function Detail({ label, value }: { label: string; value: string | null }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-black/45">
+      <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
         {label}
       </dt>
       <dd className="mt-0.5 text-sm">
         {value && value.length > 0 ? (
           value
         ) : (
-          <span className="italic text-black/35">Not stated</span>
+          <span className="italic text-faint-foreground">Not stated</span>
         )}
       </dd>
     </div>
@@ -81,7 +81,7 @@ export default function CardDetailPage() {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-black/50">Loading…</p>;
+    return <p className="text-sm text-faint-foreground">Loading…</p>;
   }
 
   if (!card) {
@@ -120,7 +120,7 @@ export default function CardDetailPage() {
       <div>
         <Link
           href="/cards"
-          className="text-sm text-black/55 underline-offset-2 hover:underline"
+          className="text-sm text-faint-foreground underline-offset-2 hover:underline"
         >
           ← Cards
         </Link>
@@ -130,11 +130,11 @@ export default function CardDetailPage() {
           </h1>
           <StatusChip status={card.status} />
         </div>
-        <p className="mt-1 font-mono text-xs text-black/55">
+        <p className="mt-1 font-mono text-xs text-faint-foreground">
           {card.cardNumber ? (
             `Card ${card.cardNumber}`
           ) : (
-            <span className="font-sans italic text-black/45">
+            <span className="font-sans italic text-faint-foreground">
               No card number — allocated when the card is issued
             </span>
           )}
@@ -155,8 +155,8 @@ export default function CardDetailPage() {
         not only in a document.
       */}
       {card.templateVersion.includes("provisional") ? (
-        <div className="rounded-md border border-[var(--verdict-caution)]/30 bg-[var(--verdict-caution-surface)] px-4 py-3">
-          <p className="text-sm font-semibold text-[var(--verdict-caution)]">
+        <div className="rounded-md border border-verdict-caution/30 bg-verdict-caution-surface px-4 py-3">
+          <p className="text-sm font-semibold text-verdict-caution">
             Provisional template
           </p>
           <p className="mt-1 text-sm">
@@ -208,7 +208,7 @@ export default function CardDetailPage() {
           />
         </dl>
 
-        <div className="flex flex-wrap gap-3 border-t border-[var(--border-subtle)] pt-4">
+        <div className="flex flex-wrap gap-3 border-t border-line pt-4">
           <Button
             type="button"
             variant="secondary"
@@ -222,7 +222,7 @@ export default function CardDetailPage() {
             {card.cardNumber ? "Download card" : "Download proof"}
           </Button>
           {!card.cardNumber ? (
-            <p className="self-center text-xs text-black/55">
+            <p className="self-center text-xs text-faint-foreground">
               Overprinted <strong>PROOF — NOT ISSUED</strong> and carries no card
               number.
             </p>

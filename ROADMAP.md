@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.11
+**Document version:** 1.12
 **Last revised:** 5 October 2026
 
 ---
@@ -59,9 +59,10 @@ Each item is independently completable and independently testable. Status values
 | 29 | organisation-portal | §12, §23.23 | done (clicked through 5 Oct) | [plan](plans/29-organisation-portal.md) |
 | 30 | settlement-screen | §27.7, §27.12 | done (clicked through 5 Oct; no account saved at Paystack) | [plan](plans/30-settlement-screen.md) |
 | 31 | pay-now | §27.8 (rev. 1.9) | done (clicked through 5 Oct; not through to a Paystack payment) | [plan](plans/31-pay-now.md) |
-| 32 | app-shell-and-themes | `DESIGN.md` §3–§6 | in-progress | [plan](plans/32-app-shell-and-themes.md) |
+| 32 | app-shell-and-themes | `DESIGN.md` §3–§6 | done (clicked through 5 Oct) | [plan](plans/32-app-shell-and-themes.md) |
 | 33 | organisations-and-invitations | §12, Req. 12.11 (rev. 1.10) | planned | [plan](plans/33-organisations-and-invitations.md) |
 | 34 | screen-restructure | `DESIGN.md` §5 | planned | [plan](plans/34-screen-restructure.md) |
+| 35 | sticker-prompt | §9A (VEH-30) | planned | [plan](plans/35-sticker-prompt.md) |
 
 ### Item summaries
 
@@ -304,6 +305,12 @@ onto the same patterns, and an Overview of what waits for each officer. Screens 
 the API can do but no screen offers (the Union's structure, master data, officer
 signatures, a member list) are separate items, not this one.
 
+**35 — sticker-prompt.** *PRD §9A, VEH-30; the owner's direction of 5 October 2026.* A
+banner on every vehicle without a sticker, and a prompt to buy and attach one when a
+vehicle has just been added, which can be closed. While new NURTW stickers are paused, a
+vehicle the Transpay register holds no barcode for is told so, and nothing is charged.
+Built after item 32, before item 33.
+
 **Also on 3 October 2026 (PRD 1.4, VEH-28).** A vehicle's declaration status is shown only
 to holders of `vehicle.declare`, on every screen and route. This amended items 07 and 10.
 New NURTW stickers are paused, so onboarding is by reattachment only.
@@ -355,10 +362,11 @@ VEH-26, MIG-04, MIG-07, PAY-14 to PAY-17).
 
 ```text
 29 --+
-32 --+-> 33 -> 34
+32 --+-> 35 -> 33 -> 34
 ```
 
-Order of work, as the owner chose: 32, then 33, then 34. Item 15 is independent of them.
+Order of work, as the owner chose: 32 (done), then 35, 33, and 34. Item 15 is independent
+of them.
 
 ## Open questions
 

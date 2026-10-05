@@ -7,7 +7,7 @@ import type {
 import { useState } from "react";
 import useSWR from "swr";
 
-import { ApiAccessTabs, explained, moment } from "@/components/api-access";
+import { explained, moment } from "@/components/api-access";
 import {
   Button,
   ErrorNotice,
@@ -176,21 +176,24 @@ function ProfileValues({ profile }: { profile: RateLimitProfileSummary }) {
         ["Quotas", QUOTA_FIELDS],
         ["Abuse detection", DETECTION_FIELDS],
       ].map(([heading, fields]) => (
-        <dl key={heading as string} className="grid gap-1.5 text-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-black/45">
+        <div key={heading as string} className="grid gap-1.5 text-sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-faint-foreground">
             {heading as string}
           </p>
-          {(fields as NumberField[]).map((field) => (
-            <div key={field.key} className="flex justify-between gap-3">
-              <dt className="text-black/60">{field.label}</dt>
-              <dd className="font-medium tabular-nums">
-                {profile[field.key] === null
-                  ? "None"
-                  : profile[field.key]!.toLocaleString("en-GB")}
-              </dd>
-            </div>
-          ))}
-        </dl>
+          {/* The heading sits outside the list: a list of terms holds only terms. */}
+          <dl className="grid gap-1.5">
+            {(fields as NumberField[]).map((field) => (
+              <div key={field.key} className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">{field.label}</dt>
+                <dd className="font-medium tabular-nums">
+                  {profile[field.key] === null
+                    ? "None"
+                    : profile[field.key]!.toLocaleString("en-GB")}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       ))}
     </div>
   );
@@ -211,7 +214,7 @@ function AmendForm({
   const [error, setError] = useState<ApiError | null>(null);
 
   return (
-    <div className="grid gap-4 border-t border-[var(--border-subtle)] pt-4">
+    <div className="grid gap-4 border-t border-line pt-4">
       {error && error.details.length === 0 ? (
         <ErrorNotice message={error.message} requestId={error.requestId} />
       ) : null}
@@ -241,7 +244,7 @@ function AmendForm({
         error={error}
       />
       {profile.clientCount > 0 ? (
-        <p className="rounded-md border border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] px-3 py-2 text-sm">
+        <p className="rounded-md border border-verdict-caution/40 bg-verdict-caution-surface px-3 py-2 text-sm">
           {profile.clientCount === 1
             ? "One organisation holds this profile."
             : `${profile.clientCount} organisations hold this profile.`}{" "}
@@ -388,8 +391,8 @@ export default function LimitProfilesPage() {
   return (
     <div className="grid max-w-3xl gap-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">API access</h1>
-        <p className="mt-1 text-sm text-black/60">
+        <h1 className="text-xl font-semibold tracking-tight">Limits</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           A limit profile sets how much an outside organisation may ask, and
           when the System pauses one whose checks follow a pattern. An
           organisation over a limit is told to wait and try again; a paused one
@@ -397,15 +400,15 @@ export default function LimitProfilesPage() {
         </p>
       </div>
 
-      <ApiAccessTabs />
-
       {loadError ? (
         <ErrorNotice
           message={loadError.message}
           requestId={loadError.requestId}
         />
       ) : null}
-      {isLoading ? <p className="text-sm text-black/50">Loading…</p> : null}
+      {isLoading ? (
+        <p className="text-sm text-faint-foreground">Loading…</p>
+      ) : null}
 
       {profiles.map((profile) => (
         <Section
@@ -413,7 +416,7 @@ export default function LimitProfilesPage() {
           title={profile.label}
           description={profile.description ?? undefined}
         >
-          <div className="flex flex-wrap items-center gap-2 text-xs text-black/55">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-faint-foreground">
             <span className="font-mono">{profile.code}</span>
             <span>
               {profile.clientCount === 0

@@ -328,7 +328,7 @@ export function VehicleForm({
       <Section title="Driver">
         {fixedMember ? (
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-black/45">
+            <p className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
               Member
             </p>
             <p className="mt-0.5 text-sm">{fixedMember.label}</p>

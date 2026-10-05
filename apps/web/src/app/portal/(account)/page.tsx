@@ -35,7 +35,7 @@ export default function PortalOverviewPage() {
         <h1 className="text-xl font-semibold tracking-tight">
           {organisation.name}
         </h1>
-        <p className="mt-1 text-sm text-black/60">
+        <p className="mt-1 text-sm text-muted-foreground">
           Your organisation&apos;s access to the NURTW verification API.
         </p>
       </div>
@@ -50,18 +50,20 @@ export default function PortalOverviewPage() {
           >
             <dl className="grid gap-5 sm:grid-cols-2">
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-black/50">
+                <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
                   Scopes
                 </dt>
                 <dd className="mt-1.5">
                   {organisation.scopes.length === 0 ? (
-                    <span className="text-sm italic text-black/55">None</span>
+                    <span className="text-sm italic text-faint-foreground">
+                      None
+                    </span>
                   ) : (
                     <ul className="grid gap-2 text-sm">
                       {organisation.scopes.map((scope) => (
                         <li key={scope}>
                           <span className="font-mono text-xs">{scope}</span>
-                          <span className="block text-black/60">
+                          <span className="block text-muted-foreground">
                             {scopeDescription(scope)}
                           </span>
                         </li>
@@ -71,7 +73,7 @@ export default function PortalOverviewPage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-black/50">
+                <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
                   A match may carry
                 </dt>
                 <dd className="mt-1.5 text-sm">
@@ -81,12 +83,12 @@ export default function PortalOverviewPage() {
                         {organisation.disclosureProfile.label}
                       </span>
                       {organisation.disclosureProfile.fields.length === 0 ? (
-                        <p className="mt-1 italic text-black/60">
+                        <p className="mt-1 italic text-muted-foreground">
                           No record field. A response confirms a match and
                           nothing more.
                         </p>
                       ) : (
-                        <ul className="mt-1 list-disc pl-5 text-black/70">
+                        <ul className="mt-1 list-disc pl-5 text-muted-foreground">
                           {organisation.disclosureProfile.fields.map(
                             (field) => (
                               <li key={field}>{fieldLabel(field)}</li>
@@ -94,20 +96,22 @@ export default function PortalOverviewPage() {
                           )}
                         </ul>
                       )}
-                      <p className="mt-2 text-xs text-black/55">
+                      <p className="mt-2 text-xs text-faint-foreground">
                         A match confirms only that an NURTW record exists under
                         the criteria checked. It is not evidence of ownership,
                         roadworthiness, licensing, or insurance.
                       </p>
                     </>
                   ) : (
-                    <span className="italic text-black/55">Nothing yet</span>
+                    <span className="italic text-faint-foreground">
+                      Nothing yet
+                    </span>
                   )}
                 </dd>
               </div>
             </dl>
             {organisation.limits ? (
-              <dl className="grid gap-4 border-t border-[var(--border-subtle)] pt-4 sm:grid-cols-4">
+              <dl className="grid gap-4 border-t border-line pt-4 sm:grid-cols-4">
                 <Limit
                   label="Verifications"
                   value={`${organisation.limits.verificationPerMinute} a minute`}
@@ -126,7 +130,7 @@ export default function PortalOverviewPage() {
                 />
               </dl>
             ) : null}
-            <p className="text-xs text-black/55">
+            <p className="text-xs text-faint-foreground">
               A request over a limit answers 429 with a Retry-After header, and
               is not counted against your quota. Send your own X-Request-ID with
               every request.
@@ -145,7 +149,7 @@ export default function PortalOverviewPage() {
 function Limit({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-black/50">
+      <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
         {label}
       </dt>
       <dd className="mt-0.5 text-sm font-medium">{value}</dd>
@@ -173,12 +177,12 @@ function Standing({
   };
 
   return (
-    <section className="rounded-lg border border-[var(--border-subtle)] bg-white p-5">
+    <section className="rounded-lg border border-line bg-surface p-5">
       <div className="flex flex-wrap items-center gap-3">
         <StatusChip status={organisation.status} />
         <p className="text-sm">{sentence[organisation.status]}</p>
       </div>
-      <p className="mt-2 text-xs text-black/55">
+      <p className="mt-2 text-xs text-faint-foreground">
         Applied {shortDay(organisation.appliedAt)}
         {organisation.approvedAt
           ? ` · approved ${shortDay(organisation.approvedAt)}`
@@ -187,7 +191,7 @@ function Standing({
       {organisation.pausedUntil ? (
         <p
           role="status"
-          className="mt-3 rounded-md border border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] px-3 py-2 text-sm"
+          className="mt-3 rounded-md border border-verdict-caution/40 bg-verdict-caution-surface px-3 py-2 text-sm"
         >
           <span className="font-semibold">Requests are paused</span> until{" "}
           {moment(organisation.pausedUntil)}. Requests sent before then answer

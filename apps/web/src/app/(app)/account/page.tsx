@@ -155,7 +155,7 @@ function RecoveryCodes({
   onDone: () => void;
 }) {
   return (
-    <div className="rounded-lg border-2 border-[var(--verdict-caution)] bg-[var(--verdict-caution-surface)] p-5">
+    <div className="rounded-lg border-2 border-verdict-caution bg-verdict-caution-surface p-5">
       <h3 className="text-base font-semibold">
         Keep these recovery codes — they will not be shown again
       </h3>
@@ -168,7 +168,7 @@ function RecoveryCodes({
         {codes.map((code) => (
           <li
             key={code}
-            className="select-all rounded-md border border-[var(--border-subtle)] bg-white px-3 py-1.5"
+            className="select-all rounded-md border border-line bg-surface px-3 py-1.5"
           >
             {code}
           </li>
@@ -248,7 +248,7 @@ function SecondFactor() {
       ) : null}
 
       {enrolled && !verified ? (
-        <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+        <div className="grid gap-3 border-t border-line pt-4">
           <Field
             label="Code from your authenticator app"
             htmlFor="verifyCode"
@@ -279,14 +279,14 @@ function SecondFactor() {
       ) : null}
 
       {enrolment ? (
-        <div className="grid gap-3 border-t border-[var(--border-subtle)] pt-4">
+        <div className="grid gap-3 border-t border-line pt-4">
           <p className="text-sm">
             In your authenticator app (Google Authenticator, Microsoft
             Authenticator, Authy, or similar), add an account and enter this
             key. On a phone, the link below opens the app directly.
           </p>
           <p
-            className="select-all break-all rounded-md border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 py-2 font-mono text-sm"
+            className="select-all break-all rounded-md border border-line bg-surface-muted px-3 py-2 font-mono text-sm"
             aria-label="Authenticator key"
           >
             {enrolment.secret.match(/.{4}/g)?.join(" ")}
@@ -345,7 +345,7 @@ function SecondFactor() {
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-3 border-t border-[var(--border-subtle)] pt-4">
+        <div className="flex flex-wrap gap-3 border-t border-line pt-4">
           {!enrolled || verified ? (
             <Button
               type="button"
@@ -397,7 +397,7 @@ export default function AccountPage() {
     <div className="grid max-w-2xl gap-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Your account</h1>
-        <p className="mt-1 text-sm text-black/60">
+        <p className="mt-1 text-sm text-muted-foreground">
           {user.fullName} · {user.email}
         </p>
       </div>
