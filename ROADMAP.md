@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.10
+**Document version:** 1.11
 **Last revised:** 5 October 2026
 
 ---
@@ -59,6 +59,9 @@ Each item is independently completable and independently testable. Status values
 | 29 | organisation-portal | §12, §23.23 | done (clicked through 5 Oct) | [plan](plans/29-organisation-portal.md) |
 | 30 | settlement-screen | §27.7, §27.12 | done (clicked through 5 Oct; no account saved at Paystack) | [plan](plans/30-settlement-screen.md) |
 | 31 | pay-now | §27.8 (rev. 1.9) | done (clicked through 5 Oct; not through to a Paystack payment) | [plan](plans/31-pay-now.md) |
+| 32 | app-shell-and-themes | `DESIGN.md` §3–§6 | in-progress | [plan](plans/32-app-shell-and-themes.md) |
+| 33 | organisations-and-invitations | §12, Req. 12.11 (rev. 1.10) | planned | [plan](plans/33-organisations-and-invitations.md) |
+| 34 | screen-restructure | `DESIGN.md` §5 | planned | [plan](plans/34-screen-restructure.md) |
 
 ### Item summaries
 
@@ -285,6 +288,22 @@ shown a refusal; a payment Paystack will not start is closed as failed and answe
 and two phone layouts in the portal. Not reached: second-factor enrolment, a card or
 sticker issued, a registration completed, and a payment taken through to Paystack.
 
+**32 — app-shell-and-themes.** *The owner's direction of 5 October 2026; `DESIGN.md` 1.1.*
+One frame for every officer screen: a sidebar grouped by task, breadcrumbs, a command
+menu, and Light, Dark, and System themes applied before the first paint. Every colour
+becomes a token, so every screen works in both themes and every verdict still passes
+`DESIGN.md` §3. Comes before items 33 and 34.
+
+**33 — organisations-and-invitations.** *PRD Requirement 12.11 (revision 1.10), EXT-21;
+the owner's direction of 5 October 2026.* A page for outside organisations in place of
+Settings → API access, and a personal link the administrator shares to invite one, which
+opens the application form addressed to it. Confirmation and approval are unchanged.
+
+**34 — screen-restructure.** *The owner's direction of 5 October 2026.* Every screen moved
+onto the same patterns, and an Overview of what waits for each officer. Screens for what
+the API can do but no screen offers (the Union's structure, master data, officer
+signatures, a member list) are separate items, not this one.
+
 **Also on 3 October 2026 (PRD 1.4, VEH-28).** A vehicle's declaration status is shown only
 to holders of `vehicle.declare`, on every screen and route. This amended items 07 and 10.
 New NURTW stickers are paused, so onboarding is by reattachment only.
@@ -331,6 +350,15 @@ answered (`QUESTIONS.md` PAY-01-13, VEH-18-22).
 Order of work: 19, then item 09's local run (so the report can be reviewed while the rest
 proceeds), then 20, 21, 17, 22, 23. Every 1.3 question is answered (`QUESTIONS.md` VEH-23 to
 VEH-26, MIG-04, MIG-07, PAY-14 to PAY-17).
+
+*The interface, 5 October 2026:*
+
+```text
+29 --+
+32 --+-> 33 -> 34
+```
+
+Order of work, as the owner chose: 32, then 33, then 34. Item 15 is independent of them.
 
 ## Open questions
 

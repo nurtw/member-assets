@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.11
+**Document version:** 1.12
 **Last revised:** 5 October 2026
 
 ---
@@ -51,10 +51,10 @@ thing a year later.
 | Cards (CARD) | 5 | 3 | — | 8 |
 | Vehicles and stickers (VEH) | 22 | 6 | 1 | 29 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
-| External organisations (EXT) | 18 | 2 | — | 20 |
+| External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 21 | 0 | — | 21 |
 | Governance and go-live (GOV) | 9 | 10 | 1 | 20 |
-| **Total** | **88** | **36** | **2** | **126** |
+| **Total** | **89** | **36** | **2** | **127** |
 
 ### Blocking production use right now
 
@@ -1100,6 +1100,29 @@ recommendations. **Recorded at.** PRD §23.23.
 - **No second factor for portal accounts yet.** Ten failed sign-ins lock one for fifteen
   minutes, as for officers.
 
+### EXT-21 · Inviting an organisation by a link ✅
+
+**Direction.** The API administrator should be able to share a link for a particular
+organisation to apply, from a page of its own for outside organisations. Given by the
+project owner on 5 October 2026; roadmap item 33.
+
+**Question.** Is that one general link to the open application form, or a personal link
+for each organisation invited?
+
+**Answer.** **A personal link for each invitation.** It names the organisation and opens
+the application form with its name filled in. It is used once, expires after a period set
+in settings, and can be withdrawn with a reason. The administrator sees who invited each
+organisation. The general link to the open form is offered beside it. Confirmation by
+telephone or letter, and approval, are unchanged: an invitation confirms nothing and lifts
+no limit.
+
+**Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** PRD §23.23, Requirement 12.11 (revision 1.10).
+
+**Planned (item 33), with the choices the project made:** a link lasts 14 days, and its
+page may be opened 30 times a minute from one address; both are settings. The code is not
+a credential, as a pay link's is not (`ARCHITECTURE.md` Decision 9.15).
+
 ---
 
 ## 10. Open — governance and go-live (item 15)
@@ -1811,6 +1834,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 5 October 2026 (interface) | New EXT-21: the API administrator invites an organisation by a personal link, given and answered the same day (roadmap item 33). PRD revised to 1.10. The owner also directed a redesign of the interface, with a sidebar and a dark theme (items 32 and 34). That is not a Union question; it is recorded in `DESIGN.md`. |
 | 5 October 2026 | The project owner went through the open questions. Answered: GOV-18 (a go-live gate), EXT-08 (at once for cause, 30 days' notice otherwise), EXT-12 (production only), EXT-13 (no name, ever), EXT-17 (keep, review after the pilot). Partly answered: EXT-05 (one pilot after go-live; which one open) and GOV-11 (no parallel running; the date waits on named gates). Added to answered ones: PAY-11 (the percentage is Paystack's fee plus 0.5 per cent, set on a new Settlement screen) and PAY-20 (a bank account number follows the BVN rule). GOV-08 left open. New EXT-20, organisations applying for themselves, given and answered the same day (roadmap item 29). New PAY-21, a pay-now button on officer checks and a personal pay link for the public, never showing what is owed (roadmap item 31). PRD revised to 1.9. |
 | 4 October 2026 (item 28) | Officer accounts and multi-factor sign-in were found unbuilt. The project owner answered GOV-16 (a temporary password at first sign-in), GOV-17 (a second factor for privileged permissions), GOV-19 (composed roles at launch), and GOV-20 (no database lock on audit events yet). New GOV-18, when the second-factor requirement is turned on, open. PRD revised to 1.8. |
 | 4 October 2026 (item 14) | The project owner answered EXT-18 (totals by zone or branch only, rounded to the nearest 10) and EXT-19 (month, quarter, and year periods), adopting the recommendations. PRD revised to 1.7. |

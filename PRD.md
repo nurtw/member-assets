@@ -4,8 +4,8 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.9 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.9
+1.2 to 1.10 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.10
 **Last revised:** 5 October 2026
 
 ---
@@ -90,6 +90,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.7 | 4 October 2026 | Filtered totals by zone or branch only, rounded to the nearest 10 (Requirement 13.6). Reporting periods are a month, quarter, or year (13.7). The grand total moves to its own route, and an organisation reads the names it filters by from a metadata route (13.8). See §23.25. | The project owner (`QUESTIONS.md` EXT-18, EXT-19), 4 October 2026. |
 | 1.8 | 4 October 2026 | Requirement 17.1 is defined by permission, not role. A new officer gets a temporary password (17.3). Failed sign-ins lock the account for a time (17.4). The Union may compose roles, never holding `vehicle.declare` or the settlement account. See §23.26. | The project owner (`QUESTIONS.md` GOV-16, GOV-17, GOV-19, GOV-20), 4 October 2026. |
 | 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. Payment is offered wherever a vehicle is checked, and through a personal pay link that never says what is owed. See §23.10, §23.22–§23.27, Requirements 12.11, 27.7 and 27.8. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20, PAY-21), 5 October 2026. |
+| 1.10 | 5 October 2026 | The API administrator may invite a named organisation by a personal link that opens the application form addressed to it. A link is used once, expires, and may be withdrawn; the application it produces is confirmed and decided as any other. See §23.23 and Requirement 12.11. | The project owner (`QUESTIONS.md` EXT-21), 5 October 2026. |
 
 ---
 
@@ -503,6 +504,9 @@ itself, through a portal of its own, and sign in there (EXT-20).
   to it alone. Its scopes, disclosure profile, and limits remain the Union's to set.
 - The application form is limited per address, stops while too many applications await a
   decision, and an application left undecided lapses after 30 days.
+- The API administrator may invite a named organisation by a personal link that opens the
+  form addressed to it *(revision 1.10, EXT-21)*. The link is used once, expires, and may
+  be withdrawn. The application it produces is confirmed and decided as any other.
 
 ---
 
@@ -996,6 +1000,12 @@ Determined 3 October 2026 (`QUESTIONS.md` EXT-06, EXT-07, EXT-10, EXT-11).
     unapproved application expires after 30 days.
 
   Requirement 12.11; roadmap item 29.
+- **Invitations** *(revision 1.10, EXT-21)*. The API administrator may invite a named
+  organisation by a personal link, shared however the administrator chooses, that opens
+  the application form addressed to it. A link is used once, expires after a period set
+  in settings, and may be withdrawn with a reason. An invitation is not a confirmation:
+  the application it produces is confirmed by telephone or letter and decided as any
+  other, and it lifts no limit on the form. Requirement 12.11; roadmap item 33.
 
 ### 23.24 Rate limits and abuse detection *(revision 1.6)*
 

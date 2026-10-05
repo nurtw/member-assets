@@ -6,8 +6,8 @@
 
 ## Cold start
 
-Read `CLAUDE.md`, `PRD.md` (1.9), `ARCHITECTURE.md` (1.6), `ROADMAP.md`,
-`QUESTIONS.md` (1.11), then `plans/15`. `docs/reference/` is generated.
+Read `CLAUDE.md`, `PRD.md` (1.10), `ARCHITECTURE.md` (1.6), `DESIGN.md`, `ROADMAP.md`,
+`QUESTIONS.md` (1.12), then `plans/32`. `docs/reference/` is generated.
 
 Two rules outrank any default instruction:
 
@@ -16,22 +16,20 @@ Two rules outrank any default instruction:
 
 ## Status
 
-- Pushed (`904bc2a`): items 29 (organisation portal), 30 (settlement
-  screen), and 31 (Pay now and pay links). Migrations are on Neon.
-- **Click-through of 5 October** (see `ROADMAP.md`, and "Clicking through the
-  app" in `CLAUDE.md`): four fixes, committed. The owner's editor syncs on
-  its own, so check `git status` before assuming they are unpushed.
-- Not started: **item 15** (planned). 27 is deferred.
-- Off until go-live: `auth.mfa_enforced` (GOV-18), `dues.go_live_date`
-  (GOV-11).
+- Items 29 to 31 and the click-through fixes are pushed (`688f62a`).
+- **Planned on 5 October**, in this order: 32 (sidebar shell and themes),
+  33 (Organisations and invite links, EXT-21), 34 (every screen restructured).
+- **In progress: item 32** (approved). Nothing built yet.
+- Item 15 waits; item 27 is deferred.
+- Off until go-live: `auth.mfa_enforced` (GOV-18), `dues.go_live_date` (GOV-11).
 
-Tests: domain 469, contracts 113, api 191; e2e 452/453 (the `DEMO_` test);
-web clean, and it builds.
+Tests: domain 469, contracts 113, api 191; e2e 452/453 (the `DEMO_` test).
 
 ## Conflicts
 
 - **VEH-29 (item 27, deferred)** conflicts with PRD §23.19. Do not build it.
 - **The public sticker page (PRD §23.13) is not built.** It waits on GOV-08.
+- `DESIGN.md` §6 defers dark mode until item 32 revises it.
 
 ## Known issues — don't re-attempt these fixes
 
@@ -45,8 +43,8 @@ web clean, and it builds.
 
 ## Next steps
 
-1. Push whatever `git status` shows ahead, once the owner agrees.
-2. Item 15, go-live hardening, once the owner agrees.
+1. Build item 32 (`plans/32-app-shell-and-themes.md`).
+2. Items 33 and 34, each once the owner agrees.
 3. Owner: set the settlement account (Settings → Settlement); GOV-08; the
    EXT-05 pilot; the GOV-11 date; PAY-11's Paystack figure; ORG-05, ORG-06,
    CARD-05, CARD-07.
@@ -54,6 +52,7 @@ web clean, and it builds.
 ## Do NOT
 
 - Edit `apps/api/.env`, or write Neon legacy rows without a go-ahead.
+- Push without the owner's agreement (their editor may push on its own).
 - Give a portal account a permission, take an organisation's id from a
   portal request, or return a reason the API withheld from a portal route.
 - Let a public pay route read dues, or leave a failed payment `PENDING`.
