@@ -179,7 +179,7 @@ export class SettlementService {
         input.accountNumber,
         input.bankCode,
       );
-    } catch (error) {
+    } catch {
       await this.audit.record({
         action: 'payment.settlement.update',
         subjectType: 'settlement_account',

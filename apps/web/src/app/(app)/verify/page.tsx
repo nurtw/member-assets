@@ -14,7 +14,9 @@ import {
 import Link from "next/link";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 
-import { day, naira } from "@/components/dues-panel";
+import { DedicatedAccountSummary } from "@/components/dedicated-account-panel";
+import { ExactPaymentLink, day, naira } from "@/components/dues-panel";
+import { PersonalPayLink } from "@/components/pay-link";
 import { Button, ErrorNotice, StatusChip } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -452,7 +454,77 @@ function Dues({
           </Fact>
         ) : null}
       </dl>
+      <PayNow vehicle={vehicle} member={member} />
     </section>
+  );
+}
+
+/**
+ * Paying from a check (PRD Requirement 27.8, revision 1.9; PAY-21 — item 31).
+ *
+ * One button, for an officer who may start payments, opening every way to pay
+ * what the check has just shown: a Paystack link for the exact amount, the
+ * personal pay link to send to the payer's phone, and the member's dedicated
+ * account. These call the payments routes; the check itself stays read-only.
+ */
+function PayNow({
+  vehicle,
+  member,
+}: {
+  vehicle: VehicleDues | null;
+  member: MemberDues | null;
+}) {
+  const { holds } = useSession();
+  const [open, setOpen] = useState(false);
+
+  if (!holds("payment.initiate")) {
+    return null;
+  }
+  if (!open) {
+    return (
+      <div className="mt-4">
+        <Button type="button" onClick={() => setOpen(true)}>
+          Pay now
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-4 grid gap-5">
+      {vehicle ? (
+        <div className="grid gap-3">
+          <h3 className="text-sm font-semibold">
+            Monthly levy · one month is {naira(vehicle.currentAmountKobo)}
+          </h3>
+          <ExactPaymentLink
+            feeTypeCode="LEVY"
+            subjectType="vehicle"
+            subjectId={vehicle.vehicleId}
+          />
+          <PersonalPayLink
+            subjectType="vehicle"
+            subjectId={vehicle.vehicleId}
+          />
+        </div>
+      ) : null}
+      {member ? (
+        <div className="grid gap-3">
+          <h3 className="text-sm font-semibold">
+            Membership fee · one year is {naira(member.currentAmountKobo)}
+          </h3>
+          <ExactPaymentLink
+            feeTypeCode="MEMBERSHIP"
+            subjectType="member"
+            subjectId={member.memberId}
+          />
+          <PersonalPayLink subjectType="member" subjectId={member.memberId} />
+          <DedicatedAccountSummary memberId={member.memberId} />
+        </div>
+      ) : null}
+      <p className="text-xs text-black/55">
+        A payment shows here once Paystack confirms it. Check again to see it.
+      </p>
+    </div>
   );
 }
 

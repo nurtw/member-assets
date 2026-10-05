@@ -1693,6 +1693,16 @@ NURTW dues" button, whether or not anything is owed.
 personal pay links once told the sticker page does not exist. **Recorded at.** PRD
 Requirement 27.8 (revision 1.9).
 
+**Built as (item 31), with two choices the project made:**
+
+- **What the public page names a member by:** first name and membership number, and
+  nothing else of them. A vehicle is named by its plate.
+- **The limits on the public page:** one address may open pay links 30 times a minute and
+  start 10 payments an hour. Both are settings, changed without a release.
+
+A link pays one month's levy, or one yearly fee, at a time. The System sends no message
+itself: WhatsApp and SMS open on the officer's own device.
+
 ---
 
 ## 12. Deferred by the Union

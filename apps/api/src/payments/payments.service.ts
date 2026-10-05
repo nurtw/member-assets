@@ -13,8 +13,22 @@ export interface InitiatePaymentInput {
   subjectType: 'member' | 'vehicle';
   subjectId: string;
   payerEmail: string;
-  initiatedByUserId: string;
+  /** `null` for a payment started from a public pay link (item 31). */
+  initiatedByUserId: string | null;
   callbackUrl?: string;
+  /** The pay link it was started from, recorded in the audit event. */
+  payLinkId?: string;
+}
+
+/** What a fee costs for one subject, before anything is started. */
+export interface PaymentQuote {
+  feeTypeCode: string;
+  label: string;
+  isPlaceholder: boolean;
+  active: boolean;
+  dueKobo: number;
+  contractorFeeKobo: number;
+  totalChargedKobo: number;
 }
 
 export interface InitiatePaymentResult {
@@ -42,6 +56,34 @@ export class PaymentsService {
     private readonly audit: AuditService,
   ) {}
 
+  /**
+   * The due and the fee on top (Requirement 27.3) for one subject. The public
+   * pay page shows this; `initiate` charges it, so the two cannot differ.
+   */
+  async quote(
+    feeTypeCode: string,
+    subject: { type: 'member' | 'vehicle'; id: string },
+  ): Promise<PaymentQuote> {
+    const feeType = await this.feeTypes.findByCode(feeTypeCode);
+    // Requirement 27.1 / PAY-14 — the levy charges the vehicle's route-type
+    // amount where one is set.
+    const dueKobo = await this.feeTypes.amountFor(feeType, subject);
+    const fees = calculateFees({
+      due: dueKobo / 100,
+      contractorFee: DEFAULT_FEE_SCHEDULES.contractorFee,
+      paystackFee: DEFAULT_FEE_SCHEDULES.paystackFee,
+    });
+    return {
+      feeTypeCode: feeType.code,
+      label: feeType.label,
+      isPlaceholder: feeType.isPlaceholder,
+      active: feeType.active,
+      dueKobo,
+      contractorFeeKobo: Math.round(fees.contractorFee * 100),
+      totalChargedKobo: Math.round(fees.totalCharged * 100),
+    };
+  }
+
   async initiate(input: InitiatePaymentInput): Promise<InitiatePaymentResult> {
     const feeType = await this.feeTypes.findByCode(input.feeTypeCode);
 
@@ -51,22 +93,12 @@ export class PaymentsService {
       );
     }
 
-    // Requirement 27.1 / PAY-14 — the levy charges the vehicle's route-type
-    // amount where one is set. Snapshotted onto the payment below, so a later
-    // re-price never changes what this payment asked for.
-    const dueKobo = await this.feeTypes.amountFor(feeType, {
-      type: input.subjectType,
-      id: input.subjectId,
-    });
-    const dueNaira = dueKobo / 100;
-    const fees = calculateFees({
-      due: dueNaira,
-      contractorFee: DEFAULT_FEE_SCHEDULES.contractorFee,
-      paystackFee: DEFAULT_FEE_SCHEDULES.paystackFee,
-    });
-
-    const contractorFeeKobo = Math.round(fees.contractorFee * 100);
-    const totalChargedKobo = Math.round(fees.totalCharged * 100);
+    // Snapshotted onto the payment below, so a later re-price never changes
+    // what this payment asked for.
+    const { dueKobo, contractorFeeKobo, totalChargedKobo } = await this.quote(
+      feeType.code,
+      { type: input.subjectType, id: input.subjectId },
+    );
     const reference = `nurtw_${randomUUID()}`;
 
     let subaccountCode: string | undefined;
@@ -125,6 +157,7 @@ export class PaymentsService {
         contractorFeeKobo,
         totalChargedKobo,
         reference,
+        ...(input.payLinkId ? { payLinkId: input.payLinkId } : {}),
       },
     });
 

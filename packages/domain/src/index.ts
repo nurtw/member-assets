@@ -187,6 +187,16 @@ export {
 } from './payments/dedicated-amount.js';
 
 export {
+  isPayLinkCode,
+  PAY_LINK_CODE_PATTERN,
+  PAY_LINK_FEE_TYPES,
+  PAY_LINK_SUBJECTS,
+  payLinkLabel,
+  payLinkOffers,
+  type PayLinkSubject,
+} from './payments/pay-link.js';
+
+export {
   InvalidStickerTransitionError,
   STICKER_STATUSES,
   assertStickerTransition,

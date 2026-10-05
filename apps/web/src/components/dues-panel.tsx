@@ -12,6 +12,7 @@ import {
   StatusChip,
   TextInput,
 } from "@/components/ui";
+import { PersonalPayLink } from "@/components/pay-link";
 import { ApiError, api, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
@@ -75,10 +76,13 @@ function Verdict({
 }
 
 /**
- * Starts a payment link for a due, for an officer who may start payments.
- * The link opens Paystack; the due is credited only once Paystack confirms it.
+ * Starts a Paystack link for one due at its exact amount, for an officer who
+ * may start payments. The due is credited only once Paystack confirms it.
+ *
+ * Not the personal pay link (`PersonalPayLink`, item 31), which the payer
+ * keeps and which never says what is owed.
  */
-function PayLink({
+export function ExactPaymentLink({
   feeTypeCode,
   subjectType,
   subjectId,
@@ -87,7 +91,8 @@ function PayLink({
   feeTypeCode: "LEVY" | "MEMBERSHIP";
   subjectType: "vehicle" | "member";
   subjectId: string;
-  onRefresh: () => void;
+  /** Re-reads the dues once the payment is made; left out where there is nothing to re-read. */
+  onRefresh?: () => void;
 }) {
   const { holds } = useSession();
   const [payerEmail, setPayerEmail] = useState("");
@@ -177,13 +182,15 @@ function PayLink({
           </a>{" "}
           ({naira(link.totalKobo)} with the processing fee). The due is credited
           once Paystack confirms the payment.{" "}
-          <button
-            type="button"
-            className="underline underline-offset-2"
-            onClick={onRefresh}
-          >
-            Refresh
-          </button>
+          {onRefresh ? (
+            <button
+              type="button"
+              className="underline underline-offset-2"
+              onClick={onRefresh}
+            >
+              Refresh
+            </button>
+          ) : null}
         </p>
       ) : null}
     </div>
@@ -261,12 +268,15 @@ export function VehicleDuesPanel({ vehicleId }: { vehicleId: string }) {
       ) : null}
 
       {dues.firstDueOn ? (
-        <PayLink
-          feeTypeCode="LEVY"
-          subjectType="vehicle"
-          subjectId={vehicleId}
-          onRefresh={() => void mutate()}
-        />
+        <>
+          <ExactPaymentLink
+            feeTypeCode="LEVY"
+            subjectType="vehicle"
+            subjectId={vehicleId}
+            onRefresh={() => void mutate()}
+          />
+          <PersonalPayLink subjectType="vehicle" subjectId={vehicleId} />
+        </>
       ) : null}
     </Section>
   );
@@ -307,12 +317,15 @@ export function MemberDuesPanel({ memberId }: { memberId: string }) {
       </Verdict>
 
       {dues.status !== "NOT_DUE" || dues.firstDueOn ? (
-        <PayLink
-          feeTypeCode="MEMBERSHIP"
-          subjectType="member"
-          subjectId={memberId}
-          onRefresh={() => void mutate()}
-        />
+        <>
+          <ExactPaymentLink
+            feeTypeCode="MEMBERSHIP"
+            subjectType="member"
+            subjectId={memberId}
+            onRefresh={() => void mutate()}
+          />
+          <PersonalPayLink subjectType="member" subjectId={memberId} />
+        </>
       ) : null}
     </Section>
   );

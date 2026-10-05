@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  payLinkSubjectSchema,
+  publicPaySchema,
+  replacePayLinkSchema,
   resolveSettlementAccountSchema,
   setDedicatedPercentageSchema,
   setSettlementAccountSchema,
@@ -107,6 +110,64 @@ describe("the contractor's percentage of dedicated-account money (PAY-11)", () =
     expect(
       setDedicatedPercentageSchema.safeParse({ ...VALID, percentage: -1 })
         .success,
+    ).toBe(false);
+  });
+});
+
+describe('pay links (PAY-21, item 31)', () => {
+  const SUBJECT = '7d1f0c2e-1b2a-4c3d-8e4f-5a6b7c8d9e0f';
+
+  it('name a vehicle or a member, by identifier', () => {
+    expect(
+      payLinkSubjectSchema.safeParse({
+        subjectType: 'vehicle',
+        subjectId: SUBJECT,
+      }).success,
+    ).toBe(true);
+    expect(
+      payLinkSubjectSchema.safeParse({
+        subjectType: 'member',
+        subjectId: SUBJECT,
+      }).success,
+    ).toBe(true);
+    expect(
+      payLinkSubjectSchema.safeParse({
+        subjectType: 'card',
+        subjectId: SUBJECT,
+      }).success,
+    ).toBe(false);
+    expect(
+      payLinkSubjectSchema.safeParse({
+        subjectType: 'vehicle',
+        subjectId: 'AWK123XY',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('are replaced only with a reason', () => {
+    expect(
+      replacePayLinkSchema.safeParse({ reason: 'Sent to the wrong number' })
+        .success,
+    ).toBe(true);
+    expect(replacePayLinkSchema.safeParse({ reason: ' ' }).success).toBe(false);
+  });
+
+  it("take a fee and the payer's email on the public page, and nothing about dues", () => {
+    const parsed = publicPaySchema.parse({
+      feeTypeCode: 'LEVY',
+      payerEmail: 'driver@example.test',
+      amountKobo: 1,
+      months: 12,
+    });
+    expect(parsed).toEqual({
+      feeTypeCode: 'LEVY',
+      payerEmail: 'driver@example.test',
+    });
+    expect(
+      publicPaySchema.safeParse({
+        feeTypeCode: 'LEVY',
+        payerEmail: 'not an email',
+      }).success,
     ).toBe(false);
   });
 });

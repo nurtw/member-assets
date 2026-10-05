@@ -58,7 +58,7 @@ Each item is independently completable and independently testable. Status values
 | 28 | officer-accounts-and-mfa | §16, §17.1 | done (requirement off until GOV-18; browser check pending) | [plan](plans/28-officer-accounts-and-mfa.md) |
 | 29 | organisation-portal | §12, §23.23 | not-started (design questions open, EXT-20) | — |
 | 30 | settlement-screen | §27.7, §27.12 | done (browser check pending) | [plan](plans/30-settlement-screen.md) |
-| 31 | pay-now | §27.8 (rev. 1.9) | not-started (approved 5 October 2026, after item 30) | — |
+| 31 | pay-now | §27.8 (rev. 1.9) | done (browser check pending) | [plan](plans/31-pay-now.md) |
 
 ### Item summaries
 

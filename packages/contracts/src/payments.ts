@@ -314,3 +314,73 @@ export interface DedicatedAccountState {
   /** Most recent first. */
   transfers: DedicatedAccountTransfer[];
 }
+
+// --- Pay links (PRD Requirement 27.8, revision 1.9; PAY-21 — item 31) --------
+
+const payLinkSubjectTypeSchema = z.enum(['vehicle', 'member']);
+
+/** `POST /pay-links`: the subject's live pay link, made if it has none. */
+export const payLinkSubjectSchema = z.object({
+  subjectType: payLinkSubjectTypeSchema,
+  subjectId: z.uuid('A valid identifier is required.'),
+});
+export type PayLinkSubjectInput = z.infer<typeof payLinkSubjectSchema>;
+
+/** `POST /pay-links/:id/replace`: the old link stops working at once. */
+export const replacePayLinkSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(4, 'A reason is required for this change.')
+    .max(1000),
+});
+export type ReplacePayLinkInput = z.infer<typeof replacePayLinkSchema>;
+
+/**
+ * `POST /pay/:code`, from the public page. The return address must be on the
+ * web application's own origin, or Paystack would send the payer anywhere.
+ */
+export const publicPaySchema = z.object({
+  feeTypeCode: z.string().trim().min(1, 'Choose what to pay.'),
+  payerEmail: z.email('A valid email is required.'),
+  returnUrl: z.url().optional(),
+});
+export type PublicPayInput = z.infer<typeof publicPaySchema>;
+
+/** A subject's live pay link, for the officer who sends it. */
+export interface PayLinkSummary {
+  id: string;
+  /** The page is `/pay/{code}` on the web application. */
+  code: string;
+  subjectType: 'vehicle' | 'member';
+  subjectId: string;
+  /** What the public page names the subject by. */
+  label: string;
+  createdAt: string;
+}
+
+/** One thing the public page offers, at the published amount. */
+export interface PublicPayOption {
+  feeTypeCode: string;
+  label: string;
+  dueKobo: number;
+  /** Paystack's fee and the contractor's, added on top (Requirement 27.3). */
+  feeKobo: number;
+  totalKobo: number;
+}
+
+/**
+ * `GET /pay/:code`. The same for every subject of a kind, whatever it owes:
+ * nothing here says what is owed or paid (Requirement 27.8).
+ */
+export interface PublicPayPage {
+  subjectType: 'vehicle' | 'member';
+  label: string;
+  /** `false` while the Union has not yet set up its settlement account. */
+  open: boolean;
+  options: PublicPayOption[];
+}
+
+export interface PublicPayStarted {
+  authorizationUrl: string;
+}

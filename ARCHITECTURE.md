@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.4
-**Last revised:** 4 October 2026
+**Document version:** 1.5
+**Last revised:** 5 October 2026
 **Authority:** Subordinate to `PRD.md`. Where this document and the PRD conflict, the PRD prevails.
 
 ---
@@ -449,6 +449,22 @@ public access, a route may be open to any signed-in officer. That is for the off
 account alone: who am I, their password, their second factor. It lets an officer with no
 role yet, or one still on a temporary password, do exactly that and nothing else.
 
+**Decision 9.15 — a pay link is not a credential *(item 31)*.** A personal pay link's code
+(PRD Requirement 27.8, revision 1.9) opens a public page and starts a payment. It unlocks
+no record and authorises nothing but paying a published amount for one vehicle or member.
+It is therefore stored as it is, and appears in a URL and a QR code by design, which the
+rule for tokens forbids for credentials. Three things keep that safe:
+
+- **The public routes read no dues.** They answer with the subject's label and the
+  published amounts, the same for every subject of a kind. A test compares a vehicle that
+  owes with one that is paid up.
+- **They belong to the payments module**, never to verification, which stays read-only.
+- **The code is 128 random bits**, the routes are limited per address, an unknown code is
+  the generic 404, and an officer can replace a link, which stops the old one at once.
+
+The page a link returns the payer to must be on the web application's own origin, or
+Paystack would send a payer wherever a caller asked.
+
 ---
 
 ## 10. Data protection
@@ -675,3 +691,10 @@ The following were added by revision 1.8, 4 October 2026:
 | Giving access | Only what the giver holds there; never to oneself | 9.13 |
 | The officer's own account | Open to any signed-in officer | 9.14 |
 | First passwords | Temporary, changed at first sign-in | PRD Requirement 17.3 |
+
+The following were added by revision 1.9, 5 October 2026:
+
+| Matter | Determination | Decision |
+|---|---|---|
+| Paying from a check | A Pay now button on internal checks; personal pay links for the public, never saying what is owed | 9.15, PRD Requirement 27.8 |
+| The settlement screen | The bank from Paystack's list, the name shown before saving, the account number by its last four digits | PRD Requirement 27.12 |

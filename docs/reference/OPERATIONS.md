@@ -138,6 +138,10 @@ Item 23 adds `dedicated_account_one_active_per_member` (`WHERE active`). Without
 officers assigning at once could give one member two dedicated accounts, and transfers
 into either would still credit them, but the screen would show only one.
 
+Item 31 adds `pay_link_one_live_per_subject` (`WHERE revoked_at IS NULL`). Without it, a
+vehicle or member could hold two working pay links, and replacing one would leave the
+other in use.
+
 ### Destructive commands
 
 `prisma migrate reset` **drops every table and all data**. It is gated behind an
@@ -435,6 +439,45 @@ SELECT created_at, after_value FROM audit_event
 it into dues as they fall, so a member who sends two months' levy at once has the second
 month paid within the hour of it falling due. The order dues are paid in is the
 `payments.dedicated_account.allocation_order` setting, `OLDEST_FIRST` as PAY-12 answered.
+
+### Getting a payer paying: Pay now and pay links
+
+Item 31 (`QUESTIONS.md` PAY-21). An officer holding `payment.initiate` sees a **Pay now**
+button beside the dues on a check (Verify), and the same tools in the dues panels on a
+vehicle's and a member's page.
+
+| Way to pay | What the officer does | What the payer sees |
+|---|---|---|
+| Paystack link for the exact amount | Types the payer's email, presses **Create payment link** | Paystack's page, for that one due |
+| Personal pay link | Presses **Show the pay link**, then shows the QR code, copies the link, or opens WhatsApp or SMS with it written in | A page offering one month's levy (a vehicle) or the yearly fee (a member) |
+| Dedicated account | Reads out the account number and the amount to send | Their own bank app |
+
+**The pay link's page is public and never says what is owed or paid.** It shows the plate,
+or the member's first name and membership number, and the published amount with the
+processing fee. A payment made there is credited like any other once Paystack confirms
+it: oldest due first, and anything beyond what has fallen due is held as credit. The
+System sends no message itself; WhatsApp and SMS open on the officer's own device.
+
+**A link sent to the wrong person, or misused.** Press **Replace this link** and give a
+reason. The old link stops at once and is kept, with who replaced it and why:
+
+```sql
+SELECT subject_type, subject_id, created_at, revoked_at, revoke_reason
+  FROM pay_link WHERE revoked_at IS NOT NULL ORDER BY revoked_at DESC;
+```
+
+Audited as `pay_link.create` and `pay_link.replace`. A payment started from a link is
+audited as `payment.initiate` with no officer and the link's id.
+
+**Limits.** One address may open pay links 30 times a minute and start 10 payments an
+hour: the `pay_link.views_per_minute` and `pay_link.payments_per_hour` settings, read on
+each request. Beyond them the page answers 429 with `Retry-After`. Many payers behind one
+office connection share its address, so raise the second figure if an office reports
+being stopped.
+
+**The page says "Payments are not open yet"** while the NURTW settlement account is not
+set (above). **`CORS_ORIGINS` must include the web application's address**, or starting a
+payment is refused: Paystack returns the payer to that address.
 
 ### Reviewing verifications
 

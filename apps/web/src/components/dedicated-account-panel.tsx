@@ -289,3 +289,40 @@ export function DedicatedAccountPanel({ memberId }: { memberId: string }) {
     </Section>
   );
 }
+
+/**
+ * The account to transfer to and the amount to send, in a line or two, for the
+ * Verify page's Pay now (item 31). Nothing when the member has no dedicated
+ * account, or the officer may not read payments.
+ */
+export function DedicatedAccountSummary({ memberId }: { memberId: string }) {
+  const { holds } = useSession();
+  const { data } = useSWR<{ dedicatedAccount: DedicatedAccountState }>(
+    holds("payment.read") ? `/members/${memberId}/dedicated-account` : null,
+    fetcher,
+    { shouldRetryOnError: false },
+  );
+  const state = data?.dedicatedAccount;
+  if (!state?.account) {
+    return null;
+  }
+  const send = state.owedNow.sendKobo;
+
+  return (
+    <div className="grid gap-1 border-t border-[var(--border-subtle)] pt-4 text-sm">
+      <h3 className="font-semibold">Or by bank transfer</h3>
+      <p>
+        <span className="font-mono text-base font-semibold tracking-wider">
+          {state.account.accountNumber}
+        </span>{" "}
+        · {state.account.bankName} · {state.account.accountName}
+      </p>
+      <p className="text-black/60">
+        {send !== null && send > 0
+          ? `To clear what is owed now, send ${naira(send)}.`
+          : "Anything sent is held towards the next due."}{" "}
+        The member&apos;s own account: it settles straight to the Union.
+      </p>
+    </div>
+  );
+}

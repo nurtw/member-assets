@@ -1802,6 +1802,42 @@ model Payment {
   @@map("payment")
 }
 
+/// A personal pay link (PRD Requirement 27.8, revision 1.9; `QUESTIONS.md`
+/// PAY-21 — item 31). Its code opens a public page offering published amounts
+/// only, never what the subject owes. The code is not a credential, so it is
+/// stored as it is (see `packages/domain/src/payments/pay-link.ts`).
+///
+/// Replaced, never deleted. At most one live link per subject, by the partial
+/// unique index `pay_link_one_live_per_subject` in the migration, which Prisma
+/// cannot express.
+model PayLink {
+  id          String @id @default(uuid()) @db.Uuid
+  code        String @unique
+  /// `vehicle` or `member`.
+  subjectType String @map("subject_type")
+  subjectId   String @map("subject_id") @db.Uuid
+
+  createdByUserId String?   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at")
+  revokedAt       DateTime? @map("revoked_at")
+  revokedByUserId String?   @map("revoked_by_user_id") @db.Uuid
+  revokeReason    String?   @map("revoke_reason")
+
+  @@index([subjectType, subjectId])
+  @@map("pay_link")
+}
+
+/// Per-address counters for the public pay routes (item 31). One atomic
+/// statement per write, keyed by a hash of the address; pruned after a day.
+model PublicRateCounter {
+  key         String
+  windowStart DateTime @map("window_start") @db.Timestamptz(6)
+  count       Int
+
+  @@id([key, windowStart])
+  @@map("public_rate_counter")
+}
+
 /// Append-only (Requirement 27.9). A correction or a refund is a new DEBIT
 /// row referencing the same payment — never an update or a delete.
 model LedgerEntry {

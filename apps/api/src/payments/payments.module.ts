@@ -8,6 +8,11 @@ import { DuesController } from './dues.controller.js';
 import { DuesService } from './dues.service.js';
 import { FeeTypeService } from './fee-type.service.js';
 import { FeeTypesController } from './fee-types.controller.js';
+import { PayLinkService } from './pay-link.service.js';
+import {
+  PayLinksController,
+  PublicPayController,
+} from './pay-links.controller.js';
 import { PaymentsController } from './payments.controller.js';
 import { PaymentsService } from './payments.service.js';
 import { PaystackClient } from './paystack/paystack.client.js';
@@ -25,6 +30,8 @@ import { SettlementService } from './settlement.service.js';
     FeeTypesController,
     DuesController,
     DedicatedAccountController,
+    PayLinksController,
+    PublicPayController,
   ],
   providers: [
     PaystackClient,
@@ -33,6 +40,7 @@ import { SettlementService } from './settlement.service.js';
     PaymentsService,
     DuesService,
     DedicatedAccountService,
+    PayLinkService,
   ],
   exports: [PaymentsService, FeeTypeService, SettlementService, DuesService],
 })

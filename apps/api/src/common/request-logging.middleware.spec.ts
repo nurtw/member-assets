@@ -208,4 +208,17 @@ describe('redactUrl', () => {
     expect(redacted).not.toContain('def');
     expect(redacted).toContain('plate=AA123XY');
   });
+
+  it("redacts a pay link's code from the path, and nothing shorter", () => {
+    const code = 'AbCdEfGhIjKlMnOpQrSt_-';
+    expect(redactUrl(`/api/v1/pay/${code}`)).toBe('/api/v1/pay/[redacted]');
+    expect(redactUrl(`/api/v1/pay/${code}?paid=1`)).toBe(
+      '/api/v1/pay/[redacted]?paid=1',
+    );
+    // The officer's routes carry an identifier, not a code.
+    expect(redactUrl('/api/v1/pay-links/7d1f0c2e-1b2a-4c3d-8e4f-5a6b7c8d9e0f/replace')).toBe(
+      '/api/v1/pay-links/7d1f0c2e-1b2a-4c3d-8e4f-5a6b7c8d9e0f/replace',
+    );
+    expect(redactUrl('/api/v1/payments/initiate')).toBe('/api/v1/payments/initiate');
+  });
 });

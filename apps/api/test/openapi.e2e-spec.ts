@@ -124,11 +124,17 @@ describe('API reference (e2e)', () => {
     // rendering <img> sends no cookie to another origin. It is not unprotected —
     // it requires an HMAC this service minted over both the asset id and an
     // expiry, valid for five minutes, and every failure answers 404.
+    //
+    // The pay routes (item 31, PRD Requirement 27.8 revision 1.9) are public
+    // because holding a pay link is what lets a payer pay. They read no dues,
+    // reveal nothing beyond the published amounts, and are limited per address.
     expect(publicRoutes).toEqual([
       'GET /api/v1/health',
       'GET /api/v1/media/:id/content',
+      'GET /api/v1/pay/:code',
       'POST /api/v1/auth/login',
       'POST /api/v1/auth/logout',
+      'POST /api/v1/pay/:code',
       'POST /api/v1/payments/webhook',
     ]);
   });

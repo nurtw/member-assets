@@ -25,8 +25,17 @@ const SENSITIVE_QUERY_KEY = /token|secret|password|signature|auth|key$/i;
  */
 const API_TOKEN_SHAPE = /nurtw_[a-z0-9]{8}_[A-Za-z0-9_-]{20,}/g;
 
+/**
+ * A personal pay link's code, as it sits in `/pay/{code}` (item 31). It is not
+ * a credential (`ARCHITECTURE.md` Decision 9.15), but a log should not be a
+ * list of working pay pages for whoever reads it.
+ */
+const PAY_LINK_PATH = /(\/pay\/)[A-Za-z0-9_-]{22}(?![A-Za-z0-9_-])/g;
+
 function withoutTokens(text: string): string {
-  return text.replace(API_TOKEN_SHAPE, REDACTED);
+  return text
+    .replace(API_TOKEN_SHAPE, REDACTED)
+    .replace(PAY_LINK_PATH, `$1${REDACTED}`);
 }
 
 function sanitisedQuery(query: Request['query']): string {
