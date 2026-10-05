@@ -82,6 +82,13 @@ const STATUS_TONES: Record<string, Tone> = {
   RETIRING: "caution",
   // Officer accounts (item 28). A deactivated account is closed, not denied.
   DEACTIVATED: "neutral",
+  // Cards (PRD §8). Awaiting approval waits on an officer; issued is printed
+  // and valid, awaiting collection; lost wants attention; replaced is closed.
+  PENDING_APPROVAL: "waiting",
+  ISSUED: "affirm",
+  LOST: "caution",
+  REPLACED: "neutral",
+  DAMAGED: "caution",
   // Invitations (item 33). Open is waiting on the organisation; used did its
   // work; expired and withdrawn are closed, not refused. An organisation whose
   // token has run out reads EXPIRED too, and is as neutral.

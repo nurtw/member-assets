@@ -29,8 +29,19 @@ describe("visibleNavigation", () => {
   });
 
   it("drops a group the officer can open nothing in", () => {
+    const groups = visibleNavigation(
+      OFFICER_NAVIGATION,
+      holding("vehicle.read"),
+    );
+    expect(groups.map((group) => group.label)).toEqual(["Vehicles"]);
+  });
+
+  it("gives an officer who reads cards the Overview as well as the cards", () => {
     const groups = visibleNavigation(OFFICER_NAVIGATION, holding("card.read"));
-    expect(groups.map((group) => group.label)).toEqual(["Membership"]);
+    expect(navigationItems(groups).map((item) => item.label)).toEqual([
+      "Overview",
+      "Cards",
+    ]);
   });
 
   it("shows nothing to an officer with no permission", () => {
@@ -49,14 +60,24 @@ describe("visibleNavigation", () => {
 });
 
 describe("landingHref", () => {
-  it("lands an officer who reads applications on them, as before the sidebar", () => {
+  it("lands an officer with a desk on the Overview", () => {
     expect(
       landingHref(
         OFFICER_NAVIGATION,
         OFFICER_LANDING_ORDER,
         holding("verification.perform", "application.read", "user.read"),
       ),
-    ).toBe("/applications");
+    ).toBe("/overview");
+  });
+
+  it("gives an officer who only verifies no Overview, even reading vehicles", () => {
+    const groups = visibleNavigation(
+      OFFICER_NAVIGATION,
+      holding("verification.perform", "vehicle.read"),
+    );
+    expect(navigationItems(groups).map((item) => item.href)).not.toContain(
+      "/overview",
+    );
   });
 
   it("lands a verification officer on Verify", () => {
@@ -150,6 +171,12 @@ describe("breadcrumbs", () => {
     expect(
       breadcrumbs("/account", OFFICER_NAVIGATION, OFFICER_ACCOUNT_ITEMS),
     ).toEqual([{ label: "Your account" }]);
+  });
+
+  it("names the Overview alone, which has no group", () => {
+    expect(breadcrumbs("/overview", OFFICER_NAVIGATION)).toEqual([
+      { label: "Overview" },
+    ]);
   });
 
   it("gives nothing for a page outside the navigation", () => {

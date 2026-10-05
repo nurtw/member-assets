@@ -1,11 +1,27 @@
 "use client";
 
 import type { ApplicationSummary } from "@nurtw/contracts";
+import { FileText, Plus } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import useSWR from "swr";
 
-import { ErrorNotice, Select, StatusChip } from "@/components/ui";
+import {
+  EmptyState,
+  ErrorNotice,
+  ListToolbar,
+  Loading,
+  PageHeader,
+  Select,
+  StatusChip,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  buttonVariants,
+} from "@/components/ui";
 import { ApiError, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
@@ -39,121 +55,120 @@ export default function ApplicationsPage() {
    */
   const { data, error, isLoading } = useSWR<{
     applications: ApplicationSummary[];
-  }>(
-    `/applications${status ? `?status=${status}` : ""}`,
-    fetcher,
-    { keepPreviousData: true },
-  );
+  }>(`/applications${status ? `?status=${status}` : ""}`, fetcher, {
+    keepPreviousData: true,
+  });
 
   const applications = data?.applications ?? [];
   const apiError = error instanceof ApiError ? error : null;
-  const loading = isLoading;
+  const register = holds("member.create") ? (
+    <Link href="/applications/new" className={buttonVariants()}>
+      <Plus aria-hidden />
+      Register an applicant
+    </Link>
+  ) : null;
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Membership applications
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Applications within your area of responsibility.
-          </p>
-        </div>
+      <PageHeader
+        title="Membership applications"
+        description="Applications within your area of responsibility."
+        actions={register}
+      />
 
-        {holds("member.create") ? (
-          <Link
-            href="/applications/new"
-            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-on-solid transition hover:bg-primary-hover"
+      <ListToolbar
+        count={
+          data
+            ? `${applications.length} ${status ? "with that status" : "in all"}`
+            : undefined
+        }
+      >
+        <div className="w-56">
+          <label htmlFor="status" className="sr-only">
+            Status
+          </label>
+          <Select
+            id="status"
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
           >
-            Register an applicant
-          </Link>
-        ) : null}
-      </div>
-
-      <div className="flex items-center gap-3">
-        <label htmlFor="status" className="text-sm font-medium">
-          Status
-        </label>
-        <Select
-          id="status"
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-          className="max-w-56"
-        >
-          <option value="">All</option>
-          {STATUSES.map((value) => (
-            <option key={value} value={value}>
-              {value.replace(/_/g, " ")}
-            </option>
-          ))}
-        </Select>
-      </div>
+            <option value="">All statuses</option>
+            {STATUSES.map((value) => (
+              <option key={value} value={value}>
+                {value.replace(/_/g, " ")}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </ListToolbar>
 
       {apiError ? (
         <ErrorNotice message={apiError.message} requestId={apiError.requestId} />
       ) : null}
 
-      {loading ? (
-        <p className="text-sm text-faint-foreground">Loading…</p>
+      {isLoading ? (
+        <Loading />
       ) : applications.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-line p-10 text-center">
-          <p className="text-sm font-medium">No applications to show</p>
-          <p className="mt-1 text-sm text-faint-foreground">
-            {status
+        <EmptyState
+          icon={<FileText aria-hidden />}
+          title="No applications to show"
+          description={
+            status
               ? "No application in your area of responsibility has that status."
-              : "Applications you register will appear here."}
-          </p>
-        </div>
+              : "Applications you register will appear here."
+          }
+          action={status ? null : register}
+        />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
-          <table className="w-full min-w-[46rem] text-sm">
-            <thead className="border-b border-line bg-surface-muted text-left">
-              <tr>
-                <th className="px-4 py-2.5 font-semibold">Applicant</th>
-                <th className="px-4 py-2.5 font-semibold">Application no.</th>
-                <th className="px-4 py-2.5 font-semibold">Unit</th>
-                <th className="px-4 py-2.5 font-semibold">Membership no.</th>
-                <th className="px-4 py-2.5 font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {applications.map((application) => (
-                <tr
-                  key={application.id}
-                  className="border-b border-line last:border-0 hover:bg-surface-muted/60"
+        <Table stacked className="sm:min-w-[46rem]">
+          <TableHead>
+            <tr>
+              <TableHeader>Applicant</TableHeader>
+              <TableHeader>Application no.</TableHeader>
+              <TableHeader>Unit</TableHeader>
+              <TableHeader>Membership no.</TableHeader>
+              <TableHeader>Status</TableHeader>
+            </tr>
+          </TableHead>
+          <TableBody>
+            {applications.map((application) => (
+              <TableRow key={application.id}>
+                <TableCell>
+                  <Link
+                    href={`/applications/${application.id}`}
+                    className="font-medium text-link underline-offset-2 hover:underline"
+                  >
+                    {application.member.surname},{" "}
+                    {application.member.firstName}
+                  </Link>
+                </TableCell>
+                <TableCell
+                  label="Application no."
+                  className="font-mono text-xs text-muted-foreground"
                 >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/applications/${application.id}`}
-                      className="font-medium text-link underline-offset-2 hover:underline"
-                    >
-                      {application.member.surname},{" "}
-                      {application.member.firstName}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {application.applicationNumber}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {application.member.organisation.name}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {/* Absent until approval, and said so rather than left blank. */}
-                    {application.member.membershipNumber ?? (
-                      <span className="font-sans italic text-faint-foreground">
-                        Not yet issued
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusChip status={application.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  {application.applicationNumber}
+                </TableCell>
+                <TableCell label="Unit" className="text-muted-foreground">
+                  {application.member.organisation.name}
+                </TableCell>
+                <TableCell
+                  label="Membership no."
+                  className="font-mono text-xs text-muted-foreground"
+                >
+                  {/* Absent until approval, and said so rather than left blank. */}
+                  {application.member.membershipNumber ?? (
+                    <span className="font-sans italic text-faint-foreground">
+                      Not yet issued
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell label="Status">
+                  <StatusChip status={application.status} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
     </div>
   );

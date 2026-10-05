@@ -49,7 +49,7 @@ export default function LoginPage() {
       // before navigating, means the shell mounts onto fresh, authenticated
       // data instead.
       await mutate("/auth/me");
-      router.replace("/applications");
+      router.replace("/overview");
     } catch (caught) {
       const failure =
         caught instanceof ApiError

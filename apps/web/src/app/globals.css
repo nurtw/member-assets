@@ -274,6 +274,66 @@
   }
 }
 
+/*
+ * A table marked `stacked` turns each row into a small card on a phone (item
+ * 34, DESIGN.md §10): the first cell leads as the row's name, and each other
+ * cell shows its column's name, from `data-label`, beside its value. The
+ * header row stays for a screen reader and is only hidden from sight.
+ */
+@media (max-width: 639px) {
+  .stacked-table,
+  .stacked-table tbody {
+    display: block;
+  }
+
+  .stacked-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .stacked-table tr {
+    display: block;
+    padding: 0.625rem 0;
+  }
+
+  .stacked-table td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.25rem 1rem;
+    text-align: right;
+  }
+
+  .stacked-table td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-align: left;
+    color: var(--muted-foreground);
+  }
+
+  .stacked-table td:first-child,
+  .stacked-table td:not([data-label]) {
+    display: block;
+    text-align: left;
+  }
+
+  .stacked-table td:first-child {
+    padding-bottom: 0.375rem;
+  }
+
+  .stacked-table td:first-child::before,
+  .stacked-table td:not([data-label])::before {
+    content: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -12,6 +12,8 @@ import {
   Button,
   ErrorNotice,
   Field,
+  Loading,
+  PageHeader,
   Section,
   TextInput,
 } from "@/components/ui";
@@ -390,15 +392,10 @@ export default function LimitProfilesPage() {
 
   return (
     <div className="grid max-w-3xl gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Limits</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          A limit profile sets how much an outside organisation may ask, and
-          when the System pauses one whose checks follow a pattern. An
-          organisation over a limit is told to wait and try again; a paused one
-          is refused until the pause ends or an officer lifts it.
-        </p>
-      </div>
+      <PageHeader
+        title="Limits"
+        description="A limit profile sets how much an outside organisation may ask, and when the System pauses one whose checks follow a pattern. An organisation over a limit is told to wait and try again; a paused one is refused until the pause ends or an officer lifts it."
+      />
 
       {loadError ? (
         <ErrorNotice
@@ -406,9 +403,7 @@ export default function LimitProfilesPage() {
           requestId={loadError.requestId}
         />
       ) : null}
-      {isLoading ? (
-        <p className="text-sm text-faint-foreground">Loading…</p>
-      ) : null}
+      {isLoading ? <Loading /> : null}
 
       {profiles.map((profile) => (
         <Section

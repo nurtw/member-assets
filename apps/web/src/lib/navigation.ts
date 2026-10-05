@@ -41,10 +41,29 @@ export interface NavGroup {
   items: readonly NavItem[];
 }
 
+/**
+ * Who has a desk to come back to (item 34): an officer who reads any of the
+ * lists the Overview counts. An officer who only verifies, even one who may
+ * also read vehicles, has no Overview and lands on Verify.
+ */
+export const OVERVIEW_PERMISSIONS = [
+  "application.read",
+  "card.read",
+  "api_client.read",
+  "user.read",
+  "payment.read",
+] as const;
+
 export const OFFICER_NAVIGATION: readonly NavGroup[] = [
   {
     label: null,
     items: [
+      {
+        href: "/overview",
+        label: "Overview",
+        icon: "overview",
+        permissions: OVERVIEW_PERMISSIONS,
+      },
       {
         href: "/verify",
         label: "Verify",
@@ -173,11 +192,13 @@ export const PORTAL_NAVIGATION: readonly NavGroup[] = [
 /**
  * Where signing in lands an officer: the first of these they may open.
  *
- * Deliberately not the sidebar's order. An officer who reads applications lands
+ * Deliberately not the sidebar's order. An officer with an Overview lands on
+ * it. Of the rest, an officer who reads applications lands
  * on them, as before the sidebar; a verification officer, who may also read
  * vehicles, lands on Verify.
  */
 export const OFFICER_LANDING_ORDER: readonly string[] = [
+  "/overview",
   "/applications",
   "/verify",
   "/cards",

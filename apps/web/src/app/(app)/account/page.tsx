@@ -12,6 +12,7 @@ import {
   Button,
   ErrorNotice,
   Field,
+  PageHeader,
   Section,
   TextInput,
 } from "@/components/ui";
@@ -395,12 +396,10 @@ export default function AccountPage() {
 
   return (
     <div className="grid max-w-2xl gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Your account</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {user.fullName} · {user.email}
-        </p>
-      </div>
+      <PageHeader
+        title="Your account"
+        meta={`${user.fullName} · ${user.email}`}
+      />
       <PasswordForm temporary={account.mustChangePassword} />
       {account.mustChangePassword ? null : <SecondFactor />}
     </div>

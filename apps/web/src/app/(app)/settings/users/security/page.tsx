@@ -10,6 +10,8 @@ import {
   Button,
   ErrorNotice,
   Field,
+  Loading,
+  PageHeader,
   Section,
   TextInput,
 } from "@/components/ui";
@@ -40,13 +42,10 @@ export default function SecurityPage() {
 
   return (
     <div className="grid max-w-3xl gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Security</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Whether administrative work needs a second factor: a code from an
-          authenticator app, as well as a password.
-        </p>
-      </div>
+      <PageHeader
+        title="Security"
+        description="Whether administrative work needs a second factor: a code from an authenticator app, as well as a password."
+      />
 
       {loadError ? (
         <ErrorNotice
@@ -58,9 +57,7 @@ export default function SecurityPage() {
           requestId={loadError.requestId}
         />
       ) : null}
-      {isLoading ? (
-        <p className="text-sm text-faint-foreground">Loading…</p>
-      ) : null}
+      {isLoading ? <Loading /> : null}
 
       {data ? (
         <>

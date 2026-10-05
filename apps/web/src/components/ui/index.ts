@@ -10,7 +10,17 @@
 export { Button, buttonVariants, type ButtonProps } from "./button";
 export { Card, Section } from "./card";
 export { Field, Select, TextArea, TextInput, controlClass } from "./field";
-export { EmptyState, Kbd, PageHeader, Skeleton } from "./layout";
+export {
+  Detail,
+  DetailList,
+  EmptyState,
+  Kbd,
+  ListToolbar,
+  Loading,
+  PageHeader,
+  Skeleton,
+  listCount,
+} from "./layout";
 export { ErrorNotice, Notice } from "./notice";
 export { StatusChip } from "./status-chip";
 export {

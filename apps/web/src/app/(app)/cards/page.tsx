@@ -1,11 +1,26 @@
 "use client";
 
 import type { CardSummary } from "@nurtw/contracts";
+import { IdCard } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import useSWR from "swr";
 
-import { ErrorNotice, Select, StatusChip } from "@/components/ui";
+import {
+  EmptyState,
+  ErrorNotice,
+  ListToolbar,
+  Loading,
+  PageHeader,
+  Select,
+  StatusChip,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui";
 import { ApiError, fetcher } from "@/lib/api";
 
 const STATUSES = [
@@ -41,98 +56,101 @@ export default function CardsPage() {
 
   return (
     <div className="grid gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Membership cards</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Cards within your area of responsibility. A card is prepared from an
-          active member’s record on their application page.
-        </p>
-      </div>
+      <PageHeader
+        title="Membership cards"
+        description="Cards within your area of responsibility. A card is prepared from an active member’s record on their application page."
+      />
 
-      <div className="flex items-center gap-3">
-        <label htmlFor="status" className="text-sm font-medium">
-          Status
-        </label>
-        <Select
-          id="status"
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-          className="max-w-56"
-        >
-          <option value="">All</option>
-          {STATUSES.map((value) => (
-            <option key={value} value={value}>
-              {value.replace(/_/g, " ")}
-            </option>
-          ))}
-        </Select>
-      </div>
+      <ListToolbar
+        count={
+          data
+            ? `${cards.length} ${status ? "with that status" : "in all"}`
+            : undefined
+        }
+      >
+        <div className="w-56">
+          <label htmlFor="status" className="sr-only">
+            Status
+          </label>
+          <Select
+            id="status"
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+          >
+            <option value="">All statuses</option>
+            {STATUSES.map((value) => (
+              <option key={value} value={value}>
+                {value.replace(/_/g, " ")}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </ListToolbar>
 
       {apiError ? (
         <ErrorNotice message={apiError.message} requestId={apiError.requestId} />
       ) : null}
 
       {isLoading ? (
-        <p className="text-sm text-faint-foreground">Loading…</p>
+        <Loading />
       ) : cards.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-line p-10 text-center">
-          <p className="text-sm font-medium">No cards to show</p>
-          <p className="mt-1 text-sm text-faint-foreground">
-            {status
+        <EmptyState
+          icon={<IdCard aria-hidden />}
+          title="No cards to show"
+          description={
+            status
               ? "No card in your area of responsibility has that status."
-              : "Cards you prepare will appear here."}
-          </p>
-        </div>
+              : "Cards you prepare will appear here. A card is prepared from an active member’s application page."
+          }
+        />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
-          <table className="w-full min-w-[46rem] text-sm">
-            <thead className="border-b border-line bg-surface-muted text-left">
-              <tr>
-                <th className="px-4 py-2.5 font-semibold">Holder</th>
-                <th className="px-4 py-2.5 font-semibold">Card no.</th>
-                <th className="px-4 py-2.5 font-semibold">Unit</th>
-                <th className="px-4 py-2.5 font-semibold">Issued</th>
-                <th className="px-4 py-2.5 font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cards.map((card) => (
-                <tr
-                  key={card.id}
-                  className="border-b border-line last:border-0 hover:bg-surface-muted/60"
+        <Table stacked className="sm:min-w-[46rem]">
+          <TableHead>
+            <tr>
+              <TableHeader>Holder</TableHeader>
+              <TableHeader>Card no.</TableHeader>
+              <TableHeader>Unit</TableHeader>
+              <TableHeader>Issued</TableHeader>
+              <TableHeader>Status</TableHeader>
+            </tr>
+          </TableHead>
+          <TableBody>
+            {cards.map((card) => (
+              <TableRow key={card.id}>
+                <TableCell>
+                  <Link
+                    href={`/cards/${card.id}`}
+                    className="font-medium text-link underline-offset-2 hover:underline"
+                  >
+                    {card.member.surname}, {card.member.firstName}
+                  </Link>
+                </TableCell>
+                <TableCell
+                  label="Card no."
+                  className="font-mono text-xs text-muted-foreground"
                 >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/cards/${card.id}`}
-                      className="font-medium text-link underline-offset-2 hover:underline"
-                    >
-                      {card.member.surname}, {card.member.firstName}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {/* Absent until issuance, and said so rather than left blank. */}
-                    {card.cardNumber ?? (
-                      <span className="font-sans italic text-faint-foreground">
-                        Not yet issued
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {card.member.organisation.name}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {card.issueDate
-                      ? new Date(card.issueDate).toLocaleDateString("en-GB")
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusChip status={card.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  {/* Absent until issuance, and said so rather than left blank. */}
+                  {card.cardNumber ?? (
+                    <span className="font-sans italic text-faint-foreground">
+                      Not yet issued
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell label="Unit" className="text-muted-foreground">
+                  {card.member.organisation.name}
+                </TableCell>
+                <TableCell label="Issued" className="text-muted-foreground">
+                  {card.issueDate
+                    ? new Date(card.issueDate).toLocaleDateString("en-GB")
+                    : "—"}
+                </TableCell>
+                <TableCell label="Status">
+                  <StatusChip status={card.status} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
     </div>
   );

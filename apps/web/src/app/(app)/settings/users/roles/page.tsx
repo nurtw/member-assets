@@ -10,6 +10,8 @@ import {
   Button,
   ErrorNotice,
   Field,
+  Loading,
+  PageHeader,
   Section,
   TextInput,
 } from "@/components/ui";
@@ -257,13 +259,10 @@ export default function RolesPage() {
 
   return (
     <div className="grid max-w-3xl gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Roles</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          A role is a named set of permissions. It is given to an officer for a
-          part of the Union, on the officer’s own page.
-        </p>
-      </div>
+      <PageHeader
+        title="Roles"
+        description="A role is a named set of permissions. It is given to an officer for a part of the Union, on the officer’s own page."
+      />
 
       {loadError ? (
         <ErrorNotice
@@ -271,9 +270,7 @@ export default function RolesPage() {
           requestId={loadError.requestId}
         />
       ) : null}
-      {isLoading ? (
-        <p className="text-sm text-faint-foreground">Loading…</p>
-      ) : null}
+      {isLoading ? <Loading /> : null}
 
       {roles.map((role) => (
         <Section

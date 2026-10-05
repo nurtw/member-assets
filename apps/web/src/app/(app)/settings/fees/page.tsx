@@ -8,6 +8,8 @@ import {
   Button,
   ErrorNotice,
   Field,
+  Loading,
+  PageHeader,
   Section,
   TextInput,
 } from "@/components/ui";
@@ -181,20 +183,16 @@ export default function FeeSettingsPage() {
 
   return (
     <div className="grid max-w-3xl gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Fees</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          What each payment costs. Changes take effect for payments started
-          afterwards; a payment already started keeps its amount. Every change
-          needs a reason and is recorded in the audit trail.
-        </p>
-      </div>
+      <PageHeader
+        title="Fees"
+        description="What each payment costs. Changes take effect for payments started afterwards; a payment already started keeps its amount. Every change needs a reason and is recorded in the audit trail."
+      />
 
       {loadError ? (
         <ErrorNotice message={loadError.message} requestId={loadError.requestId} />
       ) : null}
 
-      {isLoading ? <p className="text-sm text-faint-foreground">Loading…</p> : null}
+      {isLoading ? <Loading /> : null}
 
       {feeTypes.map((feeType) => {
         // Only vehicle-charged fees can differ by route type; the levy is the

@@ -15,6 +15,8 @@ import {
   Button,
   ErrorNotice,
   Field,
+  Loading,
+  PageHeader,
   Section,
   Select,
   TextInput,
@@ -39,14 +41,10 @@ export default function SettlementPage() {
 
   return (
     <div className="grid max-w-3xl gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Settlement</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Where the Union&apos;s share of every payment is paid, and the
-          contractor&apos;s percentage of money sent to members&apos; dedicated
-          accounts.
-        </p>
-      </div>
+      <PageHeader
+        title="Settlement"
+        description="Where the Union's share of every payment is paid, and the contractor's percentage of money sent to members' dedicated accounts."
+      />
 
       {loadError ? (
         <ErrorNotice
@@ -58,9 +56,7 @@ export default function SettlementPage() {
           requestId={loadError.requestId}
         />
       ) : null}
-      {isLoading ? (
-        <p className="text-sm text-faint-foreground">Loading…</p>
-      ) : null}
+      {isLoading ? <Loading /> : null}
 
       {data ? (
         <>

@@ -15,6 +15,7 @@ import {
   OFFICER_LANDING_ORDER,
   OFFICER_NAVIGATION,
   landingHref,
+  navigationItems,
   visibleNavigation,
 } from "@/lib/navigation";
 import { SessionProvider, useSession } from "@/lib/session";
@@ -38,14 +39,19 @@ function Shell({ children }: { children: ReactNode }) {
     ? (landingHref(OFFICER_NAVIGATION, OFFICER_LANDING_ORDER, holds) ?? "/applications")
     : "/applications";
 
-  // Signing in, and the root, land on /applications. An officer who cannot
-  // read applications — a verification officer, typically — goes to the first
-  // screen they can use instead of a refusal.
+  // Signing in, and the root, land on /overview (item 34). An officer with no
+  // Overview — a verification officer, typically — goes to the first screen
+  // they can use instead of a refusal. /applications was the landing before,
+  // and may still be bookmarked.
+  const mayOpenHere = navigationItems(groups).some(
+    (item) => item.href === pathname,
+  );
+  const isLanding = pathname === "/overview" || pathname === "/applications";
   useEffect(() => {
-    if (user && pathname === "/applications" && home !== "/applications") {
+    if (user && isLanding && !mayOpenHere && home !== pathname) {
       router.replace(home);
     }
-  }, [user, pathname, home, router]);
+  }, [user, isLanding, mayOpenHere, home, pathname, router]);
 
   // Item 28 — an officer on a temporary password can use nothing until they
   // choose their own, so every screen leads to the one where they do. The API

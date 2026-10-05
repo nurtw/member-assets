@@ -61,7 +61,7 @@ Each item is independently completable and independently testable. Status values
 | 31 | pay-now | §27.8 (rev. 1.9) | done (clicked through 5 Oct; not through to a Paystack payment) | [plan](plans/31-pay-now.md) |
 | 32 | app-shell-and-themes | `DESIGN.md` §3–§6 | done (clicked through 5 Oct) | [plan](plans/32-app-shell-and-themes.md) |
 | 33 | organisations-and-invitations | §12, Req. 12.11 (rev. 1.10) | done (clicked through 5 Oct) | [plan](plans/33-organisations-and-invitations.md) |
-| 34 | screen-restructure | `DESIGN.md` §5 | planned | [plan](plans/34-screen-restructure.md) |
+| 34 | screen-restructure | `DESIGN.md` §5 | in-progress | [plan](plans/34-screen-restructure.md) |
 | 35 | sticker-prompt | §9A.7 (VEH-30) | done (clicked through 5 Oct) | [plan](plans/35-sticker-prompt.md) |
 
 ### Item summaries

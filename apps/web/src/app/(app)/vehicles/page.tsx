@@ -1,11 +1,28 @@
 "use client";
 
 import type { VehicleSummary } from "@nurtw/contracts";
+import { Bus, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 
-import { Button, ErrorNotice, Select, StatusChip, TextInput } from "@/components/ui";
+import {
+  EmptyState,
+  ErrorNotice,
+  ListToolbar,
+  Loading,
+  PageHeader,
+  Select,
+  StatusChip,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TextInput,
+  buttonVariants,
+} from "@/components/ui";
 import { ApiError, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
@@ -54,156 +71,164 @@ export default function VehiclesPage() {
 
   const vehicles = data?.vehicles ?? [];
   const apiError = error instanceof ApiError ? error : null;
+  const narrowed = Boolean(status || debouncedQ);
+  const add =
+    holds("vehicle.declare") || holds("vehicle.record") ? (
+      <Link href="/vehicles/new" className={buttonVariants()}>
+        <Plus aria-hidden />
+        {holds("vehicle.declare") ? "Declare a vehicle" : "Record a vehicle"}
+      </Link>
+    ) : null;
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Vehicles
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {seesDeclarations
-              ? "Vehicles within your area of responsibility, declared and on record. A declaration is never created by a verification enquiry — only through this screen."
-              : "Vehicles within your area of responsibility."}
-          </p>
-        </div>
-        {holds("vehicle.declare") ? (
-          <Link href="/vehicles/new">
-            <Button type="button">Declare a vehicle</Button>
-          </Link>
-        ) : holds("vehicle.record") ? (
-          <Link href="/vehicles/new">
-            <Button type="button">Record a vehicle</Button>
-          </Link>
-        ) : null}
-      </div>
+      <PageHeader
+        title="Vehicles"
+        description={
+          seesDeclarations
+            ? "Vehicles within your area of responsibility, declared and on record. A declaration is never created by a verification enquiry — only through this screen."
+            : "Vehicles within your area of responsibility."
+        }
+        actions={add}
+      />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <label htmlFor="q" className="text-sm font-medium">
-          Plate number
-        </label>
-        <TextInput
-          id="q"
-          value={q}
-          onChange={(event) => setQ(event.target.value)}
-          placeholder="Search"
-          className="max-w-56"
-        />
+      <ListToolbar
+        count={
+          data
+            ? `${vehicles.length} ${narrowed ? "matching" : "shown"}`
+            : undefined
+        }
+      >
+        <div className="min-w-48 flex-1 sm:max-w-xs">
+          <label htmlFor="q" className="sr-only">
+            Search by plate number
+          </label>
+          <TextInput
+            id="q"
+            type="search"
+            value={q}
+            onChange={(event) => setQ(event.target.value)}
+            placeholder="Search by plate number"
+          />
+        </div>
 
         {seesDeclarations ? (
-          <>
-            <label htmlFor="status" className="text-sm font-medium">
+          <div className="w-56">
+            <label htmlFor="status" className="sr-only">
               Status
             </label>
             <Select
               id="status"
               value={status}
               onChange={(event) => setStatus(event.target.value)}
-              className="max-w-56"
             >
-              <option value="">All</option>
+              <option value="">All statuses</option>
               {STATUSES.map((value) => (
                 <option key={value} value={value}>
                   {value.replace(/_/g, " ")}
                 </option>
               ))}
             </Select>
-          </>
+          </div>
         ) : null}
-      </div>
+      </ListToolbar>
 
       {apiError ? (
         <ErrorNotice message={apiError.message} requestId={apiError.requestId} />
       ) : null}
 
       {isLoading ? (
-        <p className="text-sm text-faint-foreground">Loading…</p>
+        <Loading />
       ) : vehicles.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-line p-10 text-center">
-          <p className="text-sm font-medium">No vehicles to show</p>
-          <p className="mt-1 text-sm text-faint-foreground">
-            {status || debouncedQ
+        <EmptyState
+          icon={<Bus aria-hidden />}
+          title="No vehicles to show"
+          description={
+            narrowed
               ? "No vehicle in your area of responsibility matches that search."
-              : "Vehicles in your area of responsibility will appear here."}
-          </p>
-        </div>
+              : "Vehicles in your area of responsibility will appear here."
+          }
+          action={narrowed ? null : add}
+        />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
-          <table className="w-full min-w-[52rem] text-sm">
-            <thead className="border-b border-line bg-surface-muted text-left">
-              <tr>
-                <th className="px-4 py-2.5 font-semibold">Plate</th>
-                <th className="px-4 py-2.5 font-semibold">Type</th>
-                <th className="px-4 py-2.5 font-semibold">Route</th>
-                <th className="px-4 py-2.5 font-semibold">Organisation</th>
-                <th className="px-4 py-2.5 font-semibold">Driver</th>
+        <Table stacked className="sm:min-w-[52rem]">
+          <TableHead>
+            <tr>
+              <TableHeader>Plate</TableHeader>
+              <TableHeader>Type</TableHeader>
+              <TableHeader>Route</TableHeader>
+              <TableHeader>Organisation</TableHeader>
+              <TableHeader>Driver</TableHeader>
+              {seesDeclarations ? (
+                <>
+                  <TableHeader>Declared</TableHeader>
+                  <TableHeader>Status</TableHeader>
+                </>
+              ) : null}
+            </tr>
+          </TableHead>
+          <TableBody>
+            {vehicles.map((vehicle) => (
+              <TableRow key={vehicle.id}>
+                <TableCell>
+                  <Link
+                    href={`/vehicles/${vehicle.id}`}
+                    className="font-mono text-sm font-medium text-link underline-offset-2 hover:underline"
+                  >
+                    {vehicle.plateNumberDisplay}
+                  </Link>
+                  {vehicle.isLegacyImport ? (
+                    <span className="ml-2 text-xs italic text-faint-foreground">
+                      legacy
+                    </span>
+                  ) : null}
+                </TableCell>
+                <TableCell label="Type" className="text-muted-foreground">
+                  {vehicle.vehicleCategory?.label ?? "—"}
+                </TableCell>
+                <TableCell label="Route" className="text-muted-foreground">
+                  {vehicle.routeType?.label ?? "—"}
+                </TableCell>
+                <TableCell
+                  label="Organisation"
+                  className="text-muted-foreground"
+                >
+                  {vehicle.organisation.name}
+                </TableCell>
+                <TableCell label="Driver" className="text-muted-foreground">
+                  {vehicle.declaredByMember
+                    ? `${vehicle.declaredByMember.surname}, ${vehicle.declaredByMember.firstName}`
+                    : "—"}
+                </TableCell>
                 {seesDeclarations ? (
                   <>
-                    <th className="px-4 py-2.5 font-semibold">Declared</th>
-                    <th className="px-4 py-2.5 font-semibold">Status</th>
+                    {/* A row outside the officer's declare scope carries
+                        neither field: a dash, never "not declared". */}
+                    <TableCell
+                      label="Declared"
+                      className="text-muted-foreground"
+                    >
+                      {vehicle.status === undefined
+                        ? "—"
+                        : vehicle.declaredAt
+                          ? new Date(vehicle.declaredAt).toLocaleDateString(
+                              "en-GB",
+                            )
+                          : "Not yet declared"}
+                    </TableCell>
+                    <TableCell label="Status">
+                      {vehicle.status ? (
+                        <StatusChip status={vehicle.status} />
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                   </>
                 ) : null}
-              </tr>
-            </thead>
-            <tbody>
-              {vehicles.map((vehicle) => (
-                <tr
-                  key={vehicle.id}
-                  className="border-b border-line last:border-0 hover:bg-surface-muted/60"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/vehicles/${vehicle.id}`}
-                      className="font-mono text-sm font-medium text-link underline-offset-2 hover:underline"
-                    >
-                      {vehicle.plateNumberDisplay}
-                    </Link>
-                    {vehicle.isLegacyImport ? (
-                      <span className="ml-2 text-xs italic text-faint-foreground">
-                        legacy
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {vehicle.vehicleCategory?.label ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {vehicle.routeType?.label ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {vehicle.organisation.name}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {vehicle.declaredByMember
-                      ? `${vehicle.declaredByMember.surname}, ${vehicle.declaredByMember.firstName}`
-                      : "—"}
-                  </td>
-                  {seesDeclarations ? (
-                    <>
-                      {/* A row outside the officer's declare scope carries
-                          neither field: a dash, never "not declared". */}
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {vehicle.status === undefined
-                          ? "—"
-                          : vehicle.declaredAt
-                            ? new Date(vehicle.declaredAt).toLocaleDateString("en-GB")
-                            : "Not yet declared"}
-                      </td>
-                      <td className="px-4 py-3">
-                        {vehicle.status ? (
-                          <StatusChip status={vehicle.status} />
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                    </>
-                  ) : null}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
     </div>
   );

@@ -9,6 +9,8 @@ import {
   Button,
   ErrorNotice,
   Field,
+  Loading,
+  PageHeader,
   Section,
   TextInput,
 } from "@/components/ui";
@@ -245,17 +247,10 @@ export default function DisclosureProfilesPage() {
 
   return (
     <div className="grid max-w-3xl gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">
-          Disclosure profiles
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          A disclosure profile sets what an outside organisation is told about a
-          record beyond the fact that it matched. Personal details, contact
-          details, and anything about declaration or dues can never be
-          disclosed, whatever a profile says.
-        </p>
-      </div>
+      <PageHeader
+        title="Disclosure profiles"
+        description="A disclosure profile sets what an outside organisation is told about a record beyond the fact that it matched. Personal details, contact details, and anything about declaration or dues can never be disclosed, whatever a profile says."
+      />
 
       {loadError ? (
         <ErrorNotice
@@ -263,9 +258,7 @@ export default function DisclosureProfilesPage() {
           requestId={loadError.requestId}
         />
       ) : null}
-      {isLoading ? (
-        <p className="text-sm text-faint-foreground">Loading…</p>
-      ) : null}
+      {isLoading ? <Loading /> : null}
 
       {profiles.map((profile) => (
         <Section
