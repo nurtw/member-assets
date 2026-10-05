@@ -13,6 +13,7 @@ import {
   PUBLIC_METADATA_KEY,
 } from '../auth/require-permission.decorator.js';
 import { SCOPE_METADATA_KEY } from '../auth/require-scope.decorator.js';
+import { PORTAL_METADATA_KEY } from '../portal/portal-account.decorator.js';
 import {
   DOCUMENTED_METADATA_KEY,
   type RouteDocumentation,
@@ -28,6 +29,8 @@ export interface DiscoveredRoute {
   permission: string | null;
   /** Set on an external route: authenticated by API token, not by session. */
   scope: string | null;
+  /** Set on an organisation-portal route: its own session, no permission. */
+  portal: string | null;
   /** The status `@HttpCode` sets, where the handler sets one. */
   httpCode: number | null;
   documentation: RouteDocumentation | null;
@@ -110,6 +113,14 @@ export function discoverRoutes(
             | string
             | undefined) ??
           (Reflect.getMetadata(SCOPE_METADATA_KEY, metatype) as
+            | string
+            | undefined) ??
+          null,
+        portal:
+          (Reflect.getMetadata(PORTAL_METADATA_KEY, handler) as
+            | string
+            | undefined) ??
+          (Reflect.getMetadata(PORTAL_METADATA_KEY, metatype) as
             | string
             | undefined) ??
           null,
@@ -257,6 +268,16 @@ export function buildOpenApiDocument(
         description: `The organisation does not hold the scope ${route.scope}.`,
         content: { 'application/json': { schema: ERROR_SCHEMA } },
       };
+    } else if (route.portal) {
+      responses['401'] ??= {
+        description: 'No valid portal session cookie was presented.',
+        content: { 'application/json': { schema: ERROR_SCHEMA } },
+      };
+      responses['403'] ??= {
+        description:
+          'The portal account is still on a temporary password, which must be changed first.',
+        content: { 'application/json': { schema: ERROR_SCHEMA } },
+      };
     } else if (!route.isPublic) {
       responses['401'] ??= {
         description: 'No valid session cookie was presented.',
@@ -303,9 +324,11 @@ export function buildOpenApiDocument(
       responses,
       ...(route.scope
         ? { security: [{ apiToken: [route.scope] }] }
-        : route.isPublic
-          ? { security: [] }
-          : {}),
+        : route.portal
+          ? { security: [{ portalCookie: [] }] }
+          : route.isPublic
+            ? { security: [] }
+            : {}),
     };
   }
 
@@ -336,6 +359,14 @@ export function buildOpenApiDocument(
             'Opaque session token issued by POST /auth/login and set as an httpOnly cookie. ' +
             'Revocation takes effect on the next request.',
         },
+        portalCookie: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: 'nurtw_portal_session',
+          description:
+            "An outside organisation's own portal session, issued by POST /portal/login. It " +
+            'reaches the portal routes and nothing else, and satisfies no permission.',
+        },
         apiToken: {
           type: 'http',
           scheme: 'bearer',
@@ -364,9 +395,11 @@ function buildDescription(
   parts.push(
     route.scope
       ? `**Scope required:** \`${route.scope}\`. Authenticated by API token.`
-      : route.isPublic
-        ? '**Authentication:** none. This route is deliberately public.'
-        : `**Permission required:** \`${route.permission ?? 'unknown'}\`.`,
+      : route.portal
+        ? '**Portal account required.** Authenticated by the organisation portal’s own session.'
+        : route.isPublic
+          ? '**Authentication:** none. This route is deliberately public.'
+          : `**Permission required:** \`${route.permission ?? 'unknown'}\`.`,
   );
 
   return parts.join('\n\n');

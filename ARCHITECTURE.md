@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.5
+**Document version:** 1.6
 **Last revised:** 5 October 2026
 **Authority:** Subordinate to `PRD.md`. Where this document and the PRD conflict, the PRD prevails.
 
@@ -465,6 +465,25 @@ rule for tokens forbids for credentials. Three things keep that safe:
 The page a link returns the payer to must be on the web application's own origin, or
 Paystack would send a payer wherever a caller asked.
 
+**Decision 9.16 — the organisation portal is a kind of route of its own *(item 29)*.** An
+outside organisation's sign-in to its portal (PRD §23.23, revision 1.9) is not an officer
+account with fewer permissions. It is a separate table, a separate session, and a separate
+cookie, and a fifth kind of route beside a permission, any signed-in officer, a scope, and
+public access. The guard reads the portal's cookie on a portal route and the officers'
+cookie on every other, so neither session reaches the other's routes, and a portal session
+can satisfy no permission whatever is later added to the catalogue.
+
+- **Every portal route acts on the organisation its session belongs to.** None takes an
+  organisation's id from the caller, so there is no identifier to tamper with.
+- **The portal reads its access and never writes it.** Approval, scopes, the disclosure
+  profile, and limits stay with `api_client.manage`.
+- **An organisation acting on its tokens goes down the officers' path**
+  (`ApiTokenService`), with itself recorded as the actor. The token is returned to it
+  alone, which removes the one step where an officer handled a live credential.
+- **Usage is projected, as a verification answer is.** `portalUsageClass` maps the log's
+  classes onto what the caller's own answers told it, so the dashboard cannot become the
+  oracle Requirement 14.3 forbids.
+
 ---
 
 ## 10. Data protection
@@ -698,3 +717,4 @@ The following were added by revision 1.9, 5 October 2026:
 |---|---|---|
 | Paying from a check | A Pay now button on internal checks; personal pay links for the public, never saying what is owed | 9.15, PRD Requirement 27.8 |
 | The settlement screen | The bank from Paystack's list, the name shown before saving, the account number by its last four digits | PRD Requirement 27.12 |
+| The organisation portal | Its own accounts, session, and kind of route; approval and access stay with the administrator; usage projected | 9.16, PRD §23.23 |

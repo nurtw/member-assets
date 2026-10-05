@@ -44,7 +44,7 @@ describe('API reference (e2e)', () => {
     expect(undocumented).toEqual([]);
   });
 
-  it('declares a permission, a scope, or public status for every route', () => {
+  it('declares a permission, a scope, the portal, or public status for every route', () => {
     // The guard denies a route carrying none, so one of these must be present
     // or the route is unreachable. Catching it here names the handler; catching
     // it at runtime produces a 403 nobody can explain.
@@ -52,7 +52,10 @@ describe('API reference (e2e)', () => {
       .getRoutes()
       .filter(
         (route) =>
-          !route.isPublic && route.permission === null && route.scope === null,
+          !route.isPublic &&
+          route.permission === null &&
+          route.scope === null &&
+          route.portal === null,
       )
       .map((route) => `${route.controller}.${route.handler}`);
 
@@ -67,9 +70,12 @@ describe('API reference (e2e)', () => {
       .getRoutes()
       .filter(
         (route) =>
-          [route.isPublic, route.permission !== null, route.scope !== null].filter(
-            Boolean,
-          ).length !== 1,
+          [
+            route.isPublic,
+            route.permission !== null,
+            route.scope !== null,
+            route.portal !== null,
+          ].filter(Boolean).length !== 1,
       )
       .map((route) => `${route.controller}.${route.handler}`);
 
@@ -136,7 +142,47 @@ describe('API reference (e2e)', () => {
       'POST /api/v1/auth/logout',
       'POST /api/v1/pay/:code',
       'POST /api/v1/payments/webhook',
+      'POST /api/v1/portal/applications',
+      'POST /api/v1/portal/login',
+      'POST /api/v1/portal/logout',
     ]);
+  });
+
+  it('keeps the portal surface to an organisation’s own affairs', () => {
+    // `@PortalAccount()` (item 29) is an outside organisation's own session.
+    // Every route here acts on the organisation the session belongs to and
+    // takes no organisation's id from the caller. Adding a line should need
+    // an argument for why an outside party may do it for itself.
+    const portal = openApi
+      .getRoutes()
+      .filter((route) => route.portal !== null)
+      .map((route) => `${route.method.toUpperCase()} ${route.path} ${route.portal}`)
+      .sort();
+
+    expect(portal).toEqual([
+      'GET /api/v1/portal/me OWN',
+      'GET /api/v1/portal/tokens READY',
+      'GET /api/v1/portal/usage READY',
+      'POST /api/v1/portal/password OWN',
+      'POST /api/v1/portal/tokens READY',
+      'POST /api/v1/portal/tokens/:tokenId/revoke READY',
+      'POST /api/v1/portal/tokens/:tokenId/rotate READY',
+    ]);
+  });
+
+  it('puts approval and access beyond the reach of a portal session', () => {
+    // If a portal route ever sat under these paths, an organisation could
+    // approve itself or choose its own scopes, profile, or limits.
+    const reaching = openApi
+      .getRoutes()
+      .filter(
+        (route) =>
+          route.portal !== null &&
+          !route.path.startsWith('/api/v1/portal/'),
+      )
+      .map((route) => `${route.method.toUpperCase()} ${route.path}`);
+
+    expect(reaching).toEqual([]);
   });
 
   it('keeps the signed-in-only surface to the officer’s own account', () => {
@@ -171,7 +217,7 @@ describe('API reference (e2e)', () => {
           operation.description,
           `${method.toUpperCase()} ${path} does not state its authentication requirement`,
         ).toMatch(
-          /\*\*Permission required:\*\*|\*\*Scope required:\*\*|deliberately public/,
+          /\*\*Permission required:\*\*|\*\*Scope required:\*\*|\*\*Portal account required\.\*\*|deliberately public/,
         );
       }
     }

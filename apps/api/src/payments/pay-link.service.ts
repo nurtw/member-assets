@@ -1,12 +1,4 @@
-import {
-  HttpException,
-  HttpStatus,
-  Injectable,
-  Logger,
-  NotFoundException,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
   PayLinkSubjectInput,
   PayLinkSummary,
@@ -23,10 +15,11 @@ import {
   type PayLinkSubject,
 } from '@nurtw/domain';
 import { Prisma } from '@prisma/client';
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 
 import { AuditService } from '../audit/audit.service.js';
 import { PermissionService } from '../auth/permission.service.js';
+import { PublicRateLimitService } from '../common/public-rate-limit.service.js';
 import { ValidationException } from '../common/zod-validation.pipe.js';
 import { loadEnvironment } from '../config/environment.js';
 import type { ActorContext } from '../organisation/organisation.service.js';
@@ -42,14 +35,6 @@ export const PAY_LINK_VIEWS_PER_MINUTE = 'pay_link.views_per_minute';
 export const PAY_LINK_PAYMENTS_PER_HOUR = 'pay_link.payments_per_hour';
 const VIEWS_FALLBACK = 30;
 const PAYMENTS_FALLBACK = 10;
-const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
-
-/** A limit refusal, carrying when to try again (`Retry-After`). */
-export class PublicRateLimitedException extends HttpException {
-  constructor(readonly retryAfterSeconds: number) {
-    super('Rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
-  }
-}
 
 interface LinkRow {
   id: string;
@@ -79,9 +64,8 @@ const LINK_SELECT = {
  * This lives in the payments module, not verification, which stays read-only.
  */
 @Injectable()
-export class PayLinkService implements OnModuleInit, OnModuleDestroy {
+export class PayLinkService {
   private readonly logger = new Logger(PayLinkService.name);
-  private pruneTimer: NodeJS.Timeout | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -90,26 +74,8 @@ export class PayLinkService implements OnModuleInit, OnModuleDestroy {
     private readonly settings: SettingsService,
     private readonly payments: PaymentsService,
     private readonly settlement: SettlementService,
+    private readonly publicLimits: PublicRateLimitService,
   ) {}
-
-  onModuleInit(): void {
-    // Suites call `prune()` themselves, as they do for the rate limits.
-    if (loadEnvironment().nodeEnv === 'test') {
-      return;
-    }
-    this.pruneTimer = setInterval(() => {
-      void this.prune().catch((error: unknown) =>
-        this.logger.error(`Pay-link counter prune failed: ${String(error)}`),
-      );
-    }, PRUNE_INTERVAL_MS);
-    this.pruneTimer.unref();
-  }
-
-  onModuleDestroy(): void {
-    if (this.pruneTimer) {
-      clearInterval(this.pruneTimer);
-    }
-  }
 
   // --- The officer's side ------------------------------------------------------
 
@@ -295,15 +261,6 @@ export class PayLinkService implements OnModuleInit, OnModuleDestroy {
     return { authorizationUrl: started.authorizationUrl };
   }
 
-  /** Deletes counters older than a day. */
-  async prune(now: Date = new Date()): Promise<void> {
-    await this.prisma.publicRateCounter.deleteMany({
-      where: {
-        windowStart: { lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
-      },
-    });
-  }
-
   // --- Internals -----------------------------------------------------------------
 
   private async liveLink(subjectType: string, subjectId: string) {
@@ -428,34 +385,14 @@ export class PayLinkService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * One counter per address and window, one atomic statement (as item 13's
-   * counters are). An address the request does not carry shares one counter.
-   */
+  /** The limit is a setting; `PublicRateLimitService` does the counting. */
   private async limit(kind: 'views' | 'payments', address: string | undefined) {
     const [setting, fallback, windowMs] =
       kind === 'views'
         ? [PAY_LINK_VIEWS_PER_MINUTE, VIEWS_FALLBACK, 60_000]
         : [PAY_LINK_PAYMENTS_PER_HOUR, PAYMENTS_FALLBACK, 3_600_000];
     const allowed = await this.settings.getPositiveInteger(setting, fallback);
-    const now = Date.now();
-    const windowStart = new Date(Math.floor(now / windowMs) * windowMs);
-    const key = `pay:${kind}:${createHash('sha256')
-      .update(address ?? 'unknown')
-      .digest('hex')}`;
-    const rows = await this.prisma.$queryRaw<{ count: number }[]>`
-      INSERT INTO public_rate_counter (key, window_start, count)
-      VALUES (${key}, ${windowStart}, 1)
-      ON CONFLICT (key, window_start)
-      DO UPDATE SET count = public_rate_counter.count + 1
-      RETURNING count`;
-    if ((rows[0]?.count ?? 0) > allowed) {
-      const retryAfter = Math.max(
-        1,
-        Math.ceil((windowStart.getTime() + windowMs - now) / 1000),
-      );
-      throw new PublicRateLimitedException(retryAfter);
-    }
+    await this.publicLimits.hit(`pay:${kind}`, address, allowed, windowMs);
   }
 }
 

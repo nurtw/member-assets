@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.9
+**Document version:** 1.10
 **Last revised:** 5 October 2026
 
 ---
@@ -56,7 +56,7 @@ Each item is independently completable and independently testable. Status values
 | 26 | letter-reissue | §9A.6 | done | [plan](plans/26-letter-reissue.md) |
 | 27 | transpay-stock-intake | §9A.4 | deferred by the owner | [plan](plans/27-transpay-stock-intake.md) |
 | 28 | officer-accounts-and-mfa | §16, §17.1 | done (requirement off until GOV-18; browser check pending) | [plan](plans/28-officer-accounts-and-mfa.md) |
-| 29 | organisation-portal | §12, §23.23 | not-started (design questions open, EXT-20) | — |
+| 29 | organisation-portal | §12, §23.23 | done (browser check pending) | [plan](plans/29-organisation-portal.md) |
 | 30 | settlement-screen | §27.7, §27.12 | done (browser check pending) | [plan](plans/30-settlement-screen.md) |
 | 31 | pay-now | §27.8 (rev. 1.9) | done (browser check pending) | [plan](plans/31-pay-now.md) |
 
@@ -262,8 +262,9 @@ off (`auth.mfa_enforced`) and must be turned on before go-live (GOV-18).
 
 **29 — organisation-portal.** *PRD §12, §23.23; the owner's direction of 5 October 2026.*
 An outside organisation applies for access itself, through a portal of its own, and sees its
-own usage there. Approval stays with the API administrator. Its design questions (EXT-20)
-are answered before it is planned.
+own usage and manages its own tokens there. Approval stays with the API administrator,
+who first confirms the applicant by telephone or letter (EXT-20, Requirement 12.11).
+Delivered on 5 October 2026.
 
 **30 — settlement-screen.** *PRD Requirements 27.7, 27.12; approved 5 October 2026.* A
 Settings page for the NURTW settlement account and the dedicated-account percentage

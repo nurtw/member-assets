@@ -1248,6 +1248,16 @@ model ApiClient {
   /// the profile's.
   dailyQuota       Int?   @map("daily_quota")
 
+  /// Item 29 (`QUESTIONS.md` EXT-20) — the organisation applied for itself
+  /// through the portal, rather than being registered by an officer.
+  selfRegistered            Boolean @default(false) @map("self_registered")
+  /// How the administrator confirmed the applicant before approving it:
+  /// `TELEPHONE` or `LETTER`. The System sends no mail (GOV-08), so the
+  /// confirmation is made outside it and recorded here. Null for an
+  /// organisation an officer registered.
+  applicantConfirmedVia     String? @map("applicant_confirmed_via")
+  applicantConfirmationNote String? @map("applicant_confirmation_note")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -1263,9 +1273,62 @@ model ApiClient {
   abuseWindows      ApiAbuseWindow[]
   sequenceStates    ApiSequenceState[]
   pauses            ApiClientPause[]
+  portalAccount     PortalAccount?
 
   @@index([status])
   @@map("api_client")
+}
+
+/// An organisation's own sign-in to the portal (item 29, EXT-20). Kept apart
+/// from `user`: a portal account holds no role, grant, or permission, and no
+/// officer route reads its session. One per organisation.
+///
+/// The password is hashed as an officer's is. Never select `passwordHash` into
+/// a response.
+model PortalAccount {
+  id          String @id @default(uuid()) @db.Uuid
+  apiClientId String @unique @map("api_client_id") @db.Uuid
+  /// Lower case, as officers' are.
+  email       String @unique
+  fullName    String @map("full_name")
+
+  passwordHash       String  @map("password_hash")
+  /// Set when an administrator gives or resets the password: the portal opens
+  /// nothing else until the organisation has chosen its own.
+  mustChangePassword Boolean @default(false) @map("must_change_password")
+  isActive           Boolean @default(true) @map("is_active")
+
+  /// As for officers (Requirement 17.4): failures lock the account for a time.
+  failedSignInCount Int       @default(0) @map("failed_sign_in_count")
+  signInLockedUntil DateTime? @map("sign_in_locked_until")
+  lastLoginAt       DateTime? @map("last_login_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  apiClient ApiClient       @relation(fields: [apiClientId], references: [id], onDelete: Cascade)
+  sessions  PortalSession[]
+
+  @@map("portal_account")
+}
+
+/// A portal sign-in. An opaque token, stored hashed, delivered as its own
+/// `httpOnly` cookie, never the officers' cookie.
+model PortalSession {
+  id              String @id @default(uuid()) @db.Uuid
+  portalAccountId String @map("portal_account_id") @db.Uuid
+  tokenHash       String @unique @map("token_hash")
+
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  ipAddress String?   @map("ip_address")
+  userAgent String?   @map("user_agent")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  account PortalAccount @relation(fields: [portalAccountId], references: [id], onDelete: Cascade)
+
+  @@index([portalAccountId])
+  @@map("portal_session")
 }
 
 /// PRD Requirement 12.1–12.2 — tokens are stored as hashes. The secret is shown

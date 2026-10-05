@@ -2,9 +2,11 @@
 
 import {
   ABUSE_SIGNAL_LABELS,
+  APPLICANT_CONFIRMATION_LABELS,
   type ApiClientDetail,
   type DisclosureProfileSummary,
   type IssuedApiToken,
+  type IssuedPortalPassword,
   type RateLimitProfileSummary,
 } from "@nurtw/contracts";
 import Link from "next/link";
@@ -21,6 +23,7 @@ import {
   scopeDescription,
   shortDay,
 } from "@/components/api-access";
+import { TemporaryPassword } from "@/components/officers";
 import {
   Button,
   ErrorNotice,
@@ -158,6 +161,13 @@ export default function ApiClientPage() {
   const [scopes, setScopes] = useState<string[]>([]);
   const [agreementReference, setAgreementReference] = useState("");
   const [agreementDate, setAgreementDate] = useState("");
+  // How a self-applicant was confirmed, and its portal account (item 29).
+  const [confirmVia, setConfirmVia] = useState("");
+  const [confirmNote, setConfirmNote] = useState("");
+  const [portalEmail, setPortalEmail] = useState("");
+  const [portalName, setPortalName] = useState("");
+  const [portalReason, setPortalReason] = useState("");
+  const [portalPassword, setPortalPassword] = useState<string | null>(null);
   const [accessReason, setAccessReason] = useState("");
   // Status, tokens, and the record.
   const [statusReason, setStatusReason] = useState("");
@@ -294,10 +304,31 @@ export default function ApiClientPage() {
         />
       ) : null}
 
+      {portalPassword ? (
+        <TemporaryPassword
+          password={portalPassword}
+          officerName={`${client.organisationName}'s contact`}
+          onDone={() => setPortalPassword(null)}
+        />
+      ) : null}
+
       {isPending ? (
         <Notice title="Pending approval">
           This organisation can do nothing until it is approved with a
           disclosure profile, its scopes, and a data-sharing agreement.
+        </Notice>
+      ) : null}
+      {isPending && client.selfRegistered ? (
+        <Notice title="It applied for itself, through the portal">
+          Nobody at the Union has yet confirmed who sent this. Telephone{" "}
+          {client.technicalContact.name}
+          {client.technicalContact.phone
+            ? ` on ${client.technicalContact.phone}`
+            : ""}
+          , or write to the organisation, before approving it.
+          {client.applicationExpiresAt
+            ? ` The application lapses on ${shortDay(client.applicationExpiresAt)} if it is not approved.`
+            : ""}
         </Notice>
       ) : null}
       {isSuspended ? (
@@ -398,7 +429,25 @@ export default function ApiClientPage() {
                 by {client.registeredBy.fullName}
               </span>
             ) : null}
+            {client.selfRegistered ? (
+              <span className="block text-black/60">
+                by the organisation itself, through the portal
+              </span>
+            ) : null}
           </Detail>
+          {client.applicantConfirmation ? (
+            <Detail label="Applicant confirmed">
+              {APPLICANT_CONFIRMATION_LABELS[
+                client.applicantConfirmation
+                  .via as keyof typeof APPLICANT_CONFIRMATION_LABELS
+              ] ?? client.applicantConfirmation.via}
+              {client.applicantConfirmation.note ? (
+                <span className="block text-black/60">
+                  {client.applicantConfirmation.note}
+                </span>
+              ) : null}
+            </Detail>
+          ) : null}
         </dl>
       </Section>
 
@@ -619,6 +668,44 @@ export default function ApiClientPage() {
               />
             </Field>
           </div>
+          {client.selfRegistered ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="How the applicant was confirmed"
+                htmlFor="confirmVia"
+                required
+                hint="It applied for itself. Confirm who it is before approving."
+                error={actionError?.fieldError("applicantConfirmation")}
+              >
+                <Select
+                  id="confirmVia"
+                  value={confirmVia}
+                  onChange={(event) => setConfirmVia(event.target.value)}
+                >
+                  <option value="">Not yet confirmed</option>
+                  {Object.entries(APPLICANT_CONFIRMATION_LABELS).map(
+                    ([code, label]) => (
+                      <option key={code} value={code}>
+                        {label}
+                      </option>
+                    ),
+                  )}
+                </Select>
+              </Field>
+              <Field
+                label="Note"
+                htmlFor="confirmNote"
+                hint="Who was spoken to, or the letter's reference."
+              >
+                <TextInput
+                  id="confirmNote"
+                  value={confirmNote}
+                  onChange={(event) => setConfirmNote(event.target.value)}
+                  maxLength={500}
+                />
+              </Field>
+            </div>
+          ) : null}
           <div>
             <Button
               type="button"
@@ -627,7 +714,8 @@ export default function ApiClientPage() {
                 !profileId ||
                 scopes.length === 0 ||
                 agreementReference.trim().length < 2 ||
-                !agreementDate
+                !agreementDate ||
+                (client.selfRegistered && !confirmVia)
               }
               onClick={() =>
                 void act(
@@ -637,14 +725,154 @@ export default function ApiClientPage() {
                       scopes,
                       agreementReference: agreementReference.trim(),
                       agreementDate,
+                      ...(client.selfRegistered
+                        ? {
+                            applicantConfirmation: {
+                              via: confirmVia,
+                              ...(confirmNote.trim()
+                                ? { note: confirmNote.trim() }
+                                : {}),
+                            },
+                          }
+                        : {}),
                     }),
-                  "It could not be approved: it is no longer pending, or the profile chosen is no longer offered. The page now shows its current state.",
+                  "It could not be approved: it is no longer pending, its application has lapsed, or the profile chosen is no longer offered. The page now shows its current state.",
                 )
               }
             >
               Approve
             </Button>
           </div>
+        </Section>
+      ) : null}
+
+      {canManage && !isRevoked ? (
+        <Section
+          title="Portal account"
+          description="The organisation's own sign-in to its portal, where it sees its usage and manages its own tokens. It holds no officer permission and reaches nothing else."
+        >
+          {client.portalAccount ? (
+            <>
+              <dl className="grid gap-4 sm:grid-cols-2">
+                <Detail label="Signs in as">
+                  {client.portalAccount.fullName}
+                  <span className="block text-black/60">
+                    {client.portalAccount.email}
+                  </span>
+                </Detail>
+                <Detail label="Last signed in">
+                  {client.portalAccount.lastLoginAt ? (
+                    moment(client.portalAccount.lastLoginAt)
+                  ) : (
+                    <Missing>Never</Missing>
+                  )}
+                  {client.portalAccount.mustChangePassword ? (
+                    <span className="block text-black/60">
+                      On a temporary password
+                    </span>
+                  ) : null}
+                  {client.portalAccount.locked ? (
+                    <span className="block text-black/60">
+                      Locked for a time after failed sign-ins
+                    </span>
+                  ) : null}
+                </Detail>
+              </dl>
+              <Field
+                label="Reason for a new temporary password"
+                htmlFor="portalReason"
+                hint="For a forgotten password or a locked account. It signs the account out everywhere."
+              >
+                <TextInput
+                  id="portalReason"
+                  value={portalReason}
+                  onChange={(event) => setPortalReason(event.target.value)}
+                  maxLength={1000}
+                />
+              </Field>
+              <div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy || portalReason.trim().length < 4}
+                  onClick={() =>
+                    void act(async () => {
+                      const reset = await api.post<IssuedPortalPassword>(
+                        `/api-clients/${client.id}/portal-account/reset-password`,
+                        { reason: portalReason.trim() },
+                      );
+                      setPortalPassword(reset.temporaryPassword);
+                      setPortalReason("");
+                    }, "The password could not be reset. The page now shows the account's current state.")
+                  }
+                >
+                  Reset the portal password
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-black/60">
+                This organisation has no portal account. Give it one, and pass
+                the temporary password to its contact.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Contact's name"
+                  htmlFor="portalName"
+                  required
+                  error={actionError?.fieldError("fullName")}
+                >
+                  <TextInput
+                    id="portalName"
+                    value={portalName}
+                    onChange={(event) => setPortalName(event.target.value)}
+                  />
+                </Field>
+                <Field
+                  label="Email they will sign in with"
+                  htmlFor="portalEmail"
+                  required
+                  error={actionError?.fieldError("email")}
+                >
+                  <TextInput
+                    id="portalEmail"
+                    type="email"
+                    autoComplete="off"
+                    value={portalEmail}
+                    onChange={(event) => setPortalEmail(event.target.value)}
+                  />
+                </Field>
+              </div>
+              <div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={
+                    busy ||
+                    portalName.trim().length < 2 ||
+                    !portalEmail.includes("@")
+                  }
+                  onClick={() =>
+                    void act(async () => {
+                      const created = await api.post<IssuedPortalPassword>(
+                        `/api-clients/${client.id}/portal-account`,
+                        {
+                          email: portalEmail.trim(),
+                          fullName: portalName.trim(),
+                        },
+                      );
+                      setPortalPassword(created.temporaryPassword);
+                      setPortalEmail("");
+                      setPortalName("");
+                    }, "The account could not be made: that address already signs in to another organisation's portal, or this one has just been given an account.")
+                  }
+                >
+                  Give it a portal account
+                </Button>
+              </div>
+            </>
+          )}
         </Section>
       ) : null}
 

@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.10
+**Document version:** 1.11
 **Last revised:** 5 October 2026
 
 ---
@@ -1085,6 +1085,20 @@ project owner on 5 October 2026; roadmap item 29. Recorded at PRD §23.23.
 
 **Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
 recommendations. **Recorded at.** PRD §23.23.
+
+**Built as (item 29), with the choices the project made:**
+
+- **One portal account for each organisation.** More than one is left for later.
+- **The applicant chooses the portal password when applying.** An account the
+  administrator gives, or resets, starts on a temporary password shown once.
+- **The form's limits:** 3 applications an hour from one address, and no more while 50
+  await a decision. Both are settings.
+- **A lapsed application** is kept as a revoked record, and its account is removed so the
+  applicant may apply again with the same address.
+- **Usage shows counts only**, in the terms the API's own answers used. It does not
+  separate a forged code from any other non-match, or say why requests were paused.
+- **No second factor for portal accounts yet.** Ten failed sign-ins lock one for fifteen
+  minutes, as for officers.
 
 ---
 

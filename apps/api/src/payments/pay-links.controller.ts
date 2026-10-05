@@ -28,13 +28,11 @@ import {
   Public,
   RequirePermission,
 } from '../auth/require-permission.decorator.js';
+import { PublicRateLimitedException } from '../common/public-rate-limit.service.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { Documented } from '../docs/documented.decorator.js';
 import type { ActorContext } from '../organisation/organisation.service.js';
-import {
-  PayLinkService,
-  PublicRateLimitedException,
-} from './pay-link.service.js';
+import { PayLinkService } from './pay-link.service.js';
 
 function actorOf(request: AuthenticatedRequest): ActorContext {
   if (!request.user) {

@@ -39,6 +39,14 @@
   --verdict-deny-surface: #fbecee;
   --verdict-caution: #8a5a00;
   --verdict-caution-surface: #fdf3e2;
+
+  /*
+   * The one hue a chart draws its single series in (the portal's usage, item
+   * 29). A lighter step of the Union's navy: the brand navy itself is too dark
+   * for a chart mark, and green and red are kept for verdicts. Checked against
+   * this surface for contrast and lightness.
+   */
+  --chart-series: #3447a3;
 }
 
 @theme inline {

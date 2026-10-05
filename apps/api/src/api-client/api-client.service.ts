@@ -22,7 +22,9 @@ import {
   InvalidApiClientTransitionError,
   apiClientStanding,
   apiTokenState,
+  applicationExpiresAt,
   assertApiClientTransition,
+  isApplicationExpired,
   isTokenExpiringSoon,
   type StoredApiClientStatus,
 } from '@nurtw/domain';
@@ -32,6 +34,10 @@ import { AuditService } from '../audit/audit.service.js';
 import { ValidationException } from '../common/zod-validation.pipe.js';
 import { DisclosureProfileService } from '../disclosure/disclosure-profile.service.js';
 import type { ActorContext } from '../organisation/organisation.service.js';
+import {
+  PORTAL_ACCOUNT_SELECT,
+  toPortalAccountSummary,
+} from '../portal/portal-account.summary.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RateLimitService } from '../rate-limit/rate-limit.service.js';
 import {
@@ -58,10 +64,15 @@ export type TokenRow = Prisma.ApiTokenGetPayload<{
   select: typeof TOKEN_SELECT;
 }>;
 
+/** Days a self-application waits before it lapses, where the setting is absent. */
+const APPLICATION_EXPIRY_DAYS = 'portal.application_expiry_days';
+const APPLICATION_EXPIRY_FALLBACK = 30;
+
 const SUMMARY_SELECT = {
   id: true,
   organisationName: true,
   status: true,
+  selfRegistered: true,
   createdAt: true,
   disclosureProfile: { select: { id: true, code: true, label: true } },
   scopes: { select: { scope: true } },
@@ -82,6 +93,9 @@ const DETAIL_SELECT = {
   statusReason: true,
   rateLimitProfile: true,
   dailyQuota: true,
+  applicantConfirmedVia: true,
+  applicantConfirmationNote: true,
+  portalAccount: { select: PORTAL_ACCOUNT_SELECT },
   registeredByUser: { select: { id: true, fullName: true } },
   approvedByUser: { select: { id: true, fullName: true } },
 } as const;
@@ -172,12 +186,13 @@ export class ApiClientService {
   }
 
   async get(id: string): Promise<ApiClientDetail> {
-    const [row, reminderDays] = await Promise.all([
+    const [row, reminderDays, expiryDays] = await Promise.all([
       this.prisma.apiClient.findUnique({
         where: { id },
         select: DETAIL_SELECT,
       }),
       this.reminderDays(),
+      this.applicationExpiryDays(),
     ]);
     if (!row) {
       throw new NotFoundException();
@@ -197,6 +212,7 @@ export class ApiClientService {
         now,
         reminderDays,
         pause?.active ? new Date(pause.pausedUntil) : null,
+        expiryDays,
       ),
       limits,
       pause,
@@ -370,7 +386,7 @@ export class ApiClientService {
       await this.lock(tx, id);
       const before = await tx.apiClient.findUnique({
         where: { id },
-        select: { status: true },
+        select: { status: true, selfRegistered: true, createdAt: true },
       });
       if (!before) {
         throw new NotFoundException();
@@ -378,6 +394,32 @@ export class ApiClientService {
       if (before.status !== 'PENDING') {
         throw new ConflictException('Only a pending client can be approved.');
       }
+      // Item 29 (EXT-20) — an organisation that applied for itself is
+      // approved only once the administrator has confirmed the applicant,
+      // by telephone or letter, and says which.
+      if (before.selfRegistered) {
+        if (
+          isApplicationExpired(
+            before.createdAt,
+            now,
+            await this.applicationExpiryDays(),
+          )
+        ) {
+          throw new ConflictException('The application has lapsed.');
+        }
+        if (!input.applicantConfirmation) {
+          throw new ValidationException([
+            {
+              field: 'applicantConfirmation',
+              message:
+                'Say how the applicant was confirmed: by telephone or by letter.',
+            },
+          ]);
+        }
+      }
+      const confirmation = before.selfRegistered
+        ? (input.applicantConfirmation ?? null)
+        : null;
       const profile = await this.profiles.requireAssignable(
         input.disclosureProfileId,
         tx,
@@ -398,6 +440,8 @@ export class ApiClientService {
           agreementDate: new Date(`${input.agreementDate}T00:00:00Z`),
           approvedByUserId: actor.userId,
           approvedAt: now,
+          applicantConfirmedVia: confirmation?.via ?? null,
+          applicantConfirmationNote: confirmation?.note || null,
         },
       });
 
@@ -414,6 +458,9 @@ export class ApiClientService {
             scopes: orderScopes(input.scopes),
             agreementReference: input.agreementReference,
             agreementDate: input.agreementDate,
+            ...(confirmation
+              ? { applicantConfirmedVia: confirmation.via }
+              : {}),
           },
           requestId: actor.requestId,
           ipAddress: actor.ipAddress,
@@ -422,6 +469,14 @@ export class ApiClientService {
       );
     });
     return this.get(id);
+  }
+
+  /** How long a self-application waits before it lapses (item 29). */
+  applicationExpiryDays(): Promise<number> {
+    return this.settings.getPositiveInteger(
+      APPLICATION_EXPIRY_DAYS,
+      APPLICATION_EXPIRY_FALLBACK,
+    );
   }
 
   /**
@@ -716,6 +771,7 @@ export class ApiClientService {
       scopes: orderScopes(row.scopes.map((granted) => granted.scope)),
       currentToken: tokens.find((token) => token.state === 'CURRENT') ?? null,
       pausedUntil: pausedUntil?.toISOString() ?? null,
+      selfRegistered: row.selfRegistered,
       createdAt: row.createdAt.toISOString(),
     };
   }
@@ -725,6 +781,7 @@ export class ApiClientService {
     now: Date,
     reminderDays: number,
     pausedUntil: Date | null,
+    expiryDays: number,
   ): Omit<ApiClientDetail, 'limits' | 'pause'> {
     return {
       ...this.toSummary(row, now, reminderDays, pausedUntil),
@@ -745,6 +802,19 @@ export class ApiClientService {
       tokens: row.tokens.map((token) =>
         toTokenSummary(token, now, reminderDays),
       ),
+      applicantConfirmation: row.applicantConfirmedVia
+        ? {
+            via: row.applicantConfirmedVia,
+            note: row.applicantConfirmationNote,
+          }
+        : null,
+      applicationExpiresAt:
+        row.selfRegistered && row.status === 'PENDING'
+          ? applicationExpiresAt(row.createdAt, expiryDays).toISOString()
+          : null,
+      portalAccount: row.portalAccount
+        ? toPortalAccountSummary(row.portalAccount, now)
+        : null,
     };
   }
 }

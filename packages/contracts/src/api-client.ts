@@ -15,6 +15,10 @@ import {
 } from '@nurtw/domain';
 import { z } from 'zod';
 
+import {
+  applicantConfirmationSchema,
+  type PortalAccountSummary,
+} from './portal.js';
 import type { ApiClientLimits, ApiClientPause } from './rate-limit.js';
 import { API_SCOPES } from './scopes.js';
 
@@ -102,6 +106,12 @@ export const approveApiClientSchema = z.object({
   scopes,
   agreementReference,
   agreementDate,
+  /**
+   * Required for an organisation that applied for itself (item 29, EXT-20):
+   * how the administrator confirmed the applicant. The service refuses the
+   * approval without it; it is ignored for one an officer registered.
+   */
+  applicantConfirmation: applicantConfirmationSchema.optional(),
 });
 export type ApproveApiClientInput = z.infer<typeof approveApiClientSchema>;
 
@@ -204,6 +214,8 @@ export interface ApiClientSummary {
    * Its requests are refused until then.
    */
   pausedUntil: string | null;
+  /** It applied for itself through the portal (item 29), not through an officer. */
+  selfRegistered: boolean;
   createdAt: string;
 }
 
@@ -226,6 +238,12 @@ export interface ApiClientDetail extends ApiClientSummary {
   pause: ApiClientPause | null;
   /** Newest first. */
   tokens: ApiTokenSummary[];
+  /** How the applicant was confirmed before approval, for a self-application. */
+  applicantConfirmation: { via: string; note: string | null } | null;
+  /** When a self-application nobody has approved lapses; `null` otherwise. */
+  applicationExpiresAt: string | null;
+  /** Its portal sign-in, if it has one (item 29). */
+  portalAccount: PortalAccountSummary | null;
 }
 
 /** `GET /api-clients`. */

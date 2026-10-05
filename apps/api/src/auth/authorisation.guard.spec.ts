@@ -10,6 +10,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiClientAuthService } from '../api-client/api-client-auth.service.js';
 import type { ApiRequestLogService } from '../api-client/api-request-log.service.js';
 import { ValidationException } from '../common/zod-validation.pipe.js';
+import {
+  PORTAL_COOKIE_NAME,
+  PORTAL_METADATA_KEY,
+} from '../portal/portal-account.decorator.js';
+import type { PortalSessionService } from '../portal/portal-session.service.js';
 import type { RateLimitService } from '../rate-limit/rate-limit.service.js';
 import type { SettingsService } from '../settings/settings.service.js';
 import {
@@ -40,6 +45,7 @@ describe('AuthorisationGuard', () => {
   let requestLog: { record: ReturnType<typeof vi.fn> };
   let rateLimits: { admit: ReturnType<typeof vi.fn> };
   let settings: { isEnabled: ReturnType<typeof vi.fn> };
+  let portalSessions: { resolve: ReturnType<typeof vi.fn> };
   let headers: Record<string, string>;
   let guard: AuthorisationGuard;
   let metadata: Record<string, unknown>;
@@ -47,6 +53,7 @@ describe('AuthorisationGuard', () => {
     headers: Record<string, string>;
     user?: unknown;
     apiClient?: unknown;
+    portalAccount?: unknown;
     method?: string;
     path?: string;
     route?: { path: string };
@@ -81,6 +88,7 @@ describe('AuthorisationGuard', () => {
     requestLog = { record: vi.fn().mockResolvedValue(undefined) };
     rateLimits = { admit: vi.fn().mockResolvedValue({ allowed: true }) };
     settings = { isEnabled: vi.fn().mockResolvedValue(false) };
+    portalSessions = { resolve: vi.fn().mockResolvedValue(null) };
     headers = {};
 
     guard = new AuthorisationGuard(
@@ -91,7 +99,106 @@ describe('AuthorisationGuard', () => {
       requestLog as unknown as ApiRequestLogService,
       rateLimits as unknown as RateLimitService,
       settings as unknown as SettingsService,
+      portalSessions as unknown as PortalSessionService,
     );
+  });
+
+  const PORTAL_ACCOUNT = {
+    accountId: 'portal-account-1',
+    apiClientId: 'client-1',
+    email: 'integrator@example.test',
+    fullName: 'Test Integrator',
+    sessionId: 'portal-session-1',
+    mustChangePassword: false,
+  };
+
+  describe('the organisation portal (item 29)', () => {
+    it('admits a portal session to a portal route, and sets who it is', async () => {
+      metadata[PORTAL_METADATA_KEY] = 'READY';
+      request.headers.cookie = `${PORTAL_COOKIE_NAME}=portal-token`;
+      portalSessions.resolve.mockResolvedValue(PORTAL_ACCOUNT);
+
+      await expect(guard.canActivate(contextFor())).resolves.toBe(true);
+      expect(portalSessions.resolve).toHaveBeenCalledWith('portal-token');
+      expect(request.portalAccount).toEqual(PORTAL_ACCOUNT);
+      // The officers' side was never consulted.
+      expect(sessions.resolve).not.toHaveBeenCalled();
+      expect(permissions.canAnywhere).not.toHaveBeenCalled();
+    });
+
+    it('does not let an officer session reach a portal route', async () => {
+      metadata[PORTAL_METADATA_KEY] = 'READY';
+      withSession();
+
+      await expect(guard.canActivate(contextFor())).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(sessions.resolve).not.toHaveBeenCalled();
+    });
+
+    it('does not let a portal session reach an officer route', async () => {
+      metadata[PERMISSION_METADATA_KEY] = 'api_client.manage';
+      request.headers.cookie = `${PORTAL_COOKIE_NAME}=portal-token`;
+      portalSessions.resolve.mockResolvedValue(PORTAL_ACCOUNT);
+
+      await expect(guard.canActivate(contextFor())).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(portalSessions.resolve).not.toHaveBeenCalled();
+      expect(permissions.canAnywhere).not.toHaveBeenCalled();
+    });
+
+    it('does not let a portal session reach a signed-in-only officer route', async () => {
+      metadata[PERMISSION_METADATA_KEY] = SIGNED_IN;
+      request.headers.cookie = `${PORTAL_COOKIE_NAME}=portal-token`;
+      portalSessions.resolve.mockResolvedValue(PORTAL_ACCOUNT);
+
+      await expect(guard.canActivate(contextFor())).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('rejects a portal session that does not resolve', async () => {
+      metadata[PORTAL_METADATA_KEY] = 'READY';
+      request.headers.cookie = `${PORTAL_COOKIE_NAME}=revoked-or-expired`;
+
+      await expect(guard.canActivate(contextFor())).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('opens only the account itself on a temporary password', async () => {
+      request.headers.cookie = `${PORTAL_COOKIE_NAME}=portal-token`;
+      portalSessions.resolve.mockResolvedValue({
+        ...PORTAL_ACCOUNT,
+        mustChangePassword: true,
+      });
+
+      metadata[PORTAL_METADATA_KEY] = 'READY';
+      await expect(guard.canActivate(contextFor())).rejects.toThrow(
+        ForbiddenException,
+      );
+      metadata[PORTAL_METADATA_KEY] = 'OWN';
+      await expect(guard.canActivate(contextFor())).resolves.toBe(true);
+    });
+
+    it('refuses a portal route that also declares a permission or public', async () => {
+      request.headers.cookie = `${PORTAL_COOKIE_NAME}=portal-token`;
+      portalSessions.resolve.mockResolvedValue(PORTAL_ACCOUNT);
+
+      metadata[PORTAL_METADATA_KEY] = 'READY';
+      metadata[PERMISSION_METADATA_KEY] = 'api_client.manage';
+      await expect(guard.canActivate(contextFor())).rejects.toThrow(
+        ForbiddenException,
+      );
+
+      metadata[PERMISSION_METADATA_KEY] = undefined;
+      metadata[PUBLIC_METADATA_KEY] = true;
+      await expect(guard.canActivate(contextFor())).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(portalSessions.resolve).not.toHaveBeenCalled();
+    });
   });
 
   const withSession = (

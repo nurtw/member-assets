@@ -209,6 +209,10 @@ export default function ApiAccessPage() {
     (client) => client.currentToken?.expiringSoon,
   );
   const paused = clients.filter((client) => client.pausedUntil !== null);
+  // Organisations that applied for themselves and await a decision (item 29).
+  const applied = clients.filter(
+    (client) => client.selfRegistered && client.status === "PENDING",
+  );
 
   return (
     <div className="grid max-w-5xl gap-6">
@@ -228,6 +232,30 @@ export default function ApiAccessPage() {
           message={loadError.message}
           requestId={loadError.requestId}
         />
+      ) : null}
+
+      {applied.length > 0 ? (
+        <div className="rounded-md border border-[var(--verdict-caution)]/40 bg-[var(--verdict-caution-surface)] px-4 py-3 text-sm">
+          <p className="font-semibold">Applications from the portal</p>
+          <p className="mt-1">
+            These organisations applied for themselves and can do nothing yet.
+            Confirm each applicant by telephone or letter, then approve or
+            refuse it. An application left undecided lapses after 30 days.
+          </p>
+          <ul className="mt-2 list-disc pl-5">
+            {applied.map((client) => (
+              <li key={client.id}>
+                <Link
+                  href={`/settings/api-access/${client.id}`}
+                  className="font-medium underline underline-offset-2"
+                >
+                  {client.organisationName}
+                </Link>{" "}
+                — applied {shortDay(client.createdAt)}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {paused.length > 0 ? (
@@ -318,7 +346,9 @@ export default function ApiAccessPage() {
                       {client.organisationName}
                     </Link>
                     <span className="block text-xs text-black/45">
-                      Registered {shortDay(client.createdAt)}
+                      {client.selfRegistered ? "Applied" : "Registered"}{" "}
+                      {shortDay(client.createdAt)}
+                      {client.selfRegistered ? " through the portal" : ""}
                     </span>
                   </td>
                   <td className="px-4 py-3">

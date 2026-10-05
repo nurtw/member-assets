@@ -89,7 +89,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.6 | 4 October 2026 | Abuse detection pauses an organisation for a time (Requirement 14.4). An external request carries its own request id (Requirement 14.5). Rate-limit counters are kept in Postgres, and daily quotas start at 1,000 and 5,000. See §23.24. | The project owner (`QUESTIONS.md` EXT-14, EXT-15, EXT-16), 3 October 2026. |
 | 1.7 | 4 October 2026 | Filtered totals by zone or branch only, rounded to the nearest 10 (Requirement 13.6). Reporting periods are a month, quarter, or year (13.7). The grand total moves to its own route, and an organisation reads the names it filters by from a metadata route (13.8). See §23.25. | The project owner (`QUESTIONS.md` EXT-18, EXT-19), 4 October 2026. |
 | 1.8 | 4 October 2026 | Requirement 17.1 is defined by permission, not role. A new officer gets a temporary password (17.3). Failed sign-ins lock the account for a time (17.4). The Union may compose roles, never holding `vehicle.declare` or the settlement account. See §23.26. | The project owner (`QUESTIONS.md` GOV-16, GOV-17, GOV-19, GOV-20), 4 October 2026. |
-| 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. Payment is offered wherever a vehicle is checked, and through a personal pay link that never says what is owed. See §23.10, §23.22–§23.27, Requirements 27.7 and 27.8. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20, PAY-21), 5 October 2026. |
+| 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. Payment is offered wherever a vehicle is checked, and through a personal pay link that never says what is owed. See §23.10, §23.22–§23.27, Requirements 12.11, 27.7 and 27.8. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20, PAY-21), 5 October 2026. |
 
 ---
 
@@ -489,6 +489,20 @@ register and approve it. The approving officer and the time are recorded, as pro
 how long the replaced token keeps working: not at all, one hour, 24 hours, or seven days, and
 never beyond its own expiry. A token that may have leaked is revoked instead, which takes
 effect at once (EXT-11).
+
+**Requirement 12.11** *(revision 1.9)*. An external organisation may apply for access
+itself, through a portal of its own, and sign in there (EXT-20).
+
+- An application creates a pending organisation that can do nothing. Approval remains the
+  act of a holder of `api_client.manage` (Requirement 12.9), who first confirms the
+  applicant by telephone or letter and records which.
+- A portal account is not an officer account. It holds no role or permission, and its
+  session reaches the portal and nothing else.
+- An approved organisation sees its own usage, in the terms its own answers used and no
+  more (Requirement 14.3), and creates, replaces, and revokes its own token, which is shown
+  to it alone. Its scopes, disclosure profile, and limits remain the Union's to set.
+- The application form is limited per address, stops while too many applications await a
+  decision, and an application left undecided lapses after 30 days.
 
 ---
 
@@ -981,7 +995,7 @@ Determined 3 October 2026 (`QUESTIONS.md` EXT-06, EXT-07, EXT-10, EXT-11).
   - The open form is limited per address, pending applications are capped, and an
     unapproved application expires after 30 days.
 
-  Roadmap item 29.
+  Requirement 12.11; roadmap item 29.
 
 ### 23.24 Rate limits and abuse detection *(revision 1.6)*
 

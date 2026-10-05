@@ -333,3 +333,27 @@ export {
   type VerifyInput,
   type VerifyMembershipInput,
 } from './verification.js';
+
+export {
+  APPLICANT_CONFIRMATION_LABELS,
+  PORTAL_USAGE_LABELS,
+  applicantConfirmationSchema,
+  createPortalAccountSchema,
+  portalApplicationSchema,
+  portalChangePasswordSchema,
+  portalLoginSchema,
+  resetPortalPasswordSchema,
+  type ApplicantConfirmationInput,
+  type CreatePortalAccountInput,
+  type IssuedPortalPassword,
+  type PortalAccountSummary,
+  type PortalApplicationInput,
+  type PortalApplicationReceived,
+  type PortalChangePasswordInput,
+  type PortalLoginInput,
+  type PortalMe,
+  type PortalTokens,
+  type PortalUsage,
+  type PortalUsageDay,
+  type ResetPortalPasswordInput,
+} from './portal.js';

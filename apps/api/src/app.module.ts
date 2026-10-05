@@ -5,6 +5,7 @@ import { ApiClientModule } from './api-client/api-client.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CardModule } from './card/card.module.js';
+import { PublicRateLimitModule } from './common/public-rate-limit.service.js';
 import { DisclosureModule } from './disclosure/disclosure.module.js';
 import { DocsModule } from './docs/docs.module.js';
 import { HealthModule } from './health/health.module.js';
@@ -13,6 +14,7 @@ import { MediaModule } from './media/media.module.js';
 import { MembershipModule } from './membership/membership.module.js';
 import { OrganisationModule } from './organisation/organisation.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
+import { PortalModule } from './portal/portal.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { RateLimitModule } from './rate-limit/rate-limit.module.js';
 import { SettingsModule } from './settings/settings.module.js';
@@ -36,6 +38,7 @@ import { VerificationModule } from './verification/verification.module.js';
   imports: [
     PrismaModule,
     SettingsModule,
+    PublicRateLimitModule,
     AuditModule,
     AuthModule,
     DocsModule,
@@ -55,6 +58,7 @@ import { VerificationModule } from './verification/verification.module.js';
     RateLimitModule,
     AggregateModule,
     UsersModule,
+    PortalModule,
   ],
 })
 export class AppModule {}

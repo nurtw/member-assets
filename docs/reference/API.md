@@ -151,9 +151,16 @@ Two consequences an integrator will observe:
 
 A route carrying neither an explicit permission requirement nor an explicit public
 declaration is **refused**, not allowed. Every route declares exactly one of a permission, a
-scope, or public access. The public surface is health, login, logout, signed media links,
-the payment provider's webhook, and the two routes behind a personal pay link (`GET` and
-`POST /pay/{code}`). The test suite fails if another appears.
+scope, the organisation portal, or public access. The public surface is health, login,
+logout, signed media links, the payment provider's webhook, the two routes behind a
+personal pay link (`GET` and `POST /pay/{code}`), and the portal's application, sign-in,
+and sign-out routes. The test suite fails if another appears.
+
+**The organisation portal** (`/portal/...`) is a fifth kind of route. It is authenticated by
+the portal's own session cookie, `nurtw_portal_session`, and nothing else: an officer's
+session and an API token do not reach it, and a portal session reaches no other route and
+satisfies no permission. Each portal route acts on the organisation the session belongs to
+and takes no organisation's id from the caller.
 
 The pay routes are public because holding a pay link is what lets a payer pay. They
 answer with the subject's label and the published amounts, never with what is owed or

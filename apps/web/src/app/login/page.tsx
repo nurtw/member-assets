@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { mutate } from "swr";
@@ -166,6 +167,13 @@ export default function LoginPage() {
         <p className="mt-6 text-center text-xs leading-relaxed text-black/50">
           Access is restricted to authorised officers of the Union. Activity on
           this System is recorded.
+        </p>
+        <p className="mt-2 text-center text-xs text-black/50">
+          An outside organisation?{" "}
+          <Link href="/portal/login" className="underline underline-offset-2">
+            Use the organisation portal
+          </Link>
+          .
         </p>
       </div>
     </main>

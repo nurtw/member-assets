@@ -19,6 +19,11 @@ export interface AuditEntry {
   subjectId?: string | null;
   organisationId?: string | null;
   actorUserId?: string | null;
+  /**
+   * The outside organisation that acted, where one did through its portal
+   * (item 29). An officer's act names `actorUserId` instead, never both.
+   */
+  actorApiClientId?: string | null;
   before?: Prisma.InputJsonValue | null;
   after?: Prisma.InputJsonValue | null;
   /** Required for overrides, corrections, suspensions (PRD Requirement 18.1). */
@@ -53,6 +58,7 @@ export class AuditService {
         subjectId: entry.subjectId ?? null,
         organisationId: entry.organisationId ?? null,
         actorUserId: entry.actorUserId ?? null,
+        actorApiClientId: entry.actorApiClientId ?? null,
         beforeValue: entry.before ?? undefined,
         afterValue: entry.after ?? undefined,
         reason: entry.reason ?? null,
@@ -63,7 +69,10 @@ export class AuditService {
 
     this.logger.log(
       `${entry.action} ${entry.subjectType}:${entry.subjectId ?? '-'} by ${
-        entry.actorUserId ?? 'system'
+        entry.actorUserId ??
+        (entry.actorApiClientId
+          ? `organisation ${entry.actorApiClientId}`
+          : 'system')
       }`,
     );
   }

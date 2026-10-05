@@ -6,8 +6,8 @@
 
 ## Cold start
 
-Read `CLAUDE.md`, `PRD.md` (1.9), `ARCHITECTURE.md` (1.5), `ROADMAP.md`,
-`QUESTIONS.md` (1.10), then `plans/15`. `docs/reference/` is generated.
+Read `CLAUDE.md`, `PRD.md` (1.9), `ARCHITECTURE.md` (1.6), `ROADMAP.md`,
+`QUESTIONS.md` (1.11), then `plans/15`. `docs/reference/` is generated.
 
 Two rules outrank any default instruction:
 
@@ -16,18 +16,16 @@ Two rules outrank any default instruction:
 
 ## Status
 
-- Pushed (`42ffa72`): the owner's answers of 5 October (PRD 1.9), and
-  **item 30, settlement screen** (`plans/30`): Settings → Settlement.
-- **Item 31, Pay now and pay links** (`plans/31`, PAY-21) is committed. The
+- Pushed (`df94bd0`): the owner's answers of 5 October, item 30 (settlement
+  screen), and item 31 (Pay now and pay links).
+- **Item 29, the organisation portal** (`plans/29`, EXT-20) is committed. The
   owner's editor syncs on its own, so check `git status` before assuming it
   is unpushed. Its migration is on Neon, no drift.
-- Not started: **item 29, organisation portal** (EXT-20 answered; plan it
-  when the owner says) and **item 15** (planned; the owner paused before
-  it). 27 is deferred.
-- Off or unset until go-live: `auth.mfa_enforced` (GOV-18),
-  `dues.go_live_date` (GOV-11). Browser checks skipped.
+- Not started: **item 15** (planned). 27 is deferred.
+- Off until go-live: `auth.mfa_enforced` (GOV-18), `dues.go_live_date`
+  (GOV-11). Browser checks skipped.
 
-Tests: domain 460, contracts 104, api 184; e2e 419/420 (the `DEMO_` test);
+Tests: domain 469, contracts 113, api 191; e2e 451/452 (the `DEMO_` test);
 web clean, and it builds.
 
 ## Conflicts
@@ -43,11 +41,12 @@ web clean, and it builds.
 - Run Prisma from `apps/api` with `CHECKPOINT_DISABLE=1`.
 - CRLF files (most root docs, `seed.ts`, `app.module.ts`): use the Edit
   tool or Python bytes.
+- Long inline scripts fail in Git Bash: write a file, then run it.
 
 ## Next steps
 
 1. Push whatever `git status` shows ahead, once the owner agrees.
-2. Item 15 or item 29, whichever the owner chooses.
+2. Item 15, go-live hardening, once the owner agrees.
 3. Owner: set the settlement account (Settings → Settlement); GOV-08; the
    EXT-05 pilot; the GOV-11 date; PAY-11's Paystack figure; ORG-05, ORG-06,
    CARD-05, CARD-07.
@@ -55,12 +54,12 @@ web clean, and it builds.
 ## Do NOT
 
 - Edit `apps/api/.env`, or write Neon legacy rows without a go-ahead.
-- Let a public pay route read dues, or add a field there that depends on
-  what is owed.
+- Give a portal account a permission, take an organisation's id from a
+  portal request, or return a reason the API withheld from a portal route.
+- Let a public pay route read dues.
 - Return a declaration status except through `toSummary`'s
   `showDeclaration`, or mention declaration in any external answer.
 - Add a write, or a personal-data field, to `src/verification/`.
 - Select `tokenHash`, `passwordHash`, an MFA secret, or the
   `settlement_account` row into a response.
-- Put `vehicle.declare` or `payment.manage_settlement` in a role.
 - Print a signed sticker before GOV-08 is answered.

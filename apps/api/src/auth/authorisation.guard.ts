@@ -21,6 +21,13 @@ import {
   resolveRequestId,
 } from '../common/error-response.js';
 import { ValidationException } from '../common/zod-validation.pipe.js';
+import {
+  PORTAL_COOKIE_NAME,
+  PORTAL_METADATA_KEY,
+  type PortalAccess,
+  type PortalRequest,
+} from '../portal/portal-account.decorator.js';
+import { PortalSessionService } from '../portal/portal-session.service.js';
 import { RateLimitService } from '../rate-limit/rate-limit.service.js';
 import {
   AUTH_MFA_ENFORCED,
@@ -81,6 +88,7 @@ export class AuthorisationGuard implements CanActivate {
     private readonly requests: ApiRequestLogService,
     private readonly rateLimits: RateLimitService,
     private readonly settings: SettingsService,
+    private readonly portalSessions: PortalSessionService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -100,6 +108,16 @@ export class AuthorisationGuard implements CanActivate {
     // is refused instead of opened.
     if (scope) {
       return this.authenticateExternal(context, scope, isPublic === true);
+    }
+
+    // The organisation portal (item 29). Checked before `@Public()` for the
+    // same reason: a portal route marked public by mistake is refused.
+    const portal = this.reflector.getAllAndOverride<PortalAccess | undefined>(
+      PORTAL_METADATA_KEY,
+      [handler, controller],
+    );
+    if (portal) {
+      return this.authenticatePortal(context, portal, isPublic === true);
     }
 
     if (isPublic) {
@@ -280,7 +298,47 @@ export class AuthorisationGuard implements CanActivate {
     return true;
   }
 
-  private extractToken(request: AuthenticatedRequest): string | null {
+  /**
+   * The portal path (item 29, `QUESTIONS.md` EXT-20). The portal's own cookie
+   * is the only credential considered: the officers' cookie and the
+   * `Authorization` header are not read, so neither an officer nor an API
+   * token reaches a portal route, and a portal session reaches nothing else.
+   *
+   * A route that declares the portal together with a permission or with
+   * `@Public()` has been declared wrongly, and is refused outright.
+   */
+  private async authenticatePortal(
+    context: ExecutionContext,
+    access: PortalAccess,
+    isPublic: boolean,
+  ): Promise<boolean> {
+    const permission = this.reflector.getAllAndOverride<string | undefined>(
+      PERMISSION_METADATA_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    if (permission || isPublic) {
+      throw new ForbiddenException();
+    }
+
+    const request = context.switchToHttp().getRequest<PortalRequest>();
+    const token = this.extractToken(request, PORTAL_COOKIE_NAME);
+    const account = token ? await this.portalSessions.resolve(token) : null;
+    if (!account) {
+      throw new UnauthorizedException();
+    }
+    // A password the administrator gave opens nothing until it is changed,
+    // as for an officer (item 28).
+    if (access === 'READY' && account.mustChangePassword) {
+      throw new ForbiddenException();
+    }
+    request.portalAccount = account;
+    return true;
+  }
+
+  private extractToken(
+    request: Request,
+    cookieName: string = SESSION_COOKIE_NAME,
+  ): string | null {
     const cookieHeader = request.headers.cookie;
     if (!cookieHeader) {
       return null;
@@ -288,7 +346,7 @@ export class AuthorisationGuard implements CanActivate {
 
     for (const part of cookieHeader.split(';')) {
       const [name, ...rest] = part.trim().split('=');
-      if (name === SESSION_COOKIE_NAME) {
+      if (name === cookieName) {
         const value = rest.join('=');
         return value.length > 0 ? decodeURIComponent(value) : null;
       }

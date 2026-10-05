@@ -311,6 +311,17 @@ export {
 } from './api-client/status.js';
 
 export {
+  APPLICANT_CONFIRMATIONS,
+  PORTAL_USAGE_CLASSES,
+  applicationExpiresAt,
+  emptyUsageTally,
+  isApplicationExpired,
+  portalUsageClass,
+  type ApplicantConfirmation,
+  type PortalUsageClass,
+} from './api-client/portal.js';
+
+export {
   ipInRange,
   ipInRanges,
   isValidIpRange,

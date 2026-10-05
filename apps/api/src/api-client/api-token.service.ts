@@ -13,7 +13,6 @@ import {
 import { apiTokenState, retirementFor } from '@nurtw/domain';
 
 import { AuditService } from '../audit/audit.service.js';
-import type { ActorContext } from '../organisation/organisation.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   API_TOKEN_EXPIRY_DAYS,
@@ -27,6 +26,32 @@ import {
 import { generateApiToken } from './api-token.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Who is acting on a token. An officer holding `api_token.manage`, or the
+ * organisation itself through its portal account (item 29, EXT-20), which may
+ * act on its own tokens and no other's. Exactly one of the two is set.
+ */
+export interface TokenActor {
+  userId: string | null;
+  portalAccountId?: string | null;
+  requestId?: string | null;
+  ipAddress?: string | null;
+}
+
+/** Who the audit trail names: the officer, or the organisation. */
+function auditActor(actor: TokenActor, clientId: string) {
+  return actor.userId
+    ? { actorUserId: actor.userId }
+    : { actorUserId: null, actorApiClientId: clientId };
+}
+
+/** Recorded with an organisation's own act, so the account is named too. */
+function viaPortal(actor: TokenActor) {
+  return actor.portalAccountId
+    ? { portalAccountId: actor.portalAccountId }
+    : {};
+}
 
 /**
  * Issuing, rotating, and revoking tokens (PRD Requirements 12.1, 12.2, 12.6,
@@ -53,7 +78,7 @@ export class ApiTokenService {
     private readonly clients: ApiClientService,
   ) {}
 
-  async issue(actor: ActorContext, clientId: string): Promise<IssuedApiToken> {
+  async issue(actor: TokenActor, clientId: string): Promise<IssuedApiToken> {
     const now = new Date();
     const [expiresAt, reminderDays] = await Promise.all([
       this.expiryFrom(now),
@@ -107,11 +132,12 @@ export class ApiTokenService {
           action: 'api_token.issue',
           subjectType: 'api_token',
           subjectId: row.id,
-          actorUserId: actor.userId,
+          ...auditActor(actor, clientId),
           after: {
             clientId,
             prefix: generated.prefix,
             expiresAt: expiresAt.toISOString(),
+            ...viaPortal(actor),
           },
           requestId: actor.requestId,
           ipAddress: actor.ipAddress,
@@ -131,7 +157,7 @@ export class ApiTokenService {
    * accepted until `retiresAt`, which is never later than its own expiry.
    */
   async rotate(
-    actor: ActorContext,
+    actor: TokenActor,
     clientId: string,
     tokenId: string,
     input: RotateApiTokenInput,
@@ -186,7 +212,7 @@ export class ApiTokenService {
           action: 'api_token.rotate',
           subjectType: 'api_token',
           subjectId: row.id,
-          actorUserId: actor.userId,
+          ...auditActor(actor, clientId),
           before: {
             tokenId: old.id,
             prefix: old.tokenPrefix,
@@ -198,6 +224,7 @@ export class ApiTokenService {
             expiresAt: expiresAt.toISOString(),
             overlap: input.overlap,
             replacedTokenRetiresAt: retiresAt.toISOString(),
+            ...viaPortal(actor),
           },
           requestId: actor.requestId,
           ipAddress: actor.ipAddress,
@@ -217,7 +244,7 @@ export class ApiTokenService {
    * in use, or one still running out its overlap after a rotation.
    */
   async revoke(
-    actor: ActorContext,
+    actor: TokenActor,
     clientId: string,
     tokenId: string,
     input: RevokeApiTokenInput,
@@ -249,13 +276,13 @@ export class ApiTokenService {
           action: 'api_token.revoke',
           subjectType: 'api_token',
           subjectId: tokenId,
-          actorUserId: actor.userId,
+          ...auditActor(actor, clientId),
           before: {
             clientId,
             prefix: before.tokenPrefix,
             state: apiTokenState(before, now),
           },
-          after: { state: 'REVOKED' },
+          after: { state: 'REVOKED', ...viaPortal(actor) },
           reason: input.reason,
           requestId: actor.requestId,
           ipAddress: actor.ipAddress,

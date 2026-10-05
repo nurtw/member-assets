@@ -32,6 +32,11 @@ import { ApiTokenService } from './api-token.service.js';
     ApiClientAuthService,
     ApiRequestLogService,
   ],
-  exports: [ApiClientAuthService, ApiRequestLogService],
+  exports: [
+    ApiClientAuthService,
+    ApiRequestLogService,
+    ApiClientService,
+    ApiTokenService,
+  ],
 })
 export class ApiClientModule {}

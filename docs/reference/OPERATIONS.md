@@ -545,6 +545,61 @@ From **API access** on the dashboard, or `/api/v1/api-clients`. Three acts, in t
 The organisation sends the token as `Authorization: Bearer <token>` and in no other way. A
 token in a URL or a cookie is ignored, and is redacted from the logs.
 
+### An organisation that applies for itself: the portal
+
+Item 29 (`QUESTIONS.md` EXT-20). An outside organisation may apply at **`/portal/apply`** on
+the web application, and signs in at **`/portal/login`**. Applying makes a pending
+organisation that can do nothing, and a portal account that can see only that.
+
+**Deciding an application** (`api_client.manage`):
+
+1. **API access** lists "Applications from the portal". Open one.
+2. **Confirm who applied**, by telephoning the number given or by writing to the
+   organisation. Nobody at the Union has checked it until you do, and the System sends no
+   mail.
+3. **Approve** as for any organisation (above), and say how the applicant was confirmed:
+   by telephone or by letter. The approval is refused without it. Or refuse the application
+   under **Status**, with a reason.
+
+An application nobody decides **lapses after 30 days** (`portal.application_expiry_days`).
+The organisation's record is kept, marked revoked with that reason, and its portal account
+is removed so it may apply again. An hourly job inside the API does this.
+
+**What the organisation can do in its portal, once approved:** see its status, scopes, what
+its answers carry, and its limits; see its own usage by day; and create, replace, and
+revoke its own token. The token is shown to the organisation alone, so with the portal no
+officer need handle one. It cannot change its scopes, profile, or limits: those stay here.
+
+**What its usage shows.** Counts only, in the terms its own answers used. A forged sticker
+code is counted with every other non-match, a refusal carries no reason, and a pause shows
+when it ends and never why. The reasons stay in `api_request_log` and the audit trail for
+the Union.
+
+**An organisation an officer registered** has no portal account until you give it one:
+on its page, **Portal account**, enter the contact's name and email. The System shows a
+temporary password once; pass it on. The organisation must choose its own at first
+sign-in.
+
+**A forgotten portal password, or a locked account.** On the organisation's page, **Reset
+the portal password**, with a reason. It shows a new temporary password once, signs the
+account out everywhere, and lifts any lock. Ten failed sign-ins lock a portal account for
+fifteen minutes, as for officers.
+
+**The open form's limits.** One address may send 3 applications an hour
+(`portal.applications_per_hour`), and the form stops taking applications while 50 await a
+decision (`portal.pending_cap`). Beyond either it answers 429. Raise the cap, or decide the
+waiting applications, if genuine applicants report being turned away.
+
+Audited as `api_client.apply`, `api_client.application_expired`, `portal_account.create`,
+`portal_account.password_reset`, `portal_account.password_change`, and
+`portal_account.lockout`. A token an organisation issued, replaced, or revoked itself is
+audited as before, with the organisation as the actor in place of an officer:
+
+```sql
+SELECT action, subject_id, created_at FROM audit_event
+ WHERE actor_api_client_id = '<organisation id>' ORDER BY created_at DESC;
+```
+
 ### Replacing and revoking API tokens
 
 - A token lasts 90 days (`api_token.expiry_days`). From 14 days before it expires
