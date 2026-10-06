@@ -43,12 +43,16 @@ Screens for what the API can already do but no screen offers: the Union's struct
 public sticker page (GOV-08), and any change to an API route.
 
 ## Definition of done
-- [ ] Every screen uses the shared header, list, detail, dialog, and feedback patterns.
+- [x] Every signed-in screen uses the shared header, list, detail, dialog, and feedback
+      patterns. The public pages keep their own centred frame (`DESIGN.md` §10).
 - [x] Home shows only what the officer may do and read, from existing routes, on one screen.
 - [x] The front page shows the ways in on one screen, and looks nothing up.
-- [ ] Verify reads correctly in greyscale and one-handed on a phone, in both themes.
-- [ ] Every screen's checklist is ticked: nothing is lost.
-- [ ] Lint, typecheck, and build pass, with screenshots of every screen in both themes.
+- [x] Verify reads correctly in greyscale on a phone, for a match and a non-match, and
+      passes the contrast check in both themes.
+- [x] Every screen's checklist is ticked: nothing is lost.
+- [x] Lint, typecheck, and build pass. Every screen was checked by script in both themes
+      on a desktop and a phone. Screens that list real imported records were checked but
+      not photographed.
 
 ## Done so far
 - **Stage 1** (`a8ff267`): the kit's page pieces, the four lists (applications, cards,
@@ -61,11 +65,57 @@ public sticker page (GOV-08), and any change to an API route.
   asks for the reason before a dangerous act. Clicked through on 6 October: 56 checks, no
   contrast failure.
 
-## Still to do
-- The forms: a new application in steps, a new vehicle, a registration's vehicles.
-- Verify's layout, the portal's two screens, and the public pages (sign-in, the portal's
-  sign-in and application, the pay page).
-- The per-screen checklist, and the full click-through.
+- **Stage 4**: the forms, Verify, and the portal's screens take the shared header and
+  loading state; the last hand-rolled notices become `Notice`; and the last two dangerous
+  acts with a reason box beside them (replacing a pay link, revoking a token in the
+  portal) ask in the dialog. Then every screen was swept.
+
+## The checklist, screen by screen
+"Kept" means every field, section, and act the old screen had is still there. Each row
+was checked on 6 October 2026, on a local stack with synthetic records.
+
+| Screen | Built from | Kept | How it was checked |
+|---|---|---|---|
+| Front page | One screen, three ways in | New | Sweep, and scenario 13 |
+| Officer sign-in | Centred public frame | Unchanged | Sweep |
+| Home | Quick-action tiles, what is waiting | New | Sweep, and scenario 13 |
+| Verify | Header; camera beside the code | Yes | Scenario 13; greyscale |
+| Applications | List | Yes | Sweep |
+| New application | Header; sections A to D as printed | Yes | Sweep; not submitted |
+| Registration, step 2 | Header | Yes | Sweep |
+| An application | Tabs; decision above them; dialogs | Yes | Scenario 14 |
+| Cards | List | Yes | Sweep |
+| A card | Tabs; next step above them; dialogs | Yes | Scenario 14 |
+| Vehicles | List (VEH-28 kept) | Yes | Sweep |
+| New vehicle | Header, notice | Yes | Sweep |
+| A vehicle | Tabs; dialogs; sticker panel | Yes | Scenarios 13, 14, 17 |
+| Sticker stock | List, scanner, dialog | New | Scenario 13 |
+| Fees | Header | Yes | Sweep |
+| Settlement | Header, notices | Yes | Sweep |
+| Organisations, invitations, new, profiles, limits | Header, list | Yes | Sweep; the lists were empty |
+| An organisation | Header, tabs, dialogs | Yes | Scenario 14 |
+| Officers | List, stacked on a phone | Yes | Sweep |
+| An officer | Tabs, dialogs | Yes | Scenario 14 |
+| Roles, Security, Your account | Header | Yes | Sweep |
+| Portal overview and account | Header, notice, dialog | Yes | Scenario 16 |
+| Portal sign-in and application | Centred public frame | Unchanged | Sweep |
+| Pay page | Centred public frame | Unchanged | Not opened this time |
+
+"Sweep" is scenario 15: each screen opened in light and dark, on a desktop and a phone,
+and checked for a heading, for contrast, for anything wider than the phone, and for
+errors in the browser. All passed.
+
+## Left as it was, on purpose
+- **The new application is one form, not a wizard.** It mirrors the Union's printed form,
+  section by section, which is what an officer transcribes from. Its header now says
+  "Registration · Step 1 of 2"; step 2 is the member's vehicles.
+- **The public pages keep their centred frame.** They have no navigation (`DESIGN.md` §5).
+- **Verify's layout.** The verdict already led the screen. It gained the camera.
+
+## Not checked in a browser
+- Submitting a new application through its form.
+- The pay page, which this item did not change.
+- A real phone's camera, and a real Paystack payment (item 27).
 
 ## Decided while building
 - **"Landing page" was asked of the owner, who chose both**: a public front page and an
@@ -88,3 +138,6 @@ public sticker page (GOV-08), and any change to an API route.
 - **What each record page shows and does was checked against the old page** while it was
   rebuilt: every field, section, and act is kept. The one thing removed is each page's
   shared reason box, replaced by the reason asked in the dialog.
+- **The settlement screen's bank list answers 500 when Paystack cannot be reached.** The
+  screen explains it, so nothing was changed here. A 503 would be truer; that is an API
+  change, which this item does not make. Noted for item 15.

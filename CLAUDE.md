@@ -985,9 +985,14 @@ dialogs, menus, and the sheet from their own files). See `DESIGN.md` §8–§9 a
   (`/overview`) is one screen of quick actions by permission, with counts from lists the
   officer may already read. Neither adds an API route. A new quick action is a tile there.
 - **Pages are built from the kit's page pieces** (`DESIGN.md` §10): `PageHeader`,
-  `ListToolbar`, `Table stacked`, `Loading`, `EmptyState`, `Detail`, `ConfirmDialog`, and a
-  toast for success. Item 34 is moving the remaining screens onto them; `plans/34` says
-  which are left.
+  `ListToolbar`, `Table stacked`, `Loading`, `EmptyState`, `Detail`, `Notice`, and a toast
+  for success. Build a new screen from them; do not hand-roll a header or a notice box.
+- **A record page is tabs kept in the address** (`useTabParam`), with what the record is
+  waiting for above them. A tab is offered only where it has something for this officer.
+- **A dangerous act goes through `ConfirmDialog`**, which says what will happen and asks
+  for the reason there. Never put a reason box beside a danger button, and never share
+  one reason box between several acts. `reason={{ optional: true }}` is for an approval's
+  note.
 - **The command menu reaches screens and actions only.** Never make it search records.
 - **The theme script** in `app/layout.tsx` runs before the first paint. If item 15 adds a
   content security policy, allow it by its hash.

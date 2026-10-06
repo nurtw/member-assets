@@ -13,6 +13,7 @@ import {
   Button,
   ErrorNotice,
   Field,
+  PageHeader,
   Section,
   Select,
   TextArea,
@@ -234,16 +235,12 @@ export default function NewApplicationPage() {
 
   return (
     <form onSubmit={onSubmit} className="grid max-w-3xl gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">
-          Membership registration
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Transcribe the completed Membership / Registration / Guarantorship
-          form. The application is saved as a draft and may be amended until it
-          is submitted for review.
-        </p>
-      </div>
+      <PageHeader
+        title="Membership registration"
+        back={{ href: "/applications", label: "Applications" }}
+        meta="Registration · Step 1 of 2"
+        description="Transcribe the completed Membership / Registration / Guarantorship form, section by section as it is printed. The application is saved as a draft and may be amended until it is submitted for review. The member's vehicles are added in the next step."
+      />
 
       {shown ? (
         <ErrorNotice

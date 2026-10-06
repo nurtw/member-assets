@@ -12,8 +12,8 @@ import {
   Section,
   Select,
   StatusChip,
-  TextInput,
 } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiError, api, fetcher } from "@/lib/api";
 
 /**
@@ -51,7 +51,7 @@ export function PortalTokensSection({ onChanged }: { onChanged: () => void }) {
   const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
   const [overlap, setOverlap] = useState("ONE_DAY");
   const [revokeId, setRevokeId] = useState("");
-  const [revokeReason, setRevokeReason] = useState("");
+  const [revoking, setRevoking] = useState(false);
 
   const tokens = data?.tokens ?? [];
   const current = tokens.find((token) => token.state === "CURRENT") ?? null;
@@ -296,35 +296,51 @@ export function PortalTokensSection({ onChanged }: { onChanged: () => void }) {
                 ))}
               </Select>
             </Field>
-            <Field label="Reason" htmlFor="portalRevokeReason" required>
-              <TextInput
-                id="portalRevokeReason"
-                value={revokeReason}
-                onChange={(event) => setRevokeReason(event.target.value)}
-                maxLength={1000}
-              />
-            </Field>
           </div>
           <div>
             <Button
               type="button"
               variant="danger"
-              disabled={busy || !revokeId || revokeReason.trim().length < 4}
-              onClick={() =>
-                void act(async () => {
-                  await api.post(`/portal/tokens/${revokeId}/revoke`, {
-                    reason: revokeReason.trim(),
-                  });
-                  setRevokeId("");
-                  setRevokeReason("");
-                }, "That token is already revoked.")
-              }
+              disabled={busy || !revokeId}
+              onClick={() => setRevoking(true)}
             >
               Revoke the token
             </Button>
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={revoking}
+        onOpenChange={setRevoking}
+        title="Revoke this token?"
+        description={
+          <p>
+            The token stops at once and cannot be brought back. Anything still
+            using it is refused from its next request.
+          </p>
+        }
+        confirmLabel="Revoke the token"
+        reason={{ hint: "Recorded with the revocation." }}
+        onConfirm={async (reason) => {
+          try {
+            await api.post(`/portal/tokens/${revokeId}/revoke`, { reason });
+          } catch (caught) {
+            if (caught instanceof ApiError && caught.status === 409) {
+              await mutate();
+              throw new ApiError(
+                409,
+                "That token is already revoked.",
+                caught.requestId,
+              );
+            }
+            throw caught;
+          }
+          setRevokeId("");
+          await mutate();
+          onChanged();
+        }}
+      />
     </Section>
   );
 }

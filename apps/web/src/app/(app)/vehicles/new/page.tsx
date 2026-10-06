@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Notice, PageHeader } from "@/components/ui";
 import { VehicleForm } from "@/components/vehicle-form";
 import { useSession } from "@/lib/session";
 
@@ -28,27 +29,21 @@ export default function NewVehiclePage() {
 
   return (
     <div className="grid max-w-2xl gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">
-          {mode === "declare" ? "Declare a vehicle" : "Record a vehicle"}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {mode === "declare"
+      <PageHeader
+        title={mode === "declare" ? "Declare a vehicle" : "Record a vehicle"}
+        back={{ href: "/vehicles", label: "Vehicles" }}
+        description={
+          mode === "declare"
             ? "A declaration is not an ownership claim — it records that the Union has seen evidence to its own satisfaction, nothing more. A vehicle already on record is declared in place."
-            : "The vehicle goes on record. It is not declared, and counts for nothing outside the Union until an authorised officer declares it and a sticker is attached."}
-        </p>
-      </div>
+            : "The vehicle goes on record. It is not declared, and counts for nothing outside the Union until an authorised officer declares it and a sticker is attached."
+        }
+      />
 
       {disputed ? (
-        <div className="rounded-md border border-verdict-caution/30 bg-verdict-caution-surface px-4 py-3 text-sm">
-          <p className="font-semibold text-verdict-caution">
-            Recorded as disputed
-          </p>
-          <p className="mt-1">
-            A declaration for this plate already exists and is active. Both
-            declarations are preserved; taking you to this one now.
-          </p>
-        </div>
+        <Notice tone="caution" title="Recorded as disputed" role="status">
+          A declaration for this plate already exists and is active. Both
+          declarations are preserved; taking you to this one now.
+        </Notice>
       ) : null}
 
       <VehicleForm

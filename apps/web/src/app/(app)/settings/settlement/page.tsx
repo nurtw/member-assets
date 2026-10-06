@@ -16,6 +16,7 @@ import {
   ErrorNotice,
   Field,
   Loading,
+  Notice,
   PageHeader,
   Section,
   Select,
@@ -244,15 +245,13 @@ function AccountSection({
 
       {confirmedName ? (
         <>
-          <div className="rounded-md border border-line bg-surface-muted px-4 py-3 text-sm">
-            <p className="text-muted-foreground">
-              Paystack holds this account as
-            </p>
-            <p className="mt-0.5 text-base font-semibold">{confirmedName}</p>
-            <p className="mt-1 text-muted-foreground">
-              Save only if this is the Union&apos;s own account.
-            </p>
-          </div>
+          <Notice
+            tone="info"
+            title={`Paystack holds this account as ${confirmedName}`}
+            role="status"
+          >
+            Save only if this is the Union&apos;s own account.
+          </Notice>
           <Field
             label="Reason"
             htmlFor="settlementReason"

@@ -6,6 +6,8 @@ import {
   Button,
   ErrorNotice,
   Field,
+  Notice,
+  PageHeader,
   Section,
   TextInput,
 } from "@/components/ui";
@@ -52,22 +54,16 @@ export default function PortalAccountPage() {
 
   return (
     <div className="grid max-w-xl gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Account</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {me.account.fullName} · {me.account.email}
-        </p>
-      </div>
+      <PageHeader
+        title="Account"
+        meta={`${me.account.fullName} · ${me.account.email}`}
+      />
 
       {me.account.mustChangePassword ? (
-        <p
-          role="status"
-          className="rounded-md border border-verdict-caution/40 bg-verdict-caution-surface px-4 py-3 text-sm"
-        >
-          <span className="font-semibold">Choose your own password.</span> You
-          signed in with a temporary one from the Union. Nothing else in the
+        <Notice tone="caution" title="Choose your own password" role="status">
+          You signed in with a temporary one from the Union. Nothing else in the
           portal opens until you have changed it.
-        </p>
+        </Notice>
       ) : null}
 
       <Section

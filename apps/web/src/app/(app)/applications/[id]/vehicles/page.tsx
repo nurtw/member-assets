@@ -7,7 +7,13 @@ import { useState } from "react";
 import useSWR from "swr";
 
 import { StickerPromptDialog } from "@/components/sticker-prompt";
-import { Button, ErrorNotice, StatusChip } from "@/components/ui";
+import {
+  Button,
+  ErrorNotice,
+  Loading,
+  PageHeader,
+  StatusChip,
+} from "@/components/ui";
 import { VehicleForm, type SavedVehicle } from "@/components/vehicle-form";
 import { ApiError, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -44,7 +50,7 @@ export default function ApplicantVehiclesPage() {
   const applicationHref = `/applications/${params.id}`;
 
   if (isLoading) {
-    return <p className="text-sm text-faint-foreground">Loading…</p>;
+    return <Loading label="Loading the application" />;
   }
 
   if (!application) {
@@ -75,20 +81,14 @@ export default function ApplicantVehiclesPage() {
 
   return (
     <div className="grid max-w-2xl gap-6">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
-          Registration · Step 2 of 2
-        </p>
-        <h1 className="mt-1 text-xl font-semibold tracking-tight">
-          Add a vehicle for {memberLabel}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Application {application.applicationNumber} is saved
-          {member.status === "PENDING" ? " and awaiting approval" : ""}. Add the
-          vehicle this member drives, or skip this step if they have none. A
-          vehicle added here goes on record; it is declared separately.
-        </p>
-      </div>
+      <PageHeader
+        title={`Add a vehicle for ${memberLabel}`}
+        back={{ href: applicationHref, label: "The application" }}
+        meta="Registration · Step 2 of 2"
+        description={`Application ${application.applicationNumber} is saved${
+          member.status === "PENDING" ? " and awaiting approval" : ""
+        }. Add the vehicle this member drives, or skip this step if they have none. A vehicle added here goes on record; it is declared separately.`}
+      />
 
       {saved.length > 0 ? (
         <div className="rounded-md border border-line bg-surface px-4 py-3">

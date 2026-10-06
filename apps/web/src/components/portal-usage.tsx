@@ -9,7 +9,7 @@ import {
 import { useState } from "react";
 import useSWR from "swr";
 
-import { ErrorNotice, Section, Select } from "@/components/ui";
+import { ErrorNotice, Loading, Section, Select } from "@/components/ui";
 import { ApiError, fetcher } from "@/lib/api";
 
 /**
@@ -145,7 +145,7 @@ export function PortalUsageSection({
           <Breakdown usage={data} />
         </>
       ) : !error ? (
-        <p className="text-sm text-faint-foreground">Loading…</p>
+        <Loading rows={2} label="Loading the usage" />
       ) : null}
     </Section>
   );

@@ -61,7 +61,7 @@ Each item is independently completable and independently testable. Status values
 | 31 | pay-now | §27.8 (rev. 1.9) | done (clicked through 5 Oct; not through to a Paystack payment) | [plan](plans/31-pay-now.md) |
 | 32 | app-shell-and-themes | `DESIGN.md` §3–§6 | done (clicked through 5 Oct) | [plan](plans/32-app-shell-and-themes.md) |
 | 33 | organisations-and-invitations | §12, Req. 12.11 (rev. 1.10) | done (clicked through 5 Oct) | [plan](plans/33-organisations-and-invitations.md) |
-| 34 | screen-restructure | `DESIGN.md` §5 | in-progress | [plan](plans/34-screen-restructure.md) |
+| 34 | screen-restructure | `DESIGN.md` §5, §10–§12 | done (every screen swept 6 Oct) | [plan](plans/34-screen-restructure.md) |
 | 35 | sticker-prompt | §9A.7 (VEH-30) | done (clicked through 5 Oct) | [plan](plans/35-sticker-prompt.md) |
 | 36 | previous-operator-unnamed | §23.19, Req. 11.2 (rev. 1.12) | done | [plan](plans/36-previous-operator-unnamed.md) |
 
@@ -375,7 +375,7 @@ VEH-26, MIG-04, MIG-07, PAY-14 to PAY-17).
 ```
 
 Order of work, as the owner chose: 32, 35, and 33 (done), then 34. Items 36 and 27 were
-asked for on 5 October 2026 while 34 was under way, and done first; 34 then carries on,
+asked for on 5 October 2026 while 34 was under way, and done first; 34 was then finished,
 with the two landing pages the owner asked for the same day. Item 15 is independent
 of them.
 

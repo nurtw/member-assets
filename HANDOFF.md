@@ -7,7 +7,7 @@
 ## Cold start
 
 Read `CLAUDE.md`, `PRD.md` (1.12), `ARCHITECTURE.md` (1.9), `DESIGN.md` (1.2),
-`ROADMAP.md`, `QUESTIONS.md` (1.16), then `plans/34`.
+`ROADMAP.md`, and `QUESTIONS.md` (1.16).
 
 Three rules outrank every default:
 
@@ -17,15 +17,15 @@ Three rules outrank every default:
 
 ## Status
 
-- Pushed through item 27. Neon has all 28 migrations and the seed (6 Oct).
-- **Item 36 done:** the previous operator's name is out of every file.
-- **Item 27 done:** sticker stock by scanning; assigning a sticker is pay,
-  scan, confirm (VEH-29, VEH-31; PRD 1.12).
-- **In progress: item 34.** Done: the kit, the lists, Home, the front page,
-  and the five record pages. `plans/34` lists the screens still to move.
-- Item 15 waits. `auth.mfa_enforced` and `dues.go_live_date` stay off.
+- **Nothing is in progress.** Items 27, 34, 35, and 36 are done.
+- Pushed through `5a18104` (item 27). Item 34's last two commits are local.
+- Neon has all 28 migrations and the seed (6 October).
+- **Item 34 done:** every signed-in screen is on the shared patterns
+  (`DESIGN.md` §10). `plans/34` holds the checklist, screen by screen.
+- Item 15 (go-live hardening) is planned and waits for the owner.
+- `auth.mfa_enforced` and `dues.go_live_date` stay off until go-live.
 
-Tests: domain 518, contracts 132, api 195, web 29.
+Tests: domain 518, contracts 132, api 195, web 29; e2e 491 of 492.
 
 ## Conflicts
 
@@ -38,12 +38,16 @@ Tests: domain 518, contracts 132, api 195, web 29.
 - Under load, e2e transactions and the PDF and password unit tests time
   out; `pay-links.e2e` can fail across an hour boundary. Rerun it.
 - `ECONNREFUSED` on 5433: start Docker Desktop.
-- Item 27 was clicked through with stand-ins for Paystack and the camera.
+- `GET /payments/banks` answers 500, not 503, when Paystack is
+  unreachable. The screen explains it. For item 15.
+- Never tried for real: a Paystack payment, a phone's camera.
 
 ## Next steps
 
-1. Carry on with item 34 (`plans/34`, "Still to do").
-2. Push, once the owner agrees.
+1. Push, once the owner agrees.
+2. Ask the owner what is next: item 15, or one of the screens `plans/34`
+   lists as out of scope (the Union's structure, master data, officer
+   signatures, a member list).
 3. Owner: VEH-32; the settlement account; GOV-08; EXT-05; the GOV-11
    date; PAY-11; ORG-05, ORG-06, CARD-05, CARD-07.
 

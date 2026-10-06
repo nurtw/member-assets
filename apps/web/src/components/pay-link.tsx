@@ -4,7 +4,8 @@ import type { PayLinkSummary } from "@nurtw/contracts";
 import QRCode from "qrcode";
 import { useState } from "react";
 
-import { Button, ErrorNotice, Field, TextInput } from "@/components/ui";
+import { Button, ErrorNotice } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiError, api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
@@ -34,7 +35,6 @@ export function PersonalPayLink({
   const [error, setError] = useState<ApiError | null>(null);
   const [copied, setCopied] = useState(false);
   const [replacing, setReplacing] = useState(false);
-  const [reason, setReason] = useState("");
 
   if (!holds("payment.initiate")) {
     return null;
@@ -152,60 +152,38 @@ export function PersonalPayLink({
               </a>
             </div>
 
-            {!replacing ? (
-              <p className="text-xs text-faint-foreground">
-                Sent to the wrong person?{" "}
-                <button
-                  type="button"
-                  className="underline underline-offset-2"
-                  onClick={() => setReplacing(true)}
-                >
-                  Replace this link
-                </button>
-                . The old one stops working at once.
-              </p>
-            ) : (
-              <div className="grid gap-2">
-                <Field
-                  label="Reason for replacing it"
-                  htmlFor={`replace-${subjectId}`}
-                  required
-                >
-                  <TextInput
-                    id={`replace-${subjectId}`}
-                    value={reason}
-                    onChange={(event) => setReason(event.target.value)}
-                    maxLength={1000}
-                  />
-                </Field>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="danger"
-                    disabled={busy || reason.trim().length < 4}
-                    onClick={async () => {
-                      await run(() =>
-                        api.post<PayLinkSummary>(
-                          `/pay-links/${link.summary.id}/replace`,
-                          { reason: reason.trim() },
-                        ),
-                      );
-                      setReason("");
-                      setReplacing(false);
-                    }}
-                  >
-                    Replace the link
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => setReplacing(false)}
-                  >
-                    Keep it
-                  </Button>
-                </div>
-              </div>
-            )}
+            <p className="text-xs text-faint-foreground">
+              Sent to the wrong person?{" "}
+              <button
+                type="button"
+                className="underline underline-offset-2"
+                onClick={() => setReplacing(true)}
+              >
+                Replace this link
+              </button>
+              . The old one stops working at once.
+            </p>
+            <ConfirmDialog
+              open={replacing}
+              onOpenChange={setReplacing}
+              title="Replace this pay link?"
+              description={
+                <p>
+                  The link and QR code already sent stop working at once. A new
+                  link is made for {link.summary.label}, to send again.
+                </p>
+              }
+              confirmLabel="Replace the link"
+              onConfirm={async (reason) => {
+                await show(
+                  await api.post<PayLinkSummary>(
+                    `/pay-links/${link.summary.id}/replace`,
+                    { reason },
+                  ),
+                );
+              }}
+              reason={{ label: "Reason for replacing it" }}
+            />
           </div>
         </div>
       )}

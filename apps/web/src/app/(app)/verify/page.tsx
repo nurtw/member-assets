@@ -18,7 +18,7 @@ import { DedicatedAccountSummary } from "@/components/dedicated-account-panel";
 import { ExactPaymentLink, day, naira } from "@/components/dues-panel";
 import { PersonalPayLink } from "@/components/pay-link";
 import { ScanButton, StickerScanDialog } from "@/components/qr-scanner";
-import { Button, ErrorNotice, StatusChip } from "@/components/ui";
+import { Button, ErrorNotice, PageHeader, StatusChip } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
@@ -886,7 +886,7 @@ export default function VerifyPage() {
 
   return (
     <div className="mx-auto grid max-w-2xl gap-6">
-      <h1 className="text-xl font-semibold tracking-tight">Verify</h1>
+      <PageHeader title="Verify" />
 
       {tabs.length > 1 ? (
         <div

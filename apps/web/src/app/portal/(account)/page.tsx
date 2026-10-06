@@ -10,7 +10,7 @@ import {
 } from "@/components/api-access";
 import { PortalTokensSection } from "@/components/portal-tokens";
 import { PortalUsageSection } from "@/components/portal-usage";
-import { Section, StatusChip } from "@/components/ui";
+import { PageHeader, Section, StatusChip } from "@/components/ui";
 import { usePortalSession } from "@/lib/portal-session";
 
 /**
@@ -31,14 +31,10 @@ export default function PortalOverviewPage() {
 
   return (
     <div className="grid gap-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">
-          {organisation.name}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your organisation&apos;s access to the NURTW verification API.
-        </p>
-      </div>
+      <PageHeader
+        title={organisation.name}
+        description="Your organisation's access to the NURTW verification API."
+      />
 
       <Standing organisation={organisation} />
 

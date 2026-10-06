@@ -234,6 +234,11 @@ Rules that go with them:
 - **A dangerous act is never one click**, and its reason goes to the audit trail.
 - **A locked step says what unlocks it**, in words: "Opens once the payment is confirmed."
 - **Colour is never the only sign** (§3). A done step has a tick; a status chip has a word.
+- **What a record is waiting for sits above its tabs**, with the act that answers it: an
+  application's decision, a card's approval. The tabs are for reading; the next step is
+  never inside one.
+- **A public page is a centred frame**, with no navigation (§5): signing in, the portal's
+  sign-in and application, and the pay page. The front page is its own shape (§11).
 
 ## 11. Landing pages *(revision 1.2)*
 
