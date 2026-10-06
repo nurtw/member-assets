@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.15
-**Last revised:** 5 October 2026
+**Document version:** 1.16
+**Last revised:** 6 October 2026
 
 ---
 
@@ -49,12 +49,12 @@ thing a year later.
 | Structure and master data (ORG) | 4 | 3 | — | 7 |
 | Membership and registration (MEM) | 4 | 10 | — | 14 |
 | Cards (CARD) | 5 | 3 | — | 8 |
-| Vehicles and stickers (VEH) | 23 | 6 | 1 | 30 |
+| Vehicles and stickers (VEH) | 25 | 7 | — | 32 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 21 | 0 | — | 21 |
-| Governance and go-live (GOV) | 9 | 10 | 1 | 20 |
-| **Total** | **90** | **36** | **2** | **128** |
+| Governance and go-live (GOV) | 10 | 10 | 1 | 21 |
+| **Total** | **93** | **37** | **1** | **131** |
 
 ### Blocking production use right now
 
@@ -615,9 +615,9 @@ separate fee types, so the two can be priced differently later without developme
 **Recorded at.** PRD Requirement 27.2.
 
 **Paused, 3 October 2026.** No new NURTW stickers for now (the project owner). The
-onboarding screen offers reattachment only. The new-sticker path stays built, behind one
-flag, and the System cannot yet print a signed sticker in any case. The previous operator's unrecorded
-stock may be used instead, later: see VEH-29.
+onboarding screen offered reattachment only. The signed-sticker path stays built, behind
+one flag, and the System cannot yet print a signed sticker in any case. Since 5 October
+2026 a vehicle may be given a printed sticker from stock instead: see VEH-29.
 
 ### VEH-21 · Refreshing the legacy register ✅
 
@@ -636,9 +636,9 @@ trying to pass one off in the field.
 **Answered on.** 22 September 2026. **Answered by.** Project owner.
 **Recorded at.** PRD Requirement 9A.4, §23.19, §26.4.
 
-**Being revisited.** On 3 October 2026 the owner asked for a way to add the previous operator's
-unrecorded stickers to the System by scanning them, before attaching them, but not yet.
-Until VEH-29 is taken up, the register stays closed as answered here.
+**Revised.** On 5 October 2026 the owner took up VEH-29: printed stickers the register
+never recorded are added to **stock** by scanning them. No import adds to the register
+itself, which is what this answer was about, and that still holds.
 
 ### VEH-22 · What a positive verification requires ✅
 
@@ -779,24 +779,42 @@ for a caller holding `vehicle.declare` over that vehicle, on every screen and ro
 Outside the Union nothing changes: Requirement 12.7 already keeps declaration out of every
 external response.
 
-### VEH-29 · Adding the previous operator's unrecorded stickers by scanning them 🔒
+### VEH-29 · Adding unrecorded printed stickers by scanning them ✅
 
-**Direction.** The previous operator still holds stickers the Union can use, but they are not on the
-register. The Union wants to add them to the System by scanning them, before attaching them
-to a vehicle. **Not now, later** (the project owner, 3 October 2026).
+**Direction.** The Union holds printed stickers it can use, but they are not on the
+register. It wants to add them to the System by scanning them, and then attach them to
+vehicles. First given by the project owner on 3 October 2026 as "not now, later", and taken
+up on 5 October 2026: "I can't see where to add those stickers."
 
-**Why it needs care when it is taken up.** This reopens the register VEH-21 closed, and a
-legacy barcode is a millisecond timestamp with no proof of authenticity (PRD §26.4).
-Today a fabricated barcode fails because it is not on the register; once barcodes can be
-added by scanning, the controls move to whoever may add them. To settle then:
+**Why it needed care.** A legacy barcode is a millisecond timestamp with no proof of
+authenticity (PRD §26.4). Before this, a fabricated barcode failed because it was not on the
+register. Once barcodes can be added by scanning, that control moves to whoever may add
+them.
 
-1. Who may add a barcode, and whether a second officer must confirm the batch.
-2. Whether the previous operator supplies a list of the stock, so a scan is checked against it.
-3. Whether an added barcode is bound to a plate at once, or only on attachment.
-4. A revision of PRD §23.19 and Requirement 9A.4, which say the register is closed.
+**Answer.**
 
-**Deferred on.** 3 October 2026. **By.** Project owner. **Recorded at.** —. Nothing is
-built; until it is, nothing is added to the register.
+1. **Who may add one: the owner, and those the owner grants.** A new permission,
+   `sticker.stock_intake`, in no role, like `vehicle.declare`. Chosen by the project owner
+   on 5 October 2026 over giving it to every officer who can attach a sticker.
+2. **No list to check against.** The stickers have no digital record anywhere (VEH-15), so
+   a scan is checked only for its shape and for not being held already.
+3. **Bound to a plate on attachment.** A sticker in stock belongs to no vehicle.
+4. **The PRD is revised** (1.12): Requirements 9A.4 and 9A.8, §23.19, and §26.4.
+
+**Answered on.** 5 October 2026. **Answered by.** Project owner. **Recorded at.** PRD
+Requirements 9A.4 and 9A.8 (revision 1.12).
+
+**Built as (item 27), with the choices the project made:**
+
+- **A stock sticker is paid for as a new sticker** (`STICKER_NEW`); the reattachment fee
+  stays for the sticker a vehicle already carries. Both are ₦2,000 today, and each is a
+  setting.
+- **Withdrawing.** A sticker lost, damaged, or added by mistake is withdrawn with a reason.
+  It is final, and nothing is deleted.
+- **A vehicle the register knows may take a stock sticker instead**, when its own is lost
+  or damaged. The officer chooses, and the fee follows the choice.
+- **Whether a second officer confirms stock is not settled:** see VEH-32. Nothing of the
+  kind is built.
 
 ### VEH-30 · Making sticker assignment obvious ✅
 
@@ -825,6 +843,55 @@ recommendation. **Recorded at.** PRD Requirement 9A.7 (revision 1.11).
   which says who can.
 - **The onboarding panel moved up**, under the vehicle's details, where the banner's button
   leads.
+
+**Revised** on 5 October 2026 by VEH-29 and VEH-31: a vehicle may now be given a sticker
+from stock, so "nothing to give" means that stock is empty too; and the order is pay, then
+scan.
+
+### VEH-31 · The order of assigning a sticker: pay, then scan ✅
+
+**Direction.** "When I click on assign sticker, I am supposed to be able to pay for the
+sticker or check if I have already paid for a sticker, then open a QR code scanner to scan
+the QR code and get the barcode id. Only when payment is confirmed." Given by the project
+owner on 5 October 2026. Before it, the panel asked for the barcode first, typed by hand,
+and had no camera.
+
+**Answer.** **Payment first, then the camera.**
+
+1. The officer takes the sticker fee, or the System finds a confirmed payment already made
+   for the vehicle and not yet used.
+2. Once the payment is confirmed, the camera opens and reads the sticker's QR code. The
+   number can be typed where no camera can be used.
+3. The System says what that sticker can be for this vehicle, and the officer confirms.
+
+**Answered on.** 5 October 2026. **Answered by.** Project owner. **Recorded at.** PRD
+Requirement 9A.7 (revision 1.12).
+
+**Built as (item 27), with the choices the project made:**
+
+- **The sticker fee goes wholly to the contractor's Paystack account**, as the owner said
+  it should. That was already so: both sticker fees settle to the main account alone, with
+  no share to the NURTW settlement account, so taking one needs no settlement account
+  (Requirement 27.4).
+- **No waiting on the webhook.** Coming back from Paystack, or pressing "Already paid?
+  Check", asks Paystack about the vehicle's open payments (`POST /payments/check`). A check
+  only ever confirms: a payment the payer has not finished is left open.
+- **The payer may pay on their own phone**, from a QR code of the payment page, or on the
+  officer's device.
+- **A legacy sticker's QR code holds a web address ending in its barcode** (VEH-13). The
+  System takes the barcode from it, on every channel, so an address is never mistaken for a
+  forged signed code.
+- **The camera is also on the Verify screen**, and reads straight into a check.
+
+### VEH-32 · Should a second officer confirm stickers added to stock? ⏳
+
+**Question.** A sticker's code proves nothing by itself, so whoever adds stock decides which
+stickers count (VEH-29). Should a second officer have to confirm each batch before it can be
+attached, or is the audit trail enough?
+
+**Status.** Not asked of the owner yet. Nothing of the kind is built: one holder of
+`sticker.stock_intake` adds a sticker, and it is in stock at once. Every addition is audited
+with the officer who made it.
 
 ---
 
@@ -1326,6 +1393,26 @@ database itself refuse any change or deletion of an audit event?
 **Answer.** **Not yet.** The application never changes or deletes an audit event. A database
 lock is left for later.
 **Answered on.** 4 October 2026. **Answered by.** Project owner. **Recorded at.** PRD §23.26.
+
+### GOV-21 · Naming the previous operator ✅
+
+**Direction.** "Do not include [the previous operator's] name anywhere in the codebase. Do
+not state that some QR codes are from [it]." Given by the project owner on 5 October 2026.
+
+**Answer.** **The previous operator is not named, and a sticker is a sticker.**
+
+- The name is written nowhere in the repository: not in code, a comment, a test, a document,
+  a plan, a file name, or a commit message. A test fails if it returns.
+- Documents say "legacy barcode", "legacy sticker", "the legacy register", and "the previous
+  operator".
+- No screen says which scheme a sticker belongs to. The audit trail still records which
+  scheme resolved each verification, as PRD §26.4 requires.
+
+**Answered on.** 5 October 2026. **Answered by.** Project owner. **Recorded at.** PRD
+§23.19 and Requirement 11.2 (revision 1.12).
+
+**What it does not reach.** Audit events written before 5 October 2026 keep their wording,
+because the audit trail is never rewritten. Git history before that date keeps it too.
 
 ---
 
@@ -1871,6 +1958,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 6 October 2026 | The project owner took up **VEH-29** (stock by scanning, held by a new permission in no role) and gave **VEH-31** (assigning a sticker is pay, then scan) and **GOV-21** (the previous operator is not named; a screen says only "sticker"). New **VEH-32** is open: whether a second officer confirms stock. PRD revised to 1.12; roadmap items 27 and 36. Totals: 93 answered, 37 awaiting, 1 deferred. |
 | 5 October 2026 (stickers) | New VEH-30: a banner on every vehicle without a sticker, and a prompt after adding one, given and answered the same day. While new stickers are paused, a vehicle with no legacy barcode on the register is told so and charged nothing (roadmap item 35). |
 | 5 October 2026 (interface) | New EXT-21: the API administrator invites an organisation by a personal link, given and answered the same day (roadmap item 33). PRD revised to 1.10. The owner also directed a redesign of the interface, with a sidebar and a dark theme (items 32 and 34). That is not a Union question; it is recorded in `DESIGN.md`. |
 | 5 October 2026 | The project owner went through the open questions. Answered: GOV-18 (a go-live gate), EXT-08 (at once for cause, 30 days' notice otherwise), EXT-12 (production only), EXT-13 (no name, ever), EXT-17 (keep, review after the pilot). Partly answered: EXT-05 (one pilot after go-live; which one open) and GOV-11 (no parallel running; the date waits on named gates). Added to answered ones: PAY-11 (the percentage is Paystack's fee plus 0.5 per cent, set on a new Settlement screen) and PAY-20 (a bank account number follows the BVN rule). GOV-08 left open. New EXT-20, organisations applying for themselves, given and answered the same day (roadmap item 29). New PAY-21, a pay-now button on officer checks and a personal pay link for the public, never showing what is owed (roadmap item 31). PRD revised to 1.9. |

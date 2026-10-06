@@ -10,6 +10,7 @@
 
 import {
   isValidIdentifier,
+  stickerCodeFromScan,
   tryNormalizePlateNumber,
   type DisclosedReason,
   type ExternalResult,
@@ -37,13 +38,17 @@ const plateNumberField = z
 
 /**
  * Whatever the sticker's code holds: a signed QR payload, or the number on a
- * legacy sticker.
+ * legacy sticker. A legacy sticker's QR code holds an address ending in that
+ * number, so what a camera read may be sent as it is: the number is taken
+ * from it (`stickerCodeFromScan`). Without that, an address would be read as
+ * a signed code and recorded as a forgery.
  */
 const stickerCodeField = z
   .string()
   .trim()
   .min(1, 'A sticker code is required.')
-  .max(128, 'A sticker code may not exceed 128 characters.');
+  .max(128, 'A sticker code may not exceed 128 characters.')
+  .transform(stickerCodeFromScan);
 
 /**
  * A card number or a membership number, which share one format. A mistyped

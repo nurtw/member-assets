@@ -1,35 +1,64 @@
 ## Item
-27 — sticker-stock-intake
-
-## Status
-**Deferred by the project owner on 3 October 2026. Do not build until the owner takes it
-up.** Nothing in the code adds to the register.
+27 — sticker-stock-and-scan
 
 ## Source
-`QUESTIONS.md` VEH-29. It revisits VEH-15 and VEH-21, PRD Requirement 9A.4, and §23.19,
-which say the legacy register is closed.
+`QUESTIONS.md` VEH-29 (stock by scanning) and VEH-31 (pay, then scan), both the owner's
+direction of 5 October 2026. PRD Requirements 9A.4, 9A.7, and 9A.8 (revision 1.12). The
+owner deferred VEH-29 on 3 October 2026 and took it up two days later.
 
-## The direction
-The previous operator still holds stickers the Union can use, but they are not on the register. The
-Union wants to add them to the System by scanning them, and then attach them to vehicles.
-New NURTW stickers are paused in the meantime (VEH-20).
+## Goal
+An officer who holds the permission scans printed stickers into stock. Any officer who can
+attach a sticker assigns one in the order the owner gave: take the fee, or find one
+already paid; scan the sticker with the camera; confirm.
 
-## Why this is not a small change
-The closed register is what stops a fabricated legacy barcode today. A barcode is a
-millisecond timestamp with no proof of authenticity (PRD §26.4), so anyone who has seen one
-can write another. Once barcodes can be added by scanning, that control moves to whoever
-may add them.
+## Approach
+1. **Rules** in `packages/domain`: where a sticker came from (register, stock, signed),
+   the fee each needs, what a camera's reading reduces to, and what a vehicle can be given.
+2. **Stock** in the API: `GET` and `POST /stickers/stock`, and
+   `POST /stickers/stock/:id/withdrawal`, under `sticker.stock_intake`, which is in no role.
+3. **A reading before attaching:** `POST /stickers/onboarding/:vehicleId/reading`, so an
+   officer is told why a sticker cannot go on a vehicle before they try.
+4. **A payment check:** `POST /payments/check`, so the screen does not wait on the webhook.
+5. **A camera scanner** in the web app, with the number typed as the fallback.
+6. **The assignment panel** rebuilt as three steps, a **Sticker stock** screen, and the
+   camera on the Verify screen.
 
-## To settle before building
-1. **Who may add a barcode.** A new permission, held as narrowly as `vehicle.declare`.
-   Whether a second officer must confirm each batch.
-2. **A list from the previous operator.** If the previous operator can supply the numbers of its remaining stock, a
-   scan can be checked against that list and intake stays a closed set.
-3. **Plate binding.** Legacy barcodes are bound to the plate the export recorded. Unrecorded
-   stock has no plate, so the plate check of Requirement 9A.4 cannot apply. The binding
-   would be made at attachment.
-4. **The PRD.** Requirement 9A.4, §23.19, and §26.4 need revising first. `CLAUDE.md` says
-   only the legacy import writes `legacyBarcode`; that changes too.
+## Files likely touched
+`packages/domain/src/sticker/`, `packages/contracts/src/{sticker,payments,permissions,verification}.ts`,
+`apps/api/prisma/` (two migrations), `apps/api/src/sticker/`, `apps/api/src/payments/`,
+`apps/api/src/verification/verification-records.service.ts`,
+`apps/web/src/components/{qr-scanner,onboarding-section,sticker-prompt}.tsx`,
+`apps/web/src/app/(app)/stickers/stock/`, the Verify page, and the navigation.
 
-## Out of scope until then
-Any route, screen, or script that adds a barcode to the register.
+## Out of scope
+A second officer confirming stock (VEH-32, open). Printing signed stickers, which stay
+paused (VEH-20). Replacing a sticker already on a vehicle. A public sticker page (GOV-08).
+
+## Definition of done
+- [x] A holder of `sticker.stock_intake` adds a sticker by scanning it; nobody else can.
+- [x] A sticker from stock attaches to any vehicle once, on a confirmed new-sticker payment.
+- [x] A register sticker still attaches only to its own plate, on the reattachment fee.
+- [x] The camera opens only after the payment is confirmed.
+- [x] A withdrawn sticker can never be attached, and nothing is deleted.
+- [x] Lint, typecheck, and the end-to-end suites pass; clicked through with a simulated
+      camera.
+
+## Decided while building
+- **The sticker fee already went wholly to the contractor.** Both sticker fees are
+  `CONTRACTOR_ONLY`, so no NURTW settlement account is needed to take one. Nothing changed.
+- **A stock sticker is paid for as a new sticker.** The reattachment fee stays for the
+  sticker a vehicle already carries. Where both are possible the officer chooses.
+- **A legacy sticker's QR code holds a web address, not a number.** `stickerCodeFromScan`
+  takes the barcode from its end, on every channel. Before this, an address sent to a
+  verification was read as a signed code and recorded as a forgery.
+- **A check only ever confirms.** `POST /payments/check` never closes a payment the payer
+  has not finished; only the webhook does.
+- **The reading does not name another vehicle.** A sticker recorded for a different plate
+  is said to be so, without the plate.
+- **The camera uses the browser's own QR reader where there is one**, and `jsqr` where
+  there is not. The picture never leaves the device.
+- **No search by number on the server.** A barcode in an address would reach the access
+  log. The stock screen filters the latest 200 in the browser; scanning an older sticker
+  says where it stands.
+- **Not tried against Paystack, and not with a real camera.** The click-through used a
+  stand-in for Paystack and a video file as the camera. `apps/api/.env` is not ours to use.

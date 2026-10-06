@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.1
-**Last revised:** 5 October 2026
+**Document version:** 1.2
+**Last revised:** 6 October 2026
 **Authority:** Subordinate to `PRD.md`. Technical decisions remain in `ARCHITECTURE.md`.
 
 ---
@@ -208,4 +208,58 @@ keyboard.
 - **The organisation portal** sits in the same frame with its own, shorter navigation and
   no command menu.
 
-The patterns each page is built from are added here by roadmap item 34.
+## 10. Page patterns *(revision 1.2, item 34)*
+
+An officer who has learnt one screen should know the rest. Every page is built from the
+same few pieces, all in `apps/web/src/components/ui/`.
+
+| Pattern | Piece | Example |
+|---|---|---|
+| A page's head: its name, one line of purpose, and one primary action | `PageHeader` | Applications: "Register an applicant" |
+| A record's head: the way back, a status chip, a line of facts | `PageHeader` with `back`, `status`, `meta` | A vehicle's page |
+| A list: what narrows it on the left, how many it shows on the right | `ListToolbar`, `listCount` | Vehicles: search by plate, filter by status |
+| A table that becomes a card per row on a phone, each value beside its column's name | `Table stacked`, `TableCell label` | Officers |
+| A record's facts, never blank | `Detail`, `DetailList` | "Not stated" in place of an empty value |
+| Loading, in the shape of what is coming | `Loading`, `Skeleton` | Every list |
+| Nothing yet, with the next step | `EmptyState` | Sticker stock: "Scan stickers in" |
+| A dangerous act: what will happen in words, a reason, then the act | `ConfirmDialog` | Withdrawing a sticker from stock |
+| Success | A toast (`sonner`) | "Sticker assigned to CT-PAY-21" |
+| Failure | Inline, with its reference | `ErrorNotice` |
+| A record with several sides | Tabs kept in the address (`useTabParam`) | An organisation |
+| Steps in a fixed order: number, name, and what unlocks the next | A numbered list; a done step shows a tick and says "done" | Assigning a sticker |
+
+Rules that go with them:
+
+- **One primary action to a page.** Everything else is secondary or a link.
+- **A dangerous act is never one click**, and its reason goes to the audit trail.
+- **A locked step says what unlocks it**, in words: "Opens once the payment is confirmed."
+- **Colour is never the only sign** (§3). A done step has a tick; a status chip has a word.
+
+## 11. Landing pages *(revision 1.2)*
+
+The owner's direction of 5 October 2026: a landing page with the quick actions; "something
+simple, 100dvh, straight to the point". Asked which was meant, the owner chose both.
+
+- **The front page** (`/`), before sign-in. One screen, no scrolling: the Union's name, one
+  sentence, and the three ways in (officer sign-in, the organisation portal, applying for
+  access). The officer sign-in is the one filled button. It is a door, not a directory: it
+  looks nothing up, and its foot says so, with the limit on what a verification means
+  (§5, PRD §2.2 and Requirement 11.1).
+- **Home**, after sign-in. One screen of tiles, each something this officer may start:
+  Verify, Register a member, Add a vehicle, Assign a sticker, Take a payment, Add sticker
+  stock, Invite an organisation, Add an officer. The first tile is the filled one. What is
+  waiting for a decision sits above them as counts that lead to their lists; when nothing
+  is, it says so in a line. The tiles share out the height that is left, so the page fits a
+  phone and a desktop alike. On a phone a tile carries its name only.
+- An officer who can only verify still lands on Verify (§9).
+
+## 12. The camera *(revision 1.2, item 27)*
+
+- **A scan is a dialog**: the camera's view, a frame to aim with, a line saying what to do,
+  and the number typed in as the other way. A camera needs permission and a secure page,
+  so the typed number is always there.
+- **It says when a code is not a sticker's**, and sends nothing.
+- **It stays open for a batch** (sticker stock), saying what became of each sticker and how
+  many were added; it closes on the first read everywhere else.
+- **Nothing says where a sticker came from.** A sticker is "a sticker" (PRD Requirement
+  11.2, `QUESTIONS.md` GOV-21).

@@ -3,6 +3,7 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import type { CheckPaymentsResult } from '@nurtw/contracts';
 import { calculateFees, DEFAULT_FEE_SCHEDULES } from '@nurtw/domain';
 import { randomUUID } from 'node:crypto';
 
@@ -34,6 +35,9 @@ export interface PaymentQuote {
   contractorFeeKobo: number;
   totalChargedKobo: number;
 }
+
+/** How many of a subject's open payments one check asks Paystack about. */
+const OPEN_PAYMENTS_CHECKED = 5;
 
 export interface InitiatePaymentResult {
   paymentId: string;
@@ -205,17 +209,65 @@ export class PaymentsService {
   }
 
   /**
-   * Confirms a payment. Requirement 27.5 — this is the ONLY path that marks
-   * a payment CONFIRMED, and it always re-verifies against Paystack itself
-   * rather than trusting the caller (webhook or manual poll) on its own.
-   * Idempotent: a payment already CONFIRMED is returned as-is.
+   * Confirms a payment. Requirement 27.5 — `settle` is the ONLY path that
+   * marks a payment CONFIRMED, and it always re-verifies against Paystack
+   * itself rather than trusting the caller (the webhook, or an officer's
+   * check) on its own. Idempotent: a payment already CONFIRMED is left as-is.
    */
   async confirm(reference: string): Promise<void> {
+    await this.settle(reference, 'CLOSE_IF_UNPAID');
+  }
+
+  /**
+   * Asks Paystack about the payments still open for one vehicle or member
+   * (Requirement 9A.7, revision 1.12), so an officer need not wait on the
+   * webhook once a payer has paid. A check only ever confirms: a payer may
+   * still be on Paystack's page, so a payment not yet successful is left
+   * open for the webhook, never closed here. The few most recent are asked
+   * about, so one call cannot be turned into many.
+   */
+  async checkOpen(subject: {
+    type: 'member' | 'vehicle';
+    id: string;
+  }): Promise<CheckPaymentsResult> {
+    const open = await this.prisma.payment.findMany({
+      where: {
+        subjectType: subject.type,
+        subjectId: subject.id,
+        status: 'PENDING',
+      },
+      orderBy: { createdAt: 'desc' },
+      take: OPEN_PAYMENTS_CHECKED,
+      select: { paystackReference: true },
+    });
+
+    let confirmed = 0;
+    for (const payment of open) {
+      if (!payment.paystackReference) {
+        continue;
+      }
+      try {
+        if (await this.settle(payment.paystackReference, 'LEAVE_OPEN')) {
+          confirmed += 1;
+        }
+      } catch {
+        // Paystack has not heard of it (the payer never opened the page), or
+        // could not be reached. Either way it stays open.
+      }
+    }
+    return { checked: open.length, confirmed };
+  }
+
+  /** `true` when this call confirmed the payment. */
+  private async settle(
+    reference: string,
+    ifUnpaid: 'CLOSE_IF_UNPAID' | 'LEAVE_OPEN',
+  ): Promise<boolean> {
     const payment = await this.prisma.payment.findUnique({
       where: { paystackReference: reference },
     });
     if (!payment || payment.status === 'CONFIRMED') {
-      return;
+      return false;
     }
 
     const verification = await this.paystack.verifyTransaction(reference);
@@ -224,11 +276,13 @@ export class PaymentsService {
       verification.amountKobo !== payment.totalChargedKobo ||
       verification.currency !== 'NGN'
     ) {
-      await this.prisma.payment.update({
-        where: { id: payment.id },
-        data: { status: 'FAILED' },
-      });
-      return;
+      if (ifUnpaid === 'CLOSE_IF_UNPAID') {
+        await this.prisma.payment.update({
+          where: { id: payment.id },
+          data: { status: 'FAILED' },
+        });
+      }
+      return false;
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -258,5 +312,6 @@ export class PaymentsService {
         tx,
       );
     });
+    return true;
   }
 }

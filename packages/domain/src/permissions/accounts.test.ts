@@ -48,9 +48,11 @@ describe('permissions that need a second factor (Requirement 17.1)', () => {
 });
 
 describe('permissions that may never sit in a role', () => {
-  it('are vehicle.declare and the settlement account', () => {
+  it('are vehicle.declare, the settlement account, and adding sticker stock', () => {
     expect(isGrantOnly('vehicle.declare')).toBe(true);
     expect(isGrantOnly('payment.manage_settlement')).toBe(true);
+    expect(isGrantOnly('sticker.stock_intake')).toBe(true);
+    expect(isGrantOnly('sticker.attach')).toBe(false);
     expect(isGrantOnly('vehicle.record')).toBe(false);
     expect(isGrantOnly('user.manage')).toBe(false);
   });

@@ -546,6 +546,7 @@ describe('Officer accounts (e2e)', () => {
       for (const permission of [
         'vehicle.declare',
         'payment.manage_settlement',
+        'sticker.stock_intake',
       ]) {
         const response = await call('post', '/roles', {
           code: 'E2E_USERS_DECLARER',

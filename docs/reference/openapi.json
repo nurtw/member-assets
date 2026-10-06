@@ -17558,6 +17558,158 @@
         }
       }
     },
+    "/api/v1/payments/check": {
+      "post": {
+        "summary": "Ask Paystack about the payments still open for a vehicle or member.",
+        "description": "PRD Requirement 9A.7 — for the screen an officer returns to after a payer has paid, so it need not wait on the webhook. Each open payment is verified with Paystack itself (Requirement 27.5); nothing is confirmed on the caller's word. A check only ever confirms: a payment not yet successful is left open. Answers with how many were asked about and how many were confirmed just now. At most the five most recent are asked about.\n\n**Permission required:** `payment.initiate`.",
+        "operationId": "PaymentsController_check",
+        "tags": [
+          "Payments"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "subjectType": {
+                    "type": "string",
+                    "enum": [
+                      "member",
+                      "vehicle"
+                    ]
+                  },
+                  "subjectId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "subjectType",
+                  "subjectId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold payment.initiate in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/payments/initiate": {
       "post": {
         "summary": "Start a payment for a fee type.",
@@ -21278,7 +21430,7 @@
     "/api/v1/stickers/attach": {
       "post": {
         "summary": "Attach a sticker to a vehicle (onboarding).",
-        "description": "PRD Requirement 9A.2/9A.4 — attaching a legacy barcode requires all four conditions: the barcode is on the imported register, presented against its recorded plate with no override, never attached before, and funded by an unused confirmed payment. The payment must be the onboarding fee (`STICKER_REATTACHMENT` for a legacy barcode, `STICKER_NEW` for a signed sticker) and made for this vehicle. A freshly issued sticker skips the register and plate checks. Every refusal is audited with its reason. Never changes the vehicle's declaration status — that is `vehicle.declare`'s act alone.\n\n**Permission required:** `sticker.attach`.",
+        "description": "PRD Requirement 9A.2/9A.4 — attaching a legacy barcode requires all four conditions: the barcode is held (on the imported register, or in stock); a register barcode is presented against its recorded plate, with no override; it has never been attached before; and it is funded by an unused confirmed payment. The payment must be the onboarding fee, made for this vehicle: `STICKER_REATTACHMENT` for a register barcode, `STICKER_NEW` for one from stock or a signed sticker. `legacyBarcode` may be what a camera read from the sticker; the barcode is taken from it. Every refusal is audited with its reason. Never changes the vehicle's declaration status — that is `vehicle.declare`'s act alone.\n\n**Permission required:** `sticker.attach`.",
         "operationId": "StickerController_attach",
         "tags": [
           "Sticker"
@@ -21302,7 +21454,8 @@
                   },
                   "legacyBarcode": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "maxLength": 512
                   },
                   "vehicleId": {
                     "type": "string",
@@ -21436,7 +21589,7 @@
             }
           },
           "409": {
-            "description": "Attachment refused: the vehicle has no route type or already carries a sticker; the barcode is unknown, bound to another plate, or already attached; or the payment is unconfirmed, already used, for another fee type, or for another vehicle.",
+            "description": "Attachment refused: the vehicle has no route type or already carries a sticker; the barcode is not held, bound to another plate, already attached, or withdrawn; or the payment is unconfirmed, already used, for another fee type, or for another vehicle.",
             "content": {
               "application/json": {
                 "schema": {
@@ -21495,7 +21648,7 @@
     "/api/v1/stickers/legacy-lookup": {
       "post": {
         "summary": "Read a scanned legacy barcode (internal).",
-        "description": "PRD Requirement 11.2 — an unattached barcode on the register reads \"Recognised sticker — not attached\", with the plate the register records for it. It never says genuine: a copy scans identically. An unknown barcode answers the generic 404. Read-only apart from its audit event. Sent as a body so the barcode stays out of URLs and access logs.\n\n**Permission required:** `verification.perform`.",
+        "description": "PRD Requirement 11.2 — an unattached barcode on the register reads \"Recognised sticker — not attached\", with the plate the register records for it; one in stock reads \"in stock, not attached\", with no plate. It never says genuine: a copy scans identically. A barcode that is not held answers the generic 404. Read-only apart from its audit event. Sent as a body so the barcode stays out of URLs and access logs.\n\n**Permission required:** `verification.perform`.",
         "operationId": "StickerController_legacyLookup",
         "tags": [
           "Sticker"
@@ -21511,7 +21664,7 @@
                   "barcode": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 64
+                    "maxLength": 512
                   }
                 },
                 "required": [
@@ -21639,7 +21792,7 @@
     "/api/v1/stickers/onboarding/{vehicleId}": {
       "get": {
         "summary": "A vehicle's onboarding state.",
-        "description": "Item 17 — whether the vehicle is onboarded, whether the legacy register holds an unattached barcode for its plate (never which barcode), and the confirmed onboarding payments made for it that have not yet funded an attachment. Answers 404 for a vehicle outside the caller's `sticker.attach` scope.\n\n**Permission required:** `sticker.attach`.",
+        "description": "Item 17 — whether the vehicle is onboarded, whether the legacy register holds an unattached barcode for its plate (never which barcode), whether stock holds a sticker that can be attached (never how many), and the confirmed onboarding payments made for it that have not yet funded an attachment. Answers 404 for a vehicle outside the caller's `sticker.attach` scope.\n\n**Permission required:** `sticker.attach`.",
         "operationId": "StickerController_onboarding",
         "tags": [
           "Sticker"
@@ -21715,6 +21868,635 @@
           },
           "403": {
             "description": "The session does not hold sticker.attach in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stickers/onboarding/{vehicleId}/reading": {
+      "post": {
+        "summary": "What a scanned sticker can be for a vehicle.",
+        "description": "PRD Requirement 9A.7 — asked before attaching, so that a refusal is rarely met blind. Send `code`: what a camera read from the sticker, or its number. The answer is one of `CAN_ATTACH` (with the fee it must be paid with), `NOT_HELD`, `FOR_ANOTHER_VEHICLE` (that vehicle is not named), `ALREADY_ATTACHED`, or `NOT_AVAILABLE`. Read-only apart from its audit event. Answers 404 for a vehicle outside the caller's `sticker.attach` scope.\n\n**Permission required:** `sticker.attach`.",
+        "operationId": "StickerController_reading",
+        "tags": [
+          "Sticker"
+        ],
+        "parameters": [
+          {
+            "name": "vehicleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold sticker.attach in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stickers/stock": {
+      "get": {
+        "summary": "The sticker stock.",
+        "description": "PRD Requirement 9A.8 — printed legacy stickers taken into stock by scanning: how many are in stock, attached, and withdrawn, and the latest entries, newest first. A sticker in stock is bound to no plate until it is attached.\n\n**Permission required:** `sticker.stock_intake`.",
+        "operationId": "StickerController_stock",
+        "tags": [
+          "Sticker"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold sticker.stock_intake in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a printed sticker to stock.",
+        "description": "PRD Requirement 9A.8 (VEH-29). Send `code`: what a camera read from the sticker, or its number. A legacy barcode proves nothing by itself, so the control is who may add one: `sticker.stock_intake` is in no role, and every addition is audited. A barcode already on the register or in stock is not added twice: the answer is `ALREADY_HELD`, not an error. Anything that is not a barcode answers 400 naming `code`.\n\n**Permission required:** `sticker.stock_intake`.",
+        "operationId": "StickerController_addToStock",
+        "tags": [
+          "Sticker"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold sticker.stock_intake in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/stickers/stock/{id}/withdrawal": {
+      "post": {
+        "summary": "Withdraw a sticker from stock.",
+        "description": "PRD Requirement 9A.8 — for a sticker lost, damaged, or added by mistake. A reason is required. Final: the sticker can never be attached, and its barcode cannot be added again. Nothing is deleted.\n\n**Permission required:** `sticker.stock_intake`.",
+        "operationId": "StickerController_withdrawFromStock",
+        "tags": [
+          "Sticker"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold sticker.stock_intake in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The sticker is attached to a vehicle, or was already withdrawn.",
             "content": {
               "application/json": {
                 "schema": {

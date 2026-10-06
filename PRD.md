@@ -4,9 +4,9 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.11 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.11
-**Last revised:** 5 October 2026
+1.2 to 1.12 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.12
+**Last revised:** 6 October 2026
 
 ---
 
@@ -92,6 +92,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. Payment is offered wherever a vehicle is checked, and through a personal pay link that never says what is owed. See §23.10, §23.22–§23.27, Requirements 12.11, 27.7 and 27.8. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20, PAY-21), 5 October 2026. |
 | 1.10 | 5 October 2026 | The API administrator may invite a named organisation by a personal link that opens the application form addressed to it. A link is used once, expires, and may be withdrawn; the application it produces is confirmed and decided as any other. See §23.23 and Requirement 12.11. | The project owner (`QUESTIONS.md` EXT-21), 5 October 2026. |
 | 1.11 | 5 October 2026 | A vehicle without a sticker says so on its page each time it is opened, and adding a vehicle ends on a prompt to buy and attach its sticker, which may be closed. While new NURTW stickers are not issued, a vehicle the register holds no barcode for is told so, and nothing is charged. See Requirement 9A.7. | The project owner (`QUESTIONS.md` VEH-30), 5 October 2026. |
+| 1.12 | 6 October 2026 | Printed legacy stickers the register never recorded are taken into stock by scanning them, by holders of a permission that is in no role, and may then be attached to any vehicle on the new-sticker fee (Requirements 9A.4 and 9A.8). Assigning a sticker is pay first, then scan: the camera opens once the payment is confirmed (Requirement 9A.7). The previous operator is no longer named anywhere, and officer-facing wording says only "sticker" (Requirement 11.2). A front page shows the ways in. | The project owner (`QUESTIONS.md` VEH-29, VEH-31, GOV-21), 5 October 2026. |
 
 ---
 
@@ -342,8 +343,11 @@ told, at most, that the vehicle's record is not complete.
 
 **Requirement 9A.2 — onboarding.** A vehicle is onboarded when a sticker is attached to it
 following a payment of the onboarding fee that Paystack has confirmed (§27). For a vehicle
-carrying a legacy sticker, that means reattaching it. For one without, it means issuing a new
-signed sticker. Both cost the same at launch (VEH-20) but are separate fee types. Onboarding
+carrying the sticker the register records for its plate, that means reattaching it. For one
+without, it means a sticker from stock (Requirement 9A.8, *revision 1.12*) or, once they are
+printed, a new signed sticker (VEH-20). Both cost the same at launch but are separate fee
+types: the reattachment fee for the vehicle's own sticker, the new-sticker fee for any other.
+Onboarding
 and declaration may happen in either order, and by different users. Attaching a sticker
 requires `sticker.attach`, a permission field officers can hold. `vehicle.declare` keeps the
 restrictions of Requirement 9.5 (VEH-18). *Revision 1.3:* a vehicle with no route type
@@ -354,19 +358,22 @@ route type (VEH-26). A legacy vehicle is given one at onboarding.
 onboarded nor declared. Every legacy barcode is imported **unattached**, onto a register that
 binds it to the normalised plate the export records for it.
 
-**Requirement 9A.4 — reattachment controls.** Reattaching a legacy barcode is refused unless
-**all** of the following hold. Each refusal is audited with its reason.
+**Requirement 9A.4 — attachment controls** *(revised by 1.12, VEH-29)*. Attaching a legacy
+barcode is refused unless **all** of the following hold. Each refusal is audited with its
+reason.
 
-1. The barcode is on the imported legacy register: the 2,408 in the export. **The register
-   is closed.** The previous operator has stopped issuing, and nothing is ever added to the register after
-   the migration (VEH-21). Any other barcode is recorded as unknown rather than as a forgery,
-   because NURTW holds a few printed legacy stickers that have no digital record and that
-   can therefore never be attached.
-2. It is presented against the normalised plate the register records for it. **There is no
-   override** (VEH-16).
-3. It has never been attached before. A barcode attaches once in its life.
-4. A Paystack-confirmed payment reference accompanies it, and that reference has not been
-   used before.
+1. **The barcode is held.** It is on the imported legacy register (the 2,408 in the export),
+   or it has been taken into stock under Requirement 9A.8. No import adds to the register
+   after the migration (VEH-21). Any other barcode is recorded as unknown rather than as a
+   forgery.
+2. **A register barcode is presented against the normalised plate the register records for
+   it. There is no override** (VEH-16). A stock barcode has no plate until it is attached:
+   the attachment binds it.
+3. **It has never been attached before**, and has not been withdrawn. A barcode attaches
+   once in its life.
+4. **A Paystack-confirmed payment accompanies it**, made for this vehicle, not used before,
+   and of the right fee: the reattachment fee for a register barcode, the new-sticker fee
+   for one from stock.
 
 **Requirement 9A.5 — the legacy security code.** The export's `security_code` is imported
 as a record only. It is not printed on the sticker (VEH-14), so it plays no part in
@@ -391,17 +398,48 @@ wording does not invalidate letters already issued.
   is a fresh snapshot under a new reference. The one it replaces is kept as printed, marked
   superseded, and no longer downloads.
 
-**Requirement 9A.7 — asking for the sticker** *(revision 1.11, VEH-30)*. Assigning a
-sticker must not be hidden.
+**Requirement 9A.7 — assigning a sticker** *(revision 1.11, VEH-30; revised by 1.12,
+VEH-31)*. Assigning a sticker must not be hidden, and it is done in one order: **pay, then
+scan.**
 
 - **A banner on the vehicle's page**, each time it is opened, while no sticker is attached:
-  what the vehicle can be given, in words, with the way to buy and attach it.
-- **A prompt after adding a vehicle**, to buy and attach its sticker. It may be closed; the
-  banner carries on asking.
-- **Nothing charged without a sticker to give.** While new NURTW stickers are not issued
-  (VEH-20), a vehicle the legacy register holds no barcode for is told so, and no payment
-  is offered. A vehicle whose barcode is on the register is offered the reattachment fee, and
-  reattached under Requirement 9A.4.
+  what the vehicle can be given, in words, with the way to pay for and assign it.
+- **A prompt after adding a vehicle**, to assign its sticker. It may be closed; the banner
+  carries on asking.
+- **Payment first.** The officer takes the sticker fee, or the System finds a confirmed
+  payment already made for the vehicle and not yet used. On returning from Paystack, the
+  System asks Paystack about the payment itself, so the officer does not wait on the
+  webhook. Requirement 27.5 is unchanged: nothing is confirmed on anybody's word.
+- **Then the scan, and only then.** Once the payment is confirmed the camera opens, and the
+  sticker's number is read from its own QR code. A legacy sticker's QR code holds a web
+  address ending in its barcode; the System takes the barcode from it. The number may be
+  typed where no camera can be used.
+- **Then the officer confirms.** Before attaching, the System says what the scanned sticker
+  can be for this vehicle: assignable, not held, recorded for another vehicle (which is not
+  named), already on a vehicle, or withdrawn. An attachment is still decided by
+  Requirement 9A.4, and a refusal still answers generically.
+- **Nothing charged without a sticker to give.** A vehicle with no sticker recorded for its
+  plate, while stock holds none and signed stickers are not printed (VEH-20), is told so,
+  and no payment is offered.
+
+**Requirement 9A.8 — sticker stock** *(revision 1.12, VEH-29)*. The Union holds printed
+legacy stickers that the register never recorded.
+
+- **Added by scanning.** Each is taken into stock by scanning its QR code, or typing its
+  number. A sticker in stock is bound to no plate. A barcode already on the register or in
+  stock is not added twice.
+- **By whom.** Only a holder of `sticker.stock_intake`. That permission is in no role: the
+  super administrator holds it, and gives it to named officers by express grant
+  (Requirement 9.5's rule for `vehicle.declare`, applied here). Every addition is audited
+  with the officer who made it.
+- **Why that is the control.** A legacy barcode carries no proof of authenticity (§26.4), so
+  a scan cannot tell a printed sticker from an invented number. What it can do is record
+  who vouched for it. The owner accepted this on 5 October 2026.
+- **Withdrawing.** A sticker lost, damaged, or added by mistake is withdrawn, with a reason,
+  before it is attached. Withdrawing is final and deletes nothing: the sticker can never be
+  attached, and its barcode cannot be added again.
+- **Outside the Union nothing changes.** A sticker in stock answers the generic not-found
+  to the external API, as every unattached sticker does.
 
 ---
 
@@ -441,9 +479,11 @@ vehicle/sticker record was found under the requested verification criteria."* In
 and API copy must not assert certification of legal ownership, roadworthiness, licensing,
 or any external statutory status.
 
-**Requirement 11.2** *(revision 1.2)*. On the internal channels, a legacy barcode that is on
-the legacy register but unattached reads *"Recognised sticker — not attached"*,
-followed by the plate the register records for it (VEH-17). It does not say *genuine*: the
+**Requirement 11.2** *(revision 1.2; wording revised by 1.12, GOV-21)*. On the internal
+channels, a legacy barcode that is on the legacy register but unattached reads *"Recognised
+sticker — not attached"*, followed by the plate the register records for it (VEH-17). One
+in stock reads *"Recognised sticker — in stock, not attached"*, with no plate. Officer-facing
+wording says "sticker" and never which scheme a sticker belongs to. It does not say *genuine*: the
 System can confirm that a barcode is on the register, not that the physical article is
 authentic, because a copy scans identically. The recorded plate lets the officer catch a copy
 on the wrong vehicle. The external API and the public page return the generic not-found,
@@ -900,9 +940,14 @@ Determined 22 September 2026 (`QUESTIONS.md` VEH-13 to VEH-17).
   nothing external until they are onboarded and declared.
 - **Legacy stickers are unattached.** They are reattached through the System, after payment,
   subject to Requirement 9A.4.
-- **The previous operator has stopped issuing.** The register is closed at the export's 2,408 barcodes.
-  The few printed legacy stickers NURTW still holds have no digital record, so they are
-  not on the register and cannot be attached (VEH-15, VEH-21).
+- **The previous operator has stopped issuing.** The register stays at the export's 2,408
+  barcodes: no import adds to it (VEH-15, VEH-21).
+- ***Revision 1.12:* printed stickers with no digital record are taken into stock** by
+  scanning them, by holders of `sticker.stock_intake`, and may then be attached to any
+  vehicle (Requirement 9A.8, VEH-29). This replaces the earlier determination that such
+  stickers could never be attached.
+- ***Revision 1.12:* the previous operator is not named**, in the System or in this
+  repository, and no screen says which scheme a sticker belongs to (GOV-21).
 - **A barcode presented against another plate is refused**, with no override.
 - **No grace period** at go-live. Internally, an unattached registered barcode reads as
   recognised but not attached (Requirement 11.2).
@@ -1179,6 +1224,9 @@ and it operates alongside plate-to-QR binding rather than in place of it.
 > **attached** legacy sticker. The statement that "nothing presently in the field ceases to
 > work" no longer holds: an unattached legacy sticker produces no positive result from
 > go-live.
+>
+> **Revised again by revision 1.12 (Requirement 9A.8).** Printed stickers the register never
+> recorded may be taken into stock by scanning them. Mitigation 4 below is restated for it.
 
 **Determination (§23, additional).** The 2,408 barcodes already issued under the previous
 system **resolve as fully equivalent** to signed identifiers. Nothing presently in the field
@@ -1202,11 +1250,18 @@ identifiers notwithstanding, as they arise from controls required elsewhere:
 4. *(Revision 1.2.)* A legacy barcode can be attached only if it is on the imported
    register, only to the plate the register records for it, only once, and only against an
    unused, confirmed payment. A fabricated timestamp is not on the register. A barcode
-   copied from another vehicle fails the plate check, or is already attached. The register
-   is closed (VEH-21), so no later import can add a barcode to it.
+   copied from another vehicle fails the plate check, or is already attached. No import
+   adds a barcode to the register (VEH-21).
+5. *(Revision 1.12.)* A barcode may also be held by being taken into stock (Requirement
+   9A.8). A scan proves nothing about the article, so for stock the mitigation is who may
+   add it: a permission in no role, held by the super administrator and by officers named
+   by express grant, with every addition audited. A fabricated timestamp still fails unless
+   one of those officers adds it.
 
 **Requirement 26.5.** Newly issued stickers use signed identifiers exclusively. The legacy
 scheme is a read path for existing articles and must never be used to mint a new one.
+Taking a printed sticker into stock (Requirement 9A.8) records an article that already
+exists. It mints nothing: the System never produces a legacy barcode.
 
 ---
 
@@ -1238,7 +1293,8 @@ Creating, pricing, or retiring a fee type needs no deployment. The launch types 
 
 The two sticker fees are separate types that start at the same placeholder amount. Whether a
 vehicle receiving a new sticker pays the same as one having its sticker reattached
-(VEH-20) is therefore a settings change, not a development task.
+(VEH-20) is therefore a settings change, not a development task. A sticker from stock is
+paid for as a new sticker (Requirement 9A.4, *revision 1.12*).
 
 **Requirement 27.2 — amounts are settings.** Every amount, and every parameter of
 Requirement 27.3, is runtime configuration, and every change is audited with a mandatory

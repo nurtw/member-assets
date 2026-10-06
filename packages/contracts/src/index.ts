@@ -178,6 +178,7 @@ export {
   DECLARE_PERMISSION,
   MANAGE_SETTLEMENT_PERMISSION,
   RECORD_VEHICLE_PERMISSION,
+  STOCK_INTAKE_PERMISSION,
   PERMISSIONS,
   PERMISSION_CODES,
   SYSTEM_ROLES,
@@ -259,6 +260,7 @@ export {
 
 export {
   assignDedicatedAccountSchema,
+  checkPaymentsSchema,
   initiatePaymentSchema,
   payLinkSubjectSchema,
   publicPaySchema,
@@ -271,6 +273,8 @@ export {
   updateFeeTypeSchema,
   type AmountToSend,
   type AssignDedicatedAccountInput,
+  type CheckPaymentsInput,
+  type CheckPaymentsResult,
   type DedicatedAccountAllocation,
   type DedicatedAccountState,
   type DedicatedAccountTransfer,
@@ -300,11 +304,15 @@ export {
 } from './payments.js';
 
 export {
+  addStickerStockSchema,
   attachStickerSchema,
   issueStickerSchema,
   legacyBarcodeLookupSchema,
   reissueVehicleLetterSchema,
   setStickerStatusSchema,
+  stickerReadingSchema,
+  withdrawStickerStockSchema,
+  type AddStickerStockInput,
   type AttachStickerInput,
   type EligibleOnboardingPayment,
   type IssueStickerInput,
@@ -312,7 +320,13 @@ export {
   type OnboardingState,
   type ReissueVehicleLetterInput,
   type SetStickerStatusInput,
+  type StickerReading,
+  type StickerReadingInput,
+  type StickerStockAddition,
+  type StickerStockEntry,
+  type StickerStockList,
   type VehicleOnboarding,
+  type WithdrawStickerStockInput,
 } from './sticker.js';
 
 export {

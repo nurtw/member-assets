@@ -36,12 +36,22 @@ describe("visibleNavigation", () => {
     expect(groups.map((group) => group.label)).toEqual(["Vehicles"]);
   });
 
-  it("gives an officer who reads cards the Overview as well as the cards", () => {
+  it("gives an officer who reads cards the Home screen as well as the cards", () => {
     const groups = visibleNavigation(OFFICER_NAVIGATION, holding("card.read"));
     expect(navigationItems(groups).map((item) => item.label)).toEqual([
-      "Overview",
+      "Home",
       "Cards",
     ]);
+  });
+
+  it("offers the sticker stock only to a holder of sticker.stock_intake", () => {
+    const labels = (permission: string) =>
+      navigationItems(
+        visibleNavigation(OFFICER_NAVIGATION, holding(permission)),
+      ).map((item) => item.label);
+    expect(labels("sticker.stock_intake")).toEqual(["Sticker stock"]);
+    expect(labels("sticker.attach")).not.toContain("Sticker stock");
+    expect(labels("sticker.manage_stock")).not.toContain("Sticker stock");
   });
 
   it("shows nothing to an officer with no permission", () => {
@@ -173,9 +183,9 @@ describe("breadcrumbs", () => {
     ).toEqual([{ label: "Your account" }]);
   });
 
-  it("names the Overview alone, which has no group", () => {
+  it("names Home alone, which has no group", () => {
     expect(breadcrumbs("/overview", OFFICER_NAVIGATION)).toEqual([
-      { label: "Overview" },
+      { label: "Home" },
     ]);
   });
 

@@ -141,6 +141,16 @@ export const PERMISSIONS = [
     code: 'sticker.attach',
     description: 'Attach a sticker to a vehicle (onboarding)',
   },
+  /**
+   * PRD Requirement 9A.8 / `QUESTIONS.md` VEH-29 — taking printed legacy
+   * stickers into stock by scanning them. A legacy barcode proves nothing by
+   * itself, so whoever may add one decides which stickers count. In no role:
+   * the super administrator's bundle, and express grants, only.
+   */
+  {
+    code: 'sticker.stock_intake',
+    description: 'Add stickers to stock by scanning them, and withdraw them',
+  },
 
   // Payments (PRD §27) ------------------------------------------------------
   { code: 'payment.read', description: 'View payments and the ledger' },
@@ -253,6 +263,10 @@ export const RECORD_VEHICLE_PERMISSION =
 /** PRD §9A.2 / VEH-18 — onboarding, distinct from `vehicle.declare`. */
 export const ATTACH_STICKER_PERMISSION =
   'sticker.attach' satisfies PermissionCode;
+
+/** PRD Requirement 9A.8 / VEH-29 — adding stickers to stock, in no role. */
+export const STOCK_INTAKE_PERMISSION =
+  'sticker.stock_intake' satisfies PermissionCode;
 
 /** PRD Requirement 27.12 / PAY-13 — the settlement-account change permission. */
 export const MANAGE_SETTLEMENT_PERMISSION =

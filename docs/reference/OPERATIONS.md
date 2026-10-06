@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Last revised:** 3 October 2026
+**Last revised:** 6 October 2026
 
 ---
 
@@ -198,6 +198,10 @@ are established at go-live hardening. What is fixed already:
 
 - Migrations run with `db:deploy`, never `db:migrate`, against production.
 - Migrations are applied **before** the new image serves traffic.
+- **A release that adds a permission needs `db:seed` run once after `db:deploy`.** The seed
+  is what puts a new permission in the catalogue and in the super administrator's role; it
+  is safe to run again. Without it nobody holds the permission, and its screens stay
+  hidden. `sticker.stock_intake` (item 27) is one such.
 - The container reads configuration from the environment; no configuration is baked in.
 - Production data resides in an **EU region** (London or Frankfurt), per Decision 10.4.
 
@@ -490,6 +494,66 @@ SELECT created_at, after_value FROM audit_event
 set (above). **`CORS_ORIGINS` must include the web application's address**, or starting a
 payment is refused: Paystack returns the payer to that address.
 
+### Adding stickers to stock
+
+Item 27 (PRD Requirement 9A.8, `QUESTIONS.md` VEH-29). The Union holds printed stickers that
+were never recorded. Each is added to the System by scanning it, and only then can it be
+assigned to a vehicle.
+
+1. **Who.** Only an officer holding `sticker.stock_intake`. It is in no role: the super
+   administrator holds it, and gives it to a named officer under **Settings → Officers**,
+   on that officer's page, as a single permission with a reason. Give it to few. A
+   sticker's code proves nothing by itself, so whoever adds stock decides which stickers
+   count.
+2. **Where.** **Vehicles → Sticker stock**, then **Scan stickers in**. Point the camera at
+   each sticker's QR code in turn. Each is added as it is read, and the dialog says so. A
+   sticker already on record is not added twice. Where the camera cannot read one, type
+   its number.
+3. **A mistake, a loss, a damaged sticker.** Press **Withdraw** against it and give the
+   reason. Withdrawing is final: the sticker can never be assigned, and its number cannot
+   be added again. Nothing is deleted.
+
+The camera needs a secure page (HTTPS) and the officer's permission in the browser. To
+see who added what:
+
+```sql
+SELECT e.created_at, u.full_name, e.action, e.after_value ->> 'outcome' AS outcome,
+       s.legacy_barcode AS sticker_number, e.reason
+FROM   audit_event e
+LEFT   JOIN "user" u ON u.id = e.actor_user_id
+LEFT   JOIN sticker s ON s.id::text = e.subject_id
+WHERE  e.action IN ('sticker.stock_add', 'sticker.stock_withdraw')
+ORDER  BY e.created_at DESC;
+```
+
+### Assigning a sticker to a vehicle
+
+Item 27 (PRD Requirement 9A.7, `QUESTIONS.md` VEH-31). On the vehicle's page, under **Assign
+a sticker**, by an officer holding `sticker.attach` over the vehicle. The order is fixed:
+
+1. **Payment.** Type the payer's email and press **Pay now** to pay on this device, or
+   **Pay on the payer's phone** to show a QR code of the payment page. A payment already
+   confirmed for the vehicle, and not yet used, is found and shown instead. **Already
+   paid? Check** asks Paystack at once; nothing is confirmed on anybody's word.
+2. **Scan.** Once the payment is confirmed the camera opens. Scan the sticker's QR code.
+   The System says if that sticker cannot go on this vehicle, and why.
+3. **Confirm.** Put the sticker on the vehicle and press **Assign this sticker**. A sticker
+   is assigned once in its life, and the payment is used with it.
+
+Which fee is taken follows which sticker is given:
+
+| The vehicle is given | Fee type |
+|---|---|
+| The sticker it already carries, recorded for its plate | `STICKER_REATTACHMENT` |
+| A sticker from stock | `STICKER_NEW` |
+
+**Both sticker fees are paid wholly into the contractor's Paystack account**, with no share
+to the NURTW settlement account, so they can be taken before that account is set. The
+dues (the yearly fee and the monthly levy) are the ones split with NURTW.
+
+A vehicle with no sticker recorded for its plate, while stock is empty, is told so, and no
+payment is offered. Add stock first.
+
 ### Reviewing verifications
 
 Every check on the Verify screen writes one audit event, named after what the officer
@@ -524,6 +588,10 @@ SELECT after_value->>'scheme' AS scheme, count(*) FROM audit_event
 **Signed stickers need `STICKER_SIGNING_SECRET`.** Without it, a signed code answers 503 and
 is not recorded as a forgery. Plates and legacy barcodes still verify. New NURTW stickers
 are paused for now (`QUESTIONS.md` VEH-20), so the secret is not yet needed.
+
+**A sticker's QR code may be sent as a camera reads it.** A legacy sticker's code holds a
+web address ending in its number. The System takes the number from it, on the Verify
+screen and on the external API alike, so an address is never recorded as a forged code.
 
 ### Reissuing a vehicle letter
 

@@ -6,6 +6,7 @@ import {
   PERMISSIONS,
   PERMISSION_CODES,
   RECORD_VEHICLE_PERMISSION,
+  STOCK_INTAKE_PERMISSION,
   SYSTEM_ROLES,
 } from './permissions.js';
 
@@ -123,6 +124,22 @@ describe('vehicle.declare containment', () => {
     expect(admin?.permissions as readonly string[]).not.toContain(
       DECLARE_PERMISSION,
     );
+  });
+});
+
+describe('sticker.stock_intake containment', () => {
+  /**
+   * PRD Requirement 9A.8 (VEH-29) — a legacy barcode proves nothing by itself,
+   * so whoever may add one to stock decides which stickers count. The owner
+   * holds it, and gives it to named officers. `sticker.manage_stock` is a
+   * different permission and does not confer it.
+   */
+  it('appears in the super administrator bundle and no other', () => {
+    const holders = SYSTEM_ROLES.filter((role) =>
+      (role.permissions as readonly string[]).includes(STOCK_INTAKE_PERMISSION),
+    ).map((role) => role.code);
+
+    expect(holders).toEqual(['SUPER_ADMINISTRATOR']);
   });
 });
 

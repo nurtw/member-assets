@@ -16,6 +16,7 @@ export type NavIcon =
   | "applications"
   | "cards"
   | "vehicles"
+  | "stickers"
   | "fees"
   | "settlement"
   | "organisations"
@@ -60,7 +61,7 @@ export const OFFICER_NAVIGATION: readonly NavGroup[] = [
     items: [
       {
         href: "/overview",
-        label: "Overview",
+        label: "Home",
         icon: "overview",
         permissions: OVERVIEW_PERMISSIONS,
       },
@@ -97,6 +98,12 @@ export const OFFICER_NAVIGATION: readonly NavGroup[] = [
         label: "Vehicles",
         icon: "vehicles",
         permissions: ["vehicle.read"],
+      },
+      {
+        href: "/stickers/stock",
+        label: "Sticker stock",
+        icon: "stickers",
+        permissions: ["sticker.stock_intake"],
       },
     ],
   },
@@ -203,6 +210,7 @@ export const OFFICER_LANDING_ORDER: readonly string[] = [
   "/verify",
   "/cards",
   "/vehicles",
+  "/stickers/stock",
   "/settings/fees",
   "/settings/settlement",
   "/organisations",

@@ -804,10 +804,11 @@ model Sticker {
   signingKeyId String? @map("signing_key_id")
 
   /// PRD §26.4 — the legacy scheme, kept in a DISTINCT column from the signed
-  /// identifier. Read-only: the issuance path has no route capable of producing
-  /// one (Requirement 26.5). The legacy value is a millisecond epoch timestamp
+  /// identifier. The System never produces one (Requirement 26.5): it is
+  /// written by the legacy import, and by taking a printed sticker into stock
+  /// (Requirement 9A.8). The legacy value is a millisecond epoch timestamp
   /// and is forgeable by inspection; the owner accepted this to preserve the
-  /// 2,408 stickers already in the field.
+  /// stickers already printed.
   legacyBarcode String? @unique @map("legacy_barcode")
 
   /// Revision 1.2, Requirement 9A.3–9A.4 — for a legacy barcode only, the
@@ -839,6 +840,14 @@ model Sticker {
   /// no response selects it.
   legacySecurityCode String? @map("legacy_security_code")
 
+  /// Revision 1.12, Requirement 9A.8 (`QUESTIONS.md` VEH-29) — when a printed
+  /// legacy sticker was taken into stock by scanning, and by whom. `null` for
+  /// a barcode imported with the register and for a signed sticker. A stock
+  /// barcode carries no `registeredPlateNormalized`: it is bound to a plate
+  /// only when it is attached. Set once, by `StickerService.addToStock`.
+  stockAddedAt       DateTime? @map("stock_added_at")
+  stockAddedByUserId String?   @map("stock_added_by_user_id") @db.Uuid
+
   /// The confirmed Paystack payment that funded this attachment (Requirement
   /// 9A.4's fourth condition). `@unique` so a payment reference can fund at
   /// most one attachment — the same enforcement Requirement 9A.4 asks for
@@ -864,6 +873,7 @@ model Sticker {
   letters           VehicleLetter[]
   issuedByUser      User?           @relation("StickerIssuedBy", fields: [issuedByUserId], references: [id], onDelete: SetNull)
   attachedByUser    User?           @relation("StickerAttachedBy", fields: [attachedByUserId], references: [id], onDelete: SetNull)
+  stockAddedByUser  User?           @relation("StickerStockAddedBy", fields: [stockAddedByUserId], references: [id], onDelete: SetNull)
 
   /// PRD §9A.4 — at most one ATTACHED sticker per vehicle at a time. A
   /// PARTIAL unique index, same technique as
@@ -876,6 +886,7 @@ model Sticker {
   @@index([vehicleId])
   @@index([status])
   @@index([registeredPlateNormalized])
+  @@index([stockAddedAt])
   @@map("sticker")
 }
 
@@ -995,6 +1006,7 @@ model User {
   cardsApproved             Card[]                     @relation("CardApprovedBy")
   stickersIssued            Sticker[]                  @relation("StickerIssuedBy")
   stickersAttached          Sticker[]                  @relation("StickerAttachedBy")
+  stickersAddedToStock      Sticker[]                  @relation("StickerStockAddedBy")
   lettersIssued             VehicleLetter[]            @relation("VehicleLetterIssuedBy")
   auditEvents               AuditEvent[]
   sessions                  UserSession[]

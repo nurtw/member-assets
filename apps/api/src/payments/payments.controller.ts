@@ -9,10 +9,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import {
+  checkPaymentsSchema,
   initiatePaymentSchema,
   resolveSettlementAccountSchema,
   setDedicatedPercentageSchema,
   setSettlementAccountSchema,
+  type CheckPaymentsInput,
+  type CheckPaymentsResult,
   type InitiatePaymentInput,
   type PaystackBank,
   type ResolvedSettlementAccount,
@@ -80,6 +83,28 @@ export class PaymentsController {
       payerEmail: body.payerEmail,
       callbackUrl: body.callbackUrl,
       initiatedByUserId: userId,
+    });
+  }
+
+  @RequirePermission('payment.initiate')
+  @Post('check')
+  @HttpCode(200)
+  @Documented({
+    summary: 'Ask Paystack about the payments still open for a vehicle or member.',
+    description:
+      'PRD Requirement 9A.7 — for the screen an officer returns to after a payer has paid, so ' +
+      'it need not wait on the webhook. Each open payment is verified with Paystack itself ' +
+      '(Requirement 27.5); nothing is confirmed on the caller\'s word. A check only ever ' +
+      'confirms: a payment not yet successful is left open. Answers with how many were asked ' +
+      'about and how many were confirmed just now. At most the five most recent are asked about.',
+    body: checkPaymentsSchema,
+  })
+  check(
+    @Body(new ZodValidationPipe(checkPaymentsSchema)) body: CheckPaymentsInput,
+  ): Promise<CheckPaymentsResult> {
+    return this.payments.checkOpen({
+      type: body.subjectType,
+      id: body.subjectId,
     });
   }
 

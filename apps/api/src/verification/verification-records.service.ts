@@ -7,6 +7,7 @@ import {
   LIVE_CARD_STATUSES,
   decideMembershipVerification,
   decideVerification,
+  isHeldBarcode,
   parseIdentifier,
   stickerCodeScheme,
   type DeclarationStatus,
@@ -50,6 +51,7 @@ const STICKER_SELECT = {
   vehicleId: true,
   legacyBarcode: true,
   registeredPlateNormalized: true,
+  stockAddedAt: true,
 } satisfies Prisma.StickerSelect;
 
 /**
@@ -469,9 +471,10 @@ export class VerificationRecordsService {
       where: { legacyBarcode: barcode },
       select: STICKER_SELECT,
     });
-    // A row with no registered plate is not on the register, and is treated
-    // as unknown rather than guessed at (`describeLegacyBarcode`).
-    return entry?.registeredPlateNormalized ? entry : null;
+    // A row neither on the register nor in stock (Requirement 9A.8) is not
+    // held, and is treated as unknown rather than guessed at
+    // (`describeLegacyBarcode`).
+    return entry && isHeldBarcode(entry) ? entry : null;
   }
 
   private async findVehicleByPlate(

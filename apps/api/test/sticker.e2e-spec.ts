@@ -108,6 +108,7 @@ describe('Sticker issuance and attachment (e2e)', () => {
     await buildUser('attacher', ['sticker.attach', 'vehicle.read']);
     await buildUser('bystander', ['vehicle.read']);
     await buildUser('verifier', ['verification.perform']);
+    await buildUser('stocker', ['sticker.stock_intake']);
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -119,7 +120,13 @@ describe('Sticker issuance and attachment (e2e)', () => {
     await app.init();
     server = app.getHttpServer();
 
-    for (const who of ['issuer', 'attacher', 'bystander', 'verifier']) {
+    for (const who of [
+      'issuer',
+      'attacher',
+      'bystander',
+      'verifier',
+      'stocker',
+    ]) {
       cookies[who] = await login(`${who}.${TAG}@nurtw.test`);
     }
   });
@@ -968,6 +975,469 @@ describe('Sticker issuance and attachment (e2e)', () => {
     });
   });
 
+
+  describe('sticker stock (Requirement 9A.8, VEH-29)', () => {
+    let counter = 0;
+
+    /**
+     * A barcode no real sticker carries: thirteen digits beginning 99, where
+     * the imported ones are timestamps beginning 17.
+     */
+    function barcode(): string {
+      counter += 1;
+      return `99${String(Date.now()).slice(-9)}${String(counter).padStart(2, '0')}`;
+    }
+
+    /** What a camera reads from a legacy sticker: an address ending in its barcode. */
+    function scanned(code: string): string {
+      return `https://www.example.test/v/status/${code}`;
+    }
+
+    async function addToStock(code: string, who = 'stocker') {
+      return request(server)
+        .post('/api/v1/stickers/stock')
+        .set('Cookie', cookies[who]!)
+        .send({ code });
+    }
+
+    async function reading(vehicleId: string, code: string, who = 'attacher') {
+      return request(server)
+        .post(`/api/v1/stickers/onboarding/${vehicleId}/reading`)
+        .set('Cookie', cookies[who]!)
+        .send({ code });
+    }
+
+    it('adds a scanned sticker to stock, taking the barcode from what the camera read', async () => {
+      const code = barcode();
+
+      const response = await addToStock(scanned(code));
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        outcome: 'ADDED',
+        sticker: {
+          stickerNumber: code,
+          standing: 'IN_STOCK',
+          addedBy: 'stocker fixture',
+          attachedPlate: null,
+        },
+      });
+
+      const stored = await prisma.sticker.findUniqueOrThrow({
+        where: { legacyBarcode: code },
+      });
+      expect(stored).toMatchObject({
+        status: 'ISSUED',
+        templateVersion: 'legacy-barcode',
+        // Bound to no plate until it is attached.
+        registeredPlateNormalized: null,
+        vehicleId: null,
+        attachedAt: null,
+      });
+      expect(stored.stockAddedAt).not.toBeNull();
+
+      const event = await prisma.auditEvent.findFirstOrThrow({
+        where: { action: 'sticker.stock_add', subjectId: stored.id },
+      });
+      expect(event.afterValue).toEqual({ outcome: 'ADDED', legacyBarcode: code });
+    });
+
+    it('does not add a barcode twice, and says where it stands', async () => {
+      const code = barcode();
+      const first = await addToStock(code);
+
+      const second = await addToStock(scanned(code));
+
+      expect(second.status).toBe(200);
+      expect(second.body).toMatchObject({
+        outcome: 'ALREADY_HELD',
+        held: 'IN_STOCK',
+        sticker: { id: first.body.sticker.id },
+      });
+      expect(
+        await prisma.sticker.count({ where: { legacyBarcode: code } }),
+      ).toBe(1);
+    });
+
+    it('leaves a barcode on the register as it is', async () => {
+      const code = barcode();
+      const registered = await prisma.sticker.create({
+        data: {
+          stickerQrId: `${TAG}-stock-registered`,
+          legacyBarcode: code,
+          registeredPlateNormalized: 'E2ESTKREG9',
+          templateVersion: 'legacy-barcode',
+          status: 'ISSUED',
+        },
+      });
+
+      const response = await addToStock(code);
+
+      expect(response.body).toEqual({
+        outcome: 'ALREADY_HELD',
+        held: 'ON_REGISTER',
+        sticker: null,
+      });
+      // The plate the register records is not given out here.
+      expect(JSON.stringify(response.body)).not.toContain('E2ESTKREG9');
+      const after = await prisma.sticker.findUniqueOrThrow({
+        where: { id: registered.id },
+      });
+      expect(after.stockAddedAt).toBeNull();
+      expect(after.registeredPlateNormalized).toBe('E2ESTKREG9');
+    });
+
+    it.each([
+      'https://example.test/menu',
+      'not a barcode',
+      '12345',
+      'ab12cd34.k1.0123456789abcdef',
+    ])('refuses %j: it is not a barcode', async (code) => {
+      const response = await addToStock(code);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.details).toEqual([
+        expect.objectContaining({ field: 'code' }),
+      ]);
+    });
+
+    it('is for holders of sticker.stock_intake alone', async () => {
+      for (const who of ['attacher', 'issuer', 'verifier']) {
+        expect((await addToStock(barcode(), who)).status).toBe(403);
+        await request(server)
+          .get('/api/v1/stickers/stock')
+          .set('Cookie', cookies[who]!)
+          .expect(403);
+      }
+    });
+
+    it('lists the stock, newest first, with its totals', async () => {
+      const code = barcode();
+      await addToStock(code);
+
+      const response = await request(server)
+        .get('/api/v1/stickers/stock')
+        .set('Cookie', cookies.stocker!)
+        .expect(200);
+
+      expect(response.body.counts.inStock).toBeGreaterThanOrEqual(1);
+      expect(response.body.stickers[0]).toMatchObject({
+        stickerNumber: code,
+        standing: 'IN_STOCK',
+      });
+      expect(response.body.truncated).toBe(false);
+      // The security code and the register's plates are no part of it.
+      expect(JSON.stringify(response.body)).not.toContain('ZZ9ZZ');
+    });
+
+    describe('attaching a sticker from stock', () => {
+      it('tells the onboarding screen stock can give one, never how many', async () => {
+        await addToStock(barcode());
+        const vehicle = await declareVehicle('STK1');
+
+        const response = await request(server)
+          .get(`/api/v1/stickers/onboarding/${vehicle.id}`)
+          .set('Cookie', cookies.attacher!)
+          .expect(200);
+
+        expect(response.body.onboarding).toMatchObject({
+          registerHoldsBarcodeForPlate: false,
+          stockHasStickers: true,
+        });
+      });
+
+      it('attaches it to a vehicle the register never knew, paid for as a new sticker', async () => {
+        const code = barcode();
+        await addToStock(code);
+        const vehicle = await declareVehicle('STK2');
+        const payment = await confirmedPayment(vehicle.id, 'STICKER_NEW');
+
+        const read = await reading(vehicle.id, scanned(code));
+        expect(read.status).toBe(200);
+        expect(read.body.reading).toEqual({
+          result: 'CAN_ATTACH',
+          stickerNumber: code,
+          feeTypeCode: 'STICKER_NEW',
+        });
+
+        const response = await request(server)
+          .post('/api/v1/stickers/attach')
+          .set('Cookie', cookies.attacher!)
+          // Sent as the camera read it.
+          .send({
+            legacyBarcode: scanned(code),
+            vehicleId: vehicle.id,
+            paymentId: payment.id,
+          })
+          .expect(201);
+
+        expect(response.body.sticker).toMatchObject({
+          status: 'ACTIVE',
+          vehicleId: vehicle.id,
+          legacyBarcode: code,
+          // The plate is bound by the attachment.
+          plateNumberAtIssue: vehicle.plateNumberNormalized,
+        });
+        // Requirement 9A.6 — an onboarding from stock produces its letter too.
+        expect(
+          await prisma.vehicleLetter.count({ where: { vehicleId: vehicle.id } }),
+        ).toBe(1);
+        const event = await prisma.auditEvent.findFirstOrThrow({
+          where: { action: 'sticker.attach', subjectId: response.body.sticker.id },
+          orderBy: { createdAt: 'desc' },
+        });
+        expect(event.afterValue).toMatchObject({
+          outcome: 'ATTACHED',
+          origin: 'STOCK',
+        });
+
+        const stock = await request(server)
+          .get('/api/v1/stickers/stock')
+          .set('Cookie', cookies.stocker!)
+          .expect(200);
+        expect(
+          stock.body.stickers.find(
+            (entry: { stickerNumber: string }) => entry.stickerNumber === code,
+          ),
+        ).toMatchObject({
+          standing: 'ATTACHED',
+          attachedPlate: vehicle.plateNumberNormalized,
+        });
+
+        // Once in its life: the same sticker cannot go on another vehicle.
+        const second = await declareVehicle('STK3');
+        expect((await reading(second.id, code)).body.reading).toEqual({
+          result: 'ALREADY_ATTACHED',
+        });
+        const secondPayment = await confirmedPayment(second.id, 'STICKER_NEW');
+        await request(server)
+          .post('/api/v1/stickers/attach')
+          .set('Cookie', cookies.attacher!)
+          .send({
+            legacyBarcode: code,
+            vehicleId: second.id,
+            paymentId: secondPayment.id,
+          })
+          .expect(409);
+        expect(await refusalReason(response.body.sticker.id)).toBe(
+          'ALREADY_ATTACHED',
+        );
+      });
+
+      it('refuses one paid for as a reattachment', async () => {
+        const code = barcode();
+        const added = await addToStock(code);
+        const vehicle = await declareVehicle('STK4');
+        const payment = await confirmedPayment(vehicle.id, 'STICKER_REATTACHMENT');
+
+        await request(server)
+          .post('/api/v1/stickers/attach')
+          .set('Cookie', cookies.attacher!)
+          .send({
+            legacyBarcode: code,
+            vehicleId: vehicle.id,
+            paymentId: payment.id,
+          })
+          .expect(409);
+
+        expect(await refusalReason(added.body.sticker.id)).toBe(
+          'PAYMENT_WRONG_FEE_TYPE',
+        );
+      });
+
+      it('still refuses a barcode that is neither on the register nor in stock', async () => {
+        const code = barcode();
+        const vehicle = await declareVehicle('STK5');
+        const payment = await confirmedPayment(vehicle.id, 'STICKER_NEW');
+
+        expect((await reading(vehicle.id, code)).body.reading).toEqual({
+          result: 'NOT_HELD',
+        });
+        await request(server)
+          .post('/api/v1/stickers/attach')
+          .set('Cookie', cookies.attacher!)
+          .send({
+            legacyBarcode: code,
+            vehicleId: vehicle.id,
+            paymentId: payment.id,
+          })
+          .expect(409);
+        expect(await refusalReason(vehicle.id)).toBe('UNKNOWN_BARCODE');
+      });
+    });
+
+    describe('the reading before an attachment (Requirement 9A.7)', () => {
+      it('says a register barcode is for another vehicle, without naming it', async () => {
+        const registered = await registerBarcode('reading-other', 'E2ESTKOTHR1');
+        const vehicle = await declareVehicle('RD1');
+
+        const response = await reading(vehicle.id, registered.legacyBarcode!);
+
+        expect(response.body.reading).toEqual({ result: 'FOR_ANOTHER_VEHICLE' });
+        expect(JSON.stringify(response.body)).not.toContain('E2ESTKOTHR1');
+      });
+
+      it('says a register barcode for this plate is reattached, at the reattachment fee', async () => {
+        const vehicle = await declareVehicle('RD2');
+        const registered = await registerBarcode(
+          'reading-own',
+          vehicle.plateNumberNormalized,
+        );
+
+        const response = await reading(vehicle.id, registered.legacyBarcode!);
+
+        expect(response.body.reading).toEqual({
+          result: 'CAN_ATTACH',
+          stickerNumber: registered.legacyBarcode,
+          feeTypeCode: 'STICKER_REATTACHMENT',
+        });
+        const event = await prisma.auditEvent.findFirstOrThrow({
+          where: { action: 'sticker.attach_reading', subjectId: registered.id },
+        });
+        expect(event.afterValue).toEqual({
+          outcome: 'CAN_ATTACH',
+          vehicleId: vehicle.id,
+        });
+      });
+
+      it('changes nothing', async () => {
+        const code = barcode();
+        const added = await addToStock(code);
+        const vehicle = await declareVehicle('RD3');
+        const before = await prisma.sticker.findUniqueOrThrow({
+          where: { id: added.body.sticker.id },
+        });
+
+        await reading(vehicle.id, code);
+
+        expect(
+          await prisma.sticker.findUniqueOrThrow({
+            where: { id: added.body.sticker.id },
+          }),
+        ).toEqual(before);
+      });
+
+      it('answers 404 for a vehicle outside the caller\'s scope, and 403 without sticker.attach', async () => {
+        const outside = await declareVehicle('RD4', {
+          branchId: fixture.otherBranchId,
+        });
+        expect((await reading(outside.id, barcode())).status).toBe(404);
+
+        const inside = await declareVehicle('RD5');
+        expect((await reading(inside.id, barcode(), 'bystander')).status).toBe(
+          403,
+        );
+      });
+    });
+
+    describe('withdrawing', () => {
+      async function withdraw(id: string, body: Record<string, string>, who = 'stocker') {
+        return request(server)
+          .post(`/api/v1/stickers/stock/${id}/withdrawal`)
+          .set('Cookie', cookies[who]!)
+          .send(body);
+      }
+
+      it('takes a sticker out of stock for a reason, for good', async () => {
+        const code = barcode();
+        const added = await addToStock(code);
+        const id = added.body.sticker.id as string;
+
+        const response = await withdraw(id, { reason: 'e2e: torn in the box' });
+
+        expect(response.status).toBe(200);
+        expect(response.body.sticker).toMatchObject({ id, standing: 'WITHDRAWN' });
+        const event = await prisma.auditEvent.findFirstOrThrow({
+          where: { action: 'sticker.stock_withdraw', subjectId: id },
+        });
+        expect(event.reason).toBe('e2e: torn in the box');
+        expect(event.beforeValue).toEqual({ status: 'ISSUED' });
+        expect(event.afterValue).toEqual({ status: 'CANCELLED' });
+
+        // It can never be attached.
+        const vehicle = await declareVehicle('WD1');
+        expect((await reading(vehicle.id, code)).body.reading).toEqual({
+          result: 'NOT_AVAILABLE',
+        });
+        const payment = await confirmedPayment(vehicle.id, 'STICKER_NEW');
+        await request(server)
+          .post('/api/v1/stickers/attach')
+          .set('Cookie', cookies.attacher!)
+          .send({ legacyBarcode: code, vehicleId: vehicle.id, paymentId: payment.id })
+          .expect(409);
+        expect(await refusalReason(id)).toBe('STICKER_NOT_AVAILABLE');
+
+        // Its barcode cannot be added again, and it cannot be withdrawn twice.
+        expect((await addToStock(code)).body).toMatchObject({
+          outcome: 'ALREADY_HELD',
+          held: 'WITHDRAWN',
+        });
+        expect((await withdraw(id, { reason: 'e2e: again' })).status).toBe(409);
+        // Nothing was deleted.
+        expect(
+          await prisma.sticker.count({ where: { legacyBarcode: code } }),
+        ).toBe(1);
+      });
+
+      it('needs a reason', async () => {
+        const added = await addToStock(barcode());
+
+        const response = await withdraw(added.body.sticker.id, { reason: ' ' });
+
+        expect(response.status).toBe(400);
+        expect(response.body.error.details).toEqual([
+          expect.objectContaining({ field: 'reason' }),
+        ]);
+      });
+
+      it('refuses a sticker already on a vehicle', async () => {
+        const code = barcode();
+        const added = await addToStock(code);
+        const vehicle = await declareVehicle('WD2');
+        const payment = await confirmedPayment(vehicle.id, 'STICKER_NEW');
+        await request(server)
+          .post('/api/v1/stickers/attach')
+          .set('Cookie', cookies.attacher!)
+          .send({ legacyBarcode: code, vehicleId: vehicle.id, paymentId: payment.id })
+          .expect(201);
+
+        expect(
+          (await withdraw(added.body.sticker.id, { reason: 'e2e: too late' }))
+            .status,
+        ).toBe(409);
+      });
+
+      it('answers 404 for a sticker that was never in stock, and 403 without the permission', async () => {
+        const registered = await registerBarcode('withdraw-register', 'E2ESTKWDR1');
+        expect(
+          (await withdraw(registered.id, { reason: 'e2e: not stock' })).status,
+        ).toBe(404);
+
+        const added = await addToStock(barcode());
+        expect(
+          (await withdraw(added.body.sticker.id, { reason: 'e2e: no' }, 'attacher'))
+            .status,
+        ).toBe(403);
+      });
+    });
+
+    it('reads as in stock to an officer who looks it up, with no plate', async () => {
+      const code = barcode();
+      await addToStock(code);
+
+      const response = await request(server)
+        .post('/api/v1/stickers/legacy-lookup')
+        .set('Cookie', cookies.verifier!)
+        .send({ barcode: scanned(code) })
+        .expect(200);
+
+      expect(response.body.reading).toEqual({
+        result: 'IN_STOCK',
+        message: 'Recognised sticker — in stock, not attached',
+      });
+    });
+  });
+
   async function buildUser(
     who: string,
     permissions: readonly string[],
@@ -1031,6 +1501,7 @@ describe('Sticker issuance and attachment (e2e)', () => {
           { vehicleId: { in: vehicleIds } },
           { sticker: { stickerQrId: { contains: TAG } } },
           { sticker: { issuedByUserId: { in: userIds } } },
+          { sticker: { stockAddedByUserId: { in: userIds } } },
         ],
       },
     });
@@ -1041,6 +1512,8 @@ describe('Sticker issuance and attachment (e2e)', () => {
           { stickerQrId: { contains: TAG } },
           // Issued by a fixture user and left unattached by a refusal test.
           { issuedByUserId: { in: userIds } },
+          // Taken into stock by one.
+          { stockAddedByUserId: { in: userIds } },
         ],
       },
     });

@@ -31,6 +31,7 @@ export const SECOND_FACTOR_PERMISSIONS: readonly string[] = [
   'disclosure_profile.manage',
   'payment.manage_settlement',
   'vehicle.declare',
+  'sticker.stock_intake',
 ];
 
 export function needsSecondFactor(permission: string): boolean {
@@ -45,6 +46,9 @@ export function needsSecondFactor(permission: string): boolean {
 export const GRANT_ONLY_PERMISSIONS: readonly string[] = [
   'vehicle.declare',
   'payment.manage_settlement',
+  // PRD Requirement 9A.8 (VEH-29) — whoever adds stickers to stock decides
+  // which stickers count, because a legacy barcode proves nothing by itself.
+  'sticker.stock_intake',
 ];
 
 export function isGrantOnly(permission: string): boolean {

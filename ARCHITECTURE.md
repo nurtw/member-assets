@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.8
-**Last revised:** 5 October 2026
+**Document version:** 1.9
+**Last revised:** 6 October 2026
 **Authority:** Subordinate to `PRD.md`. Where this document and the PRD conflict, the PRD prevails.
 
 ---
@@ -265,6 +265,35 @@ never touches the `ACTIVE` partial unique index.
   name/phone are required by the zod contracts for recording and declaring (Requirements
   9.8–9.9). The columns stay nullable because legacy rows lawfully lack them (Requirement
   25.4), and a NOT NULL column would force the migration to invent values.
+
+**Decision 6.7 — a legacy barcode is held on the register, or in stock *(revision 1.12)*.**
+PRD Requirement 9A.8. A printed legacy sticker the register never recorded is taken into
+stock by scanning it. It is a `sticker` row like an imported one: `legacy_barcode` set, no
+`registered_plate_normalized`, and `stock_added_at` and `stock_added_by_user_id` saying who
+vouched for it.
+
+- **Origin decides the checks and the fee.** `stickerOrigin` in `packages/domain` names the
+  three origins: register, stock, and signed. A register barcode is held to its plate and
+  paid for as a reattachment. A stock barcode and a signed sticker go on any vehicle and
+  are paid for as a new sticker. Nothing branches on the scheme alone.
+- **The permission is the control.** A scan proves nothing about the article (§26.4), so
+  what matters is who may add one. `sticker.stock_intake` is in `GRANT_ONLY_PERMISSIONS`:
+  no role can hold it.
+- **Withdrawal is a status, not a deletion.** One conditional statement sets `CANCELLED`
+  on a stock sticker that is still unattached. An attachment racing it loses, and the
+  barcode can never be added again.
+- **Standing is derived.** In stock, attached, or withdrawn is worked out from the row.
+
+**Decision 6.8 — what a camera reads is reduced once, at the contract *(revision 1.12)*.**
+A legacy sticker's QR code holds a web address ending in its barcode (`QUESTIONS.md`
+VEH-13). `stickerCodeFromScan` takes the barcode from the end of an address and leaves
+anything else as it is. The zod schemas for attachment, stock, the internal lookup, and
+both verification channels apply it, so no service ever sees an address.
+
+It does not check whose address it is. A barcode has no authenticity to protect: the
+register and the stock decide whether it is held. Without this reduction an address, which
+contains a full stop, would be read as a signed code, fail its signature, and be audited as
+a forgery.
 
 ---
 
@@ -778,9 +807,36 @@ theme ink must be light while a fill behind white text must stay dark (`DESIGN.m
 Printed matter, such as a QR code, sits on a white "paper" token in both themes. If a
 content security policy is added (item 15), it must allow the theme script by its hash.
 
+**Decision 17.4 — a QR code is read in the browser *(item 27)*.** The scanner
+(`components/qr-scanner.tsx`) uses the browser's own `BarcodeDetector` where there is one,
+and `jsqr`, loaded on demand, where there is not: Safari, Firefox, and Chrome on a desktop.
+No frame leaves the device. A camera needs a secure origin and the officer's permission,
+so every use of the scanner also takes the number typed in. If a permissions policy is
+added (item 15), it must allow the camera on the application's own origin.
+
+**Decision 17.5 — two landing pages *(item 34)*.** The front page (`/`) is a server
+component that shows the ways in. It looks nothing up, and says so, because the System is
+not a directory (PRD §2.2). An officer whose session cookie is present is sent to Home;
+the cookie is this origin's, because the browser reaches the API only through the
+application's own address. Home (`/overview`) is one screen of quick actions, each shown
+only to an officer who holds its permission, with counts taken from lists that officer may
+already read. Neither page adds an API route.
+
 The following were added by item 33, 5 October 2026 (PRD revision 1.10):
 
 | Matter | Determination | Decision |
 |---|---|---|
 | Inviting an organisation | A personal link to the application form: used once, expiring, withdrawable; it confirms nobody | 9.17, PRD Requirement 12.11 |
 | The invitation's code | Not a credential: stored as it is, never audited, redacted from logs | 9.17 |
+
+The following were added by items 27 and 36, 6 October 2026 (PRD revision 1.12):
+
+| Matter | Determination | Decision |
+|---|---|---|
+| Printed stickers the register never recorded | Taken into stock by scanning, by holders of a permission in no role; attached to any vehicle on the new-sticker fee | 6.7, PRD Requirements 9A.4 and 9A.8 |
+| What a camera reads from a sticker | Reduced to its barcode at the contract, on every channel | 6.8 |
+| The order of assigning a sticker | Pay, then scan, then confirm; a reading says what the sticker can be before it is attached | PRD Requirement 9A.7 |
+| Confirming a payment | One path, which always asks Paystack. The webhook may close an unpaid payment; an officer's check only ever confirms | PRD Requirements 9A.7 and 27.5 |
+| Reading a QR code | In the browser; nothing leaves the device | 17.4 |
+| The previous operator | Not named in the repository or on any screen; a test enforces it | PRD §23.19 (`QUESTIONS.md` GOV-21) |
+| Landing pages | A front page of the ways in, and a Home of quick actions | 17.5 |

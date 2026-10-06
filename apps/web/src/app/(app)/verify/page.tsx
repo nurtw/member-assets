@@ -17,6 +17,7 @@ import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { DedicatedAccountSummary } from "@/components/dedicated-account-panel";
 import { ExactPaymentLink, day, naira } from "@/components/dues-panel";
 import { PersonalPayLink } from "@/components/pay-link";
+import { ScanButton, StickerScanDialog } from "@/components/qr-scanner";
 import { Button, ErrorNotice, StatusChip } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -582,24 +583,34 @@ function VehicleCheck() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [result, setResult] = useState<InternalVerification | null>(null);
+  const [scanning, setScanning] = useState(false);
   const plateInput = useRef<HTMLInputElement>(null);
   const resultRegion = useRef<HTMLDivElement>(null);
 
   const canSubmit = (plate.trim() !== "" || code.trim() !== "") && !busy;
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
-    if (!canSubmit) {
-      return;
+    if (canSubmit) {
+      void check(plate, code);
     }
+  }
+
+  /** A sticker read by the camera is checked at once, with the plate if one is entered. */
+  function scanned(read: string) {
+    setCode(read);
+    void check(plate, read);
+  }
+
+  async function check(plateEntered: string, codeEntered: string) {
     dismissKeyboard();
     setBusy(true);
     setError(null);
     setResult(null);
     try {
       const body: { plateNumber?: string; stickerCode?: string } = {};
-      if (plate.trim()) body.plateNumber = plate.trim();
-      if (code.trim()) body.stickerCode = code.trim();
+      if (plateEntered.trim()) body.plateNumber = plateEntered.trim();
+      if (codeEntered.trim()) body.stickerCode = codeEntered.trim();
       const response = await api.post<{ verification: InternalVerification }>(
         "/verifications",
         body,
@@ -656,20 +667,30 @@ function VehicleCheck() {
             Sticker code
           </label>
           <p className="text-xs text-faint-foreground">
-            Scan the sticker&apos;s code into this box, or type the number on the
+            Scan the sticker with the camera, or type the number on the
             sticker.
           </p>
-          <input
-            id="code"
-            value={code}
-            onChange={(event) => setCode(event.target.value)}
-            autoComplete="off"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            maxLength={128}
-            className={`${inputClass} font-mono`}
-          />
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              id="code"
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              maxLength={128}
+              className={`${inputClass} min-w-0 flex-1 font-mono`}
+            />
+            <ScanButton
+              variant="secondary"
+              disabled={busy}
+              onClick={() => setScanning(true)}
+              className="h-14 shrink-0 text-base"
+            >
+              Scan
+            </ScanButton>
+          </div>
           <FieldError message={error?.fieldError("stickerCode")} />
         </div>
 
@@ -693,6 +714,13 @@ function VehicleCheck() {
           ) : null}
         </div>
       </form>
+
+      <StickerScanDialog
+        open={scanning}
+        onOpenChange={setScanning}
+        description="Point the camera at the QR code on the sticker. It is checked as soon as it is read."
+        onCode={scanned}
+      />
 
       {error && error.details.length === 0 ? (
         <ErrorNotice message={error.message} requestId={error.requestId} />

@@ -95,6 +95,10 @@ const STATUS_TONES: Record<string, Tone> = {
   OPEN: "waiting",
   USED: "affirm",
   EXPIRED: "neutral",
+  // Sticker stock (item 27). In stock is held and not yet on a vehicle;
+  // assigned did its work. Withdrawn reads as WITHDRAWN does above.
+  IN_STOCK: "neutral",
+  ASSIGNED: "affirm",
 };
 
 export function StatusChip({

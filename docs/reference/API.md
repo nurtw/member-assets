@@ -358,6 +358,10 @@ never travels in a URL.
 | `/api/v1/verification/vehicle/combined` | `vehicle:verify:combined` | both of the above |
 | `/api/v1/verification/membership` | `member:verify:membership` | `{ "number": "…" }`, a card or membership number |
 
+**Send `sticker_qr_id` exactly as your scanner read it.** Some stickers' codes hold a web
+address ending in the sticker's number. You need not take the number out yourself: the
+System does, and the number alone is accepted too.
+
 Every answer is a `200`. A match names the record and carries the fields your disclosure
 profile permits, of those the check may carry:
 

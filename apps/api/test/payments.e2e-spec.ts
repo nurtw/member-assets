@@ -678,6 +678,118 @@ describe('Payments (e2e)', () => {
     });
   });
 
+  describe('checking open payments (Requirement 9A.7)', () => {
+    async function start(subjectId: string): Promise<{
+      reference: string;
+      totalChargedKobo: number;
+    }> {
+      const initiated = await request(server)
+        .post('/api/v1/payments/initiate')
+        .set('Cookie', cookies.payer!)
+        .send({
+          feeTypeCode: 'STICKER_NEW',
+          subjectType: 'vehicle',
+          subjectId,
+          payerEmail: 'owner@nurtw.test',
+        })
+        .expect(201);
+      return initiated.body;
+    }
+
+    async function check(subjectId: string, who = 'payer') {
+      return request(server)
+        .post('/api/v1/payments/check')
+        .set('Cookie', cookies[who]!)
+        .send({ subjectType: 'vehicle', subjectId });
+    }
+
+    it('confirms a paid payment without waiting on the webhook, by asking Paystack itself', async () => {
+      const subjectId = crypto.randomUUID();
+      const { reference, totalChargedKobo } = await start(subjectId);
+      verifyAmountKobo = totalChargedKobo;
+      verifyStatus = 'success';
+      const verifications = () =>
+        fetchCalls.filter((call) =>
+          call.url.includes(`/transaction/verify/${reference}`),
+        ).length;
+      const before = verifications();
+
+      const response = await check(subjectId);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ checked: 1, confirmed: 1 });
+      // Nothing is confirmed on the caller's word (Requirement 27.5).
+      expect(verifications()).toBe(before + 1);
+      const payment = await prisma.payment.findUniqueOrThrow({
+        where: { paystackReference: reference },
+      });
+      expect(payment.status).toBe('CONFIRMED');
+      expect(
+        await prisma.ledgerEntry.count({ where: { paymentId: payment.id } }),
+      ).toBe(1);
+
+      // Asking again finds nothing open, and credits nothing twice.
+      expect((await check(subjectId)).body).toEqual({ checked: 0, confirmed: 0 });
+      expect(
+        await prisma.ledgerEntry.count({ where: { paymentId: payment.id } }),
+      ).toBe(1);
+    });
+
+    it('leaves a payment the payer has not finished open, never closing it', async () => {
+      const subjectId = crypto.randomUUID();
+      const { reference } = await start(subjectId);
+      verifyStatus = 'abandoned';
+
+      const response = await check(subjectId);
+
+      expect(response.body).toEqual({ checked: 1, confirmed: 0 });
+      const payment = await prisma.payment.findUniqueOrThrow({
+        where: { paystackReference: reference },
+      });
+      // The webhook closes a failure; a check only ever confirms.
+      expect(payment.status).toBe('PENDING');
+      verifyStatus = 'success';
+    });
+
+    it('does not confirm a payment of the wrong amount', async () => {
+      const subjectId = crypto.randomUUID();
+      const { reference, totalChargedKobo } = await start(subjectId);
+      verifyAmountKobo = totalChargedKobo - 1;
+      verifyStatus = 'success';
+
+      expect((await check(subjectId)).body).toEqual({ checked: 1, confirmed: 0 });
+      const payment = await prisma.payment.findUniqueOrThrow({
+        where: { paystackReference: reference },
+      });
+      expect(payment.status).toBe('PENDING');
+    });
+
+    it('asks about one subject only', async () => {
+      const mine = crypto.randomUUID();
+      const theirs = crypto.randomUUID();
+      const other = await start(theirs);
+      await start(mine);
+      verifyStatus = 'abandoned';
+
+      await check(mine);
+
+      const untouched = await prisma.payment.findUniqueOrThrow({
+        where: { paystackReference: other.reference },
+      });
+      expect(untouched.status).toBe('PENDING');
+      verifyStatus = 'success';
+    });
+
+    it('refuses a caller without payment.initiate, and a body that names no subject', async () => {
+      expect((await check(crypto.randomUUID(), 'bystander')).status).toBe(403);
+      await request(server)
+        .post('/api/v1/payments/check')
+        .set('Cookie', cookies.payer!)
+        .send({ subjectType: 'vehicle' })
+        .expect(400);
+    });
+  });
+
   /** Puts the shared database's interstate levy back as it was found. */
   async function restoreInterstateLevy(): Promise<void> {
     const [levy, interstate] = await Promise.all([

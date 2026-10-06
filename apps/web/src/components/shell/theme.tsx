@@ -87,6 +87,30 @@ export const THEME_ICONS: Record<ThemeChoice, LucideIcon> = {
   dark: Moon,
 };
 
+/**
+ * One button that steps through the three choices, for a page with no account
+ * menu: the public front page.
+ */
+export function ThemeButton() {
+  const choice = useThemeChoice();
+  const next =
+    THEME_CHOICES[(THEME_CHOICES.indexOf(choice) + 1) % THEME_CHOICES.length] ??
+    "system";
+  const Icon = THEME_ICONS[choice];
+  const label = `Theme: ${THEME_LABELS[choice]}. Switch to ${THEME_LABELS[next]}.`;
+  return (
+    <button
+      type="button"
+      onClick={() => setThemeChoice(next)}
+      aria-label={label}
+      title={label}
+      className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+    >
+      <Icon className="size-4" aria-hidden />
+    </button>
+  );
+}
+
 /** The three choices, for an account menu. */
 export function ThemeMenuItems() {
   const choice = useThemeChoice();

@@ -27,12 +27,12 @@ import { useSession } from "@/lib/session";
  * on every vehicle without a sticker, and a prompt when one has just been
  * added.
  *
- * Whether the register holds a barcode for the plate comes from the onboarding
- * state, which only a holder of `sticker.attach` may read. Anyone else is told
- * the vehicle has no sticker and who can attach one. Nothing here takes money:
- * payment is started in the onboarding panel, and only where a sticker can be
- * given. While new stickers are paused, a vehicle with no barcode on the
- * register is told so and charged nothing.
+ * What the vehicle can be given comes from the onboarding state, which only a
+ * holder of `sticker.attach` may read. Anyone else is told the vehicle has no
+ * sticker and who can assign one. Nothing here takes money: payment is started
+ * in the panel on the vehicle's page, and only where a sticker can be given.
+ * A vehicle with no sticker recorded for its plate, while stock holds none, is
+ * told so and charged nothing.
  */
 
 /** The onboarding panel reads the same key, so the state is fetched once. */
@@ -66,6 +66,7 @@ export function useStickerOffer(
     offer: stickerOffer({
       attached: state.attachment !== null,
       registerHoldsBarcodeForPlate: state.registerHoldsBarcodeForPlate,
+      stockHasStickers: state.stockHasStickers,
       newStickersInUse: NEW_STICKERS_IN_USE,
     }),
     canAttach,
@@ -74,13 +75,13 @@ export function useStickerOffer(
 }
 
 const NOTHING_YET =
-  "New NURTW stickers are not being issued yet, and the legacy register holds no sticker for this plate, so there is nothing to buy or attach for now. Nothing is charged.";
+  "There is no sticker to give it yet: none is recorded for this plate, and stock holds none. Stickers are added to stock by scanning them. Nothing is charged.";
 
 function whatToDo(offer: StickerOffer, needsRouteType: boolean): string {
   const first = needsRouteType ? "Set its route type, then take" : "Take";
   return offer === "REATTACH"
-    ? `The legacy register holds a sticker for this plate. ${first} the reattachment fee and reattach the sticker the vehicle carries.`
-    : `${first} the sticker fee and attach a new NURTW sticker.`;
+    ? `A sticker is recorded for this plate. ${first} the reattachment fee, then scan the sticker the vehicle carries.`
+    : `${first} the sticker fee, then scan a sticker from stock.`;
 }
 
 /** At the top of a vehicle's page, on every view, until a sticker is attached. */
@@ -104,7 +105,7 @@ export function StickerBanner({
   if (!canAttach) {
     return (
       <Notice tone="caution" icon={Sticker} title="No sticker yet">
-        No sticker is attached to this vehicle. An officer who can attach
+        No sticker is assigned to this vehicle. An officer who can assign
         stickers does that from this page.
       </Notice>
     );
@@ -168,7 +169,7 @@ export function StickerPromptDialog({
           <DialogTitle>Vehicle saved: {plate}</DialogTitle>
           <DialogDescription>
             {offer === null
-              ? "Checking whether a sticker can be attached…"
+              ? "Checking whether a sticker can be assigned…"
               : canBeGiven
                 ? `It has no sticker yet. ${whatToDo(offer, needsRouteType)}`
                 : `It has no sticker yet. ${NOTHING_YET}`}

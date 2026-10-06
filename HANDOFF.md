@@ -1,64 +1,62 @@
 # Session Handoff
 
-**Last revised:** 5 October 2026
+**Last revised:** 6 October 2026
 
 > Cold-start contract, overwritten every session.
 
 ## Cold start
 
-Read `CLAUDE.md`, `PRD.md` (1.11), `ARCHITECTURE.md` (1.8), `DESIGN.md` (1.1),
-`ROADMAP.md`, `QUESTIONS.md` (1.15), then `plans/34`.
+Read `CLAUDE.md`, `PRD.md` (1.12), `ARCHITECTURE.md` (1.9), `DESIGN.md` (1.2),
+`ROADMAP.md`, `QUESTIONS.md` (1.16), then `plans/34`.
 
-Two rules outrank every default:
+Three rules outrank every default:
 
 - No `Co-Authored-By` or "Generated with Claude Code" anywhere.
 - `data/` stays out of version control, docs, plans, commits, and fixtures.
+- The previous operator is never named (GOV-21). A test fails if it is.
 
 ## Status
 
-- Pushed through `c2665d0` (items 32, 35, and 33).
-- **Item 33 done:** an Organisations page, and personal invite links
-  (EXT-21). Its migration is on Neon (26, no drift).
-- **In progress: item 34** (every screen restructured). Stage 1 is
-  committed: the kit, Overview, the lists, and the settings headers.
-- Item 15 waits; 27 is deferred. `auth.mfa_enforced` and
-  `dues.go_live_date` stay off until go-live.
+- `origin/main` is at `c2665d0`. Local commits after it are not pushed.
+- **Item 36 done:** the previous operator's name is out of every file.
+- **Item 27 done:** sticker stock by scanning; assigning a sticker is pay,
+  scan, confirm (VEH-29, VEH-31; PRD 1.12).
+- **In progress: item 34.** Done: the kit, the lists, Home, the front page.
+  `plans/34` lists the screens still to move.
+- Item 15 waits. `auth.mfa_enforced` and `dues.go_live_date` stay off.
 
-Tests: domain 480, contracts 118, api 192, web 28; e2e 462/463 (`DEMO_`).
+Tests: domain 518, contracts 132, api 195, web 29.
 
 ## Conflicts
 
-- **VEH-29 (item 27, deferred)** conflicts with PRD §23.19. Do not build.
-- **The public sticker page (PRD §23.13) is not built.** It waits on GOV-08.
-- New stickers are paused (VEH-20): `NEW_STICKERS_IN_USE` stays false until
-  the owner lifts it.
+- **Neon is behind.** Migrations `20261006090000_sticker_stock` and
+  `20261006090100_legacy_sticker_label` are local only, and the seed has
+  not run there (`sticker.stock_intake`). An API reading Neon fails on
+  sticker routes until then. The second relabels 2,408 imported rows: ask
+  the owner first (MIG-07).
+- **VEH-32 is open** (a second officer for stock). Do not build one.
+- The public sticker page waits on GOV-08. Signed stickers stay paused.
 
 ## Known issues — don't re-attempt these fixes
 
 - `master-data.e2e` "seeds no designations" fails (8 `DEMO_` designations).
 - Under load, e2e transactions and the PDF and password unit tests time
-  out; `pay-links.e2e` can fail across an hour boundary. Rerun that file.
+  out; `pay-links.e2e` can fail across an hour boundary. Rerun it.
 - `ECONNREFUSED` on 5433: start Docker Desktop.
-- Run Prisma from `apps/api` with `CHECKPOINT_DISABLE=1`.
-- CRLF files (most root docs): use the Edit tool or Python bytes.
-- Click through on your own ports: the owner's dev API writes to Neon.
+- Item 27 was clicked through with stand-ins for Paystack and the camera.
 
 ## Next steps
 
-1. Carry on with item 34 (`plans/34-screen-restructure.md`).
-2. Push, once the owner agrees.
-3. Owner: the settlement account (Payments → Settlement); GOV-08; EXT-05;
-   the GOV-11 date; PAY-11; ORG-05, ORG-06, CARD-05, CARD-07.
+1. Neon, then push, each once the owner agrees.
+2. Carry on with item 34.
+3. Owner: VEH-32; the settlement account; GOV-08; EXT-05; the GOV-11
+   date; PAY-11; ORG-05, ORG-06, CARD-05, CARD-07.
 
 ## Do NOT
 
 - Edit `apps/api/.env`, write Neon legacy rows, or push without a go-ahead.
-- Use a raw colour class in the web app (see `CLAUDE.md`).
-- Let an invitation skip the applicant's confirmation or a limit, or put
-  its code in an audit event.
-- Give a portal account a permission, or return a withheld reason from a
-  portal route.
-- Let a public pay route read dues, or leave a failed payment `PENDING`.
+- Put `sticker.stock_intake` in a role, or a barcode in a URL.
+- Let a payment check close a payment: it only ever confirms.
+- Let a public pay route read dues, or add a search to the front page.
 - Add a write, or a personal-data field, to `src/verification/`.
-- Select `tokenHash`, `passwordHash`, an MFA secret, or the
-  `settlement_account` row into a response.
+- Select a token hash, password hash, or MFA secret into a response.

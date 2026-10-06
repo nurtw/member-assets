@@ -10,6 +10,10 @@ import type {
   AttachStickerInput,
   IssueStickerInput,
   OnboardingState,
+  StickerReading,
+  StickerStockAddition,
+  StickerStockEntry,
+  StickerStockList,
 } from '@nurtw/contracts';
 import {
   ONBOARDING_FEE_TYPE_CODES,
@@ -19,6 +23,9 @@ import {
   describeLegacyBarcode,
   encodeQrPayload,
   generateIdentifier,
+  requiredOnboardingFeeType,
+  stickerOrigin,
+  stickerStockStanding,
   type AttachmentRefusalReason,
   type LegacyBarcodeReading,
   type QrVerificationResult,
@@ -33,8 +40,15 @@ import { VehicleLetterService } from '../vehicle-letter/vehicle-letter.service.j
 
 const ISSUE = 'sticker.issue';
 const ATTACH = 'sticker.attach';
+const STOCK = 'sticker.stock_intake';
 
 const IDENTIFIER_ATTEMPTS = 5;
+
+/** The label a legacy sticker carries, whether imported or taken into stock. */
+const LEGACY_TEMPLATE_VERSION = 'legacy-barcode';
+
+/** How many stock entries the stock screen is given at once, newest first. */
+const STOCK_LIST_LIMIT = 200;
 
 /** Statuses in which a sticker is on a vehicle (`isStickerAttached`). */
 const ATTACHED_STATUSES = ['ACTIVE', 'SUSPENDED'] as const;
@@ -58,6 +72,31 @@ const STICKER_RESPONSE = {
   templateVersion: true,
   createdAt: true,
 } satisfies Prisma.StickerSelect;
+
+/** What the stock screen shows of a sticker taken into stock. */
+const STOCK_ENTRY = {
+  id: true,
+  legacyBarcode: true,
+  status: true,
+  attachedAt: true,
+  plateNumberAtIssue: true,
+  stockAddedAt: true,
+  stockAddedByUser: { select: { fullName: true } },
+} satisfies Prisma.StickerSelect;
+
+type StockEntryRow = Prisma.StickerGetPayload<{ select: typeof STOCK_ENTRY }>;
+
+function toStockEntry(row: StockEntryRow): StickerStockEntry {
+  return {
+    id: row.id,
+    stickerNumber: row.legacyBarcode ?? '',
+    standing: stickerStockStanding(row),
+    addedAt: (row.stockAddedAt ?? new Date(0)).toISOString(),
+    addedBy: row.stockAddedByUser?.fullName ?? null,
+    attachedPlate: row.attachedAt ? row.plateNumberAtIssue : null,
+    attachedAt: row.attachedAt?.toISOString() ?? null,
+  };
+}
 
 function hmacSign(secret: string, message: string): string {
   return createHmac('sha256', secret).update(message).digest('hex');
@@ -223,6 +262,8 @@ export class StickerService {
     const check = checkAttachment({
       isLegacyBarcode: sticker.legacyBarcode !== null,
       registeredPlateNormalized: sticker.registeredPlateNormalized,
+      inStock: sticker.stockAddedAt !== null,
+      stickerStatus: sticker.status,
       targetPlateNormalized: vehicle.plateNumberNormalized,
       previouslyAttachedAt: sticker.attachedAt,
       paymentReferenceAlreadyUsed: paymentAlreadyUsed !== null,
@@ -266,6 +307,11 @@ export class StickerService {
               vehicleId: vehicle.id,
               paymentId: payment.id,
               kind: sticker.legacyBarcode ? 'LEGACY' : 'SIGNED',
+              origin: stickerOrigin({
+                isLegacyBarcode: sticker.legacyBarcode !== null,
+                registeredPlateNormalized: sticker.registeredPlateNormalized,
+                inStock: sticker.stockAddedAt !== null,
+              }),
             },
           },
           tx,
@@ -325,7 +371,7 @@ export class StickerService {
       throw new NotFoundException();
     }
 
-    const [attached, registerEntries, payments] = await Promise.all([
+    const [attached, registerEntries, stockEntry, payments] = await Promise.all([
       this.prisma.sticker.findFirst({
         where: { vehicleId: vehicle.id, attachedAt: { not: null } },
         orderBy: { attachedAt: 'desc' },
@@ -347,7 +393,17 @@ export class StickerService {
           registeredPlateNormalized: vehicle.plateNumberNormalized,
           legacyBarcode: { not: null },
           attachedAt: null,
+          status: 'ISSUED',
         },
+      }),
+      // Whether stock can give a sticker at all: never how many, or which.
+      this.prisma.sticker.findFirst({
+        where: {
+          stockAddedAt: { not: null },
+          attachedAt: null,
+          status: 'ISSUED',
+        },
+        select: { id: true },
       }),
       this.prisma.payment.findMany({
         where: {
@@ -383,6 +439,7 @@ export class StickerService {
             }
           : null,
       registerHoldsBarcodeForPlate: registerEntries > 0,
+      stockHasStickers: stockEntry !== null,
       eligiblePayments: payments.map((payment) => ({
         id: payment.id,
         feeTypeCode: payment.feeType.code,
@@ -416,6 +473,7 @@ export class StickerService {
       select: {
         id: true,
         registeredPlateNormalized: true,
+        stockAddedAt: true,
         attachedAt: true,
         plateNumberAtIssue: true,
         vehicleId: true,
@@ -440,6 +498,289 @@ export class StickerService {
       throw new NotFoundException();
     }
     return reading;
+  }
+
+  /**
+   * What a scanned sticker can be for one vehicle, asked before attaching it
+   * (Requirement 9A.7, revision 1.12). An attachment that is refused answers
+   * a generic 409; this tells the officer about to attach which sticker they
+   * are holding, so a refusal is rarely met blind.
+   *
+   * It needs `sticker.attach` over the vehicle, like the attachment itself,
+   * and says no more than that officer needs: a barcode recorded for another
+   * plate is said to be so, and that plate is not named. Read-only apart from
+   * its audit event.
+   */
+  async readForVehicle(
+    actorUserId: string,
+    vehicleId: string,
+    barcode: string,
+    meta: { ipAddress?: string; requestId?: string } = {},
+  ): Promise<StickerReading> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: {
+        id: true,
+        plateNumberNormalized: true,
+        branch: { select: { path: true } },
+        unit: { select: { path: true } },
+      },
+    });
+    const path = vehicle?.unit?.path ?? vehicle?.branch?.path;
+    if (
+      !vehicle ||
+      !path ||
+      !(await this.permissions.can(actorUserId, ATTACH, path))
+    ) {
+      throw new NotFoundException();
+    }
+
+    const sticker = await this.prisma.sticker.findUnique({
+      where: { legacyBarcode: barcode },
+      select: {
+        id: true,
+        legacyBarcode: true,
+        registeredPlateNormalized: true,
+        stockAddedAt: true,
+        attachedAt: true,
+        status: true,
+      },
+    });
+    const origin = sticker
+      ? stickerOrigin({
+          isLegacyBarcode: true,
+          registeredPlateNormalized: sticker.registeredPlateNormalized,
+          inStock: sticker.stockAddedAt !== null,
+        })
+      : null;
+
+    let reading: StickerReading;
+    if (!sticker || origin === null) {
+      reading = { result: 'NOT_HELD' };
+    } else if (sticker.attachedAt !== null) {
+      reading = { result: 'ALREADY_ATTACHED' };
+    } else if (sticker.status !== 'ISSUED') {
+      reading = { result: 'NOT_AVAILABLE' };
+    } else if (
+      origin === 'REGISTER' &&
+      sticker.registeredPlateNormalized !== vehicle.plateNumberNormalized
+    ) {
+      reading = { result: 'FOR_ANOTHER_VEHICLE' };
+    } else {
+      reading = {
+        result: 'CAN_ATTACH',
+        stickerNumber: sticker.legacyBarcode ?? barcode,
+        feeTypeCode: requiredOnboardingFeeType(origin),
+      };
+    }
+
+    await this.audit.record({
+      action: 'sticker.attach_reading',
+      subjectType: sticker ? 'sticker' : 'vehicle',
+      subjectId: sticker?.id ?? vehicle.id,
+      actorUserId,
+      ipAddress: meta.ipAddress,
+      requestId: meta.requestId,
+      after: {
+        outcome: reading.result,
+        vehicleId: vehicle.id,
+        ...(sticker ? {} : { presentedBarcode: barcode }),
+      },
+    });
+    return reading;
+  }
+
+  /**
+   * Takes a printed legacy sticker into stock (Requirement 9A.8, VEH-29).
+   *
+   * A legacy barcode is a number with no proof of authenticity (PRD §26.4),
+   * so nothing here can tell a genuine sticker from a made-up number. The
+   * control is who may do this: `sticker.stock_intake` is in no role, and
+   * every addition is audited with the officer who made it. Not
+   * organisation-scoped, for the reason `issue` is not: nothing is attached
+   * yet.
+   *
+   * A barcode already held is not added twice, and is not an error: the
+   * answer says where it stands.
+   */
+  async addToStock(
+    actorUserId: string,
+    barcode: string,
+    meta: { ipAddress?: string; requestId?: string } = {},
+  ): Promise<StickerStockAddition> {
+    if (!(await this.permissions.canAnywhere(actorUserId, STOCK))) {
+      throw new ForbiddenException();
+    }
+
+    const held = await this.heldBarcode(barcode);
+    if (held) {
+      return this.alreadyHeld(actorUserId, held, meta);
+    }
+
+    const stickerQrId = await this.allocateStickerQrId();
+    try {
+      const created = await this.prisma.$transaction(async (tx) => {
+        const sticker = await tx.sticker.create({
+          data: {
+            stickerQrId,
+            legacyBarcode: barcode,
+            // Printed long ago and not yet on a vehicle, as an imported one
+            // is. `ISSUED -> ACTIVE` is attachment.
+            status: 'ISSUED',
+            templateVersion: LEGACY_TEMPLATE_VERSION,
+            stockAddedAt: new Date(),
+            stockAddedByUserId: actorUserId,
+          },
+          select: STOCK_ENTRY,
+        });
+        await this.audit.record(
+          {
+            action: 'sticker.stock_add',
+            subjectType: 'sticker',
+            subjectId: sticker.id,
+            actorUserId,
+            ipAddress: meta.ipAddress,
+            requestId: meta.requestId,
+            after: { outcome: 'ADDED', legacyBarcode: barcode },
+          },
+          tx,
+        );
+        return sticker;
+      });
+      return { outcome: 'ADDED', sticker: toStockEntry(created) };
+    } catch (error) {
+      // Two officers scanned the same sticker at once: one of them added it.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const landed = await this.heldBarcode(barcode);
+        if (landed) {
+          return this.alreadyHeld(actorUserId, landed, meta);
+        }
+      }
+      throw error;
+    }
+  }
+
+  /** The stock: how it stands in total, and its latest entries. */
+  async listStock(actorUserId: string): Promise<StickerStockList> {
+    if (!(await this.permissions.canAnywhere(actorUserId, STOCK))) {
+      throw new ForbiddenException();
+    }
+    const stock = { stockAddedAt: { not: null } } as const;
+    const [inStock, attached, withdrawn, rows] = await Promise.all([
+      this.prisma.sticker.count({
+        where: { ...stock, attachedAt: null, status: 'ISSUED' },
+      }),
+      this.prisma.sticker.count({
+        where: { ...stock, attachedAt: { not: null } },
+      }),
+      this.prisma.sticker.count({
+        where: { ...stock, attachedAt: null, status: { not: 'ISSUED' } },
+      }),
+      this.prisma.sticker.findMany({
+        where: stock,
+        orderBy: { stockAddedAt: 'desc' },
+        take: STOCK_LIST_LIMIT + 1,
+        select: STOCK_ENTRY,
+      }),
+    ]);
+    return {
+      counts: { inStock, attached, withdrawn },
+      stickers: rows.slice(0, STOCK_LIST_LIMIT).map(toStockEntry),
+      truncated: rows.length > STOCK_LIST_LIMIT,
+    };
+  }
+
+  /**
+   * Takes a sticker out of stock before it is attached: lost, damaged, or
+   * scanned in by mistake. Final, and never a deletion (CLAUDE.md rule 5):
+   * the row stays, cancelled, so the barcode cannot be added again and can
+   * never be attached. One conditional statement, so a withdrawal and an
+   * attachment racing for the same sticker cannot both win.
+   */
+  async withdrawFromStock(
+    actorUserId: string,
+    stickerId: string,
+    reason: string,
+    meta: { ipAddress?: string; requestId?: string } = {},
+  ): Promise<StickerStockEntry> {
+    if (!(await this.permissions.canAnywhere(actorUserId, STOCK))) {
+      throw new ForbiddenException();
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.sticker.updateMany({
+        where: {
+          id: stickerId,
+          stockAddedAt: { not: null },
+          attachedAt: null,
+          status: 'ISSUED',
+        },
+        data: { status: 'CANCELLED' },
+      });
+      const sticker = await tx.sticker.findFirst({
+        where: { id: stickerId, stockAddedAt: { not: null } },
+        select: STOCK_ENTRY,
+      });
+      if (!sticker) {
+        throw new NotFoundException();
+      }
+      if (count === 0) {
+        throw new ConflictException(
+          'This sticker is attached or already withdrawn.',
+        );
+      }
+      await this.audit.record(
+        {
+          action: 'sticker.stock_withdraw',
+          subjectType: 'sticker',
+          subjectId: sticker.id,
+          actorUserId,
+          reason,
+          ipAddress: meta.ipAddress,
+          requestId: meta.requestId,
+          before: { status: 'ISSUED' },
+          after: { status: 'CANCELLED' },
+        },
+        tx,
+      );
+      return toStockEntry(sticker);
+    });
+  }
+
+  private heldBarcode(barcode: string) {
+    return this.prisma.sticker.findUnique({
+      where: { legacyBarcode: barcode },
+      select: { ...STOCK_ENTRY, registeredPlateNormalized: true },
+    });
+  }
+
+  private async alreadyHeld(
+    actorUserId: string,
+    held: StockEntryRow & { registeredPlateNormalized: string | null },
+    meta: { ipAddress?: string; requestId?: string },
+  ): Promise<StickerStockAddition> {
+    const inStock = held.stockAddedAt !== null;
+    const standing = stickerStockStanding(held);
+    // A register barcode not yet attached is on the register, and so held.
+    const where =
+      !inStock && standing === 'IN_STOCK' ? 'ON_REGISTER' : standing;
+    await this.audit.record({
+      action: 'sticker.stock_add',
+      subjectType: 'sticker',
+      subjectId: held.id,
+      actorUserId,
+      ipAddress: meta.ipAddress,
+      requestId: meta.requestId,
+      after: { outcome: 'ALREADY_HELD', held: where },
+    });
+    return {
+      outcome: 'ALREADY_HELD',
+      held: where,
+      sticker: inStock ? toStockEntry(held) : null,
+    };
   }
 
   /**

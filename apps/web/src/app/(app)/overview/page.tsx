@@ -6,105 +6,118 @@ import type {
   CardSummary,
 } from "@nurtw/contracts";
 import {
-  ArrowRight,
   Building2,
   Bus,
+  CreditCard,
   FilePlus2,
-  FileText,
-  IdCard,
-  KeyRound,
+  PackagePlus,
   ScanLine,
+  Sticker,
   UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import useSWR from "swr";
 
-import { Card, PageHeader, Skeleton } from "@/components/ui";
+import { AssignStickerDialog } from "@/components/assign-sticker-dialog";
 import { fetcher } from "@/lib/api";
+import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/session";
 
 /**
- * What is waiting for this officer, and where to start (item 34).
+ * The officer's home (item 34; the owner's direction of 5 October 2026): one
+ * screen, no scrolling, of what this officer can start, with what is waiting
+ * for them along the top.
  *
- * Every figure comes from a list the officer may already read, limited by the
- * API to their own area of responsibility. Nothing here is counted for them
- * that they could not open and count themselves, and no route was added to
- * make it. A queue the officer cannot read is not shown at all.
+ * Each tile is something the officer holds the permission to do. Each figure
+ * comes from a list the officer may already read, limited by the API to their
+ * own area of responsibility: nothing is counted for them here that they
+ * could not open and count themselves, and no route was added to make it.
  */
 
-function Queue({
-  icon: Icon,
-  title,
-  count,
-  description,
-  href,
-  action,
-}: {
-  icon: LucideIcon;
-  title: string;
-  /** `undefined` while it loads. */
-  count: number | undefined;
-  description: string;
-  href: string;
-  action: string;
-}) {
-  return (
-    <Card className="flex flex-col p-5">
-      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-        <Icon className="size-4 shrink-0" aria-hidden />
-        {title}
-      </div>
-      {count === undefined ? (
-        <Skeleton className="mt-3 h-9 w-14" />
-      ) : (
-        <p className="mt-2 text-3xl font-semibold tabular-nums tracking-tight">
-          {count.toLocaleString("en-GB")}
-        </p>
-      )}
-      <p className="mt-1 flex-1 text-sm text-muted-foreground">{description}</p>
-      <Link
-        href={href}
-        className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-link underline-offset-2 hover:underline"
-      >
-        {action}
-        <ArrowRight className="size-4" aria-hidden />
-      </Link>
-    </Card>
-  );
-}
+const tileClass =
+  "group flex min-h-24 flex-col justify-between gap-3 rounded-xl border border-line bg-surface p-4 text-left transition-colors hover:border-line-strong hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-5";
 
-function Start({
+function TileBody({
   icon: Icon,
   title,
-  description,
-  href,
+  text,
+  primary,
 }: {
   icon: LucideIcon;
   title: string;
-  description: string;
-  href: string;
+  text: string;
+  primary: boolean;
 }) {
   return (
-    <Link
-      href={href}
-      className="group flex items-start gap-3 rounded-lg border border-line bg-surface p-4 transition-colors hover:border-line-strong hover:bg-surface-muted"
-    >
-      <span className="rounded-md border border-line bg-surface-muted p-2 text-brand-text">
-        <Icon className="size-4" aria-hidden />
+    <>
+      <span
+        className={cn(
+          "flex size-10 items-center justify-center rounded-lg border",
+          primary
+            ? "border-primary bg-primary text-on-solid"
+            : "border-line bg-surface-muted text-brand-text",
+        )}
+      >
+        <Icon className="size-5" aria-hidden />
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-medium">{title}</span>
-        <span className="mt-0.5 block text-sm text-muted-foreground">
-          {description}
+        <span className="block text-base font-semibold leading-tight">
+          {title}
+        </span>
+        {/* The words fit a phone's tile only from a small tablet up. */}
+        <span className="mt-1 hidden text-sm text-muted-foreground sm:block">
+          {text}
         </span>
       </span>
-    </Link>
+    </>
   );
 }
 
-export default function OverviewPage() {
+interface Action {
+  key: string;
+  icon: LucideIcon;
+  title: string;
+  text: string;
+  /** Where it goes; or `onClick`, for one that asks something first. */
+  href?: string;
+  onClick?: () => void;
+}
+
+function Waiting({
+  count,
+  one,
+  many,
+  href,
+}: {
+  /** `undefined` while it loads. */
+  count: number | undefined;
+  one: string;
+  many: string;
+  href: string;
+}) {
+  if (!count) {
+    return null;
+  }
+  return (
+    <li>
+      <Link
+        href={href}
+        className="inline-flex items-center gap-2 rounded-full border border-verdict-caution/40 bg-verdict-caution-surface px-3 py-1 text-sm text-verdict-caution transition-colors hover:brightness-95"
+      >
+        <span className="font-semibold tabular-nums">
+          {count.toLocaleString("en-GB")}
+        </span>
+        {count === 1 ? one : many}
+      </Link>
+    </li>
+  );
+}
+
+export default function HomePage() {
   const { user, holds } = useSession();
+  const [assigning, setAssigning] = useState(false);
   const readsApplications = holds("application.read");
   const readsCards = holds("card.read");
   const readsOrganisations = holds("api_client.read");
@@ -136,143 +149,195 @@ export default function OverviewPage() {
         underReview.data.applications.length
       : undefined;
   const clients = organisations.data?.clients;
-  const anyQueue = readsApplications || readsCards || readsOrganisations;
+  const counts = [
+    applicationsWaiting,
+    cardsToApprove.data?.cards.length,
+    cardsToCollect.data?.cards.length,
+    clients?.filter((client) => client.status === "PENDING").length,
+    clients?.filter((client) => client.currentToken?.expiringSoon).length,
+  ];
+  const reads = readsApplications || readsCards || readsOrganisations;
+  const loaded =
+    (!readsApplications || applicationsWaiting !== undefined) &&
+    (!readsCards || (cardsToApprove.data && cardsToCollect.data)) &&
+    (!readsOrganisations || clients);
+  const nothingWaiting = loaded && counts.every((count) => !count);
 
+  const verifies =
+    holds("verification.perform") || holds("verification.membership");
   const declares = holds("vehicle.declare");
-  const starts: {
-    icon: LucideIcon;
-    title: string;
-    description: string;
-    href: string;
-  }[] = [];
-  if (holds("verification.perform") || holds("verification.membership")) {
-    starts.push({
+  const actions: Action[] = [];
+  if (verifies) {
+    actions.push({
+      key: "verify",
       icon: ScanLine,
-      title: "Verify a vehicle or a card",
-      description: "Check a plate, a sticker, or a membership card.",
+      title: "Verify",
+      text: "Check a plate, a sticker, or a membership card.",
       href: "/verify",
     });
   }
   if (holds("member.create")) {
-    starts.push({
+    actions.push({
+      key: "register",
       icon: FilePlus2,
-      title: "Register an applicant",
-      description: "Record a new membership application.",
+      title: "Register a member",
+      text: "Record a new membership application.",
       href: "/applications/new",
     });
   }
   if (declares || holds("vehicle.record")) {
-    starts.push({
+    actions.push({
+      key: "vehicle",
       icon: Bus,
-      title: declares ? "Declare a vehicle" : "Record a vehicle",
-      description: declares
+      title: "Add a vehicle",
+      text: declares
         ? "Declare a vehicle, or one already on record."
         : "Put a vehicle on record.",
       href: "/vehicles/new",
     });
   }
+  if (holds("sticker.attach") && holds("vehicle.read")) {
+    actions.push({
+      key: "sticker",
+      icon: Sticker,
+      title: "Assign a sticker",
+      text: "Find the vehicle, take the fee, scan the sticker.",
+      onClick: () => setAssigning(true),
+    });
+  }
+  if (holds("payment.initiate") && verifies) {
+    actions.push({
+      key: "payment",
+      icon: CreditCard,
+      title: "Take a payment",
+      text: "Check the plate or the card, then Pay now.",
+      href: "/verify",
+    });
+  }
+  if (holds("sticker.stock_intake")) {
+    actions.push({
+      key: "stock",
+      icon: PackagePlus,
+      title: "Add sticker stock",
+      text: "Scan printed stickers into stock.",
+      href: "/stickers/stock",
+    });
+  }
   if (holds("api_client.manage")) {
-    starts.push({
+    actions.push({
+      key: "invite",
       icon: Building2,
       title: "Invite an organisation",
-      description: "Send an outside organisation a link to apply.",
+      text: "Send an outside organisation a link to apply.",
       href: "/organisations",
     });
   }
   if (holds("user.manage")) {
-    starts.push({
+    actions.push({
+      key: "officer",
       icon: UserPlus,
       title: "Add an officer",
-      description: "Give somebody an account, then their access.",
+      text: "Give somebody an account, then their access.",
       href: "/settings/users",
     });
   }
 
   return (
-    <div className="grid gap-8">
-      <PageHeader
-        title="Overview"
-        description={`Signed in as ${user?.fullName ?? "an officer"}. What is waiting in your area of responsibility, and where to start.`}
-      />
+    // The shell's bar, its padding, and its footer take about twelve rem of
+    // the screen; the tiles share out what is left, so the page fills one
+    // screen and does not scroll.
+    <div className="flex min-h-[calc(100dvh-12.5rem)] flex-col gap-5">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {user ? `Welcome, ${user.fullName.split(" ")[0]}` : "Welcome"}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          What would you like to do?
+        </p>
+      </div>
 
-      {anyQueue ? (
-        <section aria-labelledby="waiting" className="grid gap-3">
-          <h2 id="waiting" className="text-sm font-semibold">
-            Waiting for a decision
+      {reads ? (
+        <section aria-labelledby="waiting">
+          <h2 id="waiting" className="sr-only">
+            Waiting for you
           </h2>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {readsApplications ? (
-              <Queue
-                icon={FileText}
-                title="Applications to decide"
-                count={applicationsWaiting}
-                description="Submitted or under review, awaiting approval or refusal."
+          {nothingWaiting ? (
+            <p className="text-sm text-muted-foreground">
+              Nothing is waiting for a decision.
+            </p>
+          ) : (
+            <ul className="flex flex-wrap gap-2">
+              <Waiting
+                count={counts[0]}
+                one="application to decide"
+                many="applications to decide"
                 href="/applications"
-                action="Open applications"
               />
-            ) : null}
-            {readsCards ? (
-              <Queue
-                icon={IdCard}
-                title="Cards to approve"
-                count={cardsToApprove.data?.cards.length}
-                description="Prepared and awaiting approval before they are issued."
+              <Waiting
+                count={counts[1]}
+                one="card to approve"
+                many="cards to approve"
                 href="/cards"
-                action="Open cards"
               />
-            ) : null}
-            {readsCards ? (
-              <Queue
-                icon={IdCard}
-                title="Cards to hand over"
-                count={cardsToCollect.data?.cards.length}
-                description="Issued, and not yet recorded as collected."
+              <Waiting
+                count={counts[2]}
+                one="card to hand over"
+                many="cards to hand over"
                 href="/cards"
-                action="Open cards"
               />
-            ) : null}
-            {readsOrganisations ? (
-              <Queue
-                icon={Building2}
-                title="Organisations to decide"
-                count={
-                  clients?.filter((client) => client.status === "PENDING")
-                    .length
-                }
-                description="Registered, invited, or applied, and awaiting approval."
+              <Waiting
+                count={counts[3]}
+                one="organisation to decide"
+                many="organisations to decide"
                 href="/organisations"
-                action="Open organisations"
               />
-            ) : null}
-            {readsOrganisations ? (
-              <Queue
-                icon={KeyRound}
-                title="Tokens to replace soon"
-                count={
-                  clients?.filter((client) => client.currentToken?.expiringSoon)
-                    .length
-                }
-                description="Organisations whose token expires within the reminder period."
+              <Waiting
+                count={counts[4]}
+                one="token to replace soon"
+                many="tokens to replace soon"
                 href="/organisations"
-                action="Open organisations"
               />
-            ) : null}
-          </div>
+            </ul>
+          )}
         </section>
       ) : null}
 
-      {starts.length > 0 ? (
-        <section aria-labelledby="start" className="grid gap-3">
-          <h2 id="start" className="text-sm font-semibold">
-            Start something
+      {actions.length > 0 ? (
+        <section aria-labelledby="actions" className="flex flex-1 flex-col">
+          <h2 id="actions" className="sr-only">
+            Quick actions
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {starts.map((start) => (
-              <Start key={start.href} {...start} />
-            ))}
+          <div
+            className={cn(
+              "grid flex-1 auto-rows-fr grid-cols-2 gap-3",
+              actions.length > 4 ? "lg:grid-cols-4" : "lg:grid-cols-2",
+            )}
+          >
+            {actions.map((action, index) =>
+              action.href ? (
+                <Link key={action.key} href={action.href} className={tileClass}>
+                  <TileBody {...action} primary={index === 0} />
+                </Link>
+              ) : (
+                <button
+                  key={action.key}
+                  type="button"
+                  onClick={action.onClick}
+                  className={tileClass}
+                >
+                  <TileBody {...action} primary={index === 0} />
+                </button>
+              ),
+            )}
           </div>
         </section>
-      ) : null}
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Use the menu to open the screens you have access to.
+        </p>
+      )}
+
+      <AssignStickerDialog open={assigning} onOpenChange={setAssigning} />
     </div>
   );
 }

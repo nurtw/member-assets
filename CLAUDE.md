@@ -186,20 +186,20 @@ an anomaly in the reconciliation report.
   issuing a query. A valid signature is *necessary but never sufficient*: it proves the code
   was minted by the Union, not that the sticker is on the right vehicle or still valid. See
   PRD §26, which tabulates precisely which control defeats which attack.
-- **Legacy barcodes are imported unattached and resolve only once reattached** (PRD §9A,
-  revision 1.2, superseding "fully equivalent" in §26.4). They are millisecond epoch
-  timestamps, forgeable by inspection. The previous operator has stopped issuing, so **the register is
-  closed** at the export's 2,408 barcodes, and nothing is ever added to it. (The owner has
-  since asked for a way to add the previous operator's unrecorded stock by scanning, deferred as VEH-29.
-  Until it is taken up and the PRD revised, the register stays closed.) Reattachment
-  therefore requires all four of the following, with no override:
-  - the barcode is on the imported register
-  - it is presented for the plate the register records for it
-  - it has never been attached before
-  - it comes with an unused, Paystack-confirmed payment
+- **Legacy barcodes resolve only once attached** (PRD §9A, revision 1.2, superseding "fully
+  equivalent" in §26.4). They are millisecond epoch timestamps, forgeable by inspection.
+  A barcode is **held** in one of two ways: on the imported register (2,408, bound to a
+  plate; no import adds to it), or in **stock**, taken in by scanning a printed sticker
+  (Requirement 9A.8, revision 1.12). Attaching one requires all four of the following, with
+  no override:
+  - the barcode is held
+  - a register barcode is presented for the plate the register records for it (a stock
+    barcode has no plate until it is attached)
+  - it has never been attached before, and is not withdrawn
+  - it comes with an unused, Paystack-confirmed payment of the right fee for that vehicle
 
-  Read-only: the issuance path must have no route capable of producing one. Record which
-  scheme resolved each verification.
+  The System never produces a legacy barcode: taking one into stock records an article that
+  already exists. Record which scheme resolved each verification.
 - **Authorisation asks for a permission, never a role.** Code checks `vehicle.declare`, not
   "is this user a Vehicle-Record Officer". Roles are administrative bundles. Every
   assignment carries an organisational scope, and revocation always beats grant. See
@@ -591,12 +591,11 @@ record the same plate at once. Preserve it too.
   "confirmed and unused", so a membership fee could fund an attachment. Every refusal is
   audited with its `AttachmentRefusalReason`, including the three the service decides
   before the domain function can run.
-- **Only the legacy import writes `legacyBarcode`.** The register is closed (VEH-21), and
-  no API route can add to it. `plans/27-sticker-stock-intake.md` holds the deferred
-  direction to change that; do not build it before the owner takes it up.
-- **New NURTW stickers are paused** (VEH-20, 3 October 2026). The onboarding screen offers
-  reattachment only, behind `NEW_STICKERS_IN_USE` in `@nurtw/domain` (`sticker/offer.ts`).
-  The API path stays built.
+- **Two things write `legacyBarcode`:** the legacy import, and `StickerService.addToStock`
+  (item 27, below). Nothing else may.
+- **New signed NURTW stickers are paused** (VEH-20, 3 October 2026), behind
+  `NEW_STICKERS_IN_USE` in `@nurtw/domain` (`sticker/offer.ts`). A vehicle is given the
+  sticker recorded for its plate, or one from stock. The signed path stays built.
 - **A vehicle without a sticker says so** (item 35, Requirement 9A.7). `stickerOffer` in
   `@nurtw/domain` decides what it can be given; `StickerBanner` shows it on the vehicle's
   page, and `StickerPromptDialog` after a vehicle is added (`?added=1`). `?assign=1` goes
@@ -610,6 +609,45 @@ record the same plate at once. Preserve it too.
 - The internal lookup is `POST /stickers/legacy-lookup`: a body, so the barcode stays out
   of URLs and logs. Item 10 reuses `describeLegacyBarcode` from `@nurtw/domain` for its
   wording.
+
+### Sticker stock, and pay then scan (item 27)
+
+The owner's direction of 5 October 2026 (VEH-29, VEH-31; PRD 1.12).
+
+- **A sticker's origin decides its checks and its fee** (`stickerOrigin` in
+  `@nurtw/domain`). `REGISTER`: bound to a plate, paid as `STICKER_REATTACHMENT`. `STOCK`
+  and `SIGNED`: any vehicle, paid as `STICKER_NEW`. Never branch on "is it a legacy
+  barcode" for the fee.
+- **`sticker.stock_intake` is in no role** (`GRANT_ONLY_PERMISSIONS`). A barcode proves
+  nothing by itself, so who may add one is the whole control. `sticker.manage_stock` is a
+  different permission and does not confer it. Do not widen it. VEH-32 (a second officer)
+  is open: do not build one.
+- **A stock sticker is a `sticker` row** with `legacyBarcode`, no
+  `registeredPlateNormalized`, and `stockAddedAt` set. Use `isHeldBarcode` to ask whether a
+  barcode is held; a null registered plate no longer means "unknown".
+- **Withdrawing is `CANCELLED`, by one conditional `updateMany`**, never a delete. An
+  attachment racing it loses. Only an `ISSUED` sticker attaches (`STICKER_NOT_AVAILABLE`).
+- **What a camera reads goes through `stickerCodeFromScan`**, in the contract schemas. A
+  legacy sticker's QR code holds a web address ending in its barcode. Without the
+  reduction, the address contains a `.`, reads as a signed code, and is recorded as a
+  forgery. Never check whose address it is.
+- **Barcodes stay out of URLs.** The stock routes take the code in a body, and there is no
+  search by number on the server.
+- **`POST /stickers/onboarding/:vehicleId/reading` tells an officer what a scanned sticker
+  can be for a vehicle** before they attach it. It never names the vehicle another sticker
+  is recorded for. `attach` still decides, and still answers a generic 409.
+- **`POST /payments/check` only ever confirms.** `PaymentsService.settle` is the one path to
+  `CONFIRMED`, and it always asks Paystack. A check leaves an unfinished payment `PENDING`;
+  only the webhook closes one as `FAILED`.
+- **Both sticker fees are `CONTRACTOR_ONLY`:** the whole payment goes to the main Paystack
+  account, with no subaccount, so taking one needs no settlement account. The dues are
+  `SPLIT_WITH_NURTW`. Do not change either without the owner.
+- **The scanner is `components/qr-scanner.tsx`.** It uses the browser's own QR reader where
+  there is one and `jsqr` where there is not, and always offers the number typed in. The
+  camera needs HTTPS (or `localhost`) and the officer's leave. Its dialog holds a form, so
+  never render it inside another form: React would pass its submit up to the outer one.
+- **The assignment panel is three steps:** payment, scan, confirm
+  (`components/onboarding-section.tsx`). The camera opens only once a payment is confirmed.
 
 ### The vehicle letter (item 18)
 
@@ -806,7 +844,8 @@ Item 03 built the tables and the guard. Everything that writes to them is item 2
 - **Nobody gives what they do not hold** (`escalations`, `PermissionService.heldAt`), and
   **nobody changes their own access** (`notSelf`). An organisation outside the giver's scope
   answers 404.
-- **`vehicle.declare` and `payment.manage_settlement` never go in a role**
+- **`vehicle.declare`, `payment.manage_settlement`, and `sticker.stock_intake` never go in
+  a role**
   (`GRANT_ONLY_PERMISSIONS`). System roles are immutable; the seed owns them.
 - **The second factor is asked of the permission** (`SECOND_FACTOR_PERMISSIONS`), and only
   when `auth.mfa_enforced` is true. It ships `false`. **Until it is on, do not describe
@@ -940,6 +979,15 @@ dialogs, menus, and the sheet from their own files). See `DESIGN.md` §8–§9 a
 - **A new screen goes in `OFFICER_NAVIGATION` and `OFFICER_LANDING_ORDER`**
   (`lib/navigation.ts`); a test fails if the two disagree. The table is a courtesy, never
   the control.
+- **Two landing pages** (item 34, `DESIGN.md` §11). `/` is the public front page: the ways
+  in, on one screen. It looks nothing up, and must never grow a search: the System is not
+  a directory. It sends an officer whose session cookie is present to Home. Home
+  (`/overview`) is one screen of quick actions by permission, with counts from lists the
+  officer may already read. Neither adds an API route. A new quick action is a tile there.
+- **Pages are built from the kit's page pieces** (`DESIGN.md` §10): `PageHeader`,
+  `ListToolbar`, `Table stacked`, `Loading`, `EmptyState`, `Detail`, `ConfirmDialog`, and a
+  toast for success. Item 34 is moving the remaining screens onto them; `plans/34` says
+  which are left.
 - **The command menu reaches screens and actions only.** Never make it search records.
 - **The theme script** in `app/layout.tsx` runs before the first paint. If item 15 adds a
   content security policy, allow it by its hash.
@@ -967,6 +1015,19 @@ web app against the **local** database and script a browser:
   which expects none. Remove any stand-in before running the suite.
 - `playwright-core` with `channel: 'chrome'` drives the installed Chrome; nothing is
   downloaded. Keep the driver outside the repository.
+- **A camera without a camera.** Chrome plays a video file as its camera:
+  `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream
+  --use-file-for-fake-video-capture=<file>.y4m`. A Y4M file is a text header and raw
+  frames, so a QR code can be drawn into one with the `qrcode` package and nothing else.
+  Headless Chrome on Windows has no `BarcodeDetector`, so this exercises the `jsqr` path.
+- **Paystack without Paystack.** `PAYSTACK_BASE_URL` points the API at a stand-in: a small
+  local server that answers `/transaction/initialize` and `/transaction/verify/:reference`
+  and serves a page with one link that "pays". Give the API a made-up
+  `PAYSTACK_SECRET_KEY` of its own. Never use the keys in `apps/api/.env`.
+- **Stop your own servers by process, not by port.** On 6 October `netstat` did not show
+  the listener, the old web server stayed up through a rebuild, and it served the new
+  build's pages with the old build's stylesheet name (a 500). List `node.exe` by command
+  line, stop the ones you started, and check a stylesheet answers 200 before clicking.
 
 ### Notes that will bite you otherwise
 

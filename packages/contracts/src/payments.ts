@@ -15,6 +15,25 @@ export const initiatePaymentSchema = z.object({
 });
 export type InitiatePaymentInput = z.infer<typeof initiatePaymentSchema>;
 
+/**
+ * `POST /payments/check` — asks Paystack about the payments still open for
+ * one vehicle or member, so an officer need not wait on the webhook after a
+ * payer returns (PRD Requirement 9A.7, revision 1.12). Nothing is confirmed
+ * on the caller's word: each is verified with Paystack (Requirement 27.5).
+ */
+export const checkPaymentsSchema = z.object({
+  subjectType: z.enum(['member', 'vehicle']),
+  subjectId: uuid,
+});
+export type CheckPaymentsInput = z.infer<typeof checkPaymentsSchema>;
+
+export interface CheckPaymentsResult {
+  /** How many open payments were asked about. */
+  checked: number;
+  /** How many of them Paystack confirmed just now. */
+  confirmed: number;
+}
+
 /** A Nigerian bank account number (NUBAN): ten digits. */
 const accountNumberSchema = z
   .string()

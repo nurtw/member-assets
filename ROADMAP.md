@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.14
-**Last revised:** 5 October 2026
+**Document version:** 1.15
+**Last revised:** 6 October 2026
 
 ---
 
@@ -54,7 +54,7 @@ Each item is independently completable and independently testable. Status values
 | 24 | membership-verification | §11, §15 | done | [plan](plans/24-membership-verification.md) |
 | 25 | dues-answers | §27.13 | done | [plan](plans/25-dues-answers.md) |
 | 26 | letter-reissue | §9A.6 | done | [plan](plans/26-letter-reissue.md) |
-| 27 | sticker-stock-intake | §9A.4 | deferred by the owner | [plan](plans/27-sticker-stock-intake.md) |
+| 27 | sticker-stock-and-scan | §9A.4, §9A.7, §9A.8 (rev. 1.12) | done (clicked through 6 Oct, with a stand-in for Paystack and a simulated camera) | [plan](plans/27-sticker-stock-intake.md) |
 | 28 | officer-accounts-and-mfa | §16, §17.1 | done (requirement off until GOV-18; clicked through 5 Oct, second-factor enrolment not) | [plan](plans/28-officer-accounts-and-mfa.md) |
 | 29 | organisation-portal | §12, §23.23 | done (clicked through 5 Oct) | [plan](plans/29-organisation-portal.md) |
 | 30 | settlement-screen | §27.7, §27.12 | done (clicked through 5 Oct; no account saved at Paystack) | [plan](plans/30-settlement-screen.md) |
@@ -63,6 +63,7 @@ Each item is independently completable and independently testable. Status values
 | 33 | organisations-and-invitations | §12, Req. 12.11 (rev. 1.10) | done (clicked through 5 Oct) | [plan](plans/33-organisations-and-invitations.md) |
 | 34 | screen-restructure | `DESIGN.md` §5 | in-progress | [plan](plans/34-screen-restructure.md) |
 | 35 | sticker-prompt | §9A.7 (VEH-30) | done (clicked through 5 Oct) | [plan](plans/35-sticker-prompt.md) |
+| 36 | previous-operator-unnamed | §23.19, Req. 11.2 (rev. 1.12) | done | [plan](plans/36-previous-operator-unnamed.md) |
 
 ### Item summaries
 
@@ -253,9 +254,11 @@ is priced at the route type the vehicle had on its 1st. Amends item 22.
 **26 — letter-reissue.** *PRD 1.4, VEH-27.* An officer holding `sticker.attach` reissues a
 vehicle's letter with a reason. The old letter is kept, marked superseded. Amends item 18.
 
-**27 — sticker-stock-intake.** *VEH-29, deferred.* Adding the previous operator's unrecorded stickers to
-the register by scanning them, before attaching them. Not started, by the owner's direction
-of 3 October 2026. It reopens the register VEH-21 closed, so it needs a PRD revision first.
+**27 — sticker-stock-and-scan.** *PRD 1.12; VEH-29 and VEH-31, taken up by the owner on
+5 October 2026.* Printed stickers the register never recorded are scanned into stock by
+holders of `sticker.stock_intake`, a permission in no role. Assigning a sticker becomes pay
+first, then scan with the camera, then confirm; a stock sticker goes on any vehicle at the
+new-sticker fee. Amends items 08, 17, and 35.
 
 **28 — officer-accounts-and-mfa.** *PRD §16, §17.1; found missing on 4 October 2026.*
 Creating and deactivating officers with a temporary password, assigning roles by scope,
@@ -301,7 +304,8 @@ Settings → API access, and a personal link the administrator shares to invite 
 opens the application form addressed to it. Confirmation and approval are unchanged.
 
 **34 — screen-restructure.** *The owner's direction of 5 October 2026.* Every screen moved
-onto the same patterns, and an Overview of what waits for each officer. Screens for what
+onto the same patterns; a Home of one screen with each officer's quick actions and what
+waits for them; and a public front page showing the ways in. Screens for what
 the API can do but no screen offers (the Union's structure, master data, officer
 signatures, a member list) are separate items, not this one.
 
@@ -311,9 +315,14 @@ vehicle has just been added, which can be closed. While new NURTW stickers are p
 vehicle the legacy register holds no barcode for is told so, and nothing is charged.
 Built after item 32, before item 33.
 
+**36 — previous-operator-unnamed.** *GOV-21; the owner's direction of 5 October 2026.* The
+previous operator's name is taken out of every file, a test fails if it returns, and no
+screen says which scheme a sticker belongs to.
+
 **Also on 3 October 2026 (PRD 1.4, VEH-28).** A vehicle's declaration status is shown only
 to holders of `vehicle.declare`, on every screen and route. This amended items 07 and 10.
-New NURTW stickers are paused, so onboarding is by reattachment only.
+New signed NURTW stickers are paused. Onboarding was by reattachment only until item 27
+added stickers from stock.
 
 ## Dependencies
 
@@ -365,7 +374,9 @@ VEH-26, MIG-04, MIG-07, PAY-14 to PAY-17).
 32 --+-> 35 -> 33 -> 34
 ```
 
-Order of work, as the owner chose: 32, 35, and 33 (done), then 34. Item 15 is independent
+Order of work, as the owner chose: 32, 35, and 33 (done), then 34. Items 36 and 27 were
+asked for on 5 October 2026 while 34 was under way, and done first; 34 then carries on,
+with the two landing pages the owner asked for the same day. Item 15 is independent
 of them.
 
 ## Open questions

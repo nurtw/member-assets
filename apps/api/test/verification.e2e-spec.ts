@@ -264,6 +264,35 @@ describe('Internal verification (e2e)', () => {
     ids['sticker-LEGACY'] = legacy.id;
     codes.LEGACY = legacy.legacyBarcode!;
 
+    // Requirement 9A.8 — stickers taken into stock by scanning: bound to no
+    // plate on the register. One is attached to a declared vehicle, one is
+    // still in stock. Their codes are what a camera reads: an address ending
+    // in the barcode.
+    const stockVehicle = await vehicle('STOCK', 'ACTIVE');
+    await prisma.sticker.create({
+      data: {
+        stickerQrId: `${TAG}-STOCK`,
+        legacyBarcode: '9900000000001',
+        stockAddedAt: new Date('2026-10-05T09:00:00Z'),
+        templateVersion: 'legacy-barcode',
+        status: 'ACTIVE',
+        vehicleId: stockVehicle.id,
+        plateNumberAtIssue: stockVehicle.plateNumberNormalized,
+        attachedAt: new Date('2026-10-05T10:00:00Z'),
+      },
+    });
+    codes.STOCK = 'https://www.example.test/v/status/9900000000001';
+    await prisma.sticker.create({
+      data: {
+        stickerQrId: `${TAG}-STOCKFREE`,
+        legacyBarcode: '9900000000002',
+        stockAddedAt: new Date('2026-10-05T09:00:00Z'),
+        templateVersion: 'legacy-barcode',
+        status: 'ISSUED',
+      },
+    });
+    codes.STOCKFREE = 'https://www.example.test/v/status1/9900000000002';
+
     await buildUser('officer', [
       'verification.perform',
       'vehicle.read',
@@ -524,6 +553,39 @@ describe('Internal verification (e2e)', () => {
       });
       const audit = await auditFor(result.reference);
       expect(audit.afterValue).toMatchObject({ scheme: 'LEGACY' });
+    });
+
+    it('matches a sticker from stock once it is attached, read as a camera reads it (Requirement 9A.8)', async () => {
+      const result = await verify({ stickerCode: codes.STOCK! });
+      expect(result.matched).toBe(true);
+      expect(result.fields).toMatchObject({
+        identifier_scheme: 'LEGACY',
+        sticker_status: 'ACTIVE',
+      });
+      // The address was reduced to its barcode: it was never tried as a
+      // signed code, so it was not recorded as a forgery.
+      const audit = await auditFor(result.reference);
+      expect(audit.action).not.toBe('verification.invalid_signature');
+      expect(audit.afterValue).toMatchObject({ scheme: 'LEGACY' });
+
+      const combined = await verify({
+        plateNumber: 'E2EVFY-STOCK',
+        stickerCode: codes.STOCK!,
+      });
+      expect(combined.matched).toBe(true);
+      const wrongPlate = await verify({
+        plateNumber: 'E2EVFY-BARE',
+        stickerCode: codes.STOCK!,
+      });
+      expect(wrongPlate.matched).toBe(false);
+      expect(wrongPlate.reasons).toContain('PLATE_MISMATCH');
+    });
+
+    it('reads a sticker still in stock as not attached, with no plate to name', async () => {
+      const result = await verify({ stickerCode: codes.STOCKFREE! });
+      expect(result.matched).toBe(false);
+      expect(result.reasons).toEqual(['STICKER_NOT_ATTACHED']);
+      expect(result.fields.registered_plate ?? null).toBeNull();
     });
 
     it('answers no record for a barcode not on the register, keeping what was presented', async () => {

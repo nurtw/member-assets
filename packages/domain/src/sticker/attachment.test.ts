@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   checkAttachment,
   requiredOnboardingFeeType,
+  stickerOrigin,
   type AttachmentContext,
 } from './attachment.js';
 
@@ -12,6 +13,8 @@ function context(overrides: Partial<AttachmentContext> = {}): AttachmentContext 
   return {
     isLegacyBarcode: true,
     registeredPlateNormalized: 'AA123XY',
+    inStock: false,
+    stickerStatus: 'ISSUED',
     targetPlateNormalized: 'AA123XY',
     previouslyAttachedAt: null,
     paymentReferenceAlreadyUsed: false,
@@ -39,11 +42,70 @@ describe('checkAttachment (PRD Requirement 9A.4)', () => {
     ).toEqual({ allowed: false, reason: 'PAYMENT_REFERENCE_REUSED' });
   });
 
-  it('refuses a barcode not on the imported register — recorded as unknown, not a forgery', () => {
+  it('refuses a barcode neither on the register nor in stock — unknown, not a forgery', () => {
     expect(
       checkAttachment(context({ registeredPlateNormalized: null })),
     ).toEqual({ allowed: false, reason: 'UNKNOWN_BARCODE' });
   });
+
+  describe('a sticker from stock (Requirement 9A.8, VEH-29)', () => {
+    const fromStock = (overrides: Partial<AttachmentContext> = {}) =>
+      context({
+        registeredPlateNormalized: null,
+        inStock: true,
+        paymentFeeTypeCode: 'STICKER_NEW',
+        ...overrides,
+      });
+
+    it('attaches to any plate: its plate is bound by the attachment', () => {
+      expect(
+        checkAttachment(fromStock({ targetPlateNormalized: 'ZZ000ZZ' })),
+      ).toEqual({ allowed: true });
+    });
+
+    it('is paid for as a new sticker, never as a reattachment', () => {
+      expect(
+        checkAttachment(
+          fromStock({ paymentFeeTypeCode: 'STICKER_REATTACHMENT' }),
+        ),
+      ).toEqual({ allowed: false, reason: 'PAYMENT_WRONG_FEE_TYPE' });
+    });
+
+    it('still attaches once in its life', () => {
+      expect(
+        checkAttachment(
+          fromStock({ previouslyAttachedAt: new Date('2026-10-01') }),
+        ),
+      ).toEqual({ allowed: false, reason: 'ALREADY_ATTACHED' });
+    });
+
+    it('is refused once it has been withdrawn from stock', () => {
+      expect(
+        checkAttachment(fromStock({ stickerStatus: 'CANCELLED' })),
+      ).toEqual({ allowed: false, reason: 'STICKER_NOT_AVAILABLE' });
+    });
+
+    it('still needs the payment to be for this vehicle, and unused', () => {
+      expect(
+        checkAttachment(
+          fromStock({ paymentSubject: { type: 'vehicle', id: 'vehicle-2' } }),
+        ),
+      ).toEqual({ allowed: false, reason: 'PAYMENT_WRONG_VEHICLE' });
+      expect(
+        checkAttachment(fromStock({ paymentReferenceAlreadyUsed: true })),
+      ).toEqual({ allowed: false, reason: 'PAYMENT_REFERENCE_REUSED' });
+    });
+  });
+
+  it.each(['DRAFT', 'LOST', 'DAMAGED', 'CANCELLED'])(
+    'refuses a sticker that is %s: only an issued one can be attached',
+    (stickerStatus) => {
+      expect(checkAttachment(context({ stickerStatus }))).toEqual({
+        allowed: false,
+        reason: 'STICKER_NOT_AVAILABLE',
+      });
+    },
+  );
 
   it('refuses a barcode presented against the wrong plate, with no override', () => {
     expect(
@@ -75,8 +137,33 @@ describe('checkAttachment (PRD Requirement 9A.4)', () => {
 
   describe('the payment must be the onboarding fee for this vehicle (Requirement 9A.2)', () => {
     it('names the fee type each kind of attachment is paid with', () => {
-      expect(requiredOnboardingFeeType(true)).toBe('STICKER_REATTACHMENT');
-      expect(requiredOnboardingFeeType(false)).toBe('STICKER_NEW');
+      expect(requiredOnboardingFeeType('REGISTER')).toBe('STICKER_REATTACHMENT');
+      expect(requiredOnboardingFeeType('STOCK')).toBe('STICKER_NEW');
+      expect(requiredOnboardingFeeType('SIGNED')).toBe('STICKER_NEW');
+    });
+
+    it('tells where a sticker came from', () => {
+      const legacy = { isLegacyBarcode: true, inStock: false };
+      expect(
+        stickerOrigin({ ...legacy, registeredPlateNormalized: 'AA123XY' }),
+      ).toBe('REGISTER');
+      expect(
+        stickerOrigin({
+          ...legacy,
+          registeredPlateNormalized: null,
+          inStock: true,
+        }),
+      ).toBe('STOCK');
+      expect(
+        stickerOrigin({ ...legacy, registeredPlateNormalized: null }),
+      ).toBeNull();
+      expect(
+        stickerOrigin({
+          isLegacyBarcode: false,
+          registeredPlateNormalized: null,
+          inStock: false,
+        }),
+      ).toBe('SIGNED');
     });
 
     it.each(['MEMBERSHIP', 'LEVY', 'STICKER_NEW'])(

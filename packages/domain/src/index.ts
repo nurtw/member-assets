@@ -211,18 +211,32 @@ export {
   ONBOARDING_FEE_TYPE_CODES,
   checkAttachment,
   requiredOnboardingFeeType,
+  stickerOrigin,
   type AttachmentCheck,
   type AttachmentContext,
   type AttachmentRefusalReason,
+  type OnboardingFeeTypeCode,
+  type StickerOrigin,
 } from './sticker/attachment.js';
 
 export {
+  IN_STOCK_COPY,
   RECOGNISED_NOT_ATTACHED_COPY,
   LEGACY_ATTACHED_COPY,
+  WITHDRAWN_COPY,
   describeLegacyBarcode,
+  isHeldBarcode,
+  stickerStockStanding,
   type LegacyBarcodeReading,
   type LegacyRegisterEntry,
+  type StickerStockStanding,
 } from './sticker/legacy-lookup.js';
+
+export {
+  isLegacyBarcode,
+  looksLikeStickerCode,
+  stickerCodeFromScan,
+} from './sticker/scanned-code.js';
 
 export {
   decodeAndVerifyQrPayload,
