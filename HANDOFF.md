@@ -17,7 +17,7 @@ Three rules outrank every default:
 
 ## Status
 
-- `origin/main` is at `c2665d0`. Local commits after it are not pushed.
+- Pushed through item 27. Neon has all 28 migrations and the seed (6 Oct).
 - **Item 36 done:** the previous operator's name is out of every file.
 - **Item 27 done:** sticker stock by scanning; assigning a sticker is pay,
   scan, confirm (VEH-29, VEH-31; PRD 1.12).
@@ -29,11 +29,6 @@ Tests: domain 518, contracts 132, api 195, web 29.
 
 ## Conflicts
 
-- **Neon is behind.** Migrations `20261006090000_sticker_stock` and
-  `20261006090100_legacy_sticker_label` are local only, and the seed has
-  not run there (`sticker.stock_intake`). An API reading Neon fails on
-  sticker routes until then. The second relabels 2,408 imported rows: ask
-  the owner first (MIG-07).
 - **VEH-32 is open** (a second officer for stock). Do not build one.
 - The public sticker page waits on GOV-08. Signed stickers stay paused.
 
@@ -47,8 +42,8 @@ Tests: domain 518, contracts 132, api 195, web 29.
 
 ## Next steps
 
-1. Neon, then push, each once the owner agrees.
-2. Carry on with item 34.
+1. Carry on with item 34 (`plans/34`, "Still to do").
+2. Push, once the owner agrees.
 3. Owner: VEH-32; the settlement account; GOV-08; EXT-05; the GOV-11
    date; PAY-11; ORG-05, ORG-06, CARD-05, CARD-07.
 
