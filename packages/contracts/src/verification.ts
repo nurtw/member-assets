@@ -37,7 +37,7 @@ const plateNumberField = z
 
 /**
  * Whatever the sticker's code holds: a signed QR payload, or the number on a
- * Transpay sticker.
+ * legacy sticker.
  */
 const stickerCodeField = z
   .string()

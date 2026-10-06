@@ -250,14 +250,14 @@ describe('Internal verification (e2e)', () => {
     await signedSticker('LOST', 'LOST', lost);
     await signedSticker('OTHER', 'ACTIVE', other);
 
-    // A Transpay register row, shaped as the legacy import writes it.
+    // A legacy register row, shaped as the legacy import writes it.
     const legacy = await prisma.sticker.create({
       data: {
         stickerQrId: `${TAG}-LEGACY`,
         legacyBarcode: `${TAG}-1600000000000`,
         registeredPlateNormalized: 'E2EVFYREC',
         legacySecurityCode: 'ZZ9ZZ',
-        templateVersion: 'transpay-legacy',
+        templateVersion: 'legacy-barcode',
         status: 'ISSUED',
       },
     });
@@ -515,7 +515,7 @@ describe('Internal verification (e2e)', () => {
       expect(result.fields).toMatchObject({ sticker_status: 'LOST' });
     });
 
-    it('reads an unattached Transpay barcode as recognised, with its registered plate (Requirement 11.2)', async () => {
+    it('reads an unattached legacy barcode as recognised, with its registered plate (Requirement 11.2)', async () => {
       const result = await verify({ stickerCode: codes.LEGACY! });
       expect(result.reasons).toEqual(['STICKER_NOT_ATTACHED']);
       expect(result.fields).toMatchObject({
@@ -544,7 +544,7 @@ describe('Internal verification (e2e)', () => {
           .set('Cookie', cookies.officer!)
           .send({ stickerCode: codes.MATCH! })
           .expect(503);
-        // A Transpay barcode needs no secret.
+        // A legacy barcode needs no secret.
         expect((await verify({ stickerCode: codes.LEGACY! })).reasons).toEqual([
           'STICKER_NOT_ATTACHED',
         ]);
@@ -580,7 +580,7 @@ describe('Internal verification (e2e)', () => {
       });
     });
 
-    it('catches a Transpay barcode presented for a plate other than its registered one', async () => {
+    it('catches a legacy barcode presented for a plate other than its registered one', async () => {
       const wrong = await verify({
         plateNumber: 'E2EVFY-BARE',
         stickerCode: codes.LEGACY!,
@@ -772,7 +772,7 @@ describe('Internal verification (e2e)', () => {
       for (const value of Object.values(RESTRICTED)) {
         expect(everything).not.toContain(value);
       }
-      expect(everything).not.toContain('ZZ9ZZ'); // the Transpay security code
+      expect(everything).not.toContain('ZZ9ZZ'); // the legacy security code
       expect(everything).not.toContain(SIGNING_SECRET);
     });
   });

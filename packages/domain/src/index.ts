@@ -218,7 +218,7 @@ export {
 
 export {
   RECOGNISED_NOT_ATTACHED_COPY,
-  TRANSPAY_ATTACHED_COPY,
+  LEGACY_ATTACHED_COPY,
   describeLegacyBarcode,
   type LegacyBarcodeReading,
   type LegacyRegisterEntry,

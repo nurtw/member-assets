@@ -222,7 +222,7 @@ export class VerificationService {
         scheme: check.scheme,
         ...(sticker ? { stickerId: sticker.id } : {}),
         ...(presentedPlate ? { presentedPlate } : {}),
-        // A code that answers to nothing is kept, as the Transpay lookup keeps
+        // A code that answers to nothing is kept, as the legacy lookup keeps
         // an unknown barcode, so the Union can see how often one turns up.
         ...(input.stickerCode && !sticker
           ? { presentedCode: input.stickerCode }

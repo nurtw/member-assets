@@ -430,11 +430,11 @@ pre-existing sticker to its vehicle record by **scanning it**, not by relying on
 row alone.
 
 **Pre-existing stickers use a different URL scheme, from a separate prior application**
-(`transpaytms.com`), in two observed forms:
+(the previous operator's own web address), in two observed forms:
 
 ```text
-https://www.transpaytms.com/v/status1772628860933
-https://www.transpaytms.com/v/status/1772628860933
+https://<the previous operator's address>/v/status1772628860933
+https://<the previous operator's address>/v/status/1772628860933
 ```
 
 The trailing digits are the identifier to extract and search on — a millisecond epoch
@@ -460,7 +460,7 @@ old sticker is carried across by scan. MIG-04 and MIG-06 remain open on the spec
 1. Every legacy sticker is **unattached**. A vehicle that has not been re-onboarded does not
    count as declared at all.
 2. Stickers are reattached through the System. Nobody may be able to generate a barcode and
-   attach it. Transpay-era stickers cannot be told apart from fabricated ones by looking at
+   attach it. Legacy stickers cannot be told apart from fabricated ones by looking at
    them.
 3. The vehicle owner (a member) pays to have the sticker reattached, and that payment and
    reattachment together **are** the onboarding.
@@ -478,9 +478,9 @@ added to it.
 
 **Controls on reattachment**, confirmed by the owner on 22 September 2026:
 
-- **Allow-list.** Only barcodes on the imported Transpay register can be attached. At
+- **Allow-list.** Only barcodes on the imported legacy register can be attached. At
   launch that is the 2,408 in the export. Any other barcode is refused and recorded as
-  unknown. It is not called a forgery, because Transpay still issues stickers (VEH-15).
+  unknown. It is not called a forgery, because the previous operator still issues stickers (VEH-15).
 - **One-shot.** Each barcode attaches once. A second attempt is refused and flagged.
 - **Plate-bound.** The register ties each barcode to exactly one plate, and there is no
   override (VEH-16).
@@ -491,27 +491,27 @@ added to it.
 conversation with NURTW; the Union official is to be named (PAY-09).
 **Recorded at.** PRD §2.3 (revision 1.2), §9A, §13, §23.19, §26.4.
 
-### VEH-14 · Is the Transpay security code printed on the sticker? ✅
+### VEH-14 · Is the legacy security code printed on the sticker? ✅
 
 **Question.** The export holds a 5-character `security_code` against nearly every barcoded
-vehicle, and it cannot be derived from the barcode. Is it printed on the physical Transpay
+vehicle, and it cannot be derived from the barcode. Is it printed on the physical legacy
 sticker, either visibly or under a scratch panel?
 
-**Answer.** **No.** The code comes from Transpay and does not appear on the sticker. It is
+**Answer.** **No.** The code comes from the previous operator and does not appear on the sticker. It is
 adopted as an imported record only and plays no part in reattachment or verification.
-Nothing printed on a Transpay sticker distinguishes a genuine one from a copy, so the
+Nothing printed on a legacy sticker distinguishes a genuine one from a copy, so the
 controls in PRD §9A carry the whole load.
 **Answered on.** 22 September 2026. **Answered by.** Project owner.
 **Recorded at.** PRD §9A (Requirement 9A.5), §23.19.
 
-### VEH-15 · Is Transpay still issuing stickers? ✅
+### VEH-15 · Is the previous operator still issuing stickers? ✅
 
-**Question.** Can Transpay still issue or print stickers, and does unissued Transpay stock
+**Question.** Can the previous operator still issue or print stickers, and does unissued legacy stock
 exist anywhere?
 
-**Answer.** **No — Transpay has stopped.** The owner first said Transpay was still issuing,
-then clarified the same day. Transpay generates no more stickers. NURTW holds a few printed
-Transpay stickers with no softcopy record, and those are the last of them. None carries the
+**Answer.** **No — the previous operator has stopped.** The owner first said the previous operator was still issuing,
+then clarified the same day. The previous operator generates no more stickers. NURTW holds a few printed
+legacy stickers with no softcopy record, and those are the last of them. None carries the
 security code.
 **Answered on.** 22 September 2026. **Answered by.** Project owner.
 **Recorded at.** PRD §23.19.
@@ -529,7 +529,7 @@ recorded reason?
 
 ### VEH-17 · Legacy stickers in the field before reattachment ✅
 
-**Question.** From go-live, a Transpay sticker that has not been reattached will not verify
+**Question.** From go-live, a legacy sticker that has not been reattached will not verify
 as a match. On day one, almost every vehicle will therefore scan as not found. Is there a
 grace period? What should an officer see?
 
@@ -537,8 +537,8 @@ grace period? What should an officer see?
 that the sticker is genuine but not attached.
 
 **Applied as.** This is shown on the internal channels only (dashboard and officer portal).
-The copy reads *"Recognised Transpay sticker — not attached"*, followed by the plate the
-register records for it. The System can confirm that a barcode is on Transpay's register and
+The copy reads *"Recognised sticker — not attached"*, followed by the plate the
+register records for it. The System can confirm that a barcode is on the legacy register and
 which plate it was issued for. It cannot confirm that the physical sticker is genuine,
 because a copy of a real sticker scans identically (VEH-14). Showing the recorded plate lets
 the officer catch a copy on the wrong vehicle. External callers and the public page get the
@@ -596,9 +596,9 @@ its wording can change later without invalidating letters already issued.
 
 **Question.** Onboarding happens in one of two ways:
 
-- **Reattachment.** The vehicle already carries a Transpay sticker on the register. The
+- **Reattachment.** The vehicle already carries a legacy sticker on the register. The
   owner pays, and the officer attaches that existing sticker. Nothing new is printed.
-- **New sticker.** The vehicle has no usable Transpay sticker. That covers brand-new
+- **New sticker.** The vehicle has no usable legacy sticker. That covers brand-new
   vehicles, the 433 in the export with no barcode, and any vehicle carrying one of the
   unrecorded printed stickers (VEH-21). The owner pays, and a new NURTW sticker is printed
   and attached.
@@ -616,27 +616,27 @@ separate fee types, so the two can be priced differently later without developme
 
 **Paused, 3 October 2026.** No new NURTW stickers for now (the project owner). The
 onboarding screen offers reattachment only. The new-sticker path stays built, behind one
-flag, and the System cannot yet print a signed sticker in any case. Transpay's unrecorded
+flag, and the System cannot yet print a signed sticker in any case. The previous operator's unrecorded
 stock may be used instead, later: see VEH-29.
 
-### VEH-21 · Refreshing the Transpay register ✅
+### VEH-21 · Refreshing the legacy register ✅
 
 **Question.** Only barcodes on the imported register can be reattached. How would barcodes
 issued after the export get onto it?
 
-**Answer.** **They don't need to. The register is closed.** Transpay has stopped issuing
+**Answer.** **They don't need to. The register is closed.** The previous operator has stopped issuing
 (VEH-15), so the export's 2,408 barcodes are the complete register, and nothing is ever
-added after the migration. The few printed Transpay stickers NURTW still holds have no
+added after the migration. The few printed legacy stickers NURTW still holds have no
 digital record. They are not on the register and **can never be attached**. A vehicle that
 would have received one gets a new signed NURTW sticker instead.
 
 **Recommended.** Retire or destroy that printed stock. The System refuses those barcodes
-anyway, but a stack of genuine-looking Transpay stickers is useful to nobody except someone
+anyway, but a stack of genuine-looking legacy stickers is useful to nobody except someone
 trying to pass one off in the field.
 **Answered on.** 22 September 2026. **Answered by.** Project owner.
 **Recorded at.** PRD Requirement 9A.4, §23.19, §26.4.
 
-**Being revisited.** On 3 October 2026 the owner asked for a way to add Transpay's
+**Being revisited.** On 3 October 2026 the owner asked for a way to add the previous operator's
 unrecorded stickers to the System by scanning them, before attaching them, but not yet.
 Until VEH-29 is taken up, the register stays closed as answered here.
 
@@ -779,19 +779,19 @@ for a caller holding `vehicle.declare` over that vehicle, on every screen and ro
 Outside the Union nothing changes: Requirement 12.7 already keeps declaration out of every
 external response.
 
-### VEH-29 · Adding Transpay's unrecorded stickers by scanning them 🔒
+### VEH-29 · Adding the previous operator's unrecorded stickers by scanning them 🔒
 
-**Direction.** Transpay still holds stickers the Union can use, but they are not on the
+**Direction.** The previous operator still holds stickers the Union can use, but they are not on the
 register. The Union wants to add them to the System by scanning them, before attaching them
 to a vehicle. **Not now, later** (the project owner, 3 October 2026).
 
 **Why it needs care when it is taken up.** This reopens the register VEH-21 closed, and a
-Transpay barcode is a millisecond timestamp with no proof of authenticity (PRD §26.4).
+legacy barcode is a millisecond timestamp with no proof of authenticity (PRD §26.4).
 Today a fabricated barcode fails because it is not on the register; once barcodes can be
 added by scanning, the controls move to whoever may add them. To settle then:
 
 1. Who may add a barcode, and whether a second officer must confirm the batch.
-2. Whether Transpay supplies a list of the stock, so a scan is checked against it.
+2. Whether the previous operator supplies a list of the stock, so a scan is checked against it.
 3. Whether an added barcode is bound to a plate at once, or only on attachment.
 4. A revision of PRD §23.19 and Requirement 9A.4, which say the register is closed.
 
@@ -805,12 +805,12 @@ a banner whenever it is viewed, and adding a vehicle should end on a prompt to b
 sticker, which can be closed. Given by the project owner on 5 October 2026; roadmap item 35.
 
 **Question.** While new NURTW stickers are paused (VEH-20) and the register is closed
-(VEH-21), what do the banner and the prompt do for a vehicle the Transpay register holds no
+(VEH-21), what do the banner and the prompt do for a vehicle the legacy register holds no
 barcode for?
 
 **Answer.** **Say so, and charge nothing.** They say the vehicle has no sticker yet and that
 new NURTW stickers are not being issued, and no payment is offered until they are. A vehicle
-whose Transpay sticker is on the register gets the full prompt: pay the fee, then reattach
+whose legacy sticker is on the register gets the full prompt: pay the fee, then reattach
 (Requirement 9A.4).
 
 **Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
@@ -1408,7 +1408,7 @@ still open.
 
 ### PAY-04 · Arrears and legacy balances ✅
 
-**Question.** Does a member owe levy for months before they were onboarded? The Transpay
+**Question.** Does a member owe levy for months before they were onboarded? The legacy
 export holds wallet balances and amounts owed. Should those be honoured, or does everyone
 start clean?
 
@@ -1759,7 +1759,7 @@ a check is read-only, so a check cannot itself create a payment.
 
 **Why links and not the sticker page.** The public sticker page (§23.13) is not built: its
 address is printed in each sticker's QR code, so it waits on the domains (GOV-08), and the
-only stickers that carry such a code are paused (VEH-20). Transpay barcodes open no page.
+only stickers that carry such a code are paused (VEH-20). Legacy barcodes open no page.
 When the sticker page is built, every result that names a vehicle carries the same "Pay
 NURTW dues" button, whether or not anything is owed.
 
@@ -1871,7 +1871,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
-| 5 October 2026 (stickers) | New VEH-30: a banner on every vehicle without a sticker, and a prompt after adding one, given and answered the same day. While new stickers are paused, a vehicle with no Transpay barcode on the register is told so and charged nothing (roadmap item 35). |
+| 5 October 2026 (stickers) | New VEH-30: a banner on every vehicle without a sticker, and a prompt after adding one, given and answered the same day. While new stickers are paused, a vehicle with no legacy barcode on the register is told so and charged nothing (roadmap item 35). |
 | 5 October 2026 (interface) | New EXT-21: the API administrator invites an organisation by a personal link, given and answered the same day (roadmap item 33). PRD revised to 1.10. The owner also directed a redesign of the interface, with a sidebar and a dark theme (items 32 and 34). That is not a Union question; it is recorded in `DESIGN.md`. |
 | 5 October 2026 | The project owner went through the open questions. Answered: GOV-18 (a go-live gate), EXT-08 (at once for cause, 30 days' notice otherwise), EXT-12 (production only), EXT-13 (no name, ever), EXT-17 (keep, review after the pilot). Partly answered: EXT-05 (one pilot after go-live; which one open) and GOV-11 (no parallel running; the date waits on named gates). Added to answered ones: PAY-11 (the percentage is Paystack's fee plus 0.5 per cent, set on a new Settlement screen) and PAY-20 (a bank account number follows the BVN rule). GOV-08 left open. New EXT-20, organisations applying for themselves, given and answered the same day (roadmap item 29). New PAY-21, a pay-now button on officer checks and a personal pay link for the public, never showing what is owed (roadmap item 31). PRD revised to 1.9. |
 | 4 October 2026 (item 28) | Officer accounts and multi-factor sign-in were found unbuilt. The project owner answered GOV-16 (a temporary password at first sign-in), GOV-17 (a second factor for privileged permissions), GOV-19 (composed roles at launch), and GOV-20 (no database lock on audit events yet). New GOV-18, when the second-factor requirement is turned on, open. PRD revised to 1.8. |
@@ -1879,13 +1879,13 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 | 4 October 2026 (item 13) | The project owner answered three new questions by adopting the recommendations: EXT-14 (rate-limit counters in Postgres), EXT-15 (daily quotas of 1,000 and 5,000), and EXT-16 (detection pauses an organisation for an hour). New EXT-17, the detection thresholds, open. PRD revised to 1.6. |
 | 3 October 2026 (item 12) | New EXT-13: whether an outside membership check may ever carry the holder's name. Open; item 12 discloses none. |
 | 3 October 2026 (item 11) | The project owner answered EXT-06 (the API administrator approves; one officer may register and approve) and EXT-07 (a data-sharing agreement is required before approval), and two new questions: EXT-10 (token reminders on the dashboard until a mail service exists) and EXT-11 (the officer chooses how long a replaced token keeps working). New EXT-12, a test environment for outside organisations, open. PRD revised to 1.5. |
-| 3 October 2026 | The project owner answered VEH-27, PAY-18, PAY-19, and PAY-20 by adopting the recommendations (items 25 and 26 build the first three). New VEH-28: a vehicle's declaration status is shown only to holders of `vehicle.declare`. New VEH-29: adding Transpay's unrecorded stickers by scanning, deferred. VEH-20's new sticker paused; VEH-21 being revisited. PRD revised to 1.4. |
+| 3 October 2026 | The project owner answered VEH-27, PAY-18, PAY-19, and PAY-20 by adopting the recommendations (items 25 and 26 build the first three). New VEH-28: a vehicle's declaration status is shown only to holders of `vehicle.declare`. New VEH-29: adding the previous operator's unrecorded stickers by scanning, deferred. VEH-20's new sticker paused; VEH-21 being revisited. PRD revised to 1.4. |
 | 2 October 2026 (item 23) | New PAY-20: whether members' BVNs may be collected if Paystack requires identification before it opens a dedicated account. Open, and it blocks dedicated accounts only if Paystack does require it. PAY-18 notes the case item 23 adds: part of a membership fee arriving before the rest. |
 | 27 September 2026 (item 22) | New PAY-18 (a membership fee paid early or after a gap) and PAY-19 (when a levy stops; re-pricing on a change of route type). Both open, and neither blocks item 22, which applies PAY-03 as written. |
 | 26 September 2026 (item 18) | New VEH-27: whether the vehicle letter can be reissued when its driver or unit changes after onboarding. Open, and it blocks nothing: item 18 issues one letter per onboarding and keeps it as printed. |
 | 26 September 2026 | Answers from the project owner after a call with Mr Timothy. New VEH-23 (a `vehicle.record` permission and a Field enumerator role; declaring stays restricted), VEH-24 (a vehicle may be linked to a pending applicant), VEH-25 (owner name and phone required, address optional, held as sensitive data), VEH-26 (route type required: interstate, intercity, town service). MIG-04 answered: the driver is the member, the owner is recorded on the vehicle. New MIG-07: import after the owner fields exist, locally first. PAY-02 revised: levy ₦7,000. New PAY-14 (levy priced by route type), PAY-15 (processing fee unchanged), PAY-16 (stay on Paystack pending the provider comparison), PAY-17 (link plus dedicated account; USSD after launch; dedicated accounts already enabled). PRD revised to 1.3. |
 | 22 September 2026 (close) | Launch amounts set by the owner: stickers ₦2,000 (both), levy ₦5,000 a month, membership ₦30,000 a year (PAY-02, VEH-20). The owner directed that every remaining question in this thread be settled by recommendation, with no further questions. VEH-18, VEH-19, VEH-22, PAY-03, PAY-04, PAY-08, and PAY-05's renewal point were closed that way, each marked “adopting the recommendation”. PAY-09: revision 1.2 is approved by the project owner. No PAY question remains open. |
-| 22 September 2026 | Direction relayed by the project owner from a conversation with NURTW, covering legacy stickers, onboarding, what counts as a vehicle, and payments. Recorded as **VEH-13** and **PAY-01**. It supersedes CARD-03 in part and reverses PRD §2.2's exclusion of revenue collection, so a PRD revision is required. New questions VEH-14–20 and PAY-02–09. Fee types are to be data, not code, so more can be added without a deploy. Later the same day, the owner answered VEH-14–17, PAY-05 and PAY-06, and parts of PAY-02 and PAY-07. PAY-10 records the contractor-fee formula (0.5 per cent capped at ₦200, payer-borne), checked against the owner's worked table. New questions VEH-21, VEH-22 and PAY-11. PRD revised to 1.2 (§2.3, §9A, §13, §23.19–23.20, §26.4, §27). Then: PAY-11 answered (A — dues by dedicated account or link, stickers by link only); PAY-07 answered (the NURTW account is added and changed from settings); VEH-15 corrected (Transpay has stopped) and VEH-21 answered (the register is closed). VEH-20 reworded in plain terms and made a settings change. New questions PAY-12 and PAY-13, both then answered: oldest due first; the super administrator alone changes the settlement account, with no second approver and a full audit trail. |
+| 22 September 2026 | Direction relayed by the project owner from a conversation with NURTW, covering legacy stickers, onboarding, what counts as a vehicle, and payments. Recorded as **VEH-13** and **PAY-01**. It supersedes CARD-03 in part and reverses PRD §2.2's exclusion of revenue collection, so a PRD revision is required. New questions VEH-14–20 and PAY-02–09. Fee types are to be data, not code, so more can be added without a deploy. Later the same day, the owner answered VEH-14–17, PAY-05 and PAY-06, and parts of PAY-02 and PAY-07. PAY-10 records the contractor-fee formula (0.5 per cent capped at ₦200, payer-borne), checked against the owner's worked table. New questions VEH-21, VEH-22 and PAY-11. PRD revised to 1.2 (§2.3, §9A, §13, §23.19–23.20, §26.4, §27). Then: PAY-11 answered (A — dues by dedicated account or link, stickers by link only); PAY-07 answered (the NURTW account is added and changed from settings); VEH-15 corrected (the previous operator has stopped) and VEH-21 answered (the register is closed). VEH-20 reworded in plain terms and made a settings change. New questions PAY-12 and PAY-13, both then answered: oldest due first; the super administrator alone changes the settlement account, with no second approver and a full audit trail. |
 | 17 September 2026 | CARD-06 answered ("Safety and Unity") and applied to the template. CARD-05 partly answered: the Union emblem supplied and embedded as a card watermark. Added `SEED_DEMO_DATA=true` to `apps/api/prisma/seed.ts`: real zones for all 21 LGAs (unconditional, per ORG-05), plus a demo branch/unit under each and an 8-entry demo designation list (both gated behind the flag, clearly marked as placeholder, not a Union answer) — so a demo deployment can complete a registration and issue a card. CARD-07 (signature images) and the rest of CARD-05 (full artwork) were deliberately not stood in for; see §3. |
 | 14 September 2026 | Answers received from Mr Timothy, Head of Operations. MEM-05 and CARD-04 answered in full; ORG-05, MEM-06, and CARD-07 partly answered; new VEH-12 recorded (vehicle onboarding and legacy-sticker rebinding) with the pre-existing sticker URL format for items 07–08. Card template `v1-provisional` now carries a twelve-month validity; guarantor is no longer required to register an application. |
 | 9 September 2026 | Register created. 26 answered, 43 awaiting, 1 deferred. ORG-05 and ORG-06 identified as blocking item 05. |

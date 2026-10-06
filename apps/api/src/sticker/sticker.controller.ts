@@ -86,7 +86,7 @@ export class StickerController {
   @Documented({
     summary: "A vehicle's onboarding state.",
     description:
-      'Item 17 — whether the vehicle is onboarded, whether the Transpay register holds an ' +
+      'Item 17 — whether the vehicle is onboarded, whether the legacy register holds an ' +
       'unattached barcode for its plate (never which barcode), and the confirmed onboarding ' +
       'payments made for it that have not yet funded an attachment. Answers 404 for a vehicle ' +
       'outside the caller\'s `sticker.attach` scope.',
@@ -107,10 +107,10 @@ export class StickerController {
   @Post('legacy-lookup')
   @HttpCode(200)
   @Documented({
-    summary: 'Read a scanned Transpay barcode (internal).',
+    summary: 'Read a scanned legacy barcode (internal).',
     description:
       'PRD Requirement 11.2 — an unattached barcode on the register reads "Recognised ' +
-      'Transpay sticker — not attached", with the plate the register records for it. It never ' +
+      'sticker — not attached", with the plate the register records for it. It never ' +
       'says genuine: a copy scans identically. An unknown barcode answers the generic 404. ' +
       'Read-only apart from its audit event. Sent as a body so the barcode stays out of URLs ' +
       'and access logs.',

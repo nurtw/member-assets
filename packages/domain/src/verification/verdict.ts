@@ -58,7 +58,7 @@ export interface VerificationSticker {
   status: StickerStatus;
   attached: boolean;
   /**
-   * A legacy barcode only: the plate the Transpay register binds it to
+   * A legacy barcode only: the plate the legacy register binds it to
    * (Requirement 9A.3). `null` for a signed sticker.
    */
   registeredPlateNormalized: string | null;
@@ -122,7 +122,7 @@ export function decideVerification(
   const { sticker, vehicle } = facts;
   if (!sticker.attached || !vehicle) {
     reasons.add('STICKER_NOT_ATTACHED');
-    // An unattached Transpay barcode still names a plate on the register, so a
+    // An unattached legacy barcode still names a plate on the register, so a
     // copy presented on another vehicle is caught before it is ever attached
     // (Requirement 11.2).
     if (

@@ -30,7 +30,7 @@ import { ReconciliationReport } from './report.ts';
  *
  * Imports `drivers.csv` as members and `vehicles_full.csv` as vehicles ON
  * RECORD (never declared — Decision 6.5), each with its owner details as
- * recorded (Requirement 25.4), and the export's Transpay barcodes as the
+ * recorded (Requirement 25.4), and the export's legacy barcodes as the
  * closed register of unattached stickers (Requirement 9A.3, item 17).
  * Idempotent: every row is keyed by `legacyId` (a barcode by its value) and
  * skipped outright if already present, so a rerun writes nothing — no
@@ -66,7 +66,7 @@ const MIGRATION_ACTOR_EMAIL = 'legacy-migration@nurtw.internal';
 const REPAIR = process.argv.includes('--repair');
 
 /**
- * `--no-register` leaves the Transpay register alone (item 17). Loading the
+ * `--no-register` leaves the legacy register alone (item 17). Loading the
  * register onto a shared database is its own go-ahead (MIG-07), separate from
  * a repair that has already been approved.
  */
@@ -616,7 +616,7 @@ async function importVehicles(
 }
 
 /**
- * The Transpay register (PRD Requirement 9A.3, item 17). Every barcode in the
+ * The legacy register (PRD Requirement 9A.3, item 17). Every barcode in the
  * export becomes an unattached sticker bound to the normalised plate the export
  * records for it. Reattachment is checked against that plate with no override
  * (VEH-16), so it is copied, never corrected.
@@ -724,7 +724,7 @@ async function placeOnRegister(
                 // Printed long ago and never attached through this System
                 // (Requirement 10.3). `ISSUED -> ACTIVE` is attachment.
                 status: 'ISSUED',
-                templateVersion: 'transpay-legacy',
+                templateVersion: 'legacy-barcode',
               },
             }),
             prisma.auditEvent.create({
@@ -742,7 +742,7 @@ async function placeOnRegister(
                   registeredPlateNormalized,
                   securityCodeRecorded: entry.legacySecurityCode !== null,
                 },
-                reason: 'Transpay register import (item 17, PRD Requirement 9A.3).',
+                reason: 'Legacy register import (item 17, PRD Requirement 9A.3).',
               },
             }),
           ]);

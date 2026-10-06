@@ -787,7 +787,7 @@ model Sticker {
 
   /// Revision 1.2, Requirement 10.3 — nullable. A sticker may exist
   /// unattached: freshly signed and not yet issued to a vehicle, or a
-  /// legacy barcode sitting on the imported Transpay register. Set exactly
+  /// legacy barcode sitting on the imported legacy register. Set exactly
   /// once, at attachment, and never changed afterward (a sticker attaches
   /// to at most one vehicle in its life, PRD §9A.4).
   vehicleId String?       @map("vehicle_id") @db.Uuid
@@ -811,7 +811,7 @@ model Sticker {
   legacyBarcode String? @unique @map("legacy_barcode")
 
   /// Revision 1.2, Requirement 9A.3–9A.4 — for a legacy barcode only, the
-  /// plate the imported Transpay register binds it to. Set once at import
+  /// plate the imported legacy register binds it to. Set once at import
   /// (item 09) and read-only thereafter: this is what a reattachment
   /// attempt is checked against, with no override (VEH-16). `null` for a
   /// freshly signed sticker, which carries no register entry at all.
@@ -833,7 +833,7 @@ model Sticker {
   /// Set with `attachedAt`, once, and never changed.
   attachedByUserId String? @map("attached_by_user_id") @db.Uuid
 
-  /// Requirement 9A.5 / `QUESTIONS.md` VEH-14 — the export's Transpay
+  /// Requirement 9A.5 / `QUESTIONS.md` VEH-14 — the export's legacy
   /// `security_code`, kept as a record only. It is not printed on the
   /// sticker, so it plays no part in reattachment or verification. Restricted:
   /// no response selects it.
@@ -1589,7 +1589,7 @@ model ApiAbuseWindow {
   @@map("api_abuse_window")
 }
 
-/// The last plate or Transpay barcode an organisation presented, as a stem and
+/// The last plate or legacy barcode an organisation presented, as a stem and
 /// a number, and the run of non-matching steps it is in. One row per kind,
 /// overwritten on each check and pruned when stale: detection state, not a log
 /// of what was asked.

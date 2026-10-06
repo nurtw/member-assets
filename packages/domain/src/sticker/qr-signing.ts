@@ -46,7 +46,7 @@ export function encodeQrPayload(
  * A code carrying the payload separator claims to be signed, so it must pass
  * `decodeAndVerifyQrPayload` before anything is looked up (Requirement 26.1);
  * a malformed one fails there, as a forgery would. Anything else can only be a
- * Transpay barcode: those are millisecond timestamps, copied from the export
+ * legacy barcode: those are millisecond timestamps, copied from the export
  * exactly as recorded, and they are looked up on the closed register by exact
  * value. A code is never tried both ways.
  */

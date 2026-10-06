@@ -74,12 +74,12 @@ export function useStickerOffer(
 }
 
 const NOTHING_YET =
-  "New NURTW stickers are not being issued yet, and the Transpay register holds no sticker for this plate, so there is nothing to buy or attach for now. Nothing is charged.";
+  "New NURTW stickers are not being issued yet, and the legacy register holds no sticker for this plate, so there is nothing to buy or attach for now. Nothing is charged.";
 
 function whatToDo(offer: StickerOffer, needsRouteType: boolean): string {
   const first = needsRouteType ? "Set its route type, then take" : "Take";
   return offer === "REATTACH"
-    ? `The Transpay register holds a sticker for this plate. ${first} the reattachment fee and reattach the sticker the vehicle carries.`
+    ? `The legacy register holds a sticker for this plate. ${first} the reattachment fee and reattach the sticker the vehicle carries.`
     : `${first} the sticker fee and attach a new NURTW sticker.`;
 }
 

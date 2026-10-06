@@ -183,7 +183,7 @@ export function mapLegacyOwner(raw: string | undefined | null): {
 }
 
 /**
- * A Transpay register entry (PRD Requirement 9A.3, item 17): the barcode the
+ * A legacy register entry (PRD Requirement 9A.3, item 17): the barcode the
  * export records for a vehicle, with its security code kept as a record only
  * (Requirement 9A.5 — not printed on the sticker, so it plays no part in
  * reattachment). `null` for a row with no barcode: 433 of the export's 2,841,

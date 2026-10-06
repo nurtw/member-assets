@@ -67,7 +67,7 @@ export interface Observation {
   readonly resultClass: string;
   /** The normalised plate presented, if one was. */
   readonly plate: string | null;
-  /** A Transpay barcode presented, if one was. Never a signed code. */
+  /** A legacy barcode presented, if one was. Never a signed code. */
   readonly code: string | null;
 }
 

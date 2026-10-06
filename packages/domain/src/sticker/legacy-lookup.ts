@@ -1,5 +1,5 @@
 /**
- * What an internal channel says about a scanned legacy Transpay barcode (PRD
+ * What an internal channel says about a scanned legacy barcode (PRD
  * Requirement 11.2, `QUESTIONS.md` VEH-17).
  *
  * Internal only. The external API and the public page answer the generic
@@ -15,10 +15,10 @@
  */
 
 export const RECOGNISED_NOT_ATTACHED_COPY =
-  'Recognised Transpay sticker — not attached';
+  'Recognised sticker — not attached';
 
-export const TRANSPAY_ATTACHED_COPY =
-  'Transpay sticker — attached through the System';
+export const LEGACY_ATTACHED_COPY =
+  'Sticker — attached through the System';
 
 /** A register row, as the lookup reads it. */
 export interface LegacyRegisterEntry {
@@ -39,7 +39,7 @@ export type LegacyBarcodeReading =
     }
   | {
       result: 'ATTACHED';
-      message: typeof TRANSPAY_ATTACHED_COPY;
+      message: typeof LEGACY_ATTACHED_COPY;
       attachedPlate: string;
       vehicleId: string;
       stickerStatus: string;
@@ -64,7 +64,7 @@ export function describeLegacyBarcode(
   ) {
     return {
       result: 'ATTACHED',
-      message: TRANSPAY_ATTACHED_COPY,
+      message: LEGACY_ATTACHED_COPY,
       attachedPlate: entry.plateNumberAtIssue,
       vehicleId: entry.vehicleId,
       stickerStatus: entry.status,

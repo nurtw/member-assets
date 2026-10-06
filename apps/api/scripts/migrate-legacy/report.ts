@@ -42,7 +42,7 @@ export class ReconciliationReport {
     rowsWithoutBarcode: 0,
   };
 
-  /** Requirement 9A.3 — a Transpay barcode placed on the register, unattached. */
+  /** Requirement 9A.3 — a legacy barcode placed on the register, unattached. */
   barcodeImported(): void {
     this.counts.barcodes += 1;
   }
@@ -142,8 +142,8 @@ no name, phone, or address appears here (CLAUDE.md's data-handling rule).
 - Pre-1.2 vehicles corrected to on record with owner details (\`--repair\`): ${this.counts.vehiclesRepaired}
 ${
   this.registerWasSkipped
-    ? '- Transpay register: **not run** (`--no-register`)'
-    : `- Transpay barcodes placed on the register, unattached (Requirement 9A.3): ${this.counts.barcodes} (already present from an earlier run: ${this.counts.barcodesAlreadyPresent})
+    ? '- legacy register: **not run** (`--no-register`)'
+    : `- legacy barcodes placed on the register, unattached (Requirement 9A.3): ${this.counts.barcodes} (already present from an earlier run: ${this.counts.barcodesAlreadyPresent})
 - Vehicle rows with no barcode — onboarded later with a new sticker (VEH-20): ${this.counts.rowsWithoutBarcode}
 - Barcodes that failed to import: ${this.failedBarcodes.length}`
 }
@@ -228,7 +228,7 @@ ${table(
   ['legacyId', 'reason'],
 )}
 
-## Transpay barcodes that failed to import
+## Legacy barcodes that failed to import
 
 The register is closed (VEH-21): a barcode missing here can never be
 reattached, so each one needs a decision before go-live.

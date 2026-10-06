@@ -290,7 +290,7 @@ export default function VehicleDetailPage() {
               vehicle.onboarding
                 ? `${new Date(vehicle.onboarding.attachedAt).toLocaleDateString("en-GB")} · ${
                     vehicle.onboarding.kind === "LEGACY"
-                      ? "Transpay sticker reattached"
+                      ? "Sticker reattached"
                       : "NURTW sticker"
                   }${vehicle.onboarding.attachedBy ? ` · by ${vehicle.onboarding.attachedBy}` : ""}`
                 : "Not yet onboarded"

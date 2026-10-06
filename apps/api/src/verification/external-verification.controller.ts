@@ -89,7 +89,7 @@ export class ExternalVerificationController {
   @Documented({
     summary: 'Verify a sticker by its code.',
     description:
-      'Send `sticker_qr_id`: what the sticker’s QR code holds, or the number on a Transpay ' +
+      'Send `sticker_qr_id`: what the sticker’s QR code holds, or the number on a legacy ' +
       'sticker. A sticker matches when it is attached, active, and on a declared vehicle. A ' +
       'signed code is checked before anything is looked up. Fields a match may carry: ' +
       '`vehicle_category`, `sticker_status`, `organizational_unit`, `attached_at`; never the ' +

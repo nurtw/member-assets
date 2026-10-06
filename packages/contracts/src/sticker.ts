@@ -29,7 +29,7 @@ export type IssueStickerInput = z.infer<typeof issueStickerSchema>;
  * - `stickerId` — a freshly issued sticker, by its record id;
  * - `stickerQrId` — the same, by the number printed on it (item 17: an
  *   officer holds the printed article, not its database id);
- * - `legacyBarcode` — a Transpay barcode on the imported register (a
+ * - `legacyBarcode` — a legacy barcode on the imported register (a
  *   reattachment).
  *
  * A signed sticker and a legacy barcode are different rows with different
@@ -54,7 +54,7 @@ export const attachStickerSchema = z
 export type AttachStickerInput = z.infer<typeof attachStickerSchema>;
 
 /**
- * An internal lookup of a scanned Transpay barcode (Requirement 11.2). Sent in
+ * An internal lookup of a scanned legacy barcode (Requirement 11.2). Sent in
  * a body, not a URL: a legacy barcode is the whole of what the sticker's code
  * carries, and a URL ends up in access logs.
  */
@@ -94,7 +94,7 @@ export interface EligibleOnboardingPayment {
 
 /**
  * `GET /stickers/onboarding/:vehicleId` — what the onboarding screen needs.
- * `registerHoldsBarcodeForPlate` says whether the Transpay register has an
+ * `registerHoldsBarcodeForPlate` says whether the legacy register has an
  * unattached barcode for this plate, never which one: the barcode must come
  * from the sticker on the vehicle, or a reattachment would no longer prove
  * the sticker was there.

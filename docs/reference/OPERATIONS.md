@@ -513,7 +513,7 @@ SELECT actor_user_id, count(*) FROM audit_event
  GROUP BY actor_user_id ORDER BY count(*) DESC;
 ```
 
-How often Transpay barcodes are still presented, which PRD §26.4 asks the Union to measure:
+How often legacy barcodes are still presented, which PRD §26.4 asks the Union to measure:
 
 ```sql
 SELECT after_value->>'scheme' AS scheme, count(*) FROM audit_event
@@ -522,7 +522,7 @@ SELECT after_value->>'scheme' AS scheme, count(*) FROM audit_event
 ```
 
 **Signed stickers need `STICKER_SIGNING_SECRET`.** Without it, a signed code answers 503 and
-is not recorded as a forgery. Plates and Transpay barcodes still verify. New NURTW stickers
+is not recorded as a forgery. Plates and legacy barcodes still verify. New NURTW stickers
 are paused for now (`QUESTIONS.md` VEH-20), so the secret is not yet needed.
 
 ### Reissuing a vehicle letter
@@ -852,7 +852,7 @@ The script reads `data/` (never committed). It writes three things:
 
 - members;
 - on-record vehicles with their owner details (PRD §25, Requirement 25.4);
-- the closed Transpay register: 2,408 legacy barcodes as unattached stickers, each bound to
+- the closed legacy register: 2,408 legacy barcodes as unattached stickers, each bound to
   the plate the export records for it (Requirement 9A.3).
 
 It runs **against a local database first**
@@ -888,7 +888,7 @@ this repair. The owner approved it on 26 September 2026. The repair is safe to i
   dropped connection never writes twice;
 - repairs run five at a time, and a dropped connection is retried.
 
-**Any run of the current script also loads the Transpay register,** unless it is given
+**Any run of the current script also loads the legacy register,** unless it is given
 `--no-register`:
 
 ```bash

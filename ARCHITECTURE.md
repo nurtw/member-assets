@@ -311,7 +311,7 @@ the length of a pause included, is a column of its `rate_limit_profile` row, rea
 request. A request refused by a limit is not counted against a quota.
 
 **Decision 8.5 — detection observes outcomes, and pauses *(item 13)*.** After a check is
-answered, detection counts it: forged codes, non-matches, and plates or Transpay barcodes in
+answered, detection counts it: forged codes, non-matches, and plates or legacy barcodes in
 sequence. A match never lengthens a sequence, because a fleet registered together carries
 plates in order and is verified in turn. A signal pauses the organisation (PRD Requirement
 14.4) and clears the evidence, so it is not paused again the moment the pause ends.

@@ -72,7 +72,7 @@ function explainAttachConflict(error: ApiError, method: Method): ApiError {
   return new ApiError(
     409,
     method === "LEGACY"
-      ? "The Transpay sticker was not attached. The barcode must be read from the sticker on this vehicle, be on the register for this plate, and never have been attached before. The vehicle must not already carry a sticker, and the payment must be a confirmed reattachment payment for this vehicle, not used before. The exact reason is in the audit trail."
+      ? "The legacy sticker was not attached. The barcode must be read from the sticker on this vehicle, be on the register for this plate, and never have been attached before. The vehicle must not already carry a sticker, and the payment must be a confirmed reattachment payment for this vehicle, not used before. The exact reason is in the audit trail."
       : "The sticker was not attached. It must be an issued NURTW sticker never attached before, the vehicle must not already carry one, and the payment must be a confirmed new-sticker payment for this vehicle, not used before. The exact reason is in the audit trail.",
     error.requestId,
     error.details,
@@ -136,7 +136,7 @@ export function OnboardingSection({
           <p className="font-semibold text-verdict-affirm">Onboarded</p>
           <p className="mt-1">
             {attachment.kind === "LEGACY"
-              ? "Transpay sticker reattached"
+              ? "Sticker reattached"
               : "NURTW sticker attached"}{" "}
             on {new Date(attachment.attachedAt).toLocaleDateString("en-GB")}
             {attachment.attachedBy ? ` by ${attachment.attachedBy}` : ""}.
@@ -233,14 +233,14 @@ export function OnboardingSection({
             <legend className="text-sm font-medium">How is it being onboarded?</legend>
             <p className="text-xs text-faint-foreground">
               {state.registerHoldsBarcodeForPlate
-                ? "The Transpay register holds a barcode for this plate. If the vehicle carries that sticker, reattach it."
+                ? "The legacy register holds a barcode for this plate. If the vehicle carries that sticker, reattach it."
                 : NEW_STICKERS_IN_USE
-                  ? "The Transpay register holds no unattached barcode for this plate, so a Transpay sticker cannot be reattached. Attach a new NURTW sticker."
-                  : "The Transpay register holds no unattached barcode for this plate, so a Transpay sticker cannot be reattached. New NURTW stickers are not in use yet, so this vehicle cannot be onboarded for now."}
+                  ? "The legacy register holds no unattached barcode for this plate, so a legacy sticker cannot be reattached. Attach a new NURTW sticker."
+                  : "The legacy register holds no unattached barcode for this plate, so a legacy sticker cannot be reattached. New NURTW stickers are not in use yet, so this vehicle cannot be onboarded for now."}
             </p>
             {(
               [
-                ["LEGACY", "Reattach the Transpay sticker on the vehicle"],
+                ["LEGACY", "Reattach the legacy sticker on the vehicle"],
                 ["SIGNED", "Attach a new NURTW sticker"],
               ] as const
             ).map(([value, label]) => (
@@ -316,7 +316,7 @@ export function OnboardingSection({
                   </Button>
                   {reading === "UNKNOWN" ? (
                     <p className="text-sm">
-                      <span className="font-semibold">Not on the Transpay register.</span>{" "}
+                      <span className="font-semibold">Not on the legacy register.</span>{" "}
                       It can never be attached. Attach a new NURTW sticker instead.
                     </p>
                   ) : reading?.result === "ATTACHED" ? (

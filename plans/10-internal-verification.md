@@ -8,7 +8,7 @@ PRD §11 (Requirements 11.1–11.3), §26 (Requirements 26.1, 26.3), §9A.1, §2
 
 ## Goal
 An officer holding `verification.perform` checks a vehicle by plate, by sticker (a signed
-QR payload or a Transpay barcode), or by both together, on a page built for a phone at the
+QR payload or a legacy barcode), or by both together, on a page built for a phone at the
 roadside. The verdict follows one rule that item 12 will share. Behind the verdict, the
 internal result shows every state: on record, declared, onboarded, the sticker's status, a
 plate mismatch, and a register reading. Dues appear beside it, never inside it. Every check
@@ -21,7 +21,7 @@ is audited, and nothing else is written.
      attached and `ACTIVE` and its vehicle is declared. A combined check also needs the
      sticker's vehicle to carry the presented plate.
    - `stickerCodeScheme`: a code containing the payload separator is signed and must pass
-     its signature before any lookup. Anything else is looked up on the closed Transpay
+     its signature before any lookup. Anything else is looked up on the closed legacy
      register by exact value.
    - `projectVerification` is Decision 5.3's single projection function. It works over a
      closed field catalogue, and each field is marked external-admissible or internal-only.
@@ -88,7 +88,7 @@ public page.
   and an e2e snapshot of the rows a check could touch.
 - **Signing in lands each officer on the first screen they may use**, so a verification
   officer lands on Verify rather than on a refusal.
-- The OpenAPI generator now honours `@HttpCode`. Login, logout, the Transpay lookup, and
+- The OpenAPI generator now honours `@HttpCode`. Login, logout, the legacy lookup, and
   verifications are documented as 200, which is what they return.
 
 **Pending:**

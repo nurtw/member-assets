@@ -11,7 +11,7 @@
  *
  * - **Forged codes.** A signed code that fails its signature was not minted
  *   by the Union. An integrator scanning real stickers never sends one.
- * - **A sequence.** Plates or Transpay barcodes that differ only by a step in
+ * - **A sequence.** Plates or legacy barcodes that differ only by a step in
  *   their number, and do not match: ABC101XY, ABC102XY, ABC103XY.
  * - **A high non-match rate.** Guessing at random matches almost nothing. An
  *   organisation checking vehicles that present as NURTW vehicles matches

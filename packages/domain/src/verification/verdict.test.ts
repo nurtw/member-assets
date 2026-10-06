@@ -205,7 +205,7 @@ describe('decideVerification — plate and sticker together', () => {
     ).toEqual(['PLATE_MISMATCH', 'STICKER_NOT_ACTIVE', 'NOT_DECLARED']);
   });
 
-  it('catches a Transpay barcode presented for a plate other than its registered one', () => {
+  it('catches a legacy barcode presented for a plate other than its registered one', () => {
     expect(
       decideVerification({
         criteria: 'COMBINED',
@@ -221,7 +221,7 @@ describe('decideVerification — plate and sticker together', () => {
     ).toEqual(['PLATE_MISMATCH', 'STICKER_NOT_ATTACHED']);
   });
 
-  it('reports only not-attached for a Transpay barcode presented for its own plate', () => {
+  it('reports only not-attached for a legacy barcode presented for its own plate', () => {
     expect(
       decideVerification({
         criteria: 'COMBINED',

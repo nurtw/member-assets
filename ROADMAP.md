@@ -36,7 +36,7 @@ Each item is independently completable and independently testable. Status values
 | 06 | membership-card-issuance | §8 | complete | `plans/06-membership-card-issuance.md` |
 | 07 | vehicle-declaration | §9 | complete | `plans/07-vehicle-declaration.md` |
 | 08 | sticker-inventory-qr | §10 | complete | `plans/08-sticker-inventory-qr.md` |
-| 09 | legacy-data-migration | §25, §9A | **done** (Neon repaired 26 Sep; Transpay register loaded 27 Sep) | `plans/09-legacy-data-migration.md` |
+| 09 | legacy-data-migration | §25, §9A | **done** (Neon repaired 26 Sep; legacy register loaded 27 Sep) | `plans/09-legacy-data-migration.md` |
 | 10 | internal-verification | §11 | done (browser check pending) | [plan](plans/10-internal-verification.md) |
 | 11 | api-clients-and-scopes | §12.1, §16 | done | [plan](plans/11-api-clients-and-scopes.md) |
 | 12 | external-verification-api | §12, §15 | done | [plan](plans/12-external-verification-api.md) |
@@ -54,7 +54,7 @@ Each item is independently completable and independently testable. Status values
 | 24 | membership-verification | §11, §15 | done | [plan](plans/24-membership-verification.md) |
 | 25 | dues-answers | §27.13 | done | [plan](plans/25-dues-answers.md) |
 | 26 | letter-reissue | §9A.6 | done | [plan](plans/26-letter-reissue.md) |
-| 27 | transpay-stock-intake | §9A.4 | deferred by the owner | [plan](plans/27-transpay-stock-intake.md) |
+| 27 | sticker-stock-intake | §9A.4 | deferred by the owner | [plan](plans/27-sticker-stock-intake.md) |
 | 28 | officer-accounts-and-mfa | §16, §17.1 | done (requirement off until GOV-18; clicked through 5 Oct, second-factor enrolment not) | [plan](plans/28-officer-accounts-and-mfa.md) |
 | 29 | organisation-portal | §12, §23.23 | done (clicked through 5 Oct) | [plan](plans/29-organisation-portal.md) |
 | 30 | settlement-screen | §27.7, §27.12 | done (clicked through 5 Oct; no account saved at Paystack) | [plan](plans/30-settlement-screen.md) |
@@ -131,15 +131,15 @@ conflict detection, the six-state declaration lifecycle, and preservation of his
 association on transfer or retirement.
 
 **08 — sticker-inventory-qr.** *PRD 1.2:* the sticker schema must allow a sticker to exist
-**unattached**, with attachment as a recorded event (Requirement 10.3), and hold the Transpay
+**unattached**, with attachment as a recorded event (Requirement 10.3), and hold the legacy
 register (barcode bound to its recorded plate) that item 09 fills.
 Sticker stock, opaque QR identifier generation, issuance,
 replacement, and the nine-state sticker lifecycle. Depends upon item 07.
 
 **09 — legacy-data-migration.** *PRD 1.2 — re-plan before executing:* legacy vehicles
 import **on record only**, neither onboarded nor declared, and the 2,408 legacy barcodes
-import **unattached** onto the Transpay register (Requirement 9A.3). The register is closed
-once imported: Transpay has stopped issuing, so no refresh path is to be built (VEH-21).
+import **unattached** onto the legacy register (Requirement 9A.3). The register is closed
+once imported: the previous operator has stopped issuing, so no refresh path is to be built (VEH-21).
 Import of members, vehicles, drivers, and sticker requests
 from `data/`. Wallets, transactions, and charges are excluded per PRD §2.2. Produces a
 reconciliation report enumerating records that could not be imported and the reason,
@@ -216,7 +216,7 @@ permission and a password re-entry (Requirement 27.12).
 **17 — vehicle-onboarding.** *PRD 1.2, §9A.* Separates on record, onboarded, and declared.
 Reattaches legacy barcodes under the four controls of Requirement 9A.4, and onboards
 vehicles with no legacy sticker by issuing a new signed one. Internal scans show
-"Recognised Transpay sticker — not attached". Depends on items 08, 09, and 16.
+"Recognised sticker — not attached". Depends on items 08, 09, and 16.
 
 **18 — vehicle-letter.** *PRD 1.2, Requirement 9A.6.* A printable, downloadable letter on
 onboarding, through a versioned `pdf-lib` template (`v1`) like the card. Its content is settled
@@ -253,7 +253,7 @@ is priced at the route type the vehicle had on its 1st. Amends item 22.
 **26 — letter-reissue.** *PRD 1.4, VEH-27.* An officer holding `sticker.attach` reissues a
 vehicle's letter with a reason. The old letter is kept, marked superseded. Amends item 18.
 
-**27 — transpay-stock-intake.** *VEH-29, deferred.* Adding Transpay's unrecorded stickers to
+**27 — sticker-stock-intake.** *VEH-29, deferred.* Adding the previous operator's unrecorded stickers to
 the register by scanning them, before attaching them. Not started, by the owner's direction
 of 3 October 2026. It reopens the register VEH-21 closed, so it needs a PRD revision first.
 
@@ -308,7 +308,7 @@ signatures, a member list) are separate items, not this one.
 **35 — sticker-prompt.** *PRD §9A, VEH-30; the owner's direction of 5 October 2026.* A
 banner on every vehicle without a sticker, and a prompt to buy and attach one when a
 vehicle has just been added, which can be closed. While new NURTW stickers are paused, a
-vehicle the Transpay register holds no barcode for is told so, and nothing is charged.
+vehicle the legacy register holds no barcode for is told so, and nothing is charged.
 Built after item 32, before item 33.
 
 **Also on 3 October 2026 (PRD 1.4, VEH-28).** A vehicle's declaration status is shown only
@@ -407,7 +407,7 @@ deferred by the owner:
 
 | Risk | Determination | Recorded at |
 |---|---|---|
-| Legacy barcodes are millisecond timestamps, deducible from one genuine sticker and carrying no authenticity proof | **Revised 22 September 2026 (PRD 1.2).** Legacy barcodes import unattached and resolve only once reattached. Reattachment requires the barcode to be on the imported register, bound to its recorded plate (no override), attached only once, and paid for. Transpay has stopped issuing, so the register is closed and cannot be added to (`QUESTIONS.md` VEH-21). | PRD §9A, §26.4, `ARCHITECTURE.md` 6.4 |
+| Legacy barcodes are millisecond timestamps, deducible from one genuine sticker and carrying no authenticity proof | **Revised 22 September 2026 (PRD 1.2).** Legacy barcodes import unattached and resolve only once reattached. Reattachment requires the barcode to be on the imported register, bound to its recorded plate (no override), attached only once, and paid for. The previous operator has stopped issuing, so the register is closed and cannot be added to (`QUESTIONS.md` VEH-21). | PRD §9A, §26.4, `ARCHITECTURE.md` 6.4 |
 | A hijacked session holding `vehicle.declare` may create declarations, as step-up is not enabled | Accepted, and materially reduced on 9 September 2026 by restricting the permission to the super administrator plus express per-user grants. Bounded further by organisational scope, complete audit trail, and the absence of any other route to create a declaration. Step-up is built and may be enabled by configuration. | `ARCHITECTURE.md` 9.7 |
 | The shared database holds a pre-1.2 legacy import: 2,838 legacy vehicles marked declared, no owner details | Found 26 September 2026. Nothing depends on those rows yet. `migrate:legacy -- --repair` corrects them in place, audited, and was verified locally. **Closed 26 September 2026:** approved by the owner and completed. All 2,841 are on record with owner details, with one audit event each. | `plans/09-legacy-data-migration.md` |
 | Item 08's sticker attachment accepted any confirmed payment, whatever its fee type or vehicle | Found and closed 26 September 2026 (item 17). No attachment existed on the shared database, so nothing was funded wrongly. | `plans/17-vehicle-onboarding.md` |

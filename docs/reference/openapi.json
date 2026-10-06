@@ -21494,8 +21494,8 @@
     },
     "/api/v1/stickers/legacy-lookup": {
       "post": {
-        "summary": "Read a scanned Transpay barcode (internal).",
-        "description": "PRD Requirement 11.2 — an unattached barcode on the register reads \"Recognised Transpay sticker — not attached\", with the plate the register records for it. It never says genuine: a copy scans identically. An unknown barcode answers the generic 404. Read-only apart from its audit event. Sent as a body so the barcode stays out of URLs and access logs.\n\n**Permission required:** `verification.perform`.",
+        "summary": "Read a scanned legacy barcode (internal).",
+        "description": "PRD Requirement 11.2 — an unattached barcode on the register reads \"Recognised sticker — not attached\", with the plate the register records for it. It never says genuine: a copy scans identically. An unknown barcode answers the generic 404. Read-only apart from its audit event. Sent as a body so the barcode stays out of URLs and access logs.\n\n**Permission required:** `verification.perform`.",
         "operationId": "StickerController_legacyLookup",
         "tags": [
           "Sticker"
@@ -21639,7 +21639,7 @@
     "/api/v1/stickers/onboarding/{vehicleId}": {
       "get": {
         "summary": "A vehicle's onboarding state.",
-        "description": "Item 17 — whether the vehicle is onboarded, whether the Transpay register holds an unattached barcode for its plate (never which barcode), and the confirmed onboarding payments made for it that have not yet funded an attachment. Answers 404 for a vehicle outside the caller's `sticker.attach` scope.\n\n**Permission required:** `sticker.attach`.",
+        "description": "Item 17 — whether the vehicle is onboarded, whether the legacy register holds an unattached barcode for its plate (never which barcode), and the confirmed onboarding payments made for it that have not yet funded an attachment. Answers 404 for a vehicle outside the caller's `sticker.attach` scope.\n\n**Permission required:** `sticker.attach`.",
         "operationId": "StickerController_onboarding",
         "tags": [
           "Sticker"
@@ -27805,7 +27805,7 @@
     "/api/v1/verification/sticker/qr": {
       "post": {
         "summary": "Verify a sticker by its code.",
-        "description": "Send `sticker_qr_id`: what the sticker’s QR code holds, or the number on a Transpay sticker. A sticker matches when it is attached, active, and on a declared vehicle. A signed code is checked before anything is looked up. Fields a match may carry: `vehicle_category`, `sticker_status`, `organizational_unit`, `attached_at`; never the plate. Answers 200 with `result` `MATCH_FOUND` or `NO_MATCH_FOUND`. A non-match is the same answer whatever the reason, and carries no record field. A match carries `record_type` and only those fields this check may carry that the organisation’s disclosure profile permits. Every answer states the matter verified and what a match does not establish. No answer carries a reason, a declaration status, or dues (PRD Requirement 12.7).\n\n**Scope required:** `sticker:verify:qr`. Authenticated by API token.",
+        "description": "Send `sticker_qr_id`: what the sticker’s QR code holds, or the number on a legacy sticker. A sticker matches when it is attached, active, and on a declared vehicle. A signed code is checked before anything is looked up. Fields a match may carry: `vehicle_category`, `sticker_status`, `organizational_unit`, `attached_at`; never the plate. Answers 200 with `result` `MATCH_FOUND` or `NO_MATCH_FOUND`. A non-match is the same answer whatever the reason, and carries no record field. A match carries `record_type` and only those fields this check may carry that the organisation’s disclosure profile permits. Every answer states the matter verified and what a match does not establish. No answer carries a reason, a declaration status, or dues (PRD Requirement 12.7).\n\n**Scope required:** `sticker:verify:qr`. Authenticated by API token.",
         "operationId": "ExternalVerificationController_sticker",
         "tags": [
           "ExternalVerification"

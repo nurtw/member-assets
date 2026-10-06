@@ -136,8 +136,8 @@ set by an officer, which the repair keeps).
         transaction (P2028, now retried) and were corrected on the next run.
       - **Result:** 2,841 `ON_RECORD`, none declared, one `vehicle.migrate_repair` event
         each, 2,841 owner rows, and no missing or doubled notes. The officer's driver link
-        was kept, and a final run wrote nothing. The Transpay register was **not** loaded.
+        was kept, and a final run wrote nothing. The legacy register was **not** loaded.
 
-**Transpay register (item 17, 26 September 2026):** now imported by this script.
+**Legacy register (item 17, 26 September 2026):** now imported by this script.
 Locally, 2,408 barcodes were placed, none failed, and a rerun wrote nothing. See
 `plans/17-vehicle-onboarding.md`. `sticker_requests.csv` is still Phase 2.

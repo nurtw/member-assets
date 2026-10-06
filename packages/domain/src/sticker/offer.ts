@@ -8,7 +8,7 @@
 
 /**
  * New NURTW stickers are paused (`QUESTIONS.md` VEH-20, the owner's direction
- * of 3 October 2026), so a vehicle is onboarded only by reattaching a Transpay
+ * of 3 October 2026), so a vehicle is onboarded only by reattaching a legacy
  * sticker already on the register. The new-sticker path stays built, and
  * switching it back on is this one flag. Printing (deferred) and the QR domain
  * (GOV-08) must come first.
@@ -18,7 +18,7 @@ export const NEW_STICKERS_IN_USE = false;
 export const STICKER_OFFERS = [
   /** A sticker is attached: nothing to ask. */
   'ATTACHED',
-  /** The register holds a Transpay barcode for the plate: pay, then reattach. */
+  /** The register holds a legacy barcode for the plate: pay, then reattach. */
   'REATTACH',
   /** No register barcode, and new stickers are in use: pay, then attach one. */
   'NEW_STICKER',

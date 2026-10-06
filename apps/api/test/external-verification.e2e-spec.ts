@@ -279,14 +279,14 @@ describe('External verification API (e2e)', () => {
     const last = codes.MATCH!.at(-1);
     codes.FORGED = `${codes.MATCH!.slice(0, -1)}${last === 'a' ? 'b' : 'a'}`;
 
-    // Transpay register rows, as the legacy import writes them: one never
+    // Legacy register rows, as the legacy import writes them: one never
     // attached, one reattached to its own plate.
     await prisma.sticker.create({
       data: {
         stickerQrId: `${TAG}-REG`,
         legacyBarcode: (codes.REG = `${TAG}-1600000000001`),
         registeredPlateNormalized: 'E2EEXTREC',
-        templateVersion: 'transpay-legacy',
+        templateVersion: 'legacy-barcode',
         status: 'ISSUED',
       },
     });
@@ -295,7 +295,7 @@ describe('External verification API (e2e)', () => {
         stickerQrId: `${TAG}-ATT`,
         legacyBarcode: (codes.ATT = `${TAG}-1600000000002`),
         registeredPlateNormalized: legacyVehicle.plateNumberNormalized,
-        templateVersion: 'transpay-legacy',
+        templateVersion: 'legacy-barcode',
         status: 'ACTIVE',
         vehicleId: legacyVehicle.id,
         attachedAt: new Date('2026-09-02T09:00:00Z'),
@@ -534,7 +534,7 @@ describe('External verification API (e2e)', () => {
       expect(response.text).not.toMatch(/E2EEXT/);
     });
 
-    it('matches a reattached Transpay sticker', async () => {
+    it('matches a reattached legacy sticker', async () => {
       const response = await sticker(codes.ATT!);
       expect(response.body).toMatchObject({
         result: 'MATCH_FOUND',

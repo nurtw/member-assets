@@ -24,7 +24,7 @@
  *
  * `INTERNAL` fields reach the internal channels only, whatever a profile row
  * says. Declaration status is one by law of the PRD (Requirement 12.7), and
- * the Transpay register's plate another (Requirement 11.2).
+ * the legacy register's plate another (Requirement 11.2).
  */
 export type VerificationFieldTier = 'EXTERNAL' | 'INTERNAL';
 
@@ -45,7 +45,7 @@ export const VERIFICATION_FIELDS = {
   declaration_status: 'INTERNAL',
   onboarded_at: 'INTERNAL',
   identifier_scheme: 'INTERNAL',
-  /** An unattached Transpay barcode's plate on the register. */
+  /** An unattached legacy barcode's plate on the register. */
   registered_plate: 'INTERNAL',
   /** The plate of the vehicle the presented sticker is attached to. */
   sticker_plate: 'INTERNAL',

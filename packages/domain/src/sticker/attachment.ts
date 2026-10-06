@@ -54,14 +54,14 @@ export function requiredOnboardingFeeType(
 
 export interface AttachmentContext {
   /**
-   * Whether this sticker carries a legacy Transpay barcode. `false` for a
+   * Whether this sticker carries a legacy barcode. `false` for a
    * freshly signed sticker, which skips the register/plate checks entirely
    * — those exist only because a legacy barcode is forgeable by inspection
    * (CLAUDE.md); a newly minted, HMAC-signed identifier is not.
    */
   isLegacyBarcode: boolean;
   /**
-   * The plate the imported Transpay register binds this barcode to, or
+   * The plate the imported legacy register binds this barcode to, or
    * `null` if the barcode is not on the register at all — recorded as
    * unknown, never as a forgery, since NURTW holds a few printed stickers
    * with no digital record (VEH-15). Ignored when `isLegacyBarcode` is

@@ -13,11 +13,11 @@ the purchase sticker but it can be closed, only to appear when the vehicle is vi
 Nobody hunts for sticker assignment. A vehicle without a sticker says so at the top of its
 page every time it is opened, with the way to buy and attach one. Adding a vehicle ends on
 a prompt to do it now, which can be closed. While new NURTW stickers are paused, a vehicle
-the Transpay register holds no barcode for is told so, and nothing is charged.
+the legacy register holds no barcode for is told so, and nothing is charged.
 
 ## Approach
 1. **One rule** in `packages/domain`: what a vehicle without a sticker can do now. It can
-   reattach its Transpay sticker (the register holds a barcode for its plate), take a new
+   reattach its legacy sticker (the register holds a barcode for its plate), take a new
    NURTW sticker (once VEH-20 lifts), or nothing yet. It reads the onboarding state the API
    already returns. `NEW_STICKERS_IN_USE` moves out of `onboarding-section.tsx` to sit
    beside it, so lifting the pause changes the panel, the banner, and the prompt together.
@@ -39,7 +39,7 @@ the Transpay register holds no barcode for is told so, and nothing is charged.
 a new `apps/web/src/components/sticker-prompt.tsx`, `DESIGN.md`, `CLAUDE.md`.
 
 ## Out of scope
-Lifting the pause on new stickers (VEH-20). Printing stickers. Adding Transpay's stock
+Lifting the pause on new stickers (VEH-20). Printing stickers. Adding the previous operator's stock
 (item 27, deferred). Charging for a sticker that cannot yet be given. Any change to the four
 conditions of a reattachment (Requirement 9A.4), or to who may attach.
 

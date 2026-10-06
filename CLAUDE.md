@@ -188,9 +188,9 @@ an anomaly in the reconciliation report.
   PRD §26, which tabulates precisely which control defeats which attack.
 - **Legacy barcodes are imported unattached and resolve only once reattached** (PRD §9A,
   revision 1.2, superseding "fully equivalent" in §26.4). They are millisecond epoch
-  timestamps, forgeable by inspection. Transpay has stopped issuing, so **the register is
+  timestamps, forgeable by inspection. The previous operator has stopped issuing, so **the register is
   closed** at the export's 2,408 barcodes, and nothing is ever added to it. (The owner has
-  since asked for a way to add Transpay's unrecorded stock by scanning, deferred as VEH-29.
+  since asked for a way to add the previous operator's unrecorded stock by scanning, deferred as VEH-29.
   Until it is taken up and the PRD revised, the register stays closed.) Reattachment
   therefore requires all four of the following, with no override:
   - the barcode is on the imported register
@@ -209,6 +209,12 @@ an anomaly in the reconciliation report.
   statuses are enumerated in PRD §8 and §10.
 - Tokens are stored hashed, shown once at creation/rotation, and never appear in URLs,
   QR payloads, logs, or error messages.
+- **The previous operator is never named** (the owner's direction of 5 October 2026): not
+  in code, a comment, a test, a document, a plan, a file name, or a commit message. Write
+  "legacy barcode", "legacy sticker", "the legacy register", and "the previous operator".
+  A screen says only "sticker", and never which scheme a code belongs to.
+  `apps/api/src/common/repository-wording.spec.ts` reads every file git tracks and fails on
+  the name.
 
 ## Designed for upgrades
 
@@ -577,7 +583,7 @@ record the same plate at once. Preserve it too.
   `ConflictException('…')` text never reaches the caller. Where a screen needs to explain a
   409, the web explains it (see `explainConflict` in `components/vehicle-form.tsx`).
 
-### Onboarding and the Transpay register (item 17)
+### Onboarding and the legacy register (item 17)
 
 - **An onboarding payment is the right fee, paid for that vehicle.** `checkAttachment`
   requires `STICKER_REATTACHMENT` for a legacy barcode and `STICKER_NEW` for a signed
@@ -586,7 +592,7 @@ record the same plate at once. Preserve it too.
   audited with its `AttachmentRefusalReason`, including the three the service decides
   before the domain function can run.
 - **Only the legacy import writes `legacyBarcode`.** The register is closed (VEH-21), and
-  no API route can add to it. `plans/27-transpay-stock-intake.md` holds the deferred
+  no API route can add to it. `plans/27-sticker-stock-intake.md` holds the deferred
   direction to change that; do not build it before the owner takes it up.
 - **New NURTW stickers are paused** (VEH-20, 3 October 2026). The onboarding screen offers
   reattachment only, behind `NEW_STICKERS_IN_USE` in `@nurtw/domain` (`sticker/offer.ts`).
@@ -690,7 +696,7 @@ record the same plate at once. Preserve it too.
 - **Read-only.** `verification-read-only.spec.ts` fails on any Prisma write or raw query in
   `src/verification/`. Its only write is the audit event, made through `AuditService`.
 - **A signed code is checked before any lookup.** A code containing `.` is signed; anything
-  else is a Transpay barcode, looked up by exact value. A failed signature is audited as
+  else is a legacy barcode, looked up by exact value. A failed signature is audited as
   `verification.invalid_signature`. Without `STICKER_SIGNING_SECRET`, a signed code answers
   503 instead of being called a forgery.
 - **Not organisation-scoped.** The verdict and the vehicle and sticker facts need only

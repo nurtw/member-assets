@@ -129,7 +129,7 @@ describe('stickerCodeScheme (PRD §26.2, §26.4)', () => {
     expect(stickerCodeScheme('ABC.v1')).toBe('SIGNED');
   });
 
-  it('reads anything else as a Transpay barcode, leading zeros and all', () => {
+  it('reads anything else as a legacy barcode, leading zeros and all', () => {
     expect(stickerCodeScheme('1600000000000')).toBe('LEGACY');
     expect(stickerCodeScheme('0160000000000')).toBe('LEGACY');
   });

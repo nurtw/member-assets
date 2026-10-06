@@ -357,10 +357,10 @@ binds it to the normalised plate the export records for it.
 **Requirement 9A.4 — reattachment controls.** Reattaching a legacy barcode is refused unless
 **all** of the following hold. Each refusal is audited with its reason.
 
-1. The barcode is on the imported Transpay register: the 2,408 in the export. **The register
-   is closed.** Transpay has stopped issuing, and nothing is ever added to the register after
+1. The barcode is on the imported legacy register: the 2,408 in the export. **The register
+   is closed.** The previous operator has stopped issuing, and nothing is ever added to the register after
    the migration (VEH-21). Any other barcode is recorded as unknown rather than as a forgery,
-   because NURTW holds a few printed Transpay stickers that have no digital record and that
+   because NURTW holds a few printed legacy stickers that have no digital record and that
    can therefore never be attached.
 2. It is presented against the normalised plate the register records for it. **There is no
    override** (VEH-16).
@@ -368,7 +368,7 @@ binds it to the normalised plate the export records for it.
 4. A Paystack-confirmed payment reference accompanies it, and that reference has not been
    used before.
 
-**Requirement 9A.5 — the Transpay security code.** The export's `security_code` is imported
+**Requirement 9A.5 — the legacy security code.** The export's `security_code` is imported
 as a record only. It is not printed on the sticker (VEH-14), so it plays no part in
 reattachment or verification.
 
@@ -399,7 +399,7 @@ sticker must not be hidden.
 - **A prompt after adding a vehicle**, to buy and attach its sticker. It may be closed; the
   banner carries on asking.
 - **Nothing charged without a sticker to give.** While new NURTW stickers are not issued
-  (VEH-20), a vehicle the Transpay register holds no barcode for is told so, and no payment
+  (VEH-20), a vehicle the legacy register holds no barcode for is told so, and no payment
   is offered. A vehicle whose barcode is on the register is offered the reattachment fee, and
   reattached under Requirement 9A.4.
 
@@ -442,7 +442,7 @@ and API copy must not assert certification of legal ownership, roadworthiness, l
 or any external statutory status.
 
 **Requirement 11.2** *(revision 1.2)*. On the internal channels, a legacy barcode that is on
-the Transpay register but unattached reads *"Recognised Transpay sticker — not attached"*,
+the legacy register but unattached reads *"Recognised sticker — not attached"*,
 followed by the plate the register records for it (VEH-17). It does not say *genuine*: the
 System can confirm that a barcode is on the register, not that the physical article is
 authentic, because a copy scans identically. The recorded plate lets the officer catch a copy
@@ -900,8 +900,8 @@ Determined 22 September 2026 (`QUESTIONS.md` VEH-13 to VEH-17).
   nothing external until they are onboarded and declared.
 - **Legacy stickers are unattached.** They are reattached through the System, after payment,
   subject to Requirement 9A.4.
-- **Transpay has stopped issuing.** The register is closed at the export's 2,408 barcodes.
-  The few printed Transpay stickers NURTW still holds have no digital record, so they are
+- **The previous operator has stopped issuing.** The register is closed at the export's 2,408 barcodes.
+  The few printed legacy stickers NURTW still holds have no digital record, so they are
   not on the register and cannot be attached (VEH-15, VEH-21).
 - **A barcode presented against another plate is refused**, with no override.
 - **No grace period** at go-live. Internally, an unattached registered barcode reads as
@@ -1177,7 +1177,7 @@ and it operates alongside plate-to-QR binding rather than in place of it.
 > merely because it exists. It is imported unattached and resolves only once it has been
 > reattached, under the controls of Requirement 9A.4. The paragraph below now describes an
 > **attached** legacy sticker. The statement that "nothing presently in the field ceases to
-> work" no longer holds: an unattached Transpay sticker produces no positive result from
+> work" no longer holds: an unattached legacy sticker produces no positive result from
 > go-live.
 
 **Determination (§23, additional).** The 2,408 barcodes already issued under the previous
@@ -1237,7 +1237,7 @@ Creating, pricing, or retiring a fee type needs no deployment. The launch types 
 | `LEVY` | monthly | vehicle (PAY-03) | split, amount per route type | link or dedicated account |
 
 The two sticker fees are separate types that start at the same placeholder amount. Whether a
-vehicle receiving a new sticker pays the same as one having its Transpay sticker reattached
+vehicle receiving a new sticker pays the same as one having its sticker reattached
 (VEH-20) is therefore a settings change, not a development task.
 
 **Requirement 27.2 — amounts are settings.** Every amount, and every parameter of

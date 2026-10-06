@@ -49,7 +49,7 @@ describe('where an identifier sits in a sequence', () => {
     });
   });
 
-  it('reads a Transpay barcode as one number', () => {
+  it('reads a legacy barcode as one number', () => {
     expect(sequencePosition('1600000000001')).toEqual({
       stem: '#############',
       number: 1_600_000_000_001,

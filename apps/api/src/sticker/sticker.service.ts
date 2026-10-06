@@ -117,7 +117,7 @@ export class StickerService {
 
   /**
    * Onboards a vehicle by attaching a sticker to it (Requirement 9A.2): a
-   * Transpay barcode from the register, or a freshly issued signed sticker,
+   * legacy barcode from the register, or a freshly issued signed sticker,
    * funded by a confirmed onboarding payment made for this vehicle.
    * Requirement 9A.4's conditions are checked by `@nurtw/domain`'s
    * `checkAttachment`; every refusal is audited with its specific reason, and
@@ -187,7 +187,7 @@ export class StickerService {
     if (!sticker) {
       if (input.legacyBarcode) {
         // Requirement 9A.4(1) — a barcode off the register is recorded as
-        // unknown, never as a forgery: NURTW holds printed Transpay stickers
+        // unknown, never as a forgery: NURTW holds printed legacy stickers
         // with no digital record (VEH-15). The presented value is kept so the
         // Union can see how often that stock turns up.
         return refuse('UNKNOWN_BARCODE', null, {
@@ -395,7 +395,7 @@ export class StickerService {
   }
 
   /**
-   * The internal reading of a scanned Transpay barcode (Requirement 11.2).
+   * The internal reading of a scanned legacy barcode (Requirement 11.2).
    * Read-only apart from its audit event: a lookup never attaches, activates,
    * or changes anything (PRD §9.5–9.6). Not organisation-scoped — an officer
    * at a checkpoint checks whatever vehicle is in front of them, and the

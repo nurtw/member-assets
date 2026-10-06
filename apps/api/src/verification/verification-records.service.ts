@@ -344,7 +344,7 @@ export class VerificationRecordsService {
       check;
 
     // The plate the sticker answers for: its vehicle's, once attached, or the
-    // register's for a Transpay barcode not yet attached.
+    // register's for a legacy barcode not yet attached.
     const stickerPlate =
       sticker?.attachedAt && vehicle
         ? vehicle.plateNumberNormalized
@@ -451,7 +451,7 @@ export class VerificationRecordsService {
   }
 
   /**
-   * A signed code resolves only a signed sticker, and a Transpay barcode only
+   * A signed code resolves only a signed sticker, and a legacy barcode only
    * a row on the register. The two never stand in for each other
    * (Requirement 26.5).
    */

@@ -48,7 +48,7 @@ export interface ExternalOutcome {
   readonly identifierScheme: 'SIGNED' | 'LEGACY' | null;
   /**
    * What was presented, for abuse detection only (item 13): the normalised
-   * plate, and a Transpay barcode. A signed code is never passed: it is in
+   * plate, and a legacy barcode. A signed code is never passed: it is in
    * no sequence, and a forgery is counted by its outcome.
    */
   readonly presented?: { plate: string | null; code: string | null };

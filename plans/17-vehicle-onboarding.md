@@ -7,11 +7,11 @@ VEH-26. ARCHITECTURE.md Decision 6.5: onboarded is derived from an attached stic
 a `Vehicle` flag.
 
 ## Goal
-An officer holding `sticker.attach` onboards a vehicle by reattaching a Transpay barcode
+An officer holding `sticker.attach` onboards a vehicle by reattaching a legacy barcode
 from the imported register, or by attaching a new signed sticker. Either way it needs a
 confirmed onboarding payment for **that vehicle**. The vehicle page shows on record,
 onboarded, and declared separately, each with its actor and time. An internal lookup reads
-"Recognised Transpay sticker — not attached" plus the registered plate.
+"Recognised sticker — not attached" plus the registered plate.
 
 ## Approach
 1. **Fix `StickerService.attach` (found 26 September 2026).** Today it accepts any
@@ -26,7 +26,7 @@ onboarded, and declared separately, each with its actor and time. An internal lo
 3. **Register import** in `scripts/migrate-legacy`: one unattached `Sticker` per barcoded
    `vehicles_full.csv` row, as follows.
    - `legacyBarcode` and `registeredPlateNormalized` are set from the row.
-   - The status is `ISSUED`, and `templateVersion` is `transpay-legacy`.
+   - The status is `ISSUED`, and `templateVersion` is `legacy-barcode`.
    - It gets an opaque `stickerQrId` that is never printed.
    - Reruns are idempotent on `legacyBarcode`, and each row is audited under the migration
      actor.

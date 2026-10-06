@@ -35,7 +35,7 @@ export type ExternalVehicleCheck = Exclude<ExternalCheck, 'MEMBERSHIP'>;
  *
  * - **The answer is MATCH_FOUND or NO_MATCH_FOUND.** Every non-match is the
  *   same answer whatever the reason: no record, not declared, not onboarded,
- *   a lost sticker, a Transpay barcode never attached, a plate that does not
+ *   a lost sticker, a legacy barcode never attached, a plate that does not
  *   match, a forged code (Decision 5.4, Requirements 11.2 and 14.3).
  * - **A match carries only what this check may carry and the organisation's
  *   profile permits**, projected on the `EXTERNAL` channel, which drops any
@@ -63,7 +63,7 @@ export class ExternalVerificationService {
       ? normalizePlateNumber(input.plateNumber)
       : null;
     // For abuse detection (item 13). A signed code, which holds a `.`, is in
-    // no sequence: only a Transpay barcode is passed.
+    // no sequence: only a legacy barcode is passed.
     const presented = {
       plate: presentedPlate,
       code:

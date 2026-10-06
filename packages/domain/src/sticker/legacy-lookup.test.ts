@@ -21,7 +21,7 @@ describe('describeLegacyBarcode (PRD Requirement 11.2)', () => {
   it('reads an unattached register barcode as recognised, not attached, with its plate', () => {
     expect(describeLegacyBarcode(entry())).toEqual({
       result: 'RECOGNISED_NOT_ATTACHED',
-      message: 'Recognised Transpay sticker — not attached',
+      message: 'Recognised sticker — not attached',
       registeredPlate: 'AA123XY',
     });
   });
@@ -43,7 +43,7 @@ describe('describeLegacyBarcode (PRD Requirement 11.2)', () => {
       ),
     ).toEqual({
       result: 'ATTACHED',
-      message: 'Transpay sticker — attached through the System',
+      message: 'Sticker — attached through the System',
       attachedPlate: 'AA123XY',
       vehicleId: 'vehicle-1',
       stickerStatus: 'ACTIVE',

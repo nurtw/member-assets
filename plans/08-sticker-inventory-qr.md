@@ -9,7 +9,7 @@ attached, which revision 1.2 forbids (Requirement 10.3).
 
 ## Goal
 A sticker can exist **unattached** — either freshly signed and unissued, or
-a legacy barcode sitting on the imported Transpay register — and attaching
+a legacy barcode sitting on the imported legacy register — and attaching
 one to a vehicle is a single, recorded, one-shot event. Item 09's migration
 and item 17's onboarding both build on this; neither is unblocked without
 it.
@@ -17,7 +17,7 @@ it.
 ## Approach
 1. Schema: make `Sticker.vehicleId` and `plateNumberAtIssue` nullable; add
    `attachedAt DateTime?` and `registeredPlateNormalized String?` (the plate
-   the Transpay register binds a legacy barcode to, distinct from
+   the legacy register binds a legacy barcode to, distinct from
    `plateNumberAtIssue`, which is set only once actually attached). A
    partial unique index enforces at most one *attached* sticker per vehicle
    at a time, mirroring the declaration's active-plate index.
@@ -44,7 +44,7 @@ it.
 `apps/api/src/app.module.ts`.
 
 ## Out of scope
-The Transpay register import itself (item 09). Onboarding orchestration —
+The legacy register import itself (item 09). Onboarding orchestration —
 charging the fee and calling `attach()` together (item 17).
 
 ## Definition of done

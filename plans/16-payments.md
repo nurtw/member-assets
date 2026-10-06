@@ -49,7 +49,7 @@ migration, `apps/api/src/payments/*`, `packages/contracts/src/permissions.ts`,
 
 ## Out of scope
 
-Sticker attachment logic and the Transpay register (item 17). Vehicle letter
+Sticker attachment logic and the legacy register (item 17). Vehicle letter
 (item 18). Card renewal UI showing dues status.
 
 ## Definition of done

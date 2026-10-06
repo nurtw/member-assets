@@ -24,7 +24,7 @@ import { AllExceptionsFilter } from './../src/common/all-exceptions.filter.js';
  *
  * Item 17 adds: the payment must be the onboarding fee, made for the vehicle
  * being onboarded; every refusal is audited with its reason; the onboarding
- * state and the internal Transpay lookup; and the restricted security code
+ * state and the internal legacy lookup; and the restricted security code
  * never leaving the database.
  */
 
@@ -174,7 +174,7 @@ describe('Sticker issuance and attachment (e2e)', () => {
     });
   }
 
-  /** A Transpay register row, shaped as the legacy import writes it. */
+  /** A legacy register row, shaped as the legacy import writes it. */
   async function registerBarcode(label: string, plateNormalized: string) {
     return prisma.sticker.create({
       data: {
@@ -182,7 +182,7 @@ describe('Sticker issuance and attachment (e2e)', () => {
         legacyBarcode: `${TAG}-${label}-barcode`,
         registeredPlateNormalized: plateNormalized,
         legacySecurityCode: 'ZZ9ZZ',
-        templateVersion: 'transpay-legacy',
+        templateVersion: 'legacy-barcode',
         status: 'ISSUED',
       },
     });
@@ -905,7 +905,7 @@ describe('Sticker issuance and attachment (e2e)', () => {
     });
   });
 
-  describe('internal Transpay lookup (Requirement 11.2)', () => {
+  describe('internal legacy lookup (Requirement 11.2)', () => {
     it('reads an unattached register barcode as recognised, not attached, with its plate', async () => {
       const sticker = await registerBarcode('lookup', 'E2ESTKLOOK1');
 
@@ -917,7 +917,7 @@ describe('Sticker issuance and attachment (e2e)', () => {
 
       expect(response.body.reading).toEqual({
         result: 'RECOGNISED_NOT_ATTACHED',
-        message: 'Recognised Transpay sticker — not attached',
+        message: 'Recognised sticker — not attached',
         registeredPlate: 'E2ESTKLOOK1',
       });
       expect(JSON.stringify(response.body)).not.toContain('ZZ9ZZ');

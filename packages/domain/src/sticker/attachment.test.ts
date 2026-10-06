@@ -58,7 +58,7 @@ describe('checkAttachment (PRD Requirement 9A.4)', () => {
 
   it('skips the register and plate checks entirely for a freshly signed sticker', () => {
     // A new sticker carries no legacy barcode, so there is nothing to look
-    // up on the Transpay register — only the one-shot and payment checks
+    // up on the legacy register — only the one-shot and payment checks
     // apply, matching the reasoning that only a legacy barcode is
     // forgeable by inspection.
     expect(

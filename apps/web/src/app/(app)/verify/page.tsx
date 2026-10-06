@@ -85,7 +85,7 @@ function explain(reason: DisclosedReason, fields: Fields): string {
         return `This sticker belongs to another vehicle: ${fields.sticker_plate}.`;
       }
       if (fields.registered_plate) {
-        return `The Transpay register records this sticker for ${fields.registered_plate}, not this plate.`;
+        return `The register records this sticker for ${fields.registered_plate}, not this plate.`;
       }
       return "This sticker does not belong to this plate.";
     case "STICKER_NOT_ATTACHED":
@@ -246,7 +246,6 @@ function VehicleFacts({ fields }: { fields: Fields }) {
   ]
     .filter(Boolean)
     .join(" · ");
-  const isLegacy = fields.identifier_scheme === "LEGACY";
 
   return (
     <section className="rounded-lg border border-line bg-surface p-5">
@@ -273,7 +272,7 @@ function VehicleFacts({ fields }: { fields: Fields }) {
           </Fact>
         ) : null}
         {fields.sticker_status ? (
-          <Fact label={isLegacy ? "Transpay sticker" : "NURTW sticker"}>
+          <Fact label="Sticker">
             <span className="flex flex-wrap items-center gap-2">
               <StatusChip status={fields.sticker_status} />
               {fields.attached_at ? (
@@ -292,7 +291,7 @@ function VehicleFacts({ fields }: { fields: Fields }) {
           <Fact label="Sticker is on">{fields.sticker_plate}</Fact>
         ) : null}
         {fields.registered_plate && !fields.attached_at ? (
-          <Fact label="Transpay register">
+          <Fact label="Sticker register">
             {RECOGNISED_NOT_ATTACHED_COPY}. Registered to{" "}
             {fields.registered_plate}.
           </Fact>
@@ -657,8 +656,8 @@ function VehicleCheck() {
             Sticker code
           </label>
           <p className="text-xs text-faint-foreground">
-            Scan the sticker&apos;s code into this box, or type the number on a
-            Transpay sticker.
+            Scan the sticker&apos;s code into this box, or type the number on the
+            sticker.
           </p>
           <input
             id="code"
