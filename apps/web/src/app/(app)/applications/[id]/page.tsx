@@ -9,21 +9,33 @@ import { suggestCardAddress } from "@nurtw/domain";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import useSWR from "swr";
 
 import { DedicatedAccountPanel } from "@/components/dedicated-account-panel";
 import { MemberDuesPanel } from "@/components/dues-panel";
 import {
   Button,
+  Detail,
+  DetailList,
   ErrorNotice,
   Field,
+  Loading,
+  Notice,
+  PageHeader,
   Section,
   StatusChip,
-  TextArea,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   TextInput,
+  buttonVariants,
 } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiError, api, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { useTabParam } from "@/lib/use-tab-param";
 
 /**
  * One application, and the decision upon it.
@@ -33,34 +45,39 @@ import { useSession } from "@/lib/session";
  * decision controls are offered only to an officer holding `application.decide`
  * — and the API refuses regardless, so hiding them is courtesy rather than
  * control.
+ *
+ * The page is a record in tabs (`DESIGN.md` §10). What the application is
+ * waiting for sits above the tabs, so a decision is never a scroll away.
  */
 
-function Detail({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
-        {label}
-      </dt>
-      <dd className="mt-0.5 text-sm">
-        {value && value.length > 0 ? (
-          value
-        ) : (
-          <span className="italic text-faint-foreground">Not stated</span>
-        )}
-      </dd>
-    </div>
-  );
-}
+const TAB_LABELS = {
+  application: "Application",
+  vehicles: "Vehicles",
+  dues: "Dues",
+  card: "Card",
+} as const;
+type TabName = keyof typeof TAB_LABELS;
 
-function record(source: Record<string, unknown> | null, key: string): string | null {
+/** An act confirmed in a dialog. */
+type Confirming = "SUBMIT" | "APPROVE" | "REFUSE";
+
+function record(
+  source: Record<string, unknown> | null,
+  key: string,
+): string | null {
   const value = source?.[key];
   return typeof value === "string" ? value : null;
+}
+
+function fullName(source: Record<string, unknown> | null): string | null {
+  return source
+    ? `${record(source, "surname") ?? ""}, ${record(source, "firstName") ?? ""}`
+    : null;
 }
 
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
   const { holds } = useSession();
-  const [reason, setReason] = useState("");
   /**
    * The card address, before the officer has touched it.
    *
@@ -73,6 +90,7 @@ export default function ApplicationDetailPage() {
   const [cardAddress, setCardAddress] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiError | null>(null);
+  const [confirming, setConfirming] = useState<Confirming | null>(null);
 
   /**
    * The application.
@@ -87,7 +105,6 @@ export default function ApplicationDetailPage() {
 
   const application = data?.application ?? null;
   const loadError = error instanceof ApiError ? error : null;
-  const loading = isLoading;
 
   /**
    * The member's cards.
@@ -118,6 +135,22 @@ export default function ApplicationDetailPage() {
     ["DRAFT", "PENDING_APPROVAL", "ISSUED", "ACTIVE"].includes(card.status),
   );
 
+  // A tab is offered only where it has something for this officer.
+  const offersVehicles = canSeeVehicles || canAddVehicle;
+  // Dues are internal (Requirement 27.8): shown to those who may read members.
+  const offersDues = holds("member.read") || holds("payment.read");
+  // Only an active member may hold a card, so this appears once the
+  // application has been approved.
+  const offersCard =
+    application?.member.status === "ACTIVE" && holds("card.read");
+  const tabs: { value: TabName }[] = [
+    { value: "application" },
+    ...(offersVehicles ? [{ value: "vehicles" as const }] : []),
+    ...(offersDues ? [{ value: "dues" as const }] : []),
+    ...(offersCard ? [{ value: "card" as const }] : []),
+  ];
+  const [tab, setTab] = useTabParam(tabs);
+
   /**
    * What goes in the card-address field.
    *
@@ -131,13 +164,15 @@ export default function ApplicationDetailPage() {
   );
   const printedAddress = cardAddress ?? suggestedAddress;
 
-  async function act(action: () => Promise<unknown>) {
+  async function act(action: () => Promise<unknown>, done?: string) {
     setBusy(true);
     setActionError(null);
     try {
       await action();
-      setReason("");
       await mutate();
+      if (done) {
+        toast.success(done);
+      }
     } catch (caught) {
       if (caught instanceof ApiError) {
         setActionError(caught);
@@ -147,8 +182,8 @@ export default function ApplicationDetailPage() {
     }
   }
 
-  if (loading) {
-    return <p className="text-sm text-faint-foreground">Loading…</p>;
+  if (isLoading) {
+    return <Loading label="Loading the application" />;
   }
 
   if (!application) {
@@ -162,7 +197,10 @@ export default function ApplicationDetailPage() {
           }
           requestId={loadError?.requestId}
         />
-        <Link href="/applications" className="text-sm underline underline-offset-2">
+        <Link
+          href="/applications"
+          className="text-sm underline underline-offset-2"
+        >
           Back to applications
         </Link>
       </div>
@@ -173,27 +211,50 @@ export default function ApplicationDetailPage() {
   const isDraft = application.status === "DRAFT";
   const awaitingDecision =
     application.status === "SUBMITTED" || application.status === "UNDER_REVIEW";
+  const canSubmit = isDraft && holds("member.create");
+  const canDecide = awaitingDecision && holds("application.decide");
+
+  /** Does a confirmed act. A failure is thrown, and shown in its dialog. */
+  async function confirmed(which: Confirming, reason: string) {
+    if (!application) {
+      return;
+    }
+    if (which === "SUBMIT") {
+      await api.post(`/applications/${application.id}/submission`);
+      toast.success("Submitted for review");
+    } else {
+      await api.post(`/applications/${application.id}/decision`, {
+        decision: which === "APPROVE" ? "APPROVED" : "REJECTED",
+        reason: reason || undefined,
+      });
+      toast.success(
+        which === "APPROVE"
+          ? "Approved: the membership number is issued"
+          : "Application refused",
+      );
+    }
+    await mutate();
+  }
 
   return (
     <div className="grid max-w-3xl gap-6">
-      <div>
-        <Link
-          href="/applications"
-          className="text-sm text-faint-foreground underline-offset-2 hover:underline"
-        >
-          ← Applications
-        </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold tracking-tight">
-            {member.surname}, {member.firstName} {member.middleName ?? ""}
-          </h1>
-          <StatusChip status={application.status} />
-          <StatusChip status={member.status} />
-        </div>
-        <p className="mt-1 font-mono text-xs text-faint-foreground">
-          Application {application.applicationNumber}
-        </p>
-      </div>
+      <PageHeader
+        title={`${member.surname}, ${member.firstName} ${member.middleName ?? ""}`.trim()}
+        back={{ href: "/applications", label: "Applications" }}
+        status={
+          <>
+            <StatusChip status={application.status} />
+            <StatusChip status={member.status} />
+          </>
+        }
+        meta={
+          <>
+            Application{" "}
+            <span className="font-mono">{application.applicationNumber}</span> ·{" "}
+            {member.organisation.name}
+          </>
+        }
+      />
 
       {actionError ? (
         <ErrorNotice
@@ -203,330 +264,370 @@ export default function ApplicationDetailPage() {
       ) : null}
 
       {application.status === "REJECTED" && application.rejectionReason ? (
-        <div className="rounded-md border border-verdict-deny/30 bg-verdict-deny-surface px-4 py-3">
-          <p className="text-sm font-semibold text-verdict-deny">
-            Application refused
-          </p>
-          <p className="mt-1 text-sm">{application.rejectionReason}</p>
-        </div>
+        <Notice tone="deny" title="Application refused">
+          {application.rejectionReason}
+        </Notice>
       ) : null}
 
-      <Section title="Membership">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <Detail label="Unit" value={member.organisation.name} />
-          <Detail
-            label="Designation"
-            value={member.designation?.label ?? null}
-          />
-          <Detail
-            label="Membership number"
-            value={member.membershipNumber ?? null}
-          />
-          <Detail
-            label="Submitted"
-            value={
-              application.submittedAt
-                ? new Date(application.submittedAt).toLocaleString("en-GB")
-                : null
-            }
-          />
-        </dl>
-      </Section>
-
-      <Section title="Section A — Personal">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <Detail label="Telephone" value={application.contact?.phone ?? null} />
-          <Detail
-            label="State of origin"
-            value={application.contact?.stateOfOrigin ?? null}
-          />
-          <Detail
-            label="Residential address"
-            value={application.contact?.residentialAddress ?? null}
-          />
-          <Detail
-            label="Local government area"
-            value={application.contact?.lga?.name ?? null}
-          />
-        </dl>
-      </Section>
-
-      <Section title="Section C — Next of Kin">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <Detail
-            label="Name"
-            value={
-              application.nextOfKin
-                ? `${record(application.nextOfKin, "surname") ?? ""}, ${
-                    record(application.nextOfKin, "firstName") ?? ""
-                  }`
-                : null
-            }
-          />
-          <Detail label="Telephone" value={record(application.nextOfKin, "phone")} />
-          <Detail label="Address" value={record(application.nextOfKin, "address")} />
-          <Detail
-            label="Occupation"
-            value={record(application.nextOfKin, "occupation")}
-          />
-        </dl>
-      </Section>
-
-      <Section title="Section D — Guarantor">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <Detail
-            label="Name"
-            value={
-              application.guarantor
-                ? `${record(application.guarantor, "surname") ?? ""}, ${
-                    record(application.guarantor, "firstName") ?? ""
-                  }`
-                : null
-            }
-          />
-          <Detail
-            label="Relationship to applicant"
-            value={record(application.guarantor, "relationshipToApplicant")}
-          />
-          <Detail label="Telephone" value={record(application.guarantor, "phone")} />
-          <Detail
-            label="Collateral offered"
-            value={
-              application.guarantor?.hasCollateral === true
-                ? "Yes"
-                : application.guarantor?.hasCollateral === false
-                  ? "No"
-                  : null
-            }
-          />
-          {application.guarantor?.hasCollateral === true ? (
-            <div className="sm:col-span-2">
-              <Detail
-                label="Collateral details"
-                value={record(application.guarantor, "collateralDetails")}
-              />
-            </div>
-          ) : null}
-        </dl>
-      </Section>
-
-      {/*
-        The print-ready form for wet signature (PRD §23.16).
-
-        Offered only to an officer holding `member_sensitive.read`, because the
-        document carries next of kin, guarantor, telephone, and address — seeing
-        that an application exists does not entitle somebody to print all of it.
-      */}
-      {canSeeVehicles || canAddVehicle ? (
-        <Section
-          title="Vehicles"
-          description="Vehicles this member drives. A vehicle added here is on record only until it is declared and a sticker is attached."
-        >
-          {vehicles.length > 0 ? (
-            <ul className="grid gap-2">
-              {vehicles.map((vehicle) => (
-                <li
-                  key={vehicle.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line px-3 py-2"
-                >
-                  <Link
-                    href={`/vehicles/${vehicle.id}`}
-                    className="font-mono text-sm font-medium text-link underline-offset-2 hover:underline"
-                  >
-                    {vehicle.plateNumberDisplay}
-                  </Link>
-                  <span className="text-sm text-muted-foreground">
-                    {vehicle.routeType?.label ?? "No route type"}
-                  </span>
-                  {/* VEH-28 — present only for a holder of vehicle.declare. */}
-                  {vehicle.status ? <StatusChip status={vehicle.status} /> : null}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-faint-foreground">No vehicle recorded.</p>
-          )}
-          {canAddVehicle ? (
-            <div>
-              <Link href={`/applications/${application.id}/vehicles`}>
-                <Button type="button" variant="secondary">
-                  Add a vehicle
-                </Button>
-              </Link>
-            </div>
-          ) : null}
-        </Section>
-      ) : null}
-
-      {holds("member_sensitive.read") ? (
-        <Section
-          title="Registration form"
-          description="The Union’s form, filled in from this record, for physical signature."
-        >
-          <div>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={busy}
-              onClick={() =>
-                void act(() =>
-                  api.download(
-                    `/applications/${application.id}/form`,
-                    "nurtw-registration.pdf",
-                  ),
-                )
-              }
-            >
-              Download form for signature
+      {canSubmit ? (
+        <Notice
+          tone="info"
+          title="Draft: not yet submitted"
+          action={
+            <Button type="button" onClick={() => setConfirming("SUBMIT")}>
+              Submit for review
             </Button>
-          </div>
-        </Section>
+          }
+        >
+          Once submitted the application can no longer be amended, because the
+          reviewer must decide on what they were shown.
+        </Notice>
       ) : null}
 
-      {/* Dues are internal (Requirement 27.8): shown to those who may read members. */}
-      {holds("member.read") ? <MemberDuesPanel memberId={member.id} /> : null}
-      {holds("payment.read") ? <DedicatedAccountPanel memberId={member.id} /> : null}
-
-      {/*
-        Cards. Only an active member may hold one, so this appears once the
-        application has been approved.
-      */}
-      {member.status === "ACTIVE" && holds("card.read") ? (
-        <Section
-          title="Membership card"
-          description="A member holds one card at a time. A replacement supersedes the original rather than overwriting it."
-        >
-          {cards.length > 0 ? (
-            <ul className="grid gap-2">
-              {cards.map((card) => (
-                <li
-                  key={card.id}
-                  className="flex flex-wrap items-center gap-3 rounded-md border border-line px-3 py-2"
-                >
-                  <StatusChip status={card.status} />
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {card.cardNumber ?? (
-                      <span className="font-sans italic text-faint-foreground">
-                        Not yet issued
-                      </span>
-                    )}
-                  </span>
-                  <Link
-                    href={`/cards/${card.id}`}
-                    className="ml-auto text-sm underline underline-offset-2"
-                  >
-                    Open
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-faint-foreground">No card has been prepared.</p>
-          )}
-
-          {!liveCard && holds("card.issue") ? (
-            <div className="grid gap-4 border-t border-line pt-4">
-              <Field
-                label="Address as printed on the card"
-                htmlFor="cardAddress"
-                hint="Suggested from the residential address, shortened to fit the card. Amend it if the Union prints something different."
-                required
+      {canDecide ? (
+        <Notice
+          tone="caution"
+          title="Waiting for a decision"
+          action={
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" onClick={() => setConfirming("APPROVE")}>
+                Approve
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => setConfirming("REFUSE")}
               >
-                <TextInput
-                  id="cardAddress"
-                  value={printedAddress}
-                  onChange={(event) => setCardAddress(event.target.value)}
-                />
-              </Field>
+                Refuse
+              </Button>
+            </div>
+          }
+        >
+          Approving issues the membership number. A refusal requires a reason,
+          recorded against the application and in the audit trail.
+        </Notice>
+      ) : null}
+
+      <Tabs value={tab} onValueChange={setTab} className="grid gap-6">
+        <TabsList aria-label="Parts of this application">
+          {tabs.map((entry) => (
+            <TabsTrigger key={entry.value} value={entry.value}>
+              {TAB_LABELS[entry.value]}
+              {entry.value === "vehicles" && vehicles.length > 0
+                ? ` (${vehicles.length})`
+                : ""}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value="application" className="grid gap-6 outline-none">
+          <Section title="Membership">
+            <DetailList>
+              <Detail label="Unit" value={member.organisation.name} />
+              <Detail label="Designation" value={member.designation?.label} />
+              <Detail
+                label="Membership number"
+                value={member.membershipNumber}
+                missing="Not yet issued"
+              />
+              <Detail
+                label="Submitted"
+                value={
+                  application.submittedAt
+                    ? new Date(application.submittedAt).toLocaleString("en-GB")
+                    : null
+                }
+                missing="Not yet submitted"
+              />
+            </DetailList>
+          </Section>
+
+          <Section title="Section A — Personal">
+            <DetailList>
+              <Detail label="Telephone" value={application.contact?.phone} />
+              <Detail
+                label="State of origin"
+                value={application.contact?.stateOfOrigin}
+              />
+              <Detail
+                label="Residential address"
+                value={application.contact?.residentialAddress}
+              />
+              <Detail
+                label="Local government area"
+                value={application.contact?.lga?.name}
+              />
+            </DetailList>
+          </Section>
+
+          <Section title="Section C — Next of Kin">
+            <DetailList>
+              <Detail label="Name" value={fullName(application.nextOfKin)} />
+              <Detail
+                label="Telephone"
+                value={record(application.nextOfKin, "phone")}
+              />
+              <Detail
+                label="Address"
+                value={record(application.nextOfKin, "address")}
+              />
+              <Detail
+                label="Occupation"
+                value={record(application.nextOfKin, "occupation")}
+              />
+            </DetailList>
+          </Section>
+
+          <Section title="Section D — Guarantor">
+            <DetailList>
+              <Detail label="Name" value={fullName(application.guarantor)} />
+              <Detail
+                label="Relationship to applicant"
+                value={record(application.guarantor, "relationshipToApplicant")}
+              />
+              <Detail
+                label="Telephone"
+                value={record(application.guarantor, "phone")}
+              />
+              <Detail
+                label="Collateral offered"
+                value={
+                  application.guarantor?.hasCollateral === true
+                    ? "Yes"
+                    : application.guarantor?.hasCollateral === false
+                      ? "No"
+                      : null
+                }
+              />
+              {application.guarantor?.hasCollateral === true ? (
+                <div className="sm:col-span-2">
+                  <Detail
+                    label="Collateral details"
+                    value={record(application.guarantor, "collateralDetails")}
+                  />
+                </div>
+              ) : null}
+            </DetailList>
+          </Section>
+
+          {/*
+            The print-ready form for wet signature (PRD §23.16).
+
+            Offered only to an officer holding `member_sensitive.read`, because
+            the document carries next of kin, guarantor, telephone, and address
+            — seeing that an application exists does not entitle somebody to
+            print all of it.
+          */}
+          {holds("member_sensitive.read") ? (
+            <Section
+              title="Registration form"
+              description="The Union’s form, filled in from this record, for physical signature."
+            >
               <div>
                 <Button
                   type="button"
-                  disabled={busy || printedAddress.trim().length < 4}
+                  variant="secondary"
+                  disabled={busy}
                   onClick={() =>
-                    void act(async () => {
-                      await api.post("/cards", {
-                        memberId: member.id,
-                        printedAddress: printedAddress.trim(),
-                      });
-                      setCardAddress(null);
-                      await mutateCards();
-                    })
+                    void act(() =>
+                      api.download(
+                        `/applications/${application.id}/form`,
+                        "nurtw-registration.pdf",
+                      ),
+                    )
                   }
                 >
-                  Prepare a card
+                  Download form for signature
                 </Button>
               </div>
-            </div>
+            </Section>
           ) : null}
-        </Section>
+        </TabsContent>
+
+        {offersVehicles ? (
+          <TabsContent value="vehicles" className="grid gap-6 outline-none">
+            <Section
+              title="Vehicles"
+              description="Vehicles this member drives. A vehicle added here is on record only until it is declared and a sticker is attached."
+              actions={
+                canAddVehicle ? (
+                  <Link
+                    href={`/applications/${application.id}/vehicles`}
+                    className={buttonVariants({ variant: "secondary" })}
+                  >
+                    Add a vehicle
+                  </Link>
+                ) : null
+              }
+            >
+              {vehicles.length > 0 ? (
+                <ul className="grid gap-2">
+                  {vehicles.map((vehicle) => (
+                    <li
+                      key={vehicle.id}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line px-3 py-2"
+                    >
+                      <Link
+                        href={`/vehicles/${vehicle.id}`}
+                        className="font-mono text-sm font-medium text-link underline-offset-2 hover:underline"
+                      >
+                        {vehicle.plateNumberDisplay}
+                      </Link>
+                      <span className="text-sm text-muted-foreground">
+                        {vehicle.routeType?.label ?? "No route type"}
+                      </span>
+                      {/* VEH-28 — present only for a holder of vehicle.declare. */}
+                      {vehicle.status ? (
+                        <StatusChip status={vehicle.status} />
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-faint-foreground">
+                  No vehicle recorded.
+                </p>
+              )}
+            </Section>
+          </TabsContent>
+        ) : null}
+
+        {offersDues ? (
+          <TabsContent value="dues" className="grid gap-6 outline-none">
+            {holds("member.read") ? (
+              <MemberDuesPanel memberId={member.id} />
+            ) : null}
+            {holds("payment.read") ? (
+              <DedicatedAccountPanel memberId={member.id} />
+            ) : null}
+          </TabsContent>
+        ) : null}
+
+        {offersCard ? (
+          <TabsContent value="card" className="grid gap-6 outline-none">
+            <Section
+              title="Membership card"
+              description="A member holds one card at a time. A replacement supersedes the original rather than overwriting it."
+            >
+              {cards.length > 0 ? (
+                <ul className="grid gap-2">
+                  {cards.map((card) => (
+                    <li
+                      key={card.id}
+                      className="flex flex-wrap items-center gap-3 rounded-md border border-line px-3 py-2"
+                    >
+                      <StatusChip status={card.status} />
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {card.cardNumber ?? (
+                          <span className="font-sans italic text-faint-foreground">
+                            Not yet issued
+                          </span>
+                        )}
+                      </span>
+                      <Link
+                        href={`/cards/${card.id}`}
+                        className="ml-auto text-sm underline underline-offset-2"
+                      >
+                        Open
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-faint-foreground">
+                  No card has been prepared.
+                </p>
+              )}
+
+              {!liveCard && holds("card.issue") ? (
+                <div className="grid gap-4 border-t border-line pt-4">
+                  <Field
+                    label="Address as printed on the card"
+                    htmlFor="cardAddress"
+                    hint="Suggested from the residential address, shortened to fit the card. Amend it if the Union prints something different."
+                    required
+                  >
+                    <TextInput
+                      id="cardAddress"
+                      value={printedAddress}
+                      onChange={(event) => setCardAddress(event.target.value)}
+                    />
+                  </Field>
+                  <div>
+                    <Button
+                      type="button"
+                      disabled={busy || printedAddress.trim().length < 4}
+                      onClick={() =>
+                        void act(async () => {
+                          await api.post("/cards", {
+                            memberId: member.id,
+                            printedAddress: printedAddress.trim(),
+                          });
+                          setCardAddress(null);
+                          await mutateCards();
+                        }, "Card prepared")
+                      }
+                    >
+                      Prepare a card
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </Section>
+          </TabsContent>
+        ) : null}
+      </Tabs>
+
+      {confirming === "SUBMIT" ? (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setConfirming(null)}
+          title="Submit for review?"
+          description={
+            <p>
+              Once submitted the application can no longer be amended, because
+              the reviewer must decide on what they were shown.
+            </p>
+          }
+          confirmLabel="Submit for review"
+          tone="primary"
+          onConfirm={(reason) => confirmed("SUBMIT", reason)}
+        />
       ) : null}
-
-      {isDraft && holds("member.create") ? (
-        <Section
-          title="Submit for review"
-          description="Once submitted the application can no longer be amended, because the reviewer must decide on what they were shown."
-        >
-          <div>
-            <Button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                void act(() =>
-                  api.post(`/applications/${application.id}/submission`),
-                )
-              }
-            >
-              Submit for review
-            </Button>
-          </div>
-        </Section>
+      {confirming === "APPROVE" ? (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setConfirming(null)}
+          title="Approve this application?"
+          description={
+            <p>
+              {member.firstName} {member.surname} becomes a member, and a
+              membership number is issued. This cannot be undone from this
+              screen.
+            </p>
+          }
+          confirmLabel="Approve and issue membership number"
+          tone="primary"
+          reason={{ optional: true }}
+          onConfirm={(reason) => confirmed("APPROVE", reason)}
+        />
       ) : null}
-
-      {awaitingDecision && holds("application.decide") ? (
-        <Section
-          title="Decision"
-          description="A refusal requires a reason. It is recorded against the application and in the audit trail."
-        >
-          <Field label="Reason" htmlFor="reason" hint="Required to refuse.">
-            <TextArea
-              id="reason"
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </Field>
-
-          <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                void act(() =>
-                  api.post(`/applications/${application.id}/decision`, {
-                    decision: "APPROVED",
-                    reason: reason.trim() || undefined,
-                  }),
-                )
-              }
-            >
-              Approve and issue membership number
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              disabled={busy || reason.trim().length < 4}
-              onClick={() =>
-                void act(() =>
-                  api.post(`/applications/${application.id}/decision`, {
-                    decision: "REJECTED",
-                    reason: reason.trim(),
-                  }),
-                )
-              }
-            >
-              Refuse
-            </Button>
-          </div>
-        </Section>
+      {confirming === "REFUSE" ? (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setConfirming(null)}
+          title="Refuse this application?"
+          description={
+            <p>
+              {member.firstName} {member.surname} is not made a member. The
+              reason is recorded against the application, shown on this page,
+              and kept in the audit trail.
+            </p>
+          }
+          confirmLabel="Refuse the application"
+          reason={{}}
+          onConfirm={(reason) => confirmed("REFUSE", reason)}
+        />
       ) : null}
     </div>
   );

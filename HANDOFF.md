@@ -21,8 +21,8 @@ Three rules outrank every default:
 - **Item 36 done:** the previous operator's name is out of every file.
 - **Item 27 done:** sticker stock by scanning; assigning a sticker is pay,
   scan, confirm (VEH-29, VEH-31; PRD 1.12).
-- **In progress: item 34.** Done: the kit, the lists, Home, the front page.
-  `plans/34` lists the screens still to move.
+- **In progress: item 34.** Done: the kit, the lists, Home, the front page,
+  and the five record pages. `plans/34` lists the screens still to move.
 - Item 15 waits. `auth.mfa_enforced` and `dues.go_live_date` stay off.
 
 Tests: domain 518, contracts 132, api 195, web 29.

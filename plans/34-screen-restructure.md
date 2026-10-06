@@ -56,10 +56,12 @@ public sticker page (GOV-08), and any change to an API route.
 - **Stage 2** (with item 27): Home and the front page, both clicked through in light and
   dark, on a desktop and a phone, with no contrast failure. The patterns are in
   `DESIGN.md` §10. Sticker stock and the assignment panel are built on them.
+- **Stage 3**: the five record pages (a vehicle, an application, a card, an officer, an
+  organisation). Each has the shared header, tabs kept in the address, and a dialog that
+  asks for the reason before a dangerous act. Clicked through on 6 October: 56 checks, no
+  contrast failure.
 
 ## Still to do
-- The record pages onto `PageHeader`, tabs in the address, and `ConfirmDialog` for their
-  dangerous acts: an application, a card, a vehicle, an officer, an organisation.
 - The forms: a new application in steps, a new vehicle, a registration's vehicles.
 - Verify's layout, the portal's two screens, and the public pages (sign-in, the portal's
   sign-in and application, the pay page).
@@ -74,3 +76,15 @@ public sticker page (GOV-08), and any change to an API route.
   reads the list the Vehicles screen reads, so it shows nothing an officer could not open.
 - **The front page reads the session cookie's presence** to send a signed-in officer to
   Home. It is a hint only: an expired cookie ends at the sign-in page.
+- **What a record is waiting for sits above its tabs**: an application's decision, a
+  card's approval or collection. A decision is never a scroll, or a tab, away.
+- **A vehicle's tabs are Details, Sticker, Levy, and Manage.** The banner's "Assign
+  sticker" and `?assign=1` open the Sticker tab. A payment's return opens it from the
+  first render, so the panel is there to notice the payment.
+- **The officer page lost its shared "reason for removing" box.** Removing a role,
+  withdrawing a grant, and lifting a revocation each ask for their reason in the dialog.
+- **An approval takes an optional note; a refusal must give a reason.** `ConfirmDialog`
+  takes either.
+- **What each record page shows and does was checked against the old page** while it was
+  rebuilt: every field, section, and act is kept. The one thing removed is each page's
+  shared reason box, replaced by the reason asked in the dialog.

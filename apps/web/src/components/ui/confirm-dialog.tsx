@@ -43,8 +43,16 @@ export function ConfirmDialog({
   /** The act, as a verb: "Suspend", "Withdraw the application". */
   confirmLabel: string;
   tone?: "danger" | "primary";
-  /** Ask for a reason. Left out, none is asked. */
-  reason?: { label?: string; hint?: string; minLength?: number };
+  /**
+   * Ask for a reason. Left out, none is asked. `optional` asks for a note
+   * that may be left empty: an approval may carry one, a refusal must.
+   */
+  reason?: {
+    label?: string;
+    hint?: string;
+    minLength?: number;
+    optional?: boolean;
+  };
   /** Anything else the act needs, between the description and the reason. */
   children?: ReactNode;
   /**
@@ -72,7 +80,7 @@ export function ConfirmDialog({
   async function submit(event: FormEvent) {
     event.preventDefault();
     const given = text.trim();
-    if (reason && given.length < minLength) {
+    if (reason && !reason.optional && given.length < minLength) {
       setIssue(`Give a reason of at least ${minLength} characters.`);
       return;
     }
@@ -112,10 +120,15 @@ export function ConfirmDialog({
           {children}
           {reason ? (
             <Field
-              label={reason.label ?? "Reason"}
+              label={reason.label ?? (reason.optional ? "Note" : "Reason")}
               htmlFor={id}
-              required
-              hint={reason.hint ?? "Recorded in the audit trail."}
+              required={!reason.optional}
+              hint={
+                reason.hint ??
+                (reason.optional
+                  ? "Optional. Recorded in the audit trail."
+                  : "Recorded in the audit trail.")
+              }
               error={issue}
             >
               <TextArea

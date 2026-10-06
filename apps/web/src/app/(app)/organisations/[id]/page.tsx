@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import useSWR from "swr";
 
 import {
@@ -29,6 +30,9 @@ import {
   Button,
   ErrorNotice,
   Field,
+  Loading,
+  Notice,
+  PageHeader,
   Section,
   Select,
   StatusChip,
@@ -39,6 +43,7 @@ import {
   TextArea,
   TextInput,
 } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiError, api, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
@@ -180,10 +185,12 @@ export default function ApiClientPage() {
   const [portalPassword, setPortalPassword] = useState<string | null>(null);
   const [accessReason, setAccessReason] = useState("");
   // Status, tokens, and the record.
-  const [statusReason, setStatusReason] = useState("");
+  // A dangerous act waiting on its reason, in a dialog (`DESIGN.md` §10).
+  const [confirming, setConfirming] = useState<
+    "SUSPENDED" | "ACTIVE" | "REVOKED" | "TOKEN" | null
+  >(null);
   const [overlap, setOverlap] = useState<string>("ONE_DAY");
   const [revokeTokenId, setRevokeTokenId] = useState("");
-  const [revokeReason, setRevokeReason] = useState("");
   const [editing, setEditing] = useState(false);
   const [organisationName, setOrganisationName] = useState("");
   const [businessPurpose, setBusinessPurpose] = useState("");
@@ -212,7 +219,6 @@ export default function ApiClientPage() {
     setProfileId(client.disclosureProfile?.id ?? "");
     setScopes(client.scopes);
     setAccessReason("");
-    setStatusReason("");
     setOrganisationName(client.organisationName);
     setBusinessPurpose(client.businessPurpose);
     setContactName(client.technicalContact.name);
@@ -244,7 +250,7 @@ export default function ApiClientPage() {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-faint-foreground">Loading…</p>;
+    return <Loading label="Loading the organisation" />;
   }
 
   if (!client) {
@@ -310,21 +316,12 @@ export default function ApiClientPage() {
 
   return (
     <div className="grid max-w-4xl gap-6">
-      <div>
-        <Link
-          href="/organisations"
-          className="text-sm text-faint-foreground underline-offset-2 hover:underline"
-        >
-          ← Organisations
-        </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {client.organisationName}
-          </h1>
-          <StatusChip status={client.status} />
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {client.invitation
+      <PageHeader
+        title={client.organisationName}
+        back={{ href: "/organisations", label: "Organisations" }}
+        status={<StatusChip status={client.status} />}
+        meta={
+          client.invitation
             ? `Invited ${shortDay(client.invitation.invitedAt)}${
                 client.invitation.invitedBy
                   ? ` by ${client.invitation.invitedBy}`
@@ -336,9 +333,9 @@ export default function ApiClientPage() {
                   client.registeredBy
                     ? ` by ${client.registeredBy.fullName}`
                     : ""
-                }.`}
-        </p>
-      </div>
+                }.`
+        }
+      />
 
       {issued ? (
         <OneTimeToken
@@ -364,22 +361,24 @@ export default function ApiClientPage() {
       ) : null}
 
       {isPending ? (
-        <Notice title="Pending approval">
+        <Notice
+          tone="caution"
+          title="Pending approval"
+          action={
+            canManage && tab !== "access" ? (
+              <Button type="button" onClick={() => setTab("access")}>
+                Review and approve
+              </Button>
+            ) : null
+          }
+        >
           This organisation can do nothing until it is approved with a
           disclosure profile, its scopes, and a data-sharing agreement.
-          {canManage && tab !== "access" ? (
-            <button
-              type="button"
-              onClick={() => setTab("access")}
-              className="mt-2 block font-semibold underline underline-offset-2"
-            >
-              Review and approve
-            </button>
-          ) : null}
         </Notice>
       ) : null}
       {isPending && client.selfRegistered ? (
         <Notice
+          tone="caution"
           title={
             client.invitation
               ? "It applied through an invitation"
@@ -423,13 +422,13 @@ export default function ApiClientPage() {
         </Notice>
       ) : null}
       {client.status === "EXPIRED" ? (
-        <Notice title="Token expired">
+        <Notice tone="caution" title="Token expired">
           Its token has run out and nothing has replaced it, so its requests are
           refused. Issue a new token to restore access.
         </Notice>
       ) : null}
       {current?.expiringSoon ? (
-        <Notice title="Token expires soon">
+        <Notice tone="caution" title="Token expires soon">
           The token in use expires on {shortDay(current.expiresAt)}. Replace it
           below and pass the new one to {client.technicalContact.name} (
           {client.technicalContact.email}) before then.
@@ -899,38 +898,13 @@ export default function ApiClientPage() {
                         ))}
                       </Select>
                     </Field>
-                    <Field label="Reason" htmlFor="revokeReason" required>
-                      <TextInput
-                        id="revokeReason"
-                        value={revokeReason}
-                        onChange={(event) =>
-                          setRevokeReason(event.target.value)
-                        }
-                        maxLength={1000}
-                      />
-                    </Field>
                   </div>
                   <div>
                     <Button
                       type="button"
                       variant="danger"
-                      disabled={
-                        busy || !revokeTokenId || revokeReason.trim().length < 4
-                      }
-                      onClick={async () => {
-                        const done = await act(
-                          () =>
-                            api.post(
-                              `/api-clients/${client.id}/tokens/${revokeTokenId}/revoke`,
-                              { reason: revokeReason.trim() },
-                            ),
-                          "That token was already revoked. The page now shows its current state.",
-                        );
-                        if (done) {
-                          setRevokeTokenId("");
-                          setRevokeReason("");
-                        }
-                      }}
+                      disabled={busy || !revokeTokenId}
+                      onClick={() => setConfirming("TOKEN")}
                     >
                       Revoke token
                     </Button>
@@ -1446,29 +1420,13 @@ export default function ApiClientPage() {
                   : "Suspending refuses its tokens until it is reinstated. Revoking withdraws every token and closes the record for good. A reason is required and recorded."
               }
             >
-              <Field label="Reason" htmlFor="statusReason" required>
-                <TextArea
-                  id="statusReason"
-                  value={statusReason}
-                  onChange={(event) => setStatusReason(event.target.value)}
-                />
-              </Field>
               <div className="flex flex-wrap gap-3">
                 {isApproved ? (
                   <Button
                     type="button"
                     variant="secondary"
-                    disabled={busy || statusReason.trim().length < 4}
-                    onClick={() =>
-                      void act(
-                        () =>
-                          api.post(`/api-clients/${client.id}/status`, {
-                            status: "SUSPENDED",
-                            reason: statusReason.trim(),
-                          }),
-                        "Its status has changed since the page loaded. The page now shows it.",
-                      )
-                    }
+                    disabled={busy}
+                    onClick={() => setConfirming("SUSPENDED")}
                   >
                     Suspend
                   </Button>
@@ -1476,17 +1434,8 @@ export default function ApiClientPage() {
                 {isSuspended ? (
                   <Button
                     type="button"
-                    disabled={busy || statusReason.trim().length < 4}
-                    onClick={() =>
-                      void act(
-                        () =>
-                          api.post(`/api-clients/${client.id}/status`, {
-                            status: "ACTIVE",
-                            reason: statusReason.trim(),
-                          }),
-                        "Its status has changed since the page loaded. The page now shows it.",
-                      )
-                    }
+                    disabled={busy}
+                    onClick={() => setConfirming("ACTIVE")}
                   >
                     Reinstate
                   </Button>
@@ -1494,17 +1443,8 @@ export default function ApiClientPage() {
                 <Button
                   type="button"
                   variant="danger"
-                  disabled={busy || statusReason.trim().length < 4}
-                  onClick={() =>
-                    void act(
-                      () =>
-                        api.post(`/api-clients/${client.id}/status`, {
-                          status: "REVOKED",
-                          reason: statusReason.trim(),
-                        }),
-                      "Its status has changed since the page loaded. The page now shows it.",
-                    )
-                  }
+                  disabled={busy}
+                  onClick={() => setConfirming("REVOKED")}
                 >
                   {isPending ? "Refuse registration" : "Revoke access"}
                 </Button>
@@ -1513,27 +1453,94 @@ export default function ApiClientPage() {
           ) : null}
         </TabsContent>
       </Tabs>
-    </div>
-  );
-}
 
-function Notice({
-  title,
-  tone = "caution",
-  children,
-}: {
-  title: string;
-  tone?: "caution" | "deny";
-  children: ReactNode;
-}) {
-  const styles =
-    tone === "deny"
-      ? "border-verdict-deny/30 bg-verdict-deny-surface text-verdict-deny"
-      : "border-verdict-caution/40 bg-verdict-caution-surface text-verdict-caution";
-  return (
-    <div className={`rounded-md border px-4 py-3 text-sm ${styles}`}>
-      <p className="font-semibold">{title}</p>
-      <p className="mt-1 text-foreground">{children}</p>
+      {confirming ? (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setConfirming(null);
+            }
+          }}
+          title={
+            confirming === "TOKEN"
+              ? "Revoke this token?"
+              : confirming === "SUSPENDED"
+                ? "Suspend this organisation?"
+                : confirming === "ACTIVE"
+                  ? "Reinstate this organisation?"
+                  : isPending
+                    ? "Refuse this registration?"
+                    : "Revoke this organisation's access?"
+          }
+          description={
+            <p>
+              {confirming === "TOKEN"
+                ? "The token is refused from its next request, for good. The organisation needs a new one to carry on."
+                : confirming === "SUSPENDED"
+                  ? `${client.organisationName}'s tokens are refused until it is reinstated. They are kept, so reinstating it restores access without a new token.`
+                  : confirming === "ACTIVE"
+                    ? `${client.organisationName}'s tokens work again.`
+                    : isPending
+                      ? `${client.organisationName}'s registration is closed for good. To be admitted later it registers afresh.`
+                      : `Every token ${client.organisationName} holds is revoked, and this record is closed for good. To come back it registers afresh.`}
+            </p>
+          }
+          confirmLabel={
+            confirming === "TOKEN"
+              ? "Revoke the token"
+              : confirming === "SUSPENDED"
+                ? "Suspend"
+                : confirming === "ACTIVE"
+                  ? "Reinstate"
+                  : isPending
+                    ? "Refuse registration"
+                    : "Revoke access"
+          }
+          tone={
+            confirming === "ACTIVE" || confirming === "SUSPENDED"
+              ? "primary"
+              : "danger"
+          }
+          reason={{}}
+          onConfirm={async (reason) => {
+            try {
+              if (confirming === "TOKEN") {
+                await api.post(
+                  `/api-clients/${client.id}/tokens/${revokeTokenId}/revoke`,
+                  { reason },
+                );
+                setRevokeTokenId("");
+              } else {
+                await api.post(`/api-clients/${client.id}/status`, {
+                  status: confirming,
+                  reason,
+                });
+              }
+            } catch (caught) {
+              await mutate();
+              throw explained(
+                caught,
+                confirming === "TOKEN"
+                  ? "That token was already revoked. The page now shows its current state."
+                  : "Its status has changed since the page loaded. The page now shows it.",
+              );
+            }
+            toast.success(
+              confirming === "TOKEN"
+                ? "Token revoked"
+                : confirming === "SUSPENDED"
+                  ? "Organisation suspended"
+                  : confirming === "ACTIVE"
+                    ? "Organisation reinstated"
+                    : isPending
+                      ? "Registration refused"
+                      : "Access revoked",
+            );
+            await mutate();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

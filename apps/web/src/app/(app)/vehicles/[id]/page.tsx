@@ -4,6 +4,7 @@ import type { MasterDataEntry, VehicleDetail } from "@nurtw/contracts";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import useSWR from "swr";
 
 import { VehicleDuesPanel } from "@/components/dues-panel";
@@ -12,20 +13,29 @@ import { OnboardingSection } from "@/components/onboarding-section";
 import {
   StickerBanner,
   StickerPromptDialog,
-  onboardingKey,
 } from "@/components/sticker-prompt";
 import {
   Button,
+  Detail,
+  DetailList,
   ErrorNotice,
   Field,
+  Loading,
+  Notice,
+  PageHeader,
   Section,
   Select,
   StatusChip,
-  TextArea,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   TextInput,
 } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiError, api, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { useTabParam } from "@/lib/use-tab-param";
 
 /**
  * One vehicle, and the acts available upon it.
@@ -34,38 +44,84 @@ import { useSession } from "@/lib/session";
  * permissions — a courtesy, not a control: the API's guard refuses
  * regardless, and every service method re-asks the permission question
  * against the record's own organisation.
+ *
+ * The page is a record in tabs (`DESIGN.md` §10): its details; its sticker,
+ * where one is assigned and the vehicle letter kept; its levy; and the acts
+ * that manage it. The open tab is kept in the address.
  */
 
-function Detail({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-faint-foreground">
-        {label}
-      </dt>
-      <dd className="mt-0.5 text-sm">
-        {value && value.length > 0 ? (
-          value
-        ) : (
-          <span className="italic text-faint-foreground">Not stated</span>
-        )}
-      </dd>
-    </div>
-  );
-}
+const TAB_LABELS = {
+  details: "Details",
+  sticker: "Sticker",
+  levy: "Levy",
+  manage: "Manage",
+} as const;
+type TabName = keyof typeof TAB_LABELS;
 
-/** Item 35 — to the onboarding panel, where a sticker is assigned. */
-function goToOnboarding() {
-  const panel = document.getElementById("onboarding");
-  panel?.scrollIntoView({ behavior: "smooth", block: "start" });
-  panel?.focus({ preventScroll: true });
+/** An act that is confirmed in a dialog, with its reason. */
+type Confirming = "SUSPEND" | "REACTIVATE" | "RETIRE" | "DISMISS" | "REISSUE";
+
+const CONFIRM: Record<
+  Confirming,
+  {
+    title: string;
+    description: string;
+    confirmLabel: string;
+    tone: "danger" | "primary";
+    done: string;
+  }
+> = {
+  SUSPEND: {
+    title: "Suspend this vehicle?",
+    description:
+      "Its declaration is suspended until an officer reactivates it. While suspended it does not verify outside the Union.",
+    confirmLabel: "Suspend",
+    tone: "primary",
+    done: "Vehicle suspended",
+  },
+  REACTIVATE: {
+    title: "Reactivate this vehicle?",
+    description: "Its declaration becomes active again.",
+    confirmLabel: "Reactivate",
+    tone: "primary",
+    done: "Vehicle reactivated",
+  },
+  RETIRE: {
+    title: "Retire this vehicle?",
+    description:
+      "Retiring ends this declaration for good. The record is kept, and the monthly levy stops after this month.",
+    confirmLabel: "Retire the vehicle",
+    tone: "danger",
+    done: "Vehicle retired",
+  },
+  DISMISS: {
+    title: "Dismiss this claim?",
+    description:
+      "This disputed declaration is dismissed. Upholding a claim instead, which would demote whichever declaration currently holds the plate, is not built: that decision is still open with the Union.",
+    confirmLabel: "Dismiss this claim",
+    tone: "danger",
+    done: "Claim dismissed",
+  },
+  REISSUE: {
+    title: "Reissue the vehicle letter?",
+    description:
+      "For when a driver has been linked or the vehicle has moved unit. The current letter is kept, marked superseded, and will no longer download. The new one carries a new reference.",
+    confirmLabel: "Reissue the letter",
+    tone: "primary",
+    done: "Letter reissued",
+  },
+};
+
+function day(value: string): string {
+  return new Date(value).toLocaleDateString("en-GB");
 }
 
 export default function VehicleDetailPage() {
   const params = useParams<{ id: string }>();
   const { holds } = useSession();
-  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiError | null>(null);
+  const [confirming, setConfirming] = useState<Confirming | null>(null);
   const [driverId, setDriverId] = useState<string | null>(null);
   const [driverLabel, setDriverLabel] = useState<string | null>(null);
   const [syncedFor, setSyncedFor] = useState<string | undefined>(undefined);
@@ -74,24 +130,15 @@ export default function VehicleDetailPage() {
   const [declareOwnerName, setDeclareOwnerName] = useState("");
   const [declareOwnerPhone, setDeclareOwnerPhone] = useState("");
   const [declareOwnerAddress, setDeclareOwnerAddress] = useState("");
-  // VEH-27 — why the letter is being reissued.
-  const [letterReason, setLetterReason] = useState("");
   // Item 35 (VEH-30). Adding a vehicle arrives here with ?added=1 and a
-  // prompt to assign its sticker; the registration flow sends ?assign=1 to
-  // go straight to the onboarding panel. Either is spent on first use.
+  // prompt to assign its sticker. ?assign=1 opens the Sticker tab: from the
+  // registration flow, from Home, and on the way back from paying. Either is
+  // spent on first use.
   const router = useRouter();
   const searchParams = useSearchParams();
   const justAdded = searchParams.get("added") === "1";
   const sentToAssign = searchParams.get("assign") === "1";
   const [promptClosed, setPromptClosed] = useState(false);
-  const { data: onboardingData } = useSWR(
-    sentToAssign && holds("sticker.attach") ? onboardingKey(params.id) : null,
-    fetcher,
-  );
-
-  function spendArrival() {
-    router.replace(`/vehicles/${params.id}`, { scroll: false });
-  }
 
   const { data, error, isLoading, mutate } = useSWR<{ vehicle: VehicleDetail }>(
     `/vehicles/${params.id}`,
@@ -99,20 +146,68 @@ export default function VehicleDetailPage() {
   );
 
   const vehicle = data?.vehicle ?? null;
-
-  // Sent to assign a sticker: once the vehicle and its onboarding state are
-  // both here, the panel is on the page, so go to it, then spend the address.
-  const vehicleLoaded = vehicle !== null;
-  useEffect(() => {
-    if (sentToAssign && vehicleLoaded && onboardingData) {
-      goToOnboarding();
-      router.replace(`/vehicles/${params.id}`, { scroll: false });
-    }
-  }, [sentToAssign, vehicleLoaded, onboardingData, router, params.id]);
-
   const loadError = error instanceof ApiError ? error : null;
   const isOnRecord = vehicle?.status === "ON_RECORD";
+  const isActive = vehicle?.status === "ACTIVE";
+  const isSuspended = vehicle?.status === "SUSPENDED";
+  const isDisputed = vehicle?.status === "DISPUTED";
   const canDeclare = isOnRecord && holds("vehicle.declare");
+  const canChangeStatus = holds("vehicle.suspend") && (isActive || isSuspended);
+  const canDismiss = isDisputed && holds("vehicle.resolve_dispute");
+
+  // A tab is offered only where it has something for this officer.
+  const offersSticker =
+    vehicle !== null &&
+    (holds("sticker.attach") || Boolean(vehicle.onboarding?.letterReference));
+  const offersManage =
+    vehicle !== null &&
+    (holds("vehicle.update") || canDismiss || canChangeStatus);
+  const tabs: { value: TabName }[] = [
+    { value: "details" },
+    ...(offersSticker ? [{ value: "sticker" as const }] : []),
+    { value: "levy" },
+    ...(offersManage ? [{ value: "manage" as const }] : []),
+  ];
+  const [tabInAddress] = useTabParam(tabs);
+  // Sent to assign a sticker: the Sticker tab is open from the first render,
+  // so its panel is there to notice a payment just made.
+  const tab = sentToAssign && offersSticker ? "sticker" : tabInAddress;
+
+  function openTab(next: TabName) {
+    // The arrival's own values (added, assign, a payment's reference) are
+    // spent with this: only the tab is kept.
+    router.replace(
+      next === "details"
+        ? `/vehicles/${params.id}`
+        : `/vehicles/${params.id}?tab=${next}`,
+      { scroll: false },
+    );
+  }
+
+  /** Item 35 — to the Sticker tab, where a sticker is assigned. */
+  function goToSticker() {
+    openTab("sticker");
+    window.setTimeout(() => {
+      const panel = document.getElementById("record-tabs");
+      panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+      panel?.focus({ preventScroll: true });
+    }, 50);
+  }
+
+  const vehicleLoaded = vehicle !== null;
+  useEffect(() => {
+    if (sentToAssign && vehicleLoaded) {
+      router.replace(
+        offersSticker
+          ? `/vehicles/${params.id}?tab=sticker`
+          : `/vehicles/${params.id}`,
+        { scroll: false },
+      );
+      document
+        .getElementById("record-tabs")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [sentToAssign, vehicleLoaded, offersSticker, router, params.id]);
 
   const { data: routeTypeList } = useSWR<{ entries: MasterDataEntry[] }>(
     canDeclare ? "/master-data/route-types" : null,
@@ -138,13 +233,15 @@ export default function VehicleDetailPage() {
     setDeclareOwnerAddress(vehicle.owner?.address ?? "");
   }
 
-  async function act(action: () => Promise<unknown>) {
+  async function act(action: () => Promise<unknown>, done?: string) {
     setBusy(true);
     setActionError(null);
     try {
       await action();
-      setReason("");
       await mutate();
+      if (done) {
+        toast.success(done);
+      }
     } catch (caught) {
       if (caught instanceof ApiError) {
         setActionError(caught);
@@ -155,7 +252,7 @@ export default function VehicleDetailPage() {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-faint-foreground">Loading…</p>;
+    return <Loading label="Loading the vehicle" />;
   }
 
   if (!vehicle) {
@@ -176,37 +273,63 @@ export default function VehicleDetailPage() {
     );
   }
 
-  const isActive = vehicle.status === "ACTIVE";
-  const isSuspended = vehicle.status === "SUSPENDED";
-  const isDisputed = vehicle.status === "DISPUTED";
-  const canChangeStatus =
-    holds("vehicle.suspend") && (isActive || isSuspended);
   const ownerIncomplete = !vehicle.owner?.name || !vehicle.owner?.phone;
   const routeTypes = routeTypeList?.entries ?? [];
 
+  /** Does a confirmed act. A failure is thrown, and shown in its dialog. */
+  async function confirmed(which: Confirming, reason: string) {
+    if (!vehicle) {
+      return;
+    }
+    if (which === "DISMISS") {
+      await api.post(`/vehicles/${vehicle.id}/dismiss-dispute`, { reason });
+    } else if (which === "REISSUE") {
+      try {
+        await api.post(`/vehicles/${vehicle.id}/letter/reissue`, { reason });
+      } catch (caught) {
+        // The API's 409 is generic (Requirement 14.3).
+        if (caught instanceof ApiError && caught.status === 409) {
+          await mutate();
+          throw new ApiError(
+            409,
+            "The letter was reissued by someone else a moment ago. The page now shows it.",
+            caught.requestId,
+          );
+        }
+        throw caught;
+      }
+    } else {
+      await api.patch(`/vehicles/${vehicle.id}/status`, {
+        status:
+          which === "SUSPEND"
+            ? "SUSPENDED"
+            : which === "REACTIVATE"
+              ? "ACTIVE"
+              : "RETIRED",
+        reason,
+      });
+    }
+    toast.success(CONFIRM[which].done);
+    await mutate();
+  }
+
   return (
     <div className="grid max-w-3xl gap-6">
-      <div>
-        <Link
-          href="/vehicles"
-          className="text-sm text-faint-foreground underline-offset-2 hover:underline"
-        >
-          ← Vehicles
-        </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="font-mono text-xl font-semibold tracking-tight">
-            {vehicle.plateNumberDisplay}
-          </h1>
-          {/* VEH-28 — present only for a holder of vehicle.declare. Everything
-              keyed on the status below disappears with it. */}
-          {vehicle.status ? <StatusChip status={vehicle.status} /> : null}
-          {vehicle.isLegacyImport ? (
-            <span className="text-xs italic text-faint-foreground">
-              from the legacy migration
-            </span>
-          ) : null}
-        </div>
-      </div>
+      <PageHeader
+        mono
+        title={vehicle.plateNumberDisplay}
+        back={{ href: "/vehicles", label: "Vehicles" }}
+        // VEH-28 — present only for a holder of vehicle.declare. Everything
+        // keyed on the status below disappears with it.
+        status={vehicle.status ? <StatusChip status={vehicle.status} /> : null}
+        meta={[
+          vehicle.organisation.name,
+          vehicle.vehicleCategory?.label,
+          vehicle.isLegacyImport ? "from the legacy migration" : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      />
 
       {actionError ? (
         <ErrorNotice
@@ -218,7 +341,7 @@ export default function VehicleDetailPage() {
       <StickerBanner
         vehicleId={vehicle.id}
         attached={vehicle.onboarding !== null}
-        onAssign={goToOnboarding}
+        onAssign={goToSticker}
       />
 
       {holds("sticker.attach") && vehicle.onboarding === null ? (
@@ -228,396 +351,375 @@ export default function VehicleDetailPage() {
           open={justAdded && !promptClosed}
           onAssign={() => {
             setPromptClosed(true);
-            spendArrival();
             // After the dialog has handed focus back.
-            window.setTimeout(goToOnboarding, 50);
+            goToSticker();
           }}
           onLater={() => {
             setPromptClosed(true);
-            spendArrival();
+            openTab(tabInAddress as TabName);
           }}
         />
       ) : null}
 
       {isOnRecord ? (
-        <div className="rounded-md border border-line bg-surface-muted px-4 py-3 text-sm">
-          <p className="font-semibold">On record, not declared</p>
-          <p className="mt-1">
-            This vehicle is recorded with the Union but has not been declared.
-            It counts for nothing outside the Union until it is declared and a
-            sticker is attached.
-          </p>
-        </div>
+        <Notice tone="info" title="On record, not declared">
+          This vehicle is recorded with the Union but has not been declared. It
+          counts for nothing outside the Union until it is declared and a
+          sticker is attached.
+        </Notice>
       ) : null}
 
       {isDisputed ? (
-        <div className="rounded-md border border-verdict-caution/30 bg-verdict-caution-surface px-4 py-3 text-sm">
-          <p className="font-semibold text-verdict-caution">
-            Disputed
-          </p>
-          <p className="mt-1">
-            Another declaration for this plate is currently active. This
-            record is preserved, not deleted, until the dispute is resolved.
-          </p>
-        </div>
+        <Notice tone="caution" title="Disputed">
+          Another declaration for this plate is currently active. This record is
+          preserved, not deleted, until the dispute is resolved.
+        </Notice>
       ) : null}
 
-      <Section title="Vehicle">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <Detail label="Route type" value={vehicle.routeType?.label ?? null} />
-          <Detail
-            label="Vehicle type"
-            value={vehicle.vehicleCategory?.label ?? null}
-          />
-          <Detail label="Organisation" value={vehicle.organisation.name} />
-          <Detail label="Make" value={vehicle.make} />
-          <Detail label="Model" value={vehicle.model} />
-          <Detail label="Colour" value={vehicle.color} />
-          {vehicle.status !== undefined ? (
-            <Detail
-              label="Declared"
-              value={
-                vehicle.declaredAt
-                  ? new Date(vehicle.declaredAt).toLocaleDateString("en-GB")
-                  : "Not yet declared"
-              }
-            />
-          ) : null}
-          {/* Requirement 9A.1 — onboarded is its own fact, beside declared. */}
-          <Detail
-            label="Onboarded"
-            value={
-              vehicle.onboarding
-                ? `${new Date(vehicle.onboarding.attachedAt).toLocaleDateString("en-GB")} · sticker assigned${vehicle.onboarding.attachedBy ? ` · by ${vehicle.onboarding.attachedBy}` : ""}`
-                : "Not yet onboarded"
-            }
-          />
-          {vehicle.declaredByMember ? (
-            <Detail
-              label="Driver"
-              value={`${vehicle.declaredByMember.surname}, ${vehicle.declaredByMember.firstName}`}
-            />
-          ) : null}
-          {"chassisVinRestricted" in vehicle ? (
-            <Detail
-              label="Chassis / VIN"
-              value={vehicle.chassisVinRestricted ?? null}
-            />
-          ) : null}
-        </dl>
-        {vehicle.notes ? (
-          <div className="border-t border-line pt-4">
-            <Detail label="Notes" value={vehicle.notes} />
-          </div>
-        ) : null}
-      </Section>
-
-      {/* Item 35 — under the details, where the banner's button leads. */}
-      <div id="onboarding" tabIndex={-1} className="scroll-mt-20 outline-none">
-        {holds("sticker.attach") ? (
-          <OnboardingSection vehicle={vehicle} onChanged={() => mutate()} />
-        ) : null}
-      </div>
-
-      <Section
-        title="Owner"
-        description="Whoever owns the vehicle — not necessarily a member. Private: never shown on a scan or to an outside organisation."
+      <Tabs
+        id="record-tabs"
+        tabIndex={-1}
+        value={tab}
+        onValueChange={(next) => openTab(next as TabName)}
+        className="grid scroll-mt-20 gap-6 outline-none"
       >
-        <dl className="grid gap-4 sm:grid-cols-3">
-          <Detail label="Name" value={vehicle.owner?.name ?? null} />
-          <Detail label="Phone" value={vehicle.owner?.phone ?? null} />
-          <Detail label="Address" value={vehicle.owner?.address ?? null} />
-        </dl>
-      </Section>
+        <TabsList aria-label="Parts of this vehicle's record">
+          {tabs.map((entry) => (
+            <TabsTrigger key={entry.value} value={entry.value}>
+              {TAB_LABELS[entry.value]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      {canDeclare ? (
-        <Section
-          title="Declare this vehicle"
-          description="Declares this same record — no second record is created. A route type and the owner's name and phone are required."
-        >
-          <Field label="Route type" htmlFor="declareRouteTypeId" required>
-            <Select
-              id="declareRouteTypeId"
-              value={declareRouteTypeId}
-              onChange={(event) => setDeclareRouteTypeId(event.target.value)}
-            >
-              <option value="">Select a route type</option>
-              {routeTypes.map((routeType) => (
-                <option key={routeType.id} value={routeType.id}>
-                  {routeType.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          {ownerIncomplete ? (
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Owner's name" htmlFor="declareOwnerName" required>
-                <TextInput
-                  id="declareOwnerName"
-                  value={declareOwnerName}
-                  onChange={(event) => setDeclareOwnerName(event.target.value)}
-                />
-              </Field>
-              <Field label="Owner's phone" htmlFor="declareOwnerPhone" required>
-                <TextInput
-                  id="declareOwnerPhone"
-                  inputMode="tel"
-                  autoComplete="off"
-                  value={declareOwnerPhone}
-                  onChange={(event) => setDeclareOwnerPhone(event.target.value)}
-                />
-              </Field>
-              <Field label="Owner's address" htmlFor="declareOwnerAddress">
-                <TextInput
-                  id="declareOwnerAddress"
-                  value={declareOwnerAddress}
-                  onChange={(event) =>
-                    setDeclareOwnerAddress(event.target.value)
+        <TabsContent value="details" className="grid gap-6 outline-none">
+          <Section title="Vehicle">
+            <DetailList>
+              <Detail label="Route type" value={vehicle.routeType?.label} />
+              <Detail
+                label="Vehicle type"
+                value={vehicle.vehicleCategory?.label}
+              />
+              <Detail label="Organisation" value={vehicle.organisation.name} />
+              <Detail label="Make" value={vehicle.make} />
+              <Detail label="Model" value={vehicle.model} />
+              <Detail label="Colour" value={vehicle.color} />
+              {vehicle.status !== undefined ? (
+                <Detail
+                  label="Declared"
+                  value={
+                    vehicle.declaredAt
+                      ? day(vehicle.declaredAt)
+                      : "Not yet declared"
                   }
                 />
-              </Field>
-            </div>
-          ) : null}
-          <div>
-            <Button
-              type="button"
-              disabled={
-                busy ||
-                !declareRouteTypeId ||
-                (ownerIncomplete && (!declareOwnerName || !declareOwnerPhone))
-              }
-              onClick={() =>
-                void act(() =>
-                  api.post(`/vehicles/${vehicle.id}/declare`, {
-                    ...(declareRouteTypeId !== (vehicle.routeType?.id ?? "")
-                      ? { routeTypeId: declareRouteTypeId }
-                      : {}),
-                    ...(ownerIncomplete
-                      ? {
-                          owner: {
-                            name: declareOwnerName,
-                            phone: declareOwnerPhone,
-                            address: declareOwnerAddress.trim() || undefined,
-                          },
-                        }
-                      : {}),
-                  }),
-                )
-              }
-            >
-              Declare this vehicle
-            </Button>
-          </div>
-        </Section>
-      ) : null}
-
-      <VehicleDuesPanel vehicleId={vehicle.id} />
-
-      {vehicle.onboarding?.letterReference ? (
-        <Section
-          title="Vehicle letter"
-          description="Produced when the vehicle was onboarded, and printed exactly as issued. It confirms the vehicle is recorded with the Union; it is not evidence of ownership, roadworthiness, licensing, or insurance. A reissued letter replaces it under a new reference."
-        >
-          <div className="flex flex-wrap items-center gap-4">
-            <Detail label="Reference" value={vehicle.onboarding.letterReference} />
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={busy}
-              onClick={() =>
-                void act(() =>
-                  api.download(
-                    `/vehicles/${vehicle.id}/letter`,
-                    "nurtw-vehicle-letter.pdf",
-                  ),
-                )
-              }
-            >
-              Download letter
-            </Button>
-          </div>
-          {holds("sticker.attach") ? (
-            <div className="grid gap-3 border-t border-line pt-4">
-              <Field
-                label="Reason for reissuing"
-                htmlFor="letterReason"
-                hint="For example, a driver has been linked or the vehicle has moved unit. The current letter is kept, marked superseded, and will no longer download."
-              >
-                <TextInput
-                  id="letterReason"
-                  value={letterReason}
-                  onChange={(event) => setLetterReason(event.target.value)}
-                  maxLength={1000}
+              ) : null}
+              {/* Requirement 9A.1 — onboarded is its own fact, beside declared. */}
+              <Detail
+                label="Onboarded"
+                value={
+                  vehicle.onboarding
+                    ? `${day(vehicle.onboarding.attachedAt)} · sticker assigned${vehicle.onboarding.attachedBy ? ` · by ${vehicle.onboarding.attachedBy}` : ""}`
+                    : "Not yet onboarded"
+                }
+              />
+              {vehicle.declaredByMember ? (
+                <Detail
+                  label="Driver"
+                  value={`${vehicle.declaredByMember.surname}, ${vehicle.declaredByMember.firstName}`}
                 />
+              ) : null}
+              {"chassisVinRestricted" in vehicle ? (
+                <Detail
+                  label="Chassis / VIN"
+                  value={vehicle.chassisVinRestricted}
+                />
+              ) : null}
+            </DetailList>
+            {vehicle.notes ? (
+              <div className="border-t border-line pt-4">
+                <Detail label="Notes" value={vehicle.notes} />
+              </div>
+            ) : null}
+          </Section>
+
+          <Section
+            title="Owner"
+            description="Whoever owns the vehicle — not necessarily a member. Private: never shown on a scan or to an outside organisation."
+          >
+            <DetailList columns={3}>
+              <Detail label="Name" value={vehicle.owner?.name} />
+              <Detail label="Phone" value={vehicle.owner?.phone} />
+              <Detail label="Address" value={vehicle.owner?.address} />
+            </DetailList>
+          </Section>
+
+          {canDeclare ? (
+            <Section
+              title="Declare this vehicle"
+              description="Declares this same record — no second record is created. A route type and the owner's name and phone are required."
+            >
+              <Field label="Route type" htmlFor="declareRouteTypeId" required>
+                <Select
+                  id="declareRouteTypeId"
+                  value={declareRouteTypeId}
+                  onChange={(event) =>
+                    setDeclareRouteTypeId(event.target.value)
+                  }
+                >
+                  <option value="">Select a route type</option>
+                  {routeTypes.map((routeType) => (
+                    <option key={routeType.id} value={routeType.id}>
+                      {routeType.label}
+                    </option>
+                  ))}
+                </Select>
               </Field>
+              {ownerIncomplete ? (
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Field
+                    label="Owner's name"
+                    htmlFor="declareOwnerName"
+                    required
+                  >
+                    <TextInput
+                      id="declareOwnerName"
+                      value={declareOwnerName}
+                      onChange={(event) =>
+                        setDeclareOwnerName(event.target.value)
+                      }
+                    />
+                  </Field>
+                  <Field
+                    label="Owner's phone"
+                    htmlFor="declareOwnerPhone"
+                    required
+                  >
+                    <TextInput
+                      id="declareOwnerPhone"
+                      inputMode="tel"
+                      autoComplete="off"
+                      value={declareOwnerPhone}
+                      onChange={(event) =>
+                        setDeclareOwnerPhone(event.target.value)
+                      }
+                    />
+                  </Field>
+                  <Field label="Owner's address" htmlFor="declareOwnerAddress">
+                    <TextInput
+                      id="declareOwnerAddress"
+                      value={declareOwnerAddress}
+                      onChange={(event) =>
+                        setDeclareOwnerAddress(event.target.value)
+                      }
+                    />
+                  </Field>
+                </div>
+              ) : null}
               <div>
                 <Button
                   type="button"
-                  variant="secondary"
-                  disabled={busy || letterReason.trim().length < 4}
+                  disabled={
+                    busy ||
+                    !declareRouteTypeId ||
+                    (ownerIncomplete &&
+                      (!declareOwnerName || !declareOwnerPhone))
+                  }
                   onClick={() =>
-                    void act(async () => {
-                      try {
-                        await api.post(`/vehicles/${vehicle.id}/letter/reissue`, {
-                          reason: letterReason.trim(),
-                        });
-                        setLetterReason("");
-                      } catch (caught) {
-                        // The API's 409 is generic (Requirement 14.3).
-                        if (caught instanceof ApiError && caught.status === 409) {
-                          throw new ApiError(
-                            409,
-                            "The letter was reissued by someone else a moment ago. The page now shows it.",
-                            caught.requestId,
-                          );
-                        }
-                        throw caught;
-                      }
-                    })
+                    void act(
+                      () =>
+                        api.post(`/vehicles/${vehicle.id}/declare`, {
+                          ...(declareRouteTypeId !==
+                          (vehicle.routeType?.id ?? "")
+                            ? { routeTypeId: declareRouteTypeId }
+                            : {}),
+                          ...(ownerIncomplete
+                            ? {
+                                owner: {
+                                  name: declareOwnerName,
+                                  phone: declareOwnerPhone,
+                                  address:
+                                    declareOwnerAddress.trim() || undefined,
+                                },
+                              }
+                            : {}),
+                        }),
+                      "Vehicle declared",
+                    )
                   }
                 >
-                  Reissue letter
+                  Declare this vehicle
                 </Button>
               </div>
-            </div>
+            </Section>
           ) : null}
-        </Section>
-      ) : null}
+        </TabsContent>
 
-      {holds("vehicle.update") ? (
-        <Section
-          title="Driver"
-          description="The member who drives this vehicle. May be left unset and changed here at any time, independent of a status change."
-        >
-          <MemberPicker
-            label="Member"
-            htmlFor="driverId"
-            selectedId={driverId}
-            selectedLabel={driverLabel}
-            onSelect={(member) => {
-              setDriverId(member.id);
-              setDriverLabel(member.label);
-            }}
-            onClear={() => {
-              setDriverId(null);
-              setDriverLabel(null);
-            }}
-          />
-          <div>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={
-                busy || driverId === (vehicle.declaredByMember?.id ?? null)
-              }
-              onClick={() =>
-                void act(() =>
-                  api.patch(`/vehicles/${vehicle.id}`, {
-                    declaredByMemberId: driverId,
-                  }),
-                )
-              }
-            >
-              Save driver
-            </Button>
-          </div>
-        </Section>
-      ) : null}
+        {offersSticker ? (
+          <TabsContent value="sticker" className="grid gap-6 outline-none">
+            {holds("sticker.attach") ? (
+              <OnboardingSection vehicle={vehicle} onChanged={() => mutate()} />
+            ) : null}
 
-      {isDisputed && holds("vehicle.resolve_dispute") ? (
-        <Section
-          title="Dispute"
-          description="Dismisses this claim. Upholding a claim instead — which would demote whichever declaration currently holds ACTIVE for this plate — is not built; that decision is still open with the Union."
-        >
-          <Field label="Reason" htmlFor="dismissReason" required>
-            <TextArea
-              id="dismissReason"
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </Field>
-          <div>
-            <Button
-              type="button"
-              variant="danger"
-              disabled={busy || reason.trim().length < 4}
-              onClick={() =>
-                void act(() =>
-                  api.post(`/vehicles/${vehicle.id}/dismiss-dispute`, {
-                    reason: reason.trim(),
-                  }),
-                )
-              }
-            >
-              Dismiss this claim
-            </Button>
-          </div>
-        </Section>
-      ) : null}
-
-      {canChangeStatus ? (
-        <Section
-          title="Status"
-          description="A reason is required and is recorded in the audit trail."
-        >
-          <Field label="Reason" htmlFor="statusReason">
-            <TextArea
-              id="statusReason"
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </Field>
-
-          <div className="flex flex-wrap gap-3">
-            {isSuspended ? (
-              <Button
-                type="button"
-                disabled={busy || reason.trim().length < 4}
-                onClick={() =>
-                  void act(() =>
-                    api.patch(`/vehicles/${vehicle.id}/status`, {
-                      status: "ACTIVE",
-                      reason: reason.trim(),
-                    }),
-                  )
-                }
+            {vehicle.onboarding?.letterReference ? (
+              <Section
+                title="Vehicle letter"
+                description="Produced when the vehicle was onboarded, and printed exactly as issued. It confirms the vehicle is recorded with the Union; it is not evidence of ownership, roadworthiness, licensing, or insurance. A reissued letter replaces it under a new reference."
               >
-                Reactivate
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={busy || reason.trim().length < 4}
-                onClick={() =>
-                  void act(() =>
-                    api.patch(`/vehicles/${vehicle.id}/status`, {
-                      status: "SUSPENDED",
-                      reason: reason.trim(),
-                    }),
-                  )
-                }
+                <div className="flex flex-wrap items-end gap-4">
+                  <dl>
+                    <Detail
+                      label="Reference"
+                      value={vehicle.onboarding.letterReference}
+                    />
+                  </dl>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() =>
+                      void act(() =>
+                        api.download(
+                          `/vehicles/${vehicle.id}/letter`,
+                          "nurtw-vehicle-letter.pdf",
+                        ),
+                      )
+                    }
+                  >
+                    Download letter
+                  </Button>
+                  {holds("sticker.attach") ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() => setConfirming("REISSUE")}
+                    >
+                      Reissue letter
+                    </Button>
+                  ) : null}
+                </div>
+              </Section>
+            ) : null}
+          </TabsContent>
+        ) : null}
+
+        <TabsContent value="levy" className="grid gap-6 outline-none">
+          <VehicleDuesPanel vehicleId={vehicle.id} />
+        </TabsContent>
+
+        {offersManage ? (
+          <TabsContent value="manage" className="grid gap-6 outline-none">
+            {holds("vehicle.update") ? (
+              <Section
+                title="Driver"
+                description="The member who drives this vehicle. May be left unset and changed here at any time, independent of a status change."
               >
-                Suspend
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant="danger"
-              disabled={busy || reason.trim().length < 4}
-              onClick={() =>
-                void act(() =>
-                  api.patch(`/vehicles/${vehicle.id}/status`, {
-                    status: "RETIRED",
-                    reason: reason.trim(),
-                  }),
-                )
-              }
-            >
-              Retire
-            </Button>
-          </div>
-        </Section>
+                <MemberPicker
+                  label="Member"
+                  htmlFor="driverId"
+                  selectedId={driverId}
+                  selectedLabel={driverLabel}
+                  onSelect={(member) => {
+                    setDriverId(member.id);
+                    setDriverLabel(member.label);
+                  }}
+                  onClear={() => {
+                    setDriverId(null);
+                    setDriverLabel(null);
+                  }}
+                />
+                <div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={
+                      busy ||
+                      driverId === (vehicle.declaredByMember?.id ?? null)
+                    }
+                    onClick={() =>
+                      void act(
+                        () =>
+                          api.patch(`/vehicles/${vehicle.id}`, {
+                            declaredByMemberId: driverId,
+                          }),
+                        "Driver saved",
+                      )
+                    }
+                  >
+                    Save driver
+                  </Button>
+                </div>
+              </Section>
+            ) : null}
+
+            {canDismiss ? (
+              <Section
+                title="Dispute"
+                description="Dismisses this claim. Upholding a claim instead — which would demote whichever declaration currently holds ACTIVE for this plate — is not built; that decision is still open with the Union."
+              >
+                <div>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    onClick={() => setConfirming("DISMISS")}
+                  >
+                    Dismiss this claim
+                  </Button>
+                </div>
+              </Section>
+            ) : null}
+
+            {canChangeStatus ? (
+              <Section
+                title="Status"
+                description="Each change asks for a reason, which is recorded in the audit trail."
+              >
+                <div className="flex flex-wrap gap-3">
+                  {isSuspended ? (
+                    <Button
+                      type="button"
+                      onClick={() => setConfirming("REACTIVATE")}
+                    >
+                      Reactivate
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setConfirming("SUSPEND")}
+                    >
+                      Suspend
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="danger"
+                    onClick={() => setConfirming("RETIRE")}
+                  >
+                    Retire
+                  </Button>
+                </div>
+              </Section>
+            ) : null}
+          </TabsContent>
+        ) : null}
+      </Tabs>
+
+      {confirming ? (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setConfirming(null);
+            }
+          }}
+          title={CONFIRM[confirming].title}
+          description={<p>{CONFIRM[confirming].description}</p>}
+          confirmLabel={CONFIRM[confirming].confirmLabel}
+          tone={CONFIRM[confirming].tone}
+          reason={{}}
+          onConfirm={(reason) => confirmed(confirming, reason)}
+        />
       ) : null}
     </div>
   );
