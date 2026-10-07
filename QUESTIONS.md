@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.18
+**Document version:** 1.19
 **Last revised:** 7 October 2026
 
 ---
@@ -2121,7 +2121,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 | ID | Question | Answer | Recorded at |
 |---|---|---|---|
 | GOV-01 | What limits, quotas, and thresholds apply? | Proposal §14.2 rate limits adopted as launch configuration, adjustable at runtime. Token expiry **90 days** with advance rotation reminders. Aggregate totals below **25** suppressed. | PRD §23.12 |
-| GOV-02 | Where is the System hosted? | API on DigitalOcean (containerised, cloud-agnostic), web on Vercel, database on Neon. | `CLAUDE.md` stack |
+| GOV-02 | Where is the System hosted? | API on DigitalOcean (containerised, cloud-agnostic), web on Vercel, database on Neon. **As found on 7 October 2026, the live API runs on Render**, on a plan that puts it to sleep when idle; DigitalOcean remains the stated target. The project owner had this recorded as it is the same day; no hosting was changed. | `CLAUDE.md` stack |
 | GOV-03 | Where does production data reside? | An **EU region** — London or Frankfurt. See GOV-04 for the outstanding lawful-basis question this raises. | Decision 10.4 |
 | GOV-15 | Can totals be fetched without filters? | **Yes** — a distinct permission returns the unfiltered grand total and **rejects any filter parameter outright**, separate from the filtered endpoint subject to the suppression floor. | PRD §13.2 |
 
@@ -2131,6 +2131,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 7 October 2026 (hosting) | **GOV-02** records what is so: the live API runs on Render, on a plan that sleeps when idle, which was the long wait at sign-in that Mr Timothy reported. DigitalOcean remains the stated target. The owner's to decide; nothing was moved. |
 | 7 October 2026 (item 42) | The registration form is reduced as Mr Timothy asked (PRD revision 1.14, Requirement 7.3). **MEM-16** is built. **MEM-17** is answered: Area is no longer asked for. **MEM-07**, **MEM-08**, and **MEM-10** are closed, because the fields they ask about left the form. MEM-06 keeps its two open points. |
 | 7 October 2026 (later) | The project owner determined the rest of **ORG-05**: the one branch and one unit beneath each zone stand as the Union's own, and the word "demo" comes off them (PRD revision 1.13; a migration renames the existing rows, with an audit record each). He also confirmed the reading of the guarantor's fields in **MEM-06**: full name, telephone, and address only. |
 | 7 October 2026 | The project owner passed on three recordings in which **Mr Timothy, Head of Operations**, goes through the live System (6 October). Answered: **MEM-15** (name, address, telephone first), **MEM-16** (next of kin: full name and telephone; address optional), **MEM-18** (the photograph is taken at registration and printed on the card), **VEH-33** (the order of the vehicle form), **VEH-34** (the chassis number is compulsory). Partly answered: **ORG-06** (Driver and Conductor head the list; the list itself is still not given), **MEM-17** (Area explained or dropped), **VEH-35** (a route says from where to where, which revises VEH-26). Added to **ORG-05** (remove the word "demo"; whether the placeholders stand is not settled) and **MEM-06** (a guarantor, where given: full name, telephone, address). He also reported that signing in is slow; that is a fault, not a question, and is in `plans/41`. Roadmap items 41 to 43. |

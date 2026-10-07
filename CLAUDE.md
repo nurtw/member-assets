@@ -86,7 +86,7 @@ their content into it.
 | Web | Next.js (App Router) | Internal dashboard + officer verification portal |
 | ORM | Prisma | Schema is the single source of truth; migrations are the audit trail |
 | DB | PostgreSQL (Neon) | Branch-per-preview; legacy export is also Postgres |
-| API hosting | DigitalOcean | Containerized; keep the image cloud-agnostic |
+| API hosting | DigitalOcean (the stated target) | Containerized; keep the image cloud-agnostic. **The live API runs on Render today**, on a plan that puts it to sleep when idle (found 7 October 2026; see item 41) |
 | Web hosting | Vercel | |
 
 Relevant installed skills: `nestjs-best-practices`, `nextjs`, `prisma-*`, `neon:*`,

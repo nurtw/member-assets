@@ -21,7 +21,7 @@ later roadmap item. They are listed rather than omitted so that the gap is visib
 
 | Component | Runs on | Notes |
 |---|---|---|
-| API (NestJS) | DigitalOcean, containerised | Listens on `PORT`, default 3001 |
+| API (NestJS) | **Render today**; DigitalOcean is the stated target. Containerised | Listens on `PORT`, default 3001. The plan it is on puts it to sleep when idle: see "If signing in is slow" |
 | Web (Next.js) | Vercel | Officer dashboard and verification portal |
 | Database | Neon PostgreSQL, EU region | Branch-per-preview |
 
