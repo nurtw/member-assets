@@ -152,6 +152,8 @@ Chairman, Secretary, and every other position, "since we are concentrating on dr
 **Still outstanding: the list itself.** Mr Timothy was looking at the eight placeholder
 designations and asked only for their order to change. That is not a statement that those
 eight are the approved list, and their codes stay prefixed `DEMO_` until it is given.
+The order is changed on the Reference lists screen (roadmap item 39): Conductor is moved
+to the top, then Driver. A new database is seeded in that order.
 **Answered on.** 6 October 2026. **Answered by.** Mr Timothy, Head of Operations, in a
 recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
 **Recorded at.** —

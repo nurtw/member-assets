@@ -24,6 +24,7 @@ export type NavIcon =
   | "profiles"
   | "limits"
   | "structure"
+  | "lists"
   | "officers"
   | "roles"
   | "security"
@@ -165,6 +166,12 @@ export const OFFICER_NAVIGATION: readonly NavGroup[] = [
         icon: "structure",
         permissions: ["organisation.read"],
       },
+      {
+        href: "/settings/lists",
+        label: "Reference lists",
+        icon: "lists",
+        permissions: ["master_data.read"],
+      },
     ],
   },
   {
@@ -243,6 +250,7 @@ export const OFFICER_LANDING_ORDER: readonly string[] = [
   // Last: nearly every officer may read the structure, and none should land
   // on it for want of anything else they hold.
   "/settings/structure",
+  "/settings/lists",
 ];
 
 export type Holds = (permission: string) => boolean;

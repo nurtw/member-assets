@@ -137,6 +137,17 @@ describe("landingHref", () => {
     ).toBe("/members");
   });
 
+  it("offers the reference lists to an officer who may read them", () => {
+    const groups = visibleNavigation(
+      OFFICER_NAVIGATION,
+      holding("master_data.read"),
+    );
+    expect(navigationItems(groups).map((item) => item.label)).toEqual([
+      "Reference lists",
+    ]);
+    expect(groups.map((group) => group.label)).toEqual(["Union"]);
+  });
+
   it("lands an officer who may only read roles on the roles", () => {
     expect(
       landingHref(

@@ -39,9 +39,30 @@ government areas. An entry is added, relabelled, or switched off from a screen.
 - Fee amounts, which stay on the Fees screen.
 
 ## Definition of done
-- [ ] Each of the four lists can be read, added to, relabelled, and switched off and on.
-- [ ] No screen offers to change a code.
-- [ ] A deactivated entry stops being offered on the registration and vehicle forms, and
+- [x] Each of the four lists can be read, added to, relabelled, and switched off and on.
+- [x] No screen offers to change a code.
+- [x] A deactivated entry stops being offered on the registration and vehicle forms, and
       stays on the records that carry it.
-- [ ] An officer without `master_data.manage` sees the lists and no acts.
-- [ ] Lint, typecheck, build, and the web tests pass; clicked through in both themes.
+- [x] An officer without `master_data.manage` sees the lists and no acts.
+- [x] Lint, typecheck, build, and the web tests pass; clicked through in both themes.
+
+**Decided while building (7 October 2026):**
+
+- **Moving an entry was added.** The plan had only "edit the label and the order", meaning
+  an order number typed by hand. Mr Timothy's request the same week (Driver and Conductor
+  first, ORG-06) showed what that asks of an officer: renumbering a whole list to move one
+  entry. A row now has "Move to the top", "Move up", and "Move down", and the screen works
+  out the numbers. The number itself is not shown.
+- **A new entry goes to the end of its list.**
+- **The seed's placeholder designations are now in the Union's order**, for a new database.
+  An existing one is reordered on this screen.
+- **Local government areas have no order**: the API lists them by state and name.
+- **No API change**, as planned.
+
+**In the click-through:** one check failed, and it was the check. It looked for a state's
+name as typed, and the API keeps it in capitals. The area was added, corrected, and
+switched off, as its audit records show. The dialog now says the state is kept in
+capitals. That hint was added after the run and has not been seen in a browser.
+
+**Not checked in a browser:** switching an entry on again, moving an entry up, and a record
+that carries an entry which was then switched off (the API leaves such a record alone).

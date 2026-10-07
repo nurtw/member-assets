@@ -443,6 +443,29 @@ none.
   member.
 - **Names are the Union's** (ORG-05). Never seed, suggest, or rename one from code.
 
+### The reference lists screen (item 39)
+
+`/settings/lists`, under **Union** in the sidebar: designations, vehicle types, route
+types, and local government areas, one tab each. It sits on item 04's routes and adds none.
+
+- **A code is typed once and never offered for editing.** The edit dialog shows it
+  read-only. `asCode` and `isCode` (`lib/reference-list.ts`) shape and check what is typed;
+  the API holds the same rule and is the control.
+- **Nothing is deleted. An entry is switched off**, and the dialog asks for no reason,
+  because the route takes none. Do not add a reason box that would be thrown away.
+- **Order is the entry's `sortOrder`.** Moving one renumbers the list in tens and saves
+  only the numbers that change, one `PATCH` each (`moved`). If one fails part-way, the list
+  is read again so the screen shows what is stored.
+- **A new entry goes to the end** (`orderAtEnd`), not to order 0, where it would tie with
+  the first.
+- **A state's name is stored in capitals** by the API. Compare it that way before deciding
+  that something changed.
+- **The page reads its tab from the address inside a `Suspense` boundary**, because it is
+  built ahead of time. `useTabParam` on a static page needs one.
+- **The designation list is still placeholder content** (ORG-06): its codes begin `DEMO_`.
+  Mr Timothy gave its order (Driver, Conductor, then the rest), not the list. Never add,
+  rename, or reorder a real entry from code; the seed's order reaches a new database only.
+
 ### Validation and the API reference
 
 **Request bodies are validated by zod schemas in `packages/contracts`**, applied per route

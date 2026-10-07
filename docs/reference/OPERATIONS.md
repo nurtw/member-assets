@@ -379,10 +379,23 @@ once none of them is active, or the whole unit is moved beneath another branch.
 
 ### Correcting master data
 
-Labels and sort order are editable; **codes are not**. A code is a foreign key in all but
-name, referenced by the legacy import mapping and by operational queries. To withdraw a
-value, deactivate it — existing references stay intact and the value stops being offered
-for new records.
+**Union → Reference lists** holds what the forms offer: designations, vehicle types, route
+types, and local government areas (needs `master_data.read`; the acts need
+`master_data.manage`). On a row's **⋯** menu:
+
+- **Change the label.** The label is what officers see and what is printed.
+- **Move to the top, up, or down.** A list is offered on its form in the order shown here.
+  To put Driver and Conductor first among the designations, move Conductor to the top, then
+  Driver.
+- **Switch off.** The entry stops being offered for new records. Records that carry it
+  keep it, and it can be switched on again.
+
+**Codes are not editable.** A code is typed once, when the entry is added. It is a foreign
+key in all but name, referenced by the legacy import mapping and by operational queries.
+Nothing is ever deleted.
+
+A route type added here pays the monthly levy's standard amount until it is given its own
+under **Fees**.
 
 ---
 

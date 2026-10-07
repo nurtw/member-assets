@@ -277,14 +277,18 @@ async function seedBranchesAndUnits(): Promise<void> {
  * right on a demo card, not to announce itself as a placeholder.
  */
 const DEMO_DESIGNATIONS = [
+  // ORG-06, in part (Mr Timothy, 6 October 2026): Driver first, Conductor
+  // second, "since we are concentrating on drivers". The order here reaches a
+  // new database only; an existing one is reordered on the Reference lists
+  // screen (roadmap item 39).
+  { code: 'DEMO_DRIVER', label: 'Driver' },
+  { code: 'DEMO_CONDUCTOR', label: 'Conductor' },
   { code: 'DEMO_CHAIRMAN', label: 'Chairman' },
   { code: 'DEMO_SECRETARY', label: 'Secretary' },
   { code: 'DEMO_TREASURER', label: 'Treasurer' },
   { code: 'DEMO_FINANCIAL_SECRETARY', label: 'Financial Secretary' },
   { code: 'DEMO_PRO', label: 'Public Relations Officer' },
   { code: 'DEMO_AUDITOR', label: 'Auditor' },
-  { code: 'DEMO_DRIVER', label: 'Driver' },
-  { code: 'DEMO_CONDUCTOR', label: 'Conductor' },
 ] as const;
 
 async function seedDemoDesignations(): Promise<void> {
