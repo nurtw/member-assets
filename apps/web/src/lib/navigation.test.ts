@@ -120,6 +120,23 @@ describe("landingHref", () => {
     ).toBe("/vehicles");
   });
 
+  it("lands an officer on the structure only when they hold nothing else", () => {
+    expect(
+      landingHref(
+        OFFICER_NAVIGATION,
+        OFFICER_LANDING_ORDER,
+        holding("organisation.read"),
+      ),
+    ).toBe("/settings/structure");
+    expect(
+      landingHref(
+        OFFICER_NAVIGATION,
+        OFFICER_LANDING_ORDER,
+        holding("organisation.read", "member.read"),
+      ),
+    ).toBe("/members");
+  });
+
   it("lands an officer who may only read roles on the roles", () => {
     expect(
       landingHref(

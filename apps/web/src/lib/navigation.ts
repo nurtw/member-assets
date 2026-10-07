@@ -23,6 +23,7 @@ export type NavIcon =
   | "organisations"
   | "profiles"
   | "limits"
+  | "structure"
   | "officers"
   | "roles"
   | "security"
@@ -155,6 +156,18 @@ export const OFFICER_NAVIGATION: readonly NavGroup[] = [
     ],
   },
   {
+    // What the Union is made of. Items 39 and 40 add its lists and signatures.
+    label: "Union",
+    items: [
+      {
+        href: "/settings/structure",
+        label: "Structure",
+        icon: "structure",
+        permissions: ["organisation.read"],
+      },
+    ],
+  },
+  {
     label: "Administration",
     items: [
       {
@@ -227,6 +240,9 @@ export const OFFICER_LANDING_ORDER: readonly string[] = [
   "/settings/users",
   "/settings/users/roles",
   "/settings/users/security",
+  // Last: nearly every officer may read the structure, and none should land
+  // on it for want of anything else they hold.
+  "/settings/structure",
 ];
 
 export type Holds = (permission: string) => boolean;

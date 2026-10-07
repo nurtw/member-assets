@@ -325,11 +325,31 @@ Open the member → **Manage** (needs `member.suspend`):
 Each asks for a reason, which is kept in the audit trail. Contact, next-of-kin, and
 guarantor details show only to an officer holding `member_sensitive.read`.
 
+### Adding, renaming, or moving a zone, branch, or unit
+
+**Union → Structure** shows the council, its zones, their branches, and the units beneath
+them, as far as you are responsible for them (needs `organisation.read`). The **⋯** menu on
+a row holds the acts (needs `organisation.manage` over that part of the structure):
+
+- **Add beneath.** What sits beneath a council is a zone, beneath a zone a branch, and
+  beneath a branch a unit, so the level is not chosen. Enter the name as the Union uses it.
+- **Rename.** The name changes wherever it is shown. For the council, the state the
+  membership card prints is changed here too.
+- **Move.** Pick where it goes, and give a reason. Everything beneath it moves with it,
+  and so do its members and vehicles. You need the permission where it is and where it
+  goes.
+
+Nothing here is supplied by the System. The branch list is the Union's to enter
+(`QUESTIONS.md` ORG-05); the branches and units marked "(demo)" are placeholders.
+
 ### Dissolving a unit or branch
 
-Deactivate, never delete. Deactivation is refused while active children or active members
-remain, so work bottom-up: reassign members, deactivate child nodes, then the node itself.
-A reason is required and is recorded.
+Deactivate, never delete: **Union → Structure**, the row's **⋯** menu, **Deactivate**, with
+a reason. It is refused while anything active sits beneath it, or while it has active
+members, so work bottom-up. The screen says which of the two is in the way.
+
+No screen moves one member to another unit. A unit with active members is deactivated
+once none of them is active, or the whole unit is moved beneath another branch.
 
 ### Correcting master data
 

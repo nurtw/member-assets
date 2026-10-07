@@ -43,10 +43,32 @@ branch list arrives, somebody types it in. No deploy, and no seed.
 - Members or vehicles counted per node.
 
 ## Definition of done
-- [ ] The tree shows what the officer may read, and nothing else.
-- [ ] A node can be added, renamed, moved, deactivated, and activated from the screen, and
-      each change is in the audit trail.
-- [ ] Each refusal is explained in words.
-- [ ] An officer without `organisation.manage` sees the tree and no acts.
-- [ ] Lint, typecheck, build, and the web tests pass; clicked through in both themes, on a
-      desktop and a phone.
+- [x] The tree shows what the officer may read, and nothing else.
+- [x] A node can be added, renamed, moved, deactivated, and activated from the screen, and
+      each change is in the audit trail (the API's own, from item 04).
+- [x] Each refusal is explained in words.
+- [x] An officer without `organisation.manage` sees the tree and no acts.
+- [x] Lint, typecheck, build, and the web tests pass; clicked through in both themes, on a
+      desktop and a phone, with synthetic nodes.
+
+**Decided while building (7 October 2026):**
+
+- **No API change was needed.**
+- **In the sidebar it is "Structure", under a new group, "Union".** Items 39 and 40 join
+  it there. It comes last in the landing order: nearly every officer may read the
+  structure, and none should land on it for want of anything else.
+- **A refusal the tree can foresee is said before the act is offered**: a node with active
+  nodes beneath it, and a node beneath an inactive parent. Offering a button that must fail
+  helps nobody. Active members are known only to the API, so that refusal is explained
+  after it.
+- **The council's state is edited in its rename dialog** (PRD §23.2). It is the only node
+  that has one.
+- **A manager scoped to one branch is offered acts on every row they can see.** The screen
+  knows only that they hold the permission somewhere. The API refuses where they do not,
+  and the screen says so.
+- **Found: the runbook told an administrator to "reassign members" before dissolving a
+  unit, and no route does that.** The runbook now says what can be done. Moving one
+  approved member to another unit is not built, and no item covers it.
+
+**Not checked in a browser:** a manager scoped to one branch (the tests cover what they
+are offered), and renaming the council.

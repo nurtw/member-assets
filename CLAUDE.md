@@ -419,6 +419,30 @@ latter is PostgreSQL's *regular expression* form: it matches nothing, returns NU
 would null every path in the moved subtree. The not-null constraint caught it; without that
 constraint it would have been silent scope corruption.
 
+### The Union structure screen (item 38)
+
+`/settings/structure`, under **Union** in the sidebar. It sits on item 04's routes and adds
+none.
+
+- **The tree is what `GET /organisations` sent.** The API has already limited it to what
+  the officer may read. A branch administrator's tree has their branch at its head, and
+  its parent is not in it. Never fetch more to "complete" it.
+- **The tree's rules are pure functions** in `apps/web/src/lib/organisation-tree.ts`, with
+  tests. Put a new rule there, not in the page.
+- **The level of a new node is never chosen.** It is `levelBeneath` the parent's level.
+- **A row picked from a search carries only the children the search kept.** Anything that
+  counts what is beneath a node looks the node up in the whole forest first (`blocked`).
+  Counts shown come from `childCount`, which the API set.
+- **Where a node may move** is an active node of the level it must sit beneath, among the
+  nodes that were sent (`moveDestinations`). The API still checks both ends.
+- **The API's refusals are generic, so the screen explains them.** What the tree already
+  shows (active nodes beneath, an inactive parent) is said before the act is offered.
+  Active members are known only to the API, and are explained after it refuses.
+- **No route moves an approved member to another unit.** A unit with active members is
+  deactivated only once none is active, or it is moved whole. No item covers moving one
+  member.
+- **Names are the Union's** (ORG-05). Never seed, suggest, or rename one from code.
+
 ### Validation and the API reference
 
 **Request bodies are validated by zod schemas in `packages/contracts`**, applied per route
