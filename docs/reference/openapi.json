@@ -4322,57 +4322,17 @@
                   "nextOfKin": {
                     "type": "object",
                     "properties": {
-                      "surname": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 80
-                      },
-                      "firstName": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 80
-                      },
-                      "middleName": {
-                        "anyOf": [
-                          {
-                            "type": "string",
-                            "maxLength": 80
-                          },
-                          {
-                            "type": "string",
-                            "const": ""
-                          }
-                        ]
-                      },
-                      "address": {
-                        "type": "string",
-                        "minLength": 4,
-                        "maxLength": 400
-                      },
-                      "area": {
-                        "type": "string",
-                        "maxLength": 120
-                      },
-                      "townCity": {
-                        "type": "string",
-                        "maxLength": 120
-                      },
-                      "lgaId": {
-                        "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                      },
-                      "stateOfOrigin": {
+                      "fullName": {
                         "type": "string",
                         "minLength": 2,
-                        "maxLength": 60
+                        "maxLength": 200
                       },
                       "phone": {
                         "type": "string"
                       },
-                      "occupation": {
+                      "address": {
                         "type": "string",
-                        "maxLength": 120
+                        "maxLength": 400
                       },
                       "signedOn": {
                         "type": "string",
@@ -4381,68 +4341,25 @@
                       }
                     },
                     "required": [
-                      "surname",
-                      "firstName",
-                      "address",
+                      "fullName",
                       "phone"
                     ]
                   },
                   "guarantor": {
                     "type": "object",
                     "properties": {
-                      "surname": {
+                      "fullName": {
                         "type": "string",
-                        "minLength": 1,
-                        "maxLength": 80
+                        "minLength": 2,
+                        "maxLength": 200
                       },
-                      "firstName": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 80
-                      },
-                      "middleName": {
-                        "anyOf": [
-                          {
-                            "type": "string",
-                            "maxLength": 80
-                          },
-                          {
-                            "type": "string",
-                            "const": ""
-                          }
-                        ]
+                      "phone": {
+                        "type": "string"
                       },
                       "address": {
                         "type": "string",
                         "minLength": 4,
                         "maxLength": 400
-                      },
-                      "area": {
-                        "type": "string",
-                        "maxLength": 120
-                      },
-                      "townCity": {
-                        "type": "string",
-                        "maxLength": 120
-                      },
-                      "relationshipToApplicant": {
-                        "type": "string",
-                        "minLength": 2,
-                        "maxLength": 120
-                      },
-                      "phone": {
-                        "type": "string"
-                      },
-                      "occupation": {
-                        "type": "string",
-                        "maxLength": 120
-                      },
-                      "hasCollateral": {
-                        "type": "boolean"
-                      },
-                      "collateralDetails": {
-                        "type": "string",
-                        "maxLength": 1000
                       },
                       "signedOn": {
                         "type": "string",
@@ -4451,11 +4368,9 @@
                       }
                     },
                     "required": [
-                      "surname",
-                      "firstName",
-                      "address",
-                      "relationshipToApplicant",
-                      "phone"
+                      "fullName",
+                      "phone",
+                      "address"
                     ]
                   }
                 },
@@ -5043,57 +4958,17 @@
                   "nextOfKin": {
                     "type": "object",
                     "properties": {
-                      "surname": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 80
-                      },
-                      "firstName": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 80
-                      },
-                      "middleName": {
-                        "anyOf": [
-                          {
-                            "type": "string",
-                            "maxLength": 80
-                          },
-                          {
-                            "type": "string",
-                            "const": ""
-                          }
-                        ]
-                      },
-                      "address": {
-                        "type": "string",
-                        "minLength": 4,
-                        "maxLength": 400
-                      },
-                      "area": {
-                        "type": "string",
-                        "maxLength": 120
-                      },
-                      "townCity": {
-                        "type": "string",
-                        "maxLength": 120
-                      },
-                      "lgaId": {
-                        "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                      },
-                      "stateOfOrigin": {
+                      "fullName": {
                         "type": "string",
                         "minLength": 2,
-                        "maxLength": 60
+                        "maxLength": 200
                       },
                       "phone": {
                         "type": "string"
                       },
-                      "occupation": {
+                      "address": {
                         "type": "string",
-                        "maxLength": 120
+                        "maxLength": 400
                       },
                       "signedOn": {
                         "type": "string",
@@ -5102,68 +4977,25 @@
                       }
                     },
                     "required": [
-                      "surname",
-                      "firstName",
-                      "address",
+                      "fullName",
                       "phone"
                     ]
                   },
                   "guarantor": {
                     "type": "object",
                     "properties": {
-                      "surname": {
+                      "fullName": {
                         "type": "string",
-                        "minLength": 1,
-                        "maxLength": 80
+                        "minLength": 2,
+                        "maxLength": 200
                       },
-                      "firstName": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 80
-                      },
-                      "middleName": {
-                        "anyOf": [
-                          {
-                            "type": "string",
-                            "maxLength": 80
-                          },
-                          {
-                            "type": "string",
-                            "const": ""
-                          }
-                        ]
+                      "phone": {
+                        "type": "string"
                       },
                       "address": {
                         "type": "string",
                         "minLength": 4,
                         "maxLength": 400
-                      },
-                      "area": {
-                        "type": "string",
-                        "maxLength": 120
-                      },
-                      "townCity": {
-                        "type": "string",
-                        "maxLength": 120
-                      },
-                      "relationshipToApplicant": {
-                        "type": "string",
-                        "minLength": 2,
-                        "maxLength": 120
-                      },
-                      "phone": {
-                        "type": "string"
-                      },
-                      "occupation": {
-                        "type": "string",
-                        "maxLength": 120
-                      },
-                      "hasCollateral": {
-                        "type": "boolean"
-                      },
-                      "collateralDetails": {
-                        "type": "string",
-                        "maxLength": 1000
                       },
                       "signedOn": {
                         "type": "string",
@@ -5172,11 +5004,9 @@
                       }
                     },
                     "required": [
-                      "surname",
-                      "firstName",
-                      "address",
-                      "relationshipToApplicant",
-                      "phone"
+                      "fullName",
+                      "phone",
+                      "address"
                     ]
                   }
                 }

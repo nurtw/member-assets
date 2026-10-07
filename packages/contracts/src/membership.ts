@@ -45,6 +45,24 @@ const address = z
 
 const optionalShortText = z.string().trim().max(120).optional();
 
+/**
+ * A whole name in one field, as the Union asks for a next of kin and a
+ * guarantor since 6 October 2026 (`QUESTIONS.md` MEM-16). The member's own
+ * name stays in three parts, because the card prints it.
+ */
+const fullName = z
+  .string()
+  .trim()
+  .min(2, 'A full name is required.')
+  .max(200, 'A name may not exceed 200 characters.');
+
+/** An address that may be left out. A blank one is no address. */
+const optionalAddress = z
+  .string()
+  .trim()
+  .max(400, 'An address may not exceed 400 characters.')
+  .optional();
+
 const uuid = z.uuid('A valid identifier is required.');
 
 /**
@@ -88,7 +106,11 @@ export const applicantSchema = z.object({
   firstName: personName,
   middleName: optionalName,
 
-  /** A2.1 – A2.5 */
+  /**
+   * A2.1 – A2.5. `area` is still accepted and stored, but the form no longer
+   * asks for it: the Union could not say how an area differs from a town
+   * (`QUESTIONS.md` MEM-17). What was recorded before is kept.
+   */
   residentialAddress: address,
   area: optionalShortText,
   townCity: optionalShortText,
@@ -133,22 +155,23 @@ export type OrganisationalAssignmentInput = z.infer<
 
 // --- Section C — Next of Kin -------------------------------------------------
 
+/**
+ * What the Union needs of a next of kin (`QUESTIONS.md` MEM-16, PRD revision
+ * 1.14): **a full name and a telephone number.** An address may be given.
+ *
+ * The paper form's other fields (town, local government area, state of origin,
+ * occupation) are no longer asked for. Their columns remain, so a registration
+ * recorded before the change keeps everything it had.
+ */
 export const nextOfKinSchema = z.object({
-  /** C1.1 – C1.3 */
-  surname: personName,
-  firstName: personName,
-  middleName: optionalName,
+  /** C1, as one field. */
+  fullName,
 
-  /** C2.1 – C2.5 */
-  address,
-  area: optionalShortText,
-  townCity: optionalShortText,
-  lgaId: uuid.optional(),
-  stateOfOrigin,
-
-  /** C3.1, C3.2 */
+  /** C3.1 */
   phone,
-  occupation: optionalShortText,
+
+  /** C2.1, optional. */
+  address: optionalAddress,
 
   /** C4.2 — see MEM-09 */
   signedOn,
@@ -158,50 +181,28 @@ export type NextOfKinInput = z.infer<typeof nextOfKinSchema>;
 
 // --- Section D — Guarantor ---------------------------------------------------
 
-export const guarantorSchema = z
-  .object({
-    /** D1.1 – D1.3 */
-    surname: personName,
-    firstName: personName,
-    middleName: optionalName,
+/**
+ * What the Union needs of a guarantor, where there is one (`QUESTIONS.md`
+ * MEM-06, as added to on 6 and 7 October 2026; PRD revision 1.14): **a full
+ * name, a telephone number, and an address.** The guarantor as a whole is
+ * still optional.
+ *
+ * The relationship, the occupation, the town, and the collateral question are
+ * no longer asked for. Their columns remain for registrations recorded before.
+ */
+export const guarantorSchema = z.object({
+  /** D1, as one field. */
+  fullName,
 
-    /** D2.1 – D2.3. No LGA: see MEM-10. */
-    address,
-    area: optionalShortText,
-    townCity: optionalShortText,
+  /** D3.2 */
+  phone,
 
-    /** D3.1 – D3.3 */
-    relationshipToApplicant: z
-      .string()
-      .trim()
-      .min(2, 'State how the guarantor knows the applicant.')
-      .max(120),
-    phone,
-    occupation: optionalShortText,
+  /** D2.1 */
+  address,
 
-    /**
-     * D4.2 — the collateral undertaking.
-     *
-     * **MEM-08**: the printed wording is not fully legible and the vehicle class
-     * it refers to is unconfirmed. The answer is captured; the question's exact
-     * phrasing is presentation and is corrected without touching this schema.
-     */
-    hasCollateral: z.boolean().optional(),
-    /** D4.3 — not printed on the paper form; captured where the answer is yes. */
-    collateralDetails: z.string().trim().max(1000).optional(),
-
-    /** D4.1 signing date — see MEM-09 */
-    signedOn,
-  })
-  .refine(
-    (value) =>
-      value.hasCollateral !== true ||
-      (value.collateralDetails?.length ?? 0) > 0,
-    {
-      message: 'Describe the collateral when the answer is yes.',
-      path: ['collateralDetails'],
-    },
-  );
+  /** D4.1 signing date — see MEM-09 */
+  signedOn,
+});
 
 export type GuarantorInput = z.infer<typeof guarantorSchema>;
 
@@ -359,8 +360,8 @@ export interface ApplicationDetail extends ApplicationSummary {
     lga: { id: string; name: string; stateName: string } | null;
     stateOfOrigin: string | null;
   } | null;
-  nextOfKin: Record<string, unknown> | null;
-  guarantor: Record<string, unknown> | null;
+  nextOfKin: RegistrationNextOfKin | null;
+  guarantor: RegistrationGuarantor | null;
   passportPhotoId: string | null;
   /**
    * A signed link to the photograph, good for a few minutes (item 41). For
@@ -387,16 +388,34 @@ export interface MemberSearchResult {
   organisation: { id: string; name: string; level: string };
 }
 
-/** A person named on a member's record: next of kin, or guarantor. */
-export interface MemberRecordPerson {
-  surname: string;
-  firstName: string;
-  middleName: string | null;
+/**
+ * A person named on a registration: the next of kin, or the guarantor.
+ *
+ * `fullName`, `phone`, and `address` are what the form asks for. The rest was
+ * asked for until 7 October 2026 (item 42) and is `null` on anything recorded
+ * since; it is returned so that an earlier registration shows all it had. Each
+ * field is named: no row identifier or timestamp rides along.
+ */
+export interface RegistrationPerson {
+  fullName: string;
   phone: string;
-  address: string;
+  address: string | null;
   area: string | null;
   townCity: string | null;
   occupation: string | null;
+}
+
+export interface RegistrationNextOfKin extends RegistrationPerson {
+  lga: { id: string; name: string; stateName: string } | null;
+  stateOfOrigin: string | null;
+}
+
+export interface RegistrationGuarantor extends RegistrationPerson {
+  /** Always given for a guarantor. */
+  address: string;
+  relationshipToApplicant: string | null;
+  hasCollateral: boolean | null;
+  collateralDetails: string | null;
 }
 
 /**
@@ -413,14 +432,8 @@ export interface MemberRecordSensitive {
     lga: { id: string; name: string; stateName: string } | null;
     stateOfOrigin: string | null;
   } | null;
-  nextOfKin: MemberRecordPerson | null;
-  guarantor:
-    | (MemberRecordPerson & {
-        relationshipToApplicant: string;
-        hasCollateral: boolean | null;
-        collateralDetails: string | null;
-      })
-    | null;
+  nextOfKin: RegistrationNextOfKin | null;
+  guarantor: RegistrationGuarantor | null;
 }
 
 /**

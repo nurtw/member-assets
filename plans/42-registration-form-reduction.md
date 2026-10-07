@@ -45,9 +45,34 @@ already recorded is lost.
   printed form and the paper one will differ.
 
 ## Definition of done
-- [ ] The form asks for the fields above and saves them. An application with no guarantor
+- [x] The form asks for the fields above and saves them. An application with no guarantor
       still saves.
-- [ ] An application recorded before the change opens and prints with everything it had.
-- [ ] No column and no row is removed by the migration.
-- [ ] The PRD and the register say what the form now asks.
-- [ ] Lint, typecheck, build, and every test pass; clicked through.
+- [x] An application recorded before the change opens and prints with everything it had.
+- [x] No column and no row is removed by the migration.
+- [x] The PRD and the register say what the form now asks.
+- [x] Lint, typecheck, build, and every test pass; clicked through.
+
+**Decided while building (7 October 2026):**
+
+- **The full name of an earlier next of kin or guarantor is put together by the migration**
+  from the three name parts it held, first name first. Checked on a synthetic row before
+  it was applied anywhere.
+- **On a write, only the columns the form has are written.** An amendment of a draft made
+  before the change keeps its occupation, town, relationship, and collateral. The three old
+  name parts are cleared, because the full name just entered replaces them.
+- **An area is written only when one is sent**, for the same reason.
+- **The two people are returned as named fields**, where the application's detail used to
+  return whole rows. The old name parts are not returned.
+- **Details that are no longer asked for show, and print, only where there are any.**
+- **A guarantor is started by filling any of its three fields**, and then needs all three.
+- **The application's page now shows the town or city.** It did not before.
+
+**Releasing it.** The migration must be on Neon **before** the new code serves traffic,
+or the live API fails on the column it expects. Between the two, the code that is live
+cannot save a new registration, because it does not fill the full name. So the migration
+and the push go together, at a quiet moment.
+
+**Not settled:** whether the Union's paper form is being reduced too. The System's printed
+form follows the screen.
+
+**Not checked in a browser:** amending a draft on the reduced form (the tests cover it).

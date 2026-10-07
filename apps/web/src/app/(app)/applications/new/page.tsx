@@ -36,9 +36,15 @@ import { useSession } from "@/lib/session";
  * navigate between steps to check a field they can already see, and would create
  * four ways to record half a registration.
  *
- * Field labels reproduce the printed form's wording. Where the printed wording is
- * not yet confirmed (`QUESTIONS.md` MEM-08, MEM-09, MEM-10) the field is present
- * and marked, rather than guessed at or quietly omitted.
+ * Field labels reproduce the printed form's wording.
+ *
+ * **It no longer asks everything the paper form does** (PRD revision 1.14, from
+ * the Union's Head of Operations on 6 October 2026): the member's name, address,
+ * and telephone come first (`QUESTIONS.md` MEM-15); Area is not asked for
+ * (MEM-17); a next of kin is a full name and a telephone number, with an
+ * address if there is one (MEM-16); and a guarantor, where there is one, is a
+ * full name, a telephone number, and an address (MEM-06). Do not put a field
+ * back to match the paper form.
  */
 
 interface FormState {
@@ -50,32 +56,18 @@ const INITIAL: FormState = {
   firstName: "",
   middleName: "",
   residentialAddress: "",
-  area: "",
   townCity: "",
   residentialLgaId: "",
   stateOfOrigin: "",
   phone: "",
   organisationId: "",
   designationId: "",
-  nokSurname: "",
-  nokFirstName: "",
-  nokMiddleName: "",
-  nokAddress: "",
-  nokTownCity: "",
-  nokLgaId: "",
-  nokStateOfOrigin: "",
+  nokFullName: "",
   nokPhone: "",
-  nokOccupation: "",
-  gSurname: "",
-  gFirstName: "",
-  gMiddleName: "",
-  gAddress: "",
-  gTownCity: "",
-  gRelationship: "",
+  nokAddress: "",
+  gFullName: "",
   gPhone: "",
-  gOccupation: "",
-  gHasCollateral: false,
-  gCollateralDetails: "",
+  gAddress: "",
 };
 
 /** Depth-first flatten of the visible hierarchy down to units. */
@@ -137,18 +129,15 @@ export default function NewApplicationPage() {
 
   /**
    * "Same as applicant's address" for the next-of-kin section. A one-time
-   * copy, not a live link: the officer can still edit the next-of-kin fields
-   * afterward (a next of kin sharing a household today may not always), and
-   * re-ticking the box copies again from whatever the applicant fields hold
-   * at that moment.
+   * copy, not a live link: the officer can still edit the address afterward (a
+   * next of kin sharing a household today may not always), and re-ticking the
+   * box copies again from whatever the applicant's address holds at that
+   * moment.
    */
   function copyApplicantAddressToNextOfKin() {
     setForm((current) => ({
       ...current,
       nokAddress: current.residentialAddress,
-      nokTownCity: current.townCity,
-      nokLgaId: current.residentialLgaId,
-      nokStateOfOrigin: current.stateOfOrigin,
     }));
   }
 
@@ -164,6 +153,10 @@ export default function NewApplicationPage() {
     return value.length > 0 ? value : undefined;
   };
 
+  const startedGuarantor = ["gFullName", "gPhone", "gAddress"].some(
+    (key) => (form[key] as string).trim().length > 0,
+  );
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setSubmitting(true);
@@ -178,7 +171,6 @@ export default function NewApplicationPage() {
             firstName: form.firstName,
             middleName: optional("middleName"),
             residentialAddress: form.residentialAddress,
-            area: optional("area"),
             townCity: optional("townCity"),
             residentialLgaId: optional("residentialLgaId"),
             stateOfOrigin: optional("stateOfOrigin"),
@@ -189,30 +181,18 @@ export default function NewApplicationPage() {
             designationId: optional("designationId"),
           },
           nextOfKin: {
-            surname: form.nokSurname,
-            firstName: form.nokFirstName,
-            middleName: optional("nokMiddleName"),
-            address: form.nokAddress,
-            townCity: optional("nokTownCity"),
-            lgaId: optional("nokLgaId"),
-            stateOfOrigin: optional("nokStateOfOrigin"),
+            fullName: form.nokFullName,
             phone: form.nokPhone,
-            occupation: optional("nokOccupation"),
+            address: optional("nokAddress"),
           },
-          // MEM-06: a guarantor is not compulsory. Omit the section entirely
-          // unless the officer has actually started filling it in.
-          guarantor: optional("gSurname")
+          // MEM-06: a guarantor is not compulsory. The section is left out
+          // unless the officer has started filling it in; once any of its
+          // three fields is filled, the API asks for all three.
+          guarantor: startedGuarantor
             ? {
-                surname: form.gSurname,
-                firstName: form.gFirstName,
-                middleName: optional("gMiddleName"),
-                address: form.gAddress,
-                townCity: optional("gTownCity"),
-                relationshipToApplicant: form.gRelationship,
+                fullName: form.gFullName,
                 phone: form.gPhone,
-                occupation: optional("gOccupation"),
-                hasCollateral: form.gHasCollateral as boolean,
-                collateralDetails: optional("gCollateralDetails"),
+                address: form.gAddress,
               }
             : undefined,
         },
@@ -308,9 +288,6 @@ export default function NewApplicationPage() {
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Area" htmlFor="area">
-            <TextInput id="area" {...text("area")} />
-          </Field>
           <Field label="Town / City" htmlFor="townCity">
             <TextInput id="townCity" {...text("townCity")} />
           </Field>
@@ -388,16 +365,26 @@ export default function NewApplicationPage() {
         </Field>
       </Section>
 
-      <Section title="Section C — Next of Kin">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Surname" htmlFor="nokSurname" required error={fieldError("nextOfKin.surname")}>
-            <TextInput id="nokSurname" required {...text("nokSurname")} />
+      <Section
+        title="Section C — Next of Kin"
+        description="A full name and a telephone number. An address may be added."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Full name of next of kin"
+            htmlFor="nokFullName"
+            required
+            error={fieldError("nextOfKin.fullName")}
+          >
+            <TextInput id="nokFullName" required {...text("nokFullName")} />
           </Field>
-          <Field label="First name" htmlFor="nokFirstName" required error={fieldError("nextOfKin.firstName")}>
-            <TextInput id="nokFirstName" required {...text("nokFirstName")} />
-          </Field>
-          <Field label="Middle name" htmlFor="nokMiddleName">
-            <TextInput id="nokMiddleName" {...text("nokMiddleName")} />
+          <Field
+            label="Tel. No. of Next of Kin"
+            htmlFor="nokPhone"
+            required
+            error={fieldError("nextOfKin.phone")}
+          >
+            <TextInput id="nokPhone" type="tel" required {...text("nokPhone")} />
           </Field>
         </div>
 
@@ -414,138 +401,47 @@ export default function NewApplicationPage() {
           Same as applicant&apos;s address
         </label>
 
-        <Field label="Address" htmlFor="nokAddress" required error={fieldError("nextOfKin.address")}>
-          <TextArea id="nokAddress" required {...text("nokAddress")} />
-        </Field>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Town / City" htmlFor="nokTownCity">
-            <TextInput id="nokTownCity" {...text("nokTownCity")} />
-          </Field>
-          <Field label="Local Government Area" htmlFor="nokLgaId">
-            <Select id="nokLgaId" {...text("nokLgaId")}>
-              <option value="">Not stated</option>
-              {lgas.map((lga) => (
-                <option key={lga.id} value={lga.id}>
-                  {lga.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="State of origin" htmlFor="nokStateOfOrigin">
-            <Select id="nokStateOfOrigin" {...text("nokStateOfOrigin")}>
-              <option value="">Not stated</option>
-              {NIGERIAN_STATES.map((state) => (
-                <option key={state} value={state}>
-                  {state}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field
-            label="Tel. No. of Next of Kin"
-            htmlFor="nokPhone"
-            required
-            error={fieldError("nextOfKin.phone")}
-          >
-            <TextInput id="nokPhone" type="tel" required {...text("nokPhone")} />
-          </Field>
-        </div>
-
-        <Field label="Occupation of next of kin" htmlFor="nokOccupation">
-          <TextInput id="nokOccupation" {...text("nokOccupation")} />
+        <Field
+          label="Address of next of kin"
+          htmlFor="nokAddress"
+          hint="Optional."
+          error={fieldError("nextOfKin.address")}
+        >
+          <TextArea id="nokAddress" {...text("nokAddress")} />
         </Field>
       </Section>
 
-      <Section title="Section D — Guarantor">
-        <p className="text-xs text-faint-foreground">
-          Optional. Leave every field blank if this application has no guarantor.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Surname" htmlFor="gSurname" error={fieldError("guarantor.surname")}>
-            <TextInput id="gSurname" {...text("gSurname")} />
-          </Field>
-          <Field label="First name" htmlFor="gFirstName" error={fieldError("guarantor.firstName")}>
-            <TextInput id="gFirstName" {...text("gFirstName")} />
-          </Field>
-          <Field label="Middle name" htmlFor="gMiddleName">
-            <TextInput id="gMiddleName" {...text("gMiddleName")} />
-          </Field>
-        </div>
-
-        <Field label="Address" htmlFor="gAddress" error={fieldError("guarantor.address")}>
-          <TextArea id="gAddress" {...text("gAddress")} />
-        </Field>
-
+      <Section
+        title="Section D — Guarantor"
+        description="Optional. Leave all three blank if this application has no guarantor. Where there is one, all three are needed."
+      >
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Town / City" htmlFor="gTownCity">
-            <TextInput id="gTownCity" {...text("gTownCity")} />
-          </Field>
           <Field
-            label="Relationship with Operator / Applicant"
-            htmlFor="gRelationship"
-            error={fieldError("guarantor.relationshipToApplicant")}
+            label="Full name of guarantor"
+            htmlFor="gFullName"
+            required={startedGuarantor}
+            error={fieldError("guarantor.fullName")}
           >
-            <TextInput id="gRelationship" {...text("gRelationship")} />
+            <TextInput id="gFullName" {...text("gFullName")} />
           </Field>
           <Field
             label="Tel. No. of Guarantor"
             htmlFor="gPhone"
+            required={startedGuarantor}
             error={fieldError("guarantor.phone")}
           >
             <TextInput id="gPhone" type="tel" {...text("gPhone")} />
           </Field>
-          <Field label="Occupation of Guarantor" htmlFor="gOccupation">
-            <TextInput id="gOccupation" {...text("gOccupation")} />
-          </Field>
         </div>
 
-        {/*
-          The collateral undertaking. The printed wording is not fully legible on
-          the photographed form and the vehicle class it names is unconfirmed
-          (QUESTIONS.md MEM-08), so the question is shown as recorded in the field
-          specification and marked, rather than paraphrased into something the
-          Union never wrote.
-        */}
-        <fieldset className="rounded-md border border-line p-4">
-          <legend className="px-1 text-sm font-medium">
-            Do you have any collateral to secure the tricycle/motorcycle for one
-            year?
-          </legend>
-          <p className="mb-3 text-xs text-faint-foreground">
-            Wording awaiting confirmation against the printed form.
-          </p>
-          <div className="flex gap-6">
-            {[
-              { label: "Yes", value: true },
-              { label: "No", value: false },
-            ].map((option) => (
-              <label key={option.label} className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="gHasCollateral"
-                  checked={form.gHasCollateral === option.value}
-                  onChange={() => set("gHasCollateral")(option.value)}
-                  className="h-4 w-4 accent-primary"
-                />
-                {option.label}
-              </label>
-            ))}
-          </div>
-
-          {form.gHasCollateral === true ? (
-            <div className="mt-4">
-              <Field
-                label="Collateral details"
-                htmlFor="gCollateralDetails"
-                required
-                error={fieldError("guarantor.collateralDetails")}
-              >
-                <TextArea id="gCollateralDetails" {...text("gCollateralDetails")} />
-              </Field>
-            </div>
-          ) : null}
-        </fieldset>
+        <Field
+          label="Address of guarantor"
+          htmlFor="gAddress"
+          required={startedGuarantor}
+          error={fieldError("guarantor.address")}
+        >
+          <TextArea id="gAddress" {...text("gAddress")} />
+        </Field>
       </Section>
 
       <div className="flex items-center gap-3">

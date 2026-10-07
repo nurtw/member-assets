@@ -392,11 +392,20 @@ model NextOfKin {
   id       String @id @default(uuid()) @db.Uuid
   memberId String @unique @map("member_id") @db.Uuid
 
-  surname    String
-  firstName  String  @map("first_name")
+  /// The whole name in one field, which is what the form asks for since
+  /// PRD revision 1.14 (QUESTIONS.md MEM-16). Rows recorded before then had
+  /// theirs put together from the three parts below, by the migration.
+  fullName String @map("full_name")
+
+  /// No longer asked for. Kept, and nullable, for rows recorded before
+  /// revision 1.14; null on every row written since. The same holds for
+  /// `area`, `townCity`, `lgaId`, `stateOfOrigin`, and `occupation` below.
+  surname    String?
+  firstName  String? @map("first_name")
   middleName String? @map("middle_name")
 
-  address       String
+  /// Optional since revision 1.14: a next of kin needs a name and a telephone.
+  address       String?
   area          String?
   townCity      String? @map("town_city")
   lgaId         String? @map("lga_id") @db.Uuid
@@ -423,14 +432,22 @@ model Guarantor {
   id       String @id @default(uuid()) @db.Uuid
   memberId String @unique @map("member_id") @db.Uuid
 
-  surname    String
-  firstName  String  @map("first_name")
+  /// The whole name in one field (PRD revision 1.14; QUESTIONS.md MEM-06).
+  /// Rows recorded before then had theirs put together by the migration.
+  fullName String @map("full_name")
+
+  /// No longer asked for. Kept, and nullable, for rows recorded before
+  /// revision 1.14; null on every row written since. The same holds for
+  /// `area`, `townCity`, `relationshipToApplicant`, `occupation`, and the two
+  /// collateral columns below.
+  surname    String?
+  firstName  String? @map("first_name")
   middleName String? @map("middle_name")
 
   address                 String
   area                    String?
   townCity                String? @map("town_city")
-  relationshipToApplicant String  @map("relationship_to_applicant")
+  relationshipToApplicant String? @map("relationship_to_applicant")
   phone                   String
   occupation              String?
 

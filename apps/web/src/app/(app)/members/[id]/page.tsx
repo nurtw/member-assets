@@ -1,6 +1,6 @@
 "use client";
 
-import type { MemberRecord, MemberRecordPerson } from "@nurtw/contracts";
+import type { MemberRecord } from "@nurtw/contracts";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -15,6 +15,10 @@ import {
   MemberVehiclesPanel,
   memberVehiclesKey,
 } from "@/components/member-panels";
+import {
+  GuarantorDetails,
+  NextOfKinDetails,
+} from "@/components/registration-people";
 import {
   Button,
   Detail,
@@ -67,12 +71,6 @@ const CHANGES: Record<
   RESTORE: { status: "ACTIVE", done: "Member restored" },
   CANCEL: { status: "CANCELLED", done: "Membership cancelled" },
 };
-
-function personName(person: MemberRecordPerson): string {
-  return [person.surname + ",", person.firstName, person.middleName]
-    .filter((part): part is string => Boolean(part?.trim()))
-    .join(" ");
-}
 
 function place(person: {
   area: string | null;
@@ -300,71 +298,11 @@ export default function MemberRecordPage() {
               </Section>
 
               <Section title="Next of kin">
-                {sensitive.nextOfKin ? (
-                  <DetailList>
-                    <Detail
-                      label="Name"
-                      value={personName(sensitive.nextOfKin)}
-                    />
-                    <Detail
-                      label="Telephone"
-                      value={sensitive.nextOfKin.phone}
-                    />
-                    <Detail
-                      label="Address"
-                      value={sensitive.nextOfKin.address}
-                    />
-                    <Detail
-                      label="Occupation"
-                      value={sensitive.nextOfKin.occupation}
-                    />
-                  </DetailList>
-                ) : (
-                  <p className="text-sm text-faint-foreground">
-                    No next of kin is on this record.
-                  </p>
-                )}
+                <NextOfKinDetails person={sensitive.nextOfKin} />
               </Section>
 
               <Section title="Guarantor">
-                {sensitive.guarantor ? (
-                  <DetailList>
-                    <Detail
-                      label="Name"
-                      value={personName(sensitive.guarantor)}
-                    />
-                    <Detail
-                      label="Relationship to the member"
-                      value={sensitive.guarantor.relationshipToApplicant}
-                    />
-                    <Detail
-                      label="Telephone"
-                      value={sensitive.guarantor.phone}
-                    />
-                    <Detail
-                      label="Collateral offered"
-                      value={
-                        sensitive.guarantor.hasCollateral === true
-                          ? "Yes"
-                          : sensitive.guarantor.hasCollateral === false
-                            ? "No"
-                            : null
-                      }
-                    />
-                    {sensitive.guarantor.hasCollateral === true ? (
-                      <div className="sm:col-span-2">
-                        <Detail
-                          label="Collateral details"
-                          value={sensitive.guarantor.collateralDetails}
-                        />
-                      </div>
-                    ) : null}
-                  </DetailList>
-                ) : (
-                  <p className="text-sm text-faint-foreground">
-                    No guarantor is on this record. One is not compulsory.
-                  </p>
-                )}
+                <GuarantorDetails person={sensitive.guarantor} />
               </Section>
             </>
           ) : (

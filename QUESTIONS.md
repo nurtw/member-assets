@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.17
+**Document version:** 1.18
 **Last revised:** 7 October 2026
 
 ---
@@ -47,14 +47,14 @@ thing a year later.
 | Group | Answered | Awaiting | Deferred | Total |
 |---|---|---|---|---|
 | Structure and master data (ORG) | 5 | 2 | — | 7 |
-| Membership and registration (MEM) | 7 | 11 | — | 18 |
+| Membership and registration (MEM) | 11 | 7 | — | 18 |
 | Cards (CARD) | 5 | 3 | — | 8 |
 | Vehicles and stickers (VEH) | 27 | 8 | — | 35 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 21 | 0 | — | 21 |
 | Governance and go-live (GOV) | 10 | 10 | 1 | 21 |
-| **Total** | **99** | **38** | **1** | **138** |
+| **Total** | **103** | **34** | **1** | **138** |
 
 ### Blocking production use right now
 
@@ -243,14 +243,21 @@ confirmed that reading on 7 October 2026**: only those three. Nothing leaves the
 `plans/42` is built. MEM-07, MEM-08, and MEM-10 ask about fields this removes; they are
 closed when it is.
 
-### MEM-07 · Guarantor relationship values ⏳
+**Built, 7 October 2026** (roadmap item 42; PRD Requirement 7.3). MEM-07, MEM-08, and MEM-10
+are closed. Still outstanding here: whether a guarantor must be a member, and whether one
+may cover more than one applicant.
+
+### MEM-07 · Guarantor relationship values ✅
 
 **Question.** What values should the guarantor's **Relationship with Operator** field offer?
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **No longer asked.** The field left the form with PRD revision 1.14 (MEM-06, as
+added to on 6 and 7 October 2026): a guarantor is asked for a full name, a telephone number,
+and an address, and nothing else. What an earlier registration recorded is kept.
+**Answered on.** 7 October 2026. **Answered by.** Project owner, on Mr Timothy's direction of
+6 October. **Recorded at.** PRD Requirement 7.3.
 
-### MEM-08 · The collateral question ⏳
+### MEM-08 · The collateral question ✅
 
 **Question.** Confirm the exact printed wording of the collateral question, and whether the
 vehicle referred to is a **tricycle**, a **motorcycle**, or "tricycle/motorcycle". Where the
@@ -261,8 +268,11 @@ required?
 on a legal undertaking. The System must reproduce the Union's wording, not an approximation
 of it.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **No longer asked.** The field left the form with PRD revision 1.14 (MEM-06, as
+added to on 6 and 7 October 2026): a guarantor is asked for a full name, a telephone number,
+and an address, and nothing else. What an earlier registration recorded is kept.
+**Answered on.** 7 October 2026. **Answered by.** Project owner, on Mr Timothy's direction of
+6 October. **Recorded at.** PRD Requirement 7.3.
 
 ### MEM-09 · Date labels on the form ⏳
 
@@ -272,13 +282,16 @@ next of kin**. Both appear to be date fields but are not fully legible in the ph
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
-### MEM-10 · Guarantor local government area ⏳
+### MEM-10 · Guarantor local government area ✅
 
 **Question.** Does the guarantor's address section include a printed **Local Government
 Area** field? It is not clearly visible in Section D of the form.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **No longer asked.** The field left the form with PRD revision 1.14 (MEM-06, as
+added to on 6 and 7 October 2026): a guarantor is asked for a full name, a telephone number,
+and an address, and nothing else. What an earlier registration recorded is kept.
+**Answered on.** 7 October 2026. **Answered by.** Project owner, on Mr Timothy's direction of
+6 October. **Recorded at.** PRD Requirement 7.3.
 
 ### MEM-11 · Fields not visible on the photographed form ⏳
 
@@ -337,11 +350,14 @@ is needed: no town, local government area, state of origin, or occupation.
 **Consequences.** The form and the API require a surname, a first name, and an address
 today, and the database holds the name in three columns. Changing that is a change to the
 rule and to the schema, planned in `plans/42`. Details already recorded are kept.
+
+**Built, 7 October 2026** (roadmap item 42). A full-name column was added, and filled for
+earlier rows from the three name parts they held. The columns no longer asked for remain.
 **Answered on.** 6 October 2026. **Answered by.** Mr Timothy, Head of Operations, in a
 recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
-**Recorded at.** — (PRD §7 is revised when `plans/42` is built.)
+**Recorded at.** PRD Requirement 7.3 (revision 1.14).
 
-### MEM-17 · Area, and Town or City ⏳ (partly answered)
+### MEM-17 · Area, and Town or City ✅
 
 **Question.** The Union's printed form asks for both an **Area** and a **Town / City**. What
 is the difference, and should the System ask for both?
@@ -351,6 +367,11 @@ form **explain each in brackets, or else drop Area and keep Town / City**. **Sti
 outstanding:** what Area means on the Union's form, if it is kept. No definition is invented
 here. `plans/42` recommends that the form stop asking for Area, and that what is already
 recorded be kept. See also ORG-07.
+
+**Answer (the rest), 7 October 2026.** The project owner approved `plans/42`: **the form no
+longer asks for Area**, which is the second of the two courses Mr Timothy gave. Town / City
+stays. An area recorded before is kept and shown. What Area meant on the paper form was
+never established, and no longer needs to be.
 **Answered on.** 6 October 2026. **Answered by.** Mr Timothy, Head of Operations, in a
 recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
 **Recorded at.** —
@@ -2110,6 +2131,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 7 October 2026 (item 42) | The registration form is reduced as Mr Timothy asked (PRD revision 1.14, Requirement 7.3). **MEM-16** is built. **MEM-17** is answered: Area is no longer asked for. **MEM-07**, **MEM-08**, and **MEM-10** are closed, because the fields they ask about left the form. MEM-06 keeps its two open points. |
 | 7 October 2026 (later) | The project owner determined the rest of **ORG-05**: the one branch and one unit beneath each zone stand as the Union's own, and the word "demo" comes off them (PRD revision 1.13; a migration renames the existing rows, with an audit record each). He also confirmed the reading of the guarantor's fields in **MEM-06**: full name, telephone, and address only. |
 | 7 October 2026 | The project owner passed on three recordings in which **Mr Timothy, Head of Operations**, goes through the live System (6 October). Answered: **MEM-15** (name, address, telephone first), **MEM-16** (next of kin: full name and telephone; address optional), **MEM-18** (the photograph is taken at registration and printed on the card), **VEH-33** (the order of the vehicle form), **VEH-34** (the chassis number is compulsory). Partly answered: **ORG-06** (Driver and Conductor head the list; the list itself is still not given), **MEM-17** (Area explained or dropped), **VEH-35** (a route says from where to where, which revises VEH-26). Added to **ORG-05** (remove the word "demo"; whether the placeholders stand is not settled) and **MEM-06** (a guarantor, where given: full name, telephone, address). He also reported that signing in is slow; that is a fault, not a question, and is in `plans/41`. Roadmap items 41 to 43. |
 | 6 October 2026 | The project owner took up **VEH-29** (stock by scanning, held by a new permission in no role) and gave **VEH-31** (assigning a sticker is pay, then scan) and **GOV-21** (the previous operator is not named; a screen says only "sticker"). New **VEH-32** is open: whether a second officer confirms stock. PRD revised to 1.12; roadmap items 27 and 36. Totals: 93 answered, 37 awaiting, 1 deferred. |

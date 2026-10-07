@@ -12,6 +12,8 @@ import type {
   MemberRecord,
   MemberRecordSensitive,
   MemberSearchResult,
+  RegistrationGuarantor,
+  RegistrationNextOfKin,
   ReviewApplicationInput,
   SetMemberStatusInput,
   UpdateApplicationInput,
@@ -53,6 +55,38 @@ const SENSITIVE_READ = 'member_sensitive.read';
 
 /** Attempts before a membership-number collision is treated as a real fault. */
 const IDENTIFIER_ATTEMPTS = 5;
+
+/**
+ * A next of kin, and a guarantor, as they are returned: the fields of
+ * `RegistrationNextOfKin` and `RegistrationGuarantor`, each named.
+ *
+ * The first three are what the form asks for. The rest was asked for before
+ * PRD revision 1.14 and is returned so that an earlier registration shows all
+ * it had. The old name parts are not among them: the full name carries the
+ * name. Add a column here only on purpose (Requirement 7.1).
+ */
+const NEXT_OF_KIN_SELECT = {
+  fullName: true,
+  phone: true,
+  address: true,
+  area: true,
+  townCity: true,
+  occupation: true,
+  stateOfOrigin: true,
+  lga: { select: { id: true, name: true, stateName: true } },
+} satisfies Prisma.NextOfKinSelect;
+
+const GUARANTOR_SELECT = {
+  fullName: true,
+  phone: true,
+  address: true,
+  area: true,
+  townCity: true,
+  occupation: true,
+  relationshipToApplicant: true,
+  hasCollateral: true,
+  collateralDetails: true,
+} satisfies Prisma.GuarantorSelect;
 
 /**
  * Membership registration (PRD §7).
@@ -260,17 +294,6 @@ export class MembershipService {
 
   /** Contact, next of kin, and guarantor, each field named. */
   private async sensitiveParts(memberId: string): Promise<MemberRecordSensitive> {
-    const person = {
-      surname: true,
-      firstName: true,
-      middleName: true,
-      phone: true,
-      address: true,
-      area: true,
-      townCity: true,
-      occupation: true,
-    } as const;
-
     const [contact, nextOfKin, guarantor] = await Promise.all([
       this.prisma.memberContact.findUnique({
         where: { memberId },
@@ -283,15 +306,13 @@ export class MembershipService {
           residentialLga: { select: { id: true, name: true, stateName: true } },
         },
       }),
-      this.prisma.nextOfKin.findUnique({ where: { memberId }, select: person }),
+      this.prisma.nextOfKin.findUnique({
+        where: { memberId },
+        select: NEXT_OF_KIN_SELECT,
+      }),
       this.prisma.guarantor.findUnique({
         where: { memberId },
-        select: {
-          ...person,
-          relationshipToApplicant: true,
-          hasCollateral: true,
-          collateralDetails: true,
-        },
+        select: GUARANTOR_SELECT,
       }),
     ]);
 
@@ -321,8 +342,10 @@ export class MembershipService {
         organisation: { select: { id: true, name: true, level: true } },
         designation: { select: { id: true, code: true, label: true } },
         contact: { include: { residentialLga: true } },
-        nextOfKin: { include: { lga: true } },
-        guarantor: true,
+        // Each field named (Requirement 7.1): no row identifier, no timestamp,
+        // and nothing a later column would add by default.
+        nextOfKin: { select: NEXT_OF_KIN_SELECT },
+        guarantor: { select: GUARANTOR_SELECT },
       },
     });
 
@@ -359,12 +382,8 @@ export class MembershipService {
             stateOfOrigin: member.contact.stateOfOrigin,
           }
         : null,
-      nextOfKin: member.nextOfKin
-        ? (member.nextOfKin as unknown as Record<string, unknown>)
-        : null,
-      guarantor: member.guarantor
-        ? (member.guarantor as unknown as Record<string, unknown>)
-        : null,
+      nextOfKin: member.nextOfKin,
+      guarantor: member.guarantor,
       passportPhotoId: member.passportPhotoId,
       // Signed here, for a reader who has just been shown the rest of the
       // record. The link lasts minutes and names one file.
@@ -399,7 +418,6 @@ export class MembershipService {
     }
 
     await this.assertLgaAvailable(input.applicant.residentialLgaId);
-    await this.assertLgaAvailable(input.nextOfKin.lgaId);
     await this.assertDesignationExists(input.assignment.designationId);
 
     const created = await this.prisma.$transaction(async (tx) => {
@@ -492,9 +510,6 @@ export class MembershipService {
     }
     if (input.applicant) {
       await this.assertLgaAvailable(input.applicant.residentialLgaId);
-    }
-    if (input.nextOfKin) {
-      await this.assertLgaAvailable(input.nextOfKin.lgaId);
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -807,13 +822,19 @@ export class MembershipService {
 
     const detail = await this.findOne(userId, id);
     const contact = detail.contact;
-    const kin = detail.nextOfKin ?? {};
-    const guarantor = detail.guarantor ?? {};
+    const kin: RegistrationNextOfKin | null = detail.nextOfKin;
+    const guarantor: RegistrationGuarantor | null = detail.guarantor;
 
-    const str = (source: Record<string, unknown>, key: string): string | null => {
-      const value = source[key];
-      return typeof value === 'string' && value.trim().length > 0 ? value : null;
-    };
+    /**
+     * A line for something the form no longer asks for (PRD revision 1.14),
+     * printed only where an earlier registration recorded it. A form made
+     * today has no blank line for a question nobody is asked.
+     */
+    const earlier = (
+      label: string,
+      value: string | null | undefined,
+    ): { label: string; value: string; half: boolean }[] =>
+      value && value.trim().length > 0 ? [{ label, value, half: true }] : [];
 
     const fullName = [
       detail.member.firstName,
@@ -866,66 +887,42 @@ export class MembershipService {
         ],
       },
       {
+        // MEM-16: a full name and a telephone number; an address if given.
         title: 'Section C — Next of Kin',
         fields: [
-          {
-            label: 'Name',
-            value: [str(kin, 'firstName'), str(kin, 'middleName'), str(kin, 'surname')]
-              .filter((part): part is string => part !== null)
-              .join(' ') || null,
-          },
-          { label: 'Telephone', value: str(kin, 'phone'), half: true },
-          { label: 'Occupation', value: str(kin, 'occupation'), half: true },
-          { label: 'Address', value: str(kin, 'address') },
+          { label: 'Full name', value: kin?.fullName ?? null },
+          { label: 'Telephone', value: kin?.phone ?? null, half: true },
+          ...earlier('Occupation', kin?.occupation),
+          { label: 'Address', value: kin?.address ?? null },
+          ...earlier('Town / City', kin?.townCity),
+          ...earlier('Local government area', kin?.lga?.name),
+          ...earlier('State of origin', kin?.stateOfOrigin),
         ],
       },
       {
+        // MEM-06: a full name, a telephone number, and an address. A guarantor
+        // is not compulsory, so the section may print empty.
         title: 'Section D — Guarantor',
-        // MEM-08: the exact printed wording of the collateral question, and
-        // whether the vehicle referred to is a tricycle, a motorcycle, or both,
-        // is not legible on the photographed form. What prints here is what the
-        // field specification records.
-        note:
-          'The guarantor undertakes responsibility for the operator named above. ' +
-          'Collateral wording is subject to confirmation by the Union (MEM-08).',
+        note: 'The guarantor undertakes responsibility for the operator named above.',
         fields: [
-          {
-            label: 'Name',
-            value:
-              [
-                str(guarantor, 'firstName'),
-                str(guarantor, 'middleName'),
-                str(guarantor, 'surname'),
-              ]
-                .filter((part): part is string => part !== null)
-                .join(' ') || null,
-          },
-          {
-            label: 'Relationship with operator',
-            value: str(guarantor, 'relationshipToApplicant'),
-            half: true,
-          },
-          { label: 'Telephone', value: str(guarantor, 'phone'), half: true },
-          { label: 'Address', value: str(guarantor, 'address') },
-          {
-            label: 'Occupation',
-            value: str(guarantor, 'occupation'),
-            half: true,
-          },
-          {
-            label: 'Collateral offered',
-            value:
-              guarantor['hasCollateral'] === true
-                ? 'Yes'
-                : guarantor['hasCollateral'] === false
-                  ? 'No'
-                  : null,
-            half: true,
-          },
-          {
-            label: 'Collateral details',
-            value: str(guarantor, 'collateralDetails'),
-          },
+          { label: 'Full name', value: guarantor?.fullName ?? null },
+          { label: 'Telephone', value: guarantor?.phone ?? null, half: true },
+          ...earlier(
+            'Relationship with operator',
+            guarantor?.relationshipToApplicant,
+          ),
+          { label: 'Address', value: guarantor?.address ?? null },
+          ...earlier('Town / City', guarantor?.townCity),
+          ...earlier('Occupation', guarantor?.occupation),
+          ...earlier(
+            'Collateral offered',
+            guarantor?.hasCollateral === true
+              ? 'Yes'
+              : guarantor?.hasCollateral === false
+                ? 'No'
+                : null,
+          ),
+          ...earlier('Collateral details', guarantor?.collateralDetails),
         ],
       },
     ];
@@ -1206,42 +1203,48 @@ export class MembershipService {
     return {
       phone: applicant.phone,
       residentialAddress: applicant.residentialAddress,
-      area: this.blankToNull(applicant.area),
+      // The form no longer asks for an area (MEM-17). It is written only when
+      // one is sent, so amending a draft never blanks one recorded earlier.
+      ...(applicant.area !== undefined
+        ? { area: this.blankToNull(applicant.area) }
+        : {}),
       townCity: this.blankToNull(applicant.townCity),
       residentialLgaId: applicant.residentialLgaId ?? null,
       stateOfOrigin: this.blankToNull(applicant.stateOfOrigin),
     };
   }
 
+  /**
+   * What the form now gives for a next of kin (PRD revision 1.14).
+   *
+   * **Only these columns are written.** The town, local government area, state
+   * of origin, and occupation are no longer asked for, and are deliberately
+   * absent here: on an amendment they keep whatever an earlier form recorded.
+   * The three name parts are the exception. They are cleared, because the full
+   * name just entered replaces them, and a stale surname beside it would be a
+   * second, contradicting name.
+   */
   private nextOfKinData(nextOfKin: CreateApplicationInput['nextOfKin']) {
     return {
-      surname: nextOfKin.surname,
-      firstName: nextOfKin.firstName,
-      middleName: this.blankToNull(nextOfKin.middleName),
-      address: nextOfKin.address,
-      area: this.blankToNull(nextOfKin.area),
-      townCity: this.blankToNull(nextOfKin.townCity),
-      lgaId: nextOfKin.lgaId ?? null,
-      stateOfOrigin: this.blankToNull(nextOfKin.stateOfOrigin),
+      fullName: nextOfKin.fullName,
+      surname: null,
+      firstName: null,
+      middleName: null,
       phone: nextOfKin.phone,
-      occupation: this.blankToNull(nextOfKin.occupation),
+      address: this.blankToNull(nextOfKin.address),
       signatureDate: nextOfKin.signedOn ? new Date(nextOfKin.signedOn) : null,
     };
   }
 
+  /** As `nextOfKinData`: the relationship, occupation, town, and collateral are left as they are. */
   private guarantorData(guarantor: NonNullable<CreateApplicationInput['guarantor']>) {
     return {
-      surname: guarantor.surname,
-      firstName: guarantor.firstName,
-      middleName: this.blankToNull(guarantor.middleName),
-      address: guarantor.address,
-      area: this.blankToNull(guarantor.area),
-      townCity: this.blankToNull(guarantor.townCity),
-      relationshipToApplicant: guarantor.relationshipToApplicant,
+      fullName: guarantor.fullName,
+      surname: null,
+      firstName: null,
+      middleName: null,
       phone: guarantor.phone,
-      occupation: this.blankToNull(guarantor.occupation),
-      hasCollateral: guarantor.hasCollateral ?? null,
-      collateralDetails: this.blankToNull(guarantor.collateralDetails),
+      address: guarantor.address,
     };
   }
 

@@ -20,6 +20,10 @@ import {
   type Photograph,
 } from "@/components/photograph-field";
 import {
+  GuarantorDetails,
+  NextOfKinDetails,
+} from "@/components/registration-people";
+import {
   Button,
   Detail,
   DetailList,
@@ -63,20 +67,6 @@ type TabName = keyof typeof TAB_LABELS;
 
 /** An act confirmed in a dialog. */
 type Confirming = "SUBMIT" | "APPROVE" | "REFUSE";
-
-function record(
-  source: Record<string, unknown> | null,
-  key: string,
-): string | null {
-  const value = source?.[key];
-  return typeof value === "string" ? value : null;
-}
-
-function fullName(source: Record<string, unknown> | null): string | null {
-  return source
-    ? `${record(source, "surname") ?? ""}, ${record(source, "firstName") ?? ""}`
-    : null;
-}
 
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
@@ -389,60 +379,26 @@ export default function ApplicationDetailPage() {
                 value={application.contact?.residentialAddress}
               />
               <Detail
+                label="Town / City"
+                value={application.contact?.townCity}
+              />
+              <Detail
                 label="Local government area"
                 value={application.contact?.lga?.name}
               />
+              {/* No longer asked for (MEM-17): shown where one was recorded. */}
+              {application.contact?.area ? (
+                <Detail label="Area" value={application.contact.area} />
+              ) : null}
             </DetailList>
           </Section>
 
           <Section title="Section C — Next of Kin">
-            <DetailList>
-              <Detail label="Name" value={fullName(application.nextOfKin)} />
-              <Detail
-                label="Telephone"
-                value={record(application.nextOfKin, "phone")}
-              />
-              <Detail
-                label="Address"
-                value={record(application.nextOfKin, "address")}
-              />
-              <Detail
-                label="Occupation"
-                value={record(application.nextOfKin, "occupation")}
-              />
-            </DetailList>
+            <NextOfKinDetails person={application.nextOfKin} />
           </Section>
 
           <Section title="Section D — Guarantor">
-            <DetailList>
-              <Detail label="Name" value={fullName(application.guarantor)} />
-              <Detail
-                label="Relationship to applicant"
-                value={record(application.guarantor, "relationshipToApplicant")}
-              />
-              <Detail
-                label="Telephone"
-                value={record(application.guarantor, "phone")}
-              />
-              <Detail
-                label="Collateral offered"
-                value={
-                  application.guarantor?.hasCollateral === true
-                    ? "Yes"
-                    : application.guarantor?.hasCollateral === false
-                      ? "No"
-                      : null
-                }
-              />
-              {application.guarantor?.hasCollateral === true ? (
-                <div className="sm:col-span-2">
-                  <Detail
-                    label="Collateral details"
-                    value={record(application.guarantor, "collateralDetails")}
-                  />
-                </div>
-              ) : null}
-            </DetailList>
+            <GuarantorDetails person={application.guarantor} />
           </Section>
 
           {/*

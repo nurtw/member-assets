@@ -2,12 +2,10 @@
 
 **Last revised:** 7 October 2026
 
-> Cold-start contract, overwritten every session.
-
 ## Cold start
 
-Read `CLAUDE.md`, `PRD.md` (1.13), `ARCHITECTURE.md` (1.10), `DESIGN.md` (1.2),
-`ROADMAP.md` (1.17), and `QUESTIONS.md` (1.17).
+Read `CLAUDE.md`, `PRD.md` (1.14), `ARCHITECTURE.md` (1.10), `DESIGN.md` (1.2),
+`ROADMAP.md` (1.17), and `QUESTIONS.md` (1.18).
 
 Three rules outrank every default:
 
@@ -17,45 +15,47 @@ Three rules outrank every default:
 
 ## Status
 
-- **Nothing is being built.** Items 37, 38, and 41 are pushed (`fcad368`).
-- **Item 39 (the reference lists screen) is done and clicked through.** Its
-  commit is local, and so is ORG-05's (`8115448`).
-- **ORG-05 is answered**; its migration is applied to Neon (29, no drift).
-- The feedback of 6 October is in `QUESTIONS.md`; the recordings are in
-  `feedback/`, ignored by git.
-- Planned, waiting for the owner: 40, 42, 43, and 15.
+- **Nothing is being built.** Items 37 to 39 and 41 are pushed (`5a15956`).
+- **Item 42 (the registration form reduced, PRD 1.14) is done and clicked
+  through**; its commit is local.
+- The sign-in pages wake a sleeping API (`fb95031`, local).
+- Planned, waiting: 40, 43, and 15.
 
-Tests: domain 518, contracts 138, api 195, web 75; e2e 498 of 499.
+Tests: domain 518, contracts 144, api 195, web 79; e2e 501 of 502.
 
 ## Conflicts
 
-- **Driver and Conductor are not yet first on Neon** (ORG-06): two moves
-  on the Reference lists screen, once item 39 is deployed.
-- **42 and 43 change the PRD and the schema.** Do not start either
-  unapproved. 43's route half waits on VEH-35.
-- Nothing amends a migrated member, moves an approved member to another
-  unit, or adds a photograph after approval. No item covers these.
+- **Item 42's migration is not on Neon (29 of 30). Apply it and push
+  together**: the new code fails without it, and the live code cannot save
+  a registration with it.
+- **The live API runs on Render and sleeps** (no answer in 90 seconds,
+  7 October). The stack table and GOV-02 say DigitalOcean; the hosting is
+  the owner's.
+- Driver and Conductor are not yet first on Neon (ORG-06): the owner
+  moves them on the Reference lists screen.
+- 43 changes the PRD and the schema: do not start it unapproved. Its
+  route half waits on VEH-35.
+- No item covers amending a migrated member, moving an approved member,
+  or a photograph after approval.
 - **VEH-32 is open.** Do not build a second officer for stock.
 
 ## Known issues — don't re-attempt these fixes
 
 - `master-data.e2e` "seeds no designations" fails (8 `DEMO_` designations).
-- Under load, e2e and the PDF and password unit tests time out;
-  `pay-links.e2e` can fail across an hour boundary: rerun.
+- Under load, e2e and the PDF and password tests time out: rerun.
 - `GET /payments/banks` answers 500 when Paystack is unreachable (item 15).
-- Never tried for real: a Paystack payment, a phone's camera, items 39
-  and 41 deployed.
+- Never tried for real: Paystack, a phone's camera, the site as deployed.
 
 ## Next steps
 
-1. Ask the owner about pushing, and which item is next.
-2. Owner: VEH-32; VEH-35's open points; the settlement account; GOV-08;
-   EXT-05; the GOV-11 date; PAY-11; ORG-06, CARD-05, CARD-07.
+1. Ask the owner: apply item 42's migration to Neon and push, together.
+2. Owner: the hosting; VEH-32; VEH-35's open points; the settlement
+   account; GOV-08; EXT-05; the GOV-11 date; PAY-11; ORG-06, CARD-05,
+   CARD-07.
 
 ## Do NOT
 
 - Edit `apps/api/.env`, write Neon rows, or push without a go-ahead.
-- Invent a designation or a signature (ORG-06, CARD-07).
+- Drop a column the form no longer asks for, or write one on an amendment.
 - Put a sign-in button's reset back in a `finally`, or a photograph's
   link in a list.
-- Widen a part of a member's record, or add contact data to the list.

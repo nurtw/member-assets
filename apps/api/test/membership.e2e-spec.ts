@@ -72,25 +72,18 @@ function applicationBody(unitId: string, lgaId: string, surname = 'Okeke') {
       phone: '0803 123 4567',
     },
     assignment: { organisationId: unitId },
+    // PRD revision 1.14: a full name and a telephone number, and an address
+    // that may be left out.
     nextOfKin: {
-      surname: 'Okeke',
-      firstName: 'Ngozi',
-      address: '14 Zik Avenue, Awka',
-      townCity: 'Awka',
-      lgaId,
-      stateOfOrigin: 'Anambra',
+      fullName: 'Ngozi Okeke',
       phone: '08051112222',
-      occupation: 'Trader',
+      address: '14 Zik Avenue, Awka' as string | undefined,
     },
+    // A full name, a telephone number, and an address.
     guarantor: {
-      surname: 'Eze',
-      firstName: 'Emeka',
-      address: '2 Market Road, Onitsha',
-      townCity: 'Onitsha',
-      relationshipToApplicant: 'Fellow operator',
+      fullName: 'Emeka Eze',
       phone: '+2348069998888',
-      occupation: 'Transporter',
-      hasCollateral: false,
+      address: '2 Market Road, Onitsha' as string | undefined,
     },
   };
 }
@@ -226,19 +219,175 @@ describe('Membership registration (e2e)', () => {
       expect(smuggled).toBeNull();
     });
 
-    it('requires collateral details when collateral is claimed', async () => {
-      const body = applicationBody(fixture.unitAId, fixture.lgaId, 'Collateral');
-      body.guarantor.hasCollateral = true;
+    it('asks of a next of kin only a full name and a telephone number (MEM-16)', async () => {
+      const body = applicationBody(fixture.unitAId, fixture.lgaId, 'Kinonly');
+      delete body.nextOfKin.address;
+
+      const created = await request(server)
+        .post('/api/v1/applications')
+        .set('Cookie', cookies.registrar!)
+        .send(body)
+        .expect(201);
+      const detail = await request(server)
+        .get(`/api/v1/applications/${created.body.application.id}`)
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+
+      expect(detail.body.application.nextOfKin).toEqual({
+        fullName: 'Ngozi Okeke',
+        phone: '+2348051112222',
+        address: null,
+        // Nothing else is asked for, so nothing else is recorded.
+        area: null,
+        townCity: null,
+        occupation: null,
+        stateOfOrigin: null,
+        lga: null,
+      });
+    });
+
+    it('refuses a next of kin with no full name, and says which field', async () => {
+      const body = applicationBody(fixture.unitAId, fixture.lgaId, 'Kinnameless');
+      // The form's old shape: a surname and a first name are not a full name.
+      const old = {
+        surname: 'Okeke',
+        firstName: 'Ngozi',
+        phone: '08051112222',
+        address: '14 Zik Avenue, Awka',
+      };
 
       const response = await request(server)
         .post('/api/v1/applications')
         .set('Cookie', cookies.registrar!)
-        .send(body)
+        .send({ ...body, nextOfKin: old })
         .expect(400);
 
       expect(
         response.body.error.details.map((d: { field: string }) => d.field),
-      ).toContain('guarantor.collateralDetails');
+      ).toContain('nextOfKin.fullName');
+    });
+
+    it('asks of a guarantor, where there is one, a full name, a telephone number, and an address (MEM-06)', async () => {
+      const body = applicationBody(fixture.unitAId, fixture.lgaId, 'Guaranteed');
+
+      const created = await request(server)
+        .post('/api/v1/applications')
+        .set('Cookie', cookies.registrar!)
+        .send(body)
+        .expect(201);
+      const detail = await request(server)
+        .get(`/api/v1/applications/${created.body.application.id}`)
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+      expect(detail.body.application.guarantor).toEqual({
+        fullName: 'Emeka Eze',
+        phone: '+2348069998888',
+        address: '2 Market Road, Onitsha',
+        area: null,
+        townCity: null,
+        occupation: null,
+        relationshipToApplicant: null,
+        hasCollateral: null,
+        collateralDetails: null,
+      });
+
+      const without = applicationBody(fixture.unitAId, fixture.lgaId, 'Halfguaranteed');
+      delete without.guarantor.address;
+      const refused = await request(server)
+        .post('/api/v1/applications')
+        .set('Cookie', cookies.registrar!)
+        .send(without)
+        .expect(400);
+      expect(
+        refused.body.error.details.map((d: { field: string }) => d.field),
+      ).toContain('guarantor.address');
+    });
+
+    it('keeps what an earlier form recorded, and does not blank it on an amendment', async () => {
+      const created = await request(server)
+        .post('/api/v1/applications')
+        .set('Cookie', cookies.registrar!)
+        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'Earlier'))
+        .expect(201);
+      const id = created.body.application.id;
+      const memberId = created.body.application.member.id;
+
+      // As a registration made before revision 1.14 stands after the migration:
+      // the name in parts as well as whole, and the fields no longer asked for.
+      await prisma.nextOfKin.update({
+        where: { memberId },
+        data: {
+          surname: 'Okeke',
+          firstName: 'Ngozi',
+          townCity: 'Awka',
+          lgaId: fixture.lgaId,
+          stateOfOrigin: 'Anambra',
+          occupation: 'Trader',
+        },
+      });
+      await prisma.guarantor.update({
+        where: { memberId },
+        data: {
+          surname: 'Eze',
+          firstName: 'Emeka',
+          relationshipToApplicant: 'Fellow operator',
+          occupation: 'Transporter',
+          hasCollateral: true,
+          collateralDetails: 'A tricycle',
+        },
+      });
+      await prisma.memberContact.update({
+        where: { memberId },
+        data: { area: 'Ifite' },
+      });
+
+      const before = await request(server)
+        .get(`/api/v1/applications/${id}`)
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+      expect(before.body.application.nextOfKin.occupation).toBe('Trader');
+      expect(before.body.application.nextOfKin.lga.id).toBe(fixture.lgaId);
+      expect(before.body.application.guarantor.relationshipToApplicant).toBe(
+        'Fellow operator',
+      );
+      expect(before.body.application.guarantor.collateralDetails).toBe('A tricycle');
+      // The old name parts are not returned: the full name carries the name.
+      expect('surname' in before.body.application.nextOfKin).toBe(false);
+
+      // The draft is amended on the reduced form, which sends no area, no
+      // occupation, and no relationship.
+      const amended = applicationBody(fixture.unitAId, fixture.lgaId, 'Earlier');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (amended.applicant as any).area;
+      amended.nextOfKin.fullName = 'Ngozi Adaeze Okeke';
+      await request(server)
+        .patch(`/api/v1/applications/${id}`)
+        .set('Cookie', cookies.registrar!)
+        .send({
+          applicant: amended.applicant,
+          nextOfKin: amended.nextOfKin,
+          guarantor: amended.guarantor,
+        })
+        .expect(200);
+
+      const after = await request(server)
+        .get(`/api/v1/applications/${id}`)
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+      expect(after.body.application.nextOfKin.fullName).toBe('Ngozi Adaeze Okeke');
+      expect(after.body.application.nextOfKin.occupation).toBe('Trader');
+      expect(after.body.application.nextOfKin.townCity).toBe('Awka');
+      expect(after.body.application.guarantor.relationshipToApplicant).toBe(
+        'Fellow operator',
+      );
+      expect(after.body.application.guarantor.hasCollateral).toBe(true);
+      expect(after.body.application.contact.area).toBe('Ifite');
+
+      // The name parts are cleared: a stale surname beside the new full name
+      // would be a second, contradicting name.
+      const kin = await prisma.nextOfKin.findUniqueOrThrow({ where: { memberId } });
+      expect(kin.surname).toBeNull();
+      expect(kin.firstName).toBeNull();
     });
   });
 
@@ -565,8 +714,7 @@ describe('Membership registration (e2e)', () => {
           },
           nextOfKin: {
             create: {
-              surname: 'Fixture',
-              firstName: 'Kin',
+              fullName: 'Kin Fixture',
               address: '1 Fixture Close, Awka',
               phone: '+2348030000002',
             },
@@ -634,17 +782,17 @@ describe('Membership registration (e2e)', () => {
 
       const { sensitive } = response.body.member;
       expect(sensitive.contact.phone).toBe('+2348030000001');
-      expect(sensitive.nextOfKin.surname).toBe('Fixture');
+      expect(sensitive.nextOfKin.fullName).toBe('Kin Fixture');
       expect(sensitive.guarantor).toBeNull();
       // Each field is named: no row identifier or timestamp rides along.
       expect(Object.keys(sensitive.nextOfKin).sort()).toEqual([
         'address',
         'area',
-        'firstName',
-        'middleName',
+        'fullName',
+        'lga',
         'occupation',
         'phone',
-        'surname',
+        'stateOfOrigin',
         'townCity',
       ]);
     });

@@ -4,8 +4,8 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.13 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.13
+1.2 to 1.14 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.14
 **Last revised:** 7 October 2026
 
 ---
@@ -92,6 +92,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. Payment is offered wherever a vehicle is checked, and through a personal pay link that never says what is owed. See §23.10, §23.22–§23.27, Requirements 12.11, 27.7 and 27.8. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20, PAY-21), 5 October 2026. |
 | 1.10 | 5 October 2026 | The API administrator may invite a named organisation by a personal link that opens the application form addressed to it. A link is used once, expires, and may be withdrawn; the application it produces is confirmed and decided as any other. See §23.23 and Requirement 12.11. | The project owner (`QUESTIONS.md` EXT-21), 5 October 2026. |
 | 1.11 | 5 October 2026 | A vehicle without a sticker says so on its page each time it is opened, and adding a vehicle ends on a prompt to buy and attach its sticker, which may be closed. While new NURTW stickers are not issued, a vehicle the register holds no barcode for is told so, and nothing is charged. See Requirement 9A.7. | The project owner (`QUESTIONS.md` VEH-30), 5 October 2026. |
+| 1.14 | 7 October 2026 | The registration form asks for less than the paper form: the member's name, address, and telephone come first; Area is not asked for; a next of kin is a full name and a telephone number, with an address if there is one; a guarantor, where there is one, is a full name, a telephone number, and an address. What an earlier registration recorded is kept. The member's photograph is taken on the form. See Requirement 7.3. | The Union's Head of Operations, 6 October 2026, and the project owner (`QUESTIONS.md` MEM-06, MEM-15 to MEM-18), 7 October 2026. |
 | 1.13 | 7 October 2026 | The one branch and one unit beneath each zone, named after it, are the Union's own and are seeded with the zones. They had been placeholders, marked as such. See §23.1. | The project owner (`QUESTIONS.md` ORG-05), 7 October 2026, at the request of the Union's Head of Operations. |
 | 1.12 | 6 October 2026 | Printed legacy stickers the register never recorded are taken into stock by scanning them, by holders of a permission that is in no role, and may then be attached to any vehicle on the new-sticker fee (Requirements 9A.4 and 9A.8). Assigning a sticker is pay first, then scan: the camera opens once the payment is confirmed (Requirement 9A.7). The previous operator is no longer named anywhere, and officer-facing wording says only "sticker" (Requirement 11.2). A front page shows the ways in. | The project owner (`QUESTIONS.md` VEH-29, VEH-31, GOV-21), 5 October 2026. |
 
@@ -225,6 +226,23 @@ verification path.
 **Requirement 7.2.** Where the state and the local government area are both captured as
 structured values, the System must validate that the local government area belongs to the
 selected state.
+
+**Requirement 7.3** *(revision 1.14)*. The System's form asks for less than the field
+specification sets out, by the Union's direction of 6 October 2026:
+
+- **The applicant:** name, residential address, and telephone number first, then the rest.
+  **Area is not asked for.** Town or city is.
+- **The next of kin:** a **full name**, in one field, and a **telephone number**. An
+  **address** may be given and is not required. Nothing else is asked for.
+- **The guarantor**, who is not compulsory: where there is one, a **full name**, a
+  **telephone number**, and an **address**. Nothing else is asked for, the collateral
+  question included.
+- **The photograph** of the applicant is taken or uploaded on the form, and is the one
+  printed on the membership card (§23.16).
+
+Nothing recorded under a field that is no longer asked for is removed. A registration made
+before this revision shows, and prints, everything it was given. The applicant's own name
+stays in three parts, because the card prints it.
 
 ---
 

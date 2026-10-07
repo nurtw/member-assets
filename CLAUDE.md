@@ -579,6 +579,32 @@ show an officer's sign-in address.
   attaches one to a member who has no application, or after approval. No item covers it.
 - **What a photograph must look like is not decided** (MEM-14). State no rule about it.
 
+### The registration form, reduced (item 42)
+
+PRD revision 1.14, Requirement 7.3: the Union asked for less than its paper form does.
+
+- **A next of kin is `fullName`, `phone`, and an optional `address`. A guarantor, where
+  there is one, is `fullName`, `phone`, and `address`.** The schemas in
+  `packages/contracts` say so, and strip anything else. The applicant's own name stays in
+  three parts, because the card prints it.
+- **Area is not asked for.** `applicant.area` is still accepted, and is written only when
+  it is sent, so amending a draft never blanks one recorded earlier.
+- **The columns that are no longer asked for remain, nullable, with what they hold.**
+  `nextOfKinData` and `guarantorData` write only the columns the form has. Do not add the
+  others back to them: an amendment would then blank an earlier registration's details.
+  The three old name parts are the one exception. They are cleared on a write, because the
+  full name just entered replaces them.
+- **Never drop one of those columns, and never make `full_name` nullable.** The migration
+  filled it for earlier rows from their name parts.
+- **`ApplicationDetail.nextOfKin` and `.guarantor` are projections** (`NEXT_OF_KIN_SELECT`,
+  `GUARANTOR_SELECT`), as the member's record is. They were whole rows cast to a loose
+  type. Add a field to them only on purpose.
+- **What is no longer asked for is shown only where it was recorded**
+  (`components/registration-people.tsx`, and `earlier` in the printed form). An empty line
+  would read as something missing.
+- **The printed registration form follows the screen, not the paper form.** Whether the
+  Union's paper form is being reduced too is not known.
+
 ### Membership cards and printing (item 06)
 
 - **A card number is allocated on issuance, never earlier.** `cardNumber` is nullable, same
