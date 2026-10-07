@@ -163,7 +163,9 @@ export function VehicleForm({
           make: make.trim() || undefined,
           model: model.trim() || undefined,
           color: color.trim() || undefined,
-          chassisVinRestricted: chassisVinRestricted.trim() || undefined,
+          // Compulsory since PRD revision 1.15 (VEH-34). Sent as typed: the
+          // API refuses a blank, and says so against the field.
+          chassisVinRestricted: chassisVinRestricted.trim(),
           declaredByMemberId,
           owner: {
             name: ownerName,
@@ -208,18 +210,24 @@ export function VehicleForm({
 
         {/*
           VEH-33, the order the Union asked for: plate, chassis, the other
-          vehicle details, the route, then the branch. The chassis number is
-          not yet required here; that is VEH-34, in item 43.
+          vehicle details, the route, then the branch. The plate and the
+          chassis number are the two a vehicle cannot be added without
+          (VEH-34, PRD revision 1.15).
         */}
         <Field
           label="Chassis / VIN"
           htmlFor="chassisVinRestricted"
-          hint="Restricted — visible only to officers holding vehicle.read_restricted, and never through verification."
+          required
+          hint="As stamped on the vehicle. Restricted: shown only to officers permitted to see it, and never through verification."
+          error={error?.fieldError("chassisVinRestricted")}
         >
           <TextInput
             id="chassisVinRestricted"
+            required
             value={chassisVinRestricted}
             onChange={(event) => setChassisVinRestricted(event.target.value)}
+            autoCapitalize="characters"
+            spellCheck={false}
           />
         </Field>
 

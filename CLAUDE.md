@@ -715,6 +715,17 @@ record the same plate at once. Preserve it too.
   required by the zod contracts for recording and declaring; the columns stay nullable
   because legacy rows lawfully lack them. Never make them NOT NULL — the migration would
   have to invent values.
+- **The chassis number is required the same way** (VEH-34, PRD revision 1.15, item 43).
+  - `chassisVinRestricted` is required to record or declare, and an amendment sets it
+    and never blanks it.
+  - A legacy row may have none. `promote` refuses to declare it until one is given, as
+    it does for a missing route type or owner.
+  - **Requiring it did not widen who reads it.** The value still goes only to a holder of
+    `vehicle.read_restricted`. `VehicleDetail.chassisRecorded` says whether there is one,
+    to everybody who may open the vehicle, and never what it is.
+  - It stays out of every list, verification, aggregate, log, and audit event. The
+    declare audit names the fields amended, not their values.
+  - No format is checked. The Union gave none; do not invent one.
 - **Route type is master data** (`route_type`, served as `/master-data/route-types`). It is
   not inferred from the legacy `BUS_INTERSTATE`/`BUS_INTRASTATE` categories.
 - **The levy is priced per route type** in `fee_type_price`, falling back to the fee type's

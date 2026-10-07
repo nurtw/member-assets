@@ -25847,6 +25847,7 @@
                   },
                   "chassisVinRestricted": {
                     "type": "string",
+                    "minLength": 1,
                     "maxLength": 120
                   },
                   "declaredByMemberId": {
@@ -25884,6 +25885,7 @@
                   "plateNumberDisplay",
                   "organisationId",
                   "routeTypeId",
+                  "chassisVinRestricted",
                   "owner"
                 ]
               }
@@ -26421,6 +26423,7 @@
                   },
                   "chassisVinRestricted": {
                     "type": "string",
+                    "minLength": 1,
                     "maxLength": 120
                   },
                   "declaredByMemberId": {
@@ -26696,6 +26699,11 @@
                       "name",
                       "phone"
                     ]
+                  },
+                  "chassisVinRestricted": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
                   }
                 }
               }
@@ -28203,6 +28211,7 @@
                   },
                   "chassisVinRestricted": {
                     "type": "string",
+                    "minLength": 1,
                     "maxLength": 120
                   },
                   "declaredByMemberId": {
@@ -28240,6 +28249,7 @@
                   "plateNumberDisplay",
                   "organisationId",
                   "routeTypeId",
+                  "chassisVinRestricted",
                   "owner"
                 ]
               }

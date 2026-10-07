@@ -646,6 +646,19 @@ dues (the yearly fee and the monthly levy) are the ones split with NURTW.
 A vehicle with no sticker recorded for its plate, while stock is empty, is told so, and no
 payment is offered. Add stock first.
 
+### Adding a vehicle, and its chassis number
+
+A vehicle is not recorded or declared without its **chassis number** (the plate number and
+the chassis number are the two it cannot be taken on without). It is typed as stamped on
+the vehicle; no format is checked.
+
+A vehicle brought over from the legacy register may have none. Its record stands, and its
+page says **Not recorded**. When it is declared, the declare panel asks for the chassis
+number along with whatever else the record lacks.
+
+The number is restricted. An officer without `vehicle.read_restricted` is told that one is
+recorded, and not what it is. It is in no list, no verification, and no log.
+
 ### Reviewing verifications
 
 Every check on the Verify screen writes one audit event, named after what the officer

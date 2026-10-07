@@ -98,6 +98,8 @@ describe('Vehicle declaration (e2e)', () => {
     return {
       organisationId: fixture.unitAId,
       routeTypeId: fixture.interstateId,
+      // Required since PRD revision 1.15 (VEH-34). A made-up value.
+      chassisVinRestricted: 'E2E-CHASSIS-0000',
       owner: OWNER,
       ...extra,
     };
@@ -271,6 +273,90 @@ describe('Vehicle declaration (e2e)', () => {
     });
   });
 
+  describe('the chassis number is compulsory (VEH-34, PRD revision 1.15)', () => {
+    it('refuses to declare a vehicle without one, and names the field', async () => {
+      const response = await declare({
+        plateNumberDisplay: plate('CH1'),
+        chassisVinRestricted: undefined,
+      }).expect(400);
+      expect(
+        response.body.error.details.map((d: { field: string }) => d.field),
+      ).toContain('chassisVinRestricted');
+      expect(
+        await prisma.vehicle.count({ where: { plateNumberNormalized: 'E2EVCH1' } }),
+      ).toBe(0);
+    });
+
+    it('refuses to record one without it too, and a blank is not a chassis number', async () => {
+      await record({
+        plateNumberDisplay: plate('CH2'),
+        chassisVinRestricted: undefined,
+      }).expect(400);
+      await record({
+        plateNumberDisplay: plate('CH2'),
+        chassisVinRestricted: '   ',
+      }).expect(400);
+    });
+
+    it('will not let an amendment blank one', async () => {
+      const created = await declare({ plateNumberDisplay: plate('CH3') }).expect(
+        201,
+      );
+      await request(server)
+        .patch(`/api/v1/vehicles/${created.body.vehicle.id}`)
+        .set('Cookie', cookies.declarer!)
+        .send({ chassisVinRestricted: '' })
+        .expect(400);
+    });
+
+    it('tells every reader whether there is one, and only a restricted reader what it is', async () => {
+      const created = await declare({
+        plateNumberDisplay: plate('CH4'),
+        chassisVinRestricted: 'E2E-CHASSIS-CH4',
+      }).expect(201);
+
+      const detail = await request(server)
+        .get(`/api/v1/vehicles/${created.body.vehicle.id}`)
+        .set('Cookie', cookies.declarer!)
+        .expect(200);
+      expect(detail.body.vehicle.chassisRecorded).toBe(true);
+      expect(detail.body.vehicle).not.toHaveProperty('chassisVinRestricted');
+      expect(JSON.stringify(detail.body)).not.toContain('E2E-CHASSIS-CH4');
+    });
+
+    it('leaves a legacy vehicle that has none readable, and says it has none', async () => {
+      const legacy = await prisma.vehicle.create({
+        data: {
+          plateNumberNormalized: 'E2EVCH5',
+          plateNumberDisplay: plate('CH5'),
+          branchId: fixture.branchAId,
+          status: 'ON_RECORD',
+          declaredAt: null,
+          isLegacyImport: true,
+        },
+      });
+
+      const detail = await request(server)
+        .get(`/api/v1/vehicles/${legacy.id}`)
+        .set('Cookie', cookies.declarer!)
+        .expect(200);
+      expect(detail.body.vehicle.chassisRecorded).toBe(false);
+    });
+
+    it('keeps the number out of the audit trail', async () => {
+      const created = await declare({
+        plateNumberDisplay: plate('CH6'),
+        chassisVinRestricted: 'E2E-CHASSIS-CH6',
+      }).expect(201);
+
+      const events = await prisma.auditEvent.findMany({
+        where: { subjectId: created.body.vehicle.id },
+      });
+      expect(events.length).toBeGreaterThan(0);
+      expect(JSON.stringify(events)).not.toContain('E2E-CHASSIS-CH6');
+    });
+  });
+
   describe('declaring a vehicle already on record (Decisions 6.5–6.6)', () => {
     it('promotes the same row when a declaration names its plate', async () => {
       const recorded = await record({ plateNumberDisplay: plate('PR1') }).expect(
@@ -334,10 +420,21 @@ describe('Vehicle declaration (e2e)', () => {
         .send({ routeTypeId: fixture.interstateId })
         .expect(400);
 
-      const declared = await request(server)
+      // And, since revision 1.15, its chassis number (VEH-34).
+      await request(server)
         .post(`/api/v1/vehicles/${legacy.id}/declare`)
         .set('Cookie', cookies.declarer!)
         .send({ routeTypeId: fixture.interstateId, owner: OWNER })
+        .expect(400);
+
+      const declared = await request(server)
+        .post(`/api/v1/vehicles/${legacy.id}/declare`)
+        .set('Cookie', cookies.declarer!)
+        .send({
+          routeTypeId: fixture.interstateId,
+          owner: OWNER,
+          chassisVinRestricted: 'E2E-CHASSIS-PR3',
+        })
         .expect(201);
       expect(declared.body.vehicle.status).toBe('ACTIVE');
 
@@ -346,6 +443,27 @@ describe('Vehicle declaration (e2e)', () => {
       });
       // The legacy note survives the declaration — MIG-06 still needs it.
       expect(after.notes).toContain('Legacy status: ACTIVE');
+      expect(after.chassisVinRestricted).toBe('E2E-CHASSIS-PR3');
+    });
+
+    it('declares a legacy record that already holds a chassis number without asking again', async () => {
+      const legacy = await prisma.vehicle.create({
+        data: {
+          plateNumberNormalized: 'E2EVPR6',
+          plateNumberDisplay: plate('PR6'),
+          branchId: fixture.branchAId,
+          status: 'ON_RECORD',
+          declaredAt: null,
+          isLegacyImport: true,
+          chassisVinRestricted: 'E2E-CHASSIS-PR6',
+        },
+      });
+
+      await request(server)
+        .post(`/api/v1/vehicles/${legacy.id}/declare`)
+        .set('Cookie', cookies.declarer!)
+        .send({ routeTypeId: fixture.interstateId, owner: OWNER })
+        .expect(201);
     });
 
     it('refuses, rather than duplicates, a record outside the declarer’s scope', async () => {

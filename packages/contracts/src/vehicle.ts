@@ -36,6 +36,21 @@ const phone = z
   .transform(normalizeNigerianPhone);
 
 /**
+ * The chassis number, or VIN (PRD Requirement 9.4 as revised, 1.15;
+ * `QUESTIONS.md` VEH-34). **Required when a vehicle is added**: the Union names
+ * the plate and the chassis number as the two a vehicle cannot be taken on
+ * without. No format is checked, because the Union gave none.
+ *
+ * It is still restricted. Requiring it changes who must supply it, not who
+ * may read it: it is in no list, no verification, no log, and no audit event.
+ */
+const chassisNumber = z
+  .string()
+  .trim()
+  .min(1, 'A chassis number is required.')
+  .max(120, 'A chassis number may not exceed 120 characters.');
+
+/**
  * The vehicle's owner (PRD Requirement 9.8, revision 1.3, `QUESTIONS.md`
  * VEH-25). Not necessarily a member — the driver is the member. Name and
  * phone are required; the address is optional. Sensitive under Requirement
@@ -75,8 +90,12 @@ const vehicleFields = {
   make: optionalShortText,
   model: optionalShortText,
   color: optionalShortText,
-  /** PRD Requirement 9.4 — restricted; never required. */
-  chassisVinRestricted: optionalShortText,
+  /**
+   * PRD Requirement 9.4 — restricted, and required since revision 1.15. As
+   * with the route type, it is required here and not by the column, because a
+   * legacy row may lack one.
+   */
+  chassisVinRestricted: chassisNumber,
   /**
    * PRD §23.8 — a member may hold any number of vehicles, without limit.
    * Optional: PRD §9 associates a vehicle with "a member or transport
@@ -114,16 +133,18 @@ export type RecordVehicleInput = z.infer<typeof recordVehicleSchema>;
  * (`POST /vehicles/:id/declare`, Decision 6.6).
  *
  * Everything is optional because the record may already carry it. Whatever the
- * record lacks must be supplied here — a legacy row has no route type and may
- * have no owner phone — and the service refuses the declaration until the
- * result satisfies Requirements 9.8–9.9. `organisationId`, when given, moves
- * the record as it is declared, checked at both ends.
+ * record lacks must be supplied here — a legacy row has no route type, and may
+ * have no owner phone or no chassis number — and the service refuses the
+ * declaration until the result satisfies Requirements 9.4, 9.8, and 9.9.
+ * `organisationId`, when given, moves the record as it is declared, checked at
+ * both ends.
  */
 export const declareRecordedVehicleSchema = z.object({
   organisationId: uuid.optional(),
   routeTypeId: uuid.optional(),
   declaredByMemberId: uuid.optional(),
   owner: vehicleOwnerSchema.optional(),
+  chassisVinRestricted: chassisNumber.optional(),
 });
 
 export type DeclareRecordedVehicleInput = z.infer<
@@ -146,7 +167,8 @@ export const updateVehicleSchema = z
     make: optionalShortText,
     model: optionalShortText,
     color: optionalShortText,
-    chassisVinRestricted: optionalShortText,
+    /** Set, not cleared: a vehicle that has a chassis number keeps one. */
+    chassisVinRestricted: chassisNumber.optional(),
     /**
      * Attaches, changes, or clears (`null`) the member this vehicle is
      * declared under — the route a migrated record (PRD §9.5's provenance
@@ -266,6 +288,12 @@ export interface VehicleDetail extends VehicleSummary {
   color: string | null;
   notes: string | null;
   chassisVinRestricted?: string | null;
+  /**
+   * Whether the record holds a chassis number, without saying what it is
+   * (revision 1.15). An officer who may not read the number can still be told
+   * that a legacy vehicle lacks one, and must be given it to be declared.
+   */
+  chassisRecorded: boolean;
   /** `null` when no owner has been recorded (possible only on a legacy record). */
   owner: VehicleOwnerDetail | null;
   /**

@@ -54,10 +54,24 @@ leaves from and where it goes, in the form its route type calls for.
 - Whether the route prints on the vehicle letter.
 
 ## Definition of done
-- [ ] A new vehicle without a chassis number is refused, with the field named. A legacy
+- [x] A new vehicle without a chassis number is refused, with the field named. A legacy
       vehicle without one still opens, verifies, and takes a sticker.
-- [ ] The chassis number appears in no list, log, audit event, or external answer.
+- [x] The chassis number appears in no list, log, audit event, or external answer.
 - [ ] Each route type asks for its own fields, and a route type added by the Union can be
-      given a shape without a deploy.
-- [ ] The PRD and the register say what is required.
-- [ ] Lint, typecheck, build, and every test pass; clicked through.
+      given a shape without a deploy. *(Stage 2.)*
+- [x] The PRD and the register say what is required. *(Stage 1: PRD revision 1.15.)*
+- [x] Lint, typecheck, build, and every test pass; clicked through. *(Stage 1.)*
+
+**Stage 1, decided while building (7 October 2026):**
+
+- **No migration.** The column was already nullable and stays so.
+- **An amendment sets a chassis number and never blanks it**, as with the route type.
+- **Whether a vehicle has a chassis number is told to every officer who may open it**
+  (`chassisRecorded`), so the declare panel can ask for a missing one from an officer who
+  may not read the number itself. What the number is stays restricted.
+- **No format is checked.** A blank is refused; nothing else is. The Union gave no format,
+  and a wrong rule would turn away real vehicles.
+- **Nothing was done to the 2,841 legacy vehicles.** Those without a chassis number are
+  asked for one only when they are declared.
+
+**Stage 2 is not started.** It adds a table, and needs VEH-35's four answers first.

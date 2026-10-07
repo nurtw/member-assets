@@ -42,6 +42,11 @@ const UPDATE = 'vehicle.update';
 const SUSPEND = 'vehicle.suspend';
 const RESOLVE_DISPUTE = 'vehicle.resolve_dispute';
 
+/** Whether a record holds a chassis number: something other than blank. */
+function hasChassisNumber(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 /**
  * The reason recorded for refusing a plate that already has a standing record.
  * The caller receives only the generic conflict (Requirement 14.3), and even
@@ -103,6 +108,7 @@ interface RecordedVehicle {
   routeTypeId: string | null;
   declaredByMemberId: string | null;
   notes: string | null;
+  chassisVinRestricted: string | null;
   owner: { ownerName: string | null; ownerPhone: string | null } | null;
 }
 
@@ -281,6 +287,9 @@ export class VehicleService {
       ...(canReadRestricted
         ? { chassisVinRestricted: vehicle.chassisVinRestricted }
         : {}),
+      // Whether there is one, for everybody who may open the vehicle: a legacy
+      // record without one cannot be declared until it is given (VEH-34).
+      chassisRecorded: hasChassisNumber(vehicle.chassisVinRestricted),
       owner: vehicle.owner
         ? {
             name: vehicle.owner.ownerName,
@@ -562,6 +571,7 @@ export class VehicleService {
         routeTypeId: vehicle.routeTypeId,
         declaredByMemberId: vehicle.declaredByMemberId,
         notes: vehicle.notes,
+        chassisVinRestricted: vehicle.chassisVinRestricted,
         owner: vehicle.owner,
       },
       destination,
@@ -569,6 +579,7 @@ export class VehicleService {
         routeTypeId: input.routeTypeId,
         declaredByMemberId: input.declaredByMemberId,
         owner: input.owner,
+        chassisVinRestricted: input.chassisVinRestricted,
       },
     );
     return this.summaryFor(actor.userId, promoted);
@@ -578,7 +589,8 @@ export class VehicleService {
    * `ON_RECORD -> ACTIVE` on the same row (Decision 6.5). Stamps `declaredAt`,
    * moves the row to the declaring organisation, and applies whatever
    * descriptive fields the declaration supplied. Refuses unless the result has
-   * a route type and an owner name and phone (Requirements 9.8–9.9).
+   * a route type, an owner name and phone, and a chassis number (Requirements
+   * 9.4, 9.8, and 9.9).
    */
   private async promote(
     actor: ActorContext,
@@ -598,6 +610,17 @@ export class VehicleService {
     if (!ownerName || !ownerPhone) {
       throw new BadRequestException(
         "The owner's name and phone number are required to declare this vehicle.",
+      );
+    }
+    // Requirement 9.4, revision 1.15. A legacy record may lack one; it is
+    // given here, or the vehicle stays on record.
+    if (
+      !hasChassisNumber(
+        fields.chassisVinRestricted ?? recorded.chassisVinRestricted,
+      )
+    ) {
+      throw new BadRequestException(
+        'A chassis number is required to declare this vehicle.',
       );
     }
 
@@ -1048,6 +1071,8 @@ export class VehicleService {
         routeTypeId: true,
         declaredByMemberId: true,
         notes: true,
+        // Read to know whether there is one, never returned from here.
+        chassisVinRestricted: true,
         branch: { select: { id: true, path: true } },
         unit: { select: { id: true, path: true } },
         owner: { select: { ownerName: true, ownerPhone: true } },
@@ -1068,6 +1093,7 @@ export class VehicleService {
       routeTypeId: row.routeTypeId,
       declaredByMemberId: row.declaredByMemberId,
       notes: row.notes,
+      chassisVinRestricted: row.chassisVinRestricted,
       owner: row.owner,
     };
   }

@@ -130,6 +130,7 @@ export default function VehicleDetailPage() {
   const [declareOwnerName, setDeclareOwnerName] = useState("");
   const [declareOwnerPhone, setDeclareOwnerPhone] = useState("");
   const [declareOwnerAddress, setDeclareOwnerAddress] = useState("");
+  const [declareChassis, setDeclareChassis] = useState("");
   // Item 35 (VEH-30). Adding a vehicle arrives here with ?added=1 and a
   // prompt to assign its sticker. ?assign=1 opens the Sticker tab: from the
   // registration flow, from Home, and on the way back from paying. Either is
@@ -428,12 +429,28 @@ export default function VehicleDetailPage() {
                   value={`${vehicle.declaredByMember.surname}, ${vehicle.declaredByMember.firstName}`}
                 />
               ) : null}
+              {/*
+                The number itself only for an officer who may read it. Whether
+                there is one, for everybody: a legacy vehicle may have none,
+                and it is required before the vehicle can be declared (VEH-34).
+              */}
               {"chassisVinRestricted" in vehicle ? (
                 <Detail
                   label="Chassis / VIN"
                   value={vehicle.chassisVinRestricted}
+                  missing="Not recorded"
                 />
-              ) : null}
+              ) : (
+                <Detail
+                  label="Chassis / VIN"
+                  value={
+                    vehicle.chassisRecorded
+                      ? "Recorded. Shown only to officers permitted to see it."
+                      : null
+                  }
+                  missing="Not recorded"
+                />
+              )}
             </DetailList>
             {vehicle.notes ? (
               <div className="border-t border-line pt-4">
@@ -456,7 +473,7 @@ export default function VehicleDetailPage() {
           {canDeclare ? (
             <Section
               title="Declare this vehicle"
-              description="Declares this same record — no second record is created. A route type and the owner's name and phone are required."
+              description="Declares this same record — no second record is created. A route type, the owner's name and phone, and the chassis number are required."
             >
               <Field label="Route type" htmlFor="declareRouteTypeId" required>
                 <Select
@@ -515,6 +532,23 @@ export default function VehicleDetailPage() {
                   </Field>
                 </div>
               ) : null}
+              {/* Asked for only where the record has none (VEH-34). */}
+              {vehicle.chassisRecorded ? null : (
+                <Field
+                  label="Chassis / VIN"
+                  htmlFor="declareChassis"
+                  required
+                  hint="This record has none. As stamped on the vehicle."
+                >
+                  <TextInput
+                    id="declareChassis"
+                    value={declareChassis}
+                    onChange={(event) => setDeclareChassis(event.target.value)}
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                  />
+                </Field>
+              )}
               <div>
                 <Button
                   type="button"
@@ -522,7 +556,8 @@ export default function VehicleDetailPage() {
                     busy ||
                     !declareRouteTypeId ||
                     (ownerIncomplete &&
-                      (!declareOwnerName || !declareOwnerPhone))
+                      (!declareOwnerName || !declareOwnerPhone)) ||
+                    (!vehicle.chassisRecorded && !declareChassis.trim())
                   }
                   onClick={() =>
                     void act(
@@ -542,6 +577,9 @@ export default function VehicleDetailPage() {
                                 },
                               }
                             : {}),
+                          ...(vehicle.chassisRecorded
+                            ? {}
+                            : { chassisVinRestricted: declareChassis.trim() }),
                         }),
                       "Vehicle declared",
                     )

@@ -70,7 +70,7 @@ Each item is independently completable and independently testable. Status values
 | 40 | officer-signatures | §8, §23.7 (CARD-07) | planned | [plan](plans/40-officer-signatures.md) |
 | 41 | field-feedback-fixes | §7, §9, §23.16 (MEM-15, MEM-18, VEH-33) | done (clicked through 7 Oct, with a slowed connection and a drawn photograph) | [plan](plans/41-field-feedback-fixes.md) |
 | 42 | registration-form-reduction | §7, Req. 7.3 (rev. 1.14) | done (clicked through 7 Oct) | [plan](plans/42-registration-form-reduction.md) |
-| 43 | chassis-and-route | §9 (VEH-34, VEH-35) | planned | [plan](plans/43-chassis-and-route.md) |
+| 43 | chassis-and-route | §9, Req. 9.4 (rev. 1.15); VEH-35 | stage 1 done (the chassis number; clicked through 7 Oct). Stage 2 (the route) waits on VEH-35 | [plan](plans/43-chassis-and-route.md) |
 
 ### Item summaries
 
@@ -405,8 +405,9 @@ recordings (`QUESTIONS.md`, change log). Three items came of it:
 
 - **41** (done 7 October) is what changes no rule and no stored data: signing in, the
   order of the two forms, and the member's photograph.
-- **42** (done 7 October) and **43** change what the forms require, and with it the schema
-  and the PRD. 43 waits for the owner's approval, and its route half also on VEH-35.
+- **42** (done 7 October) and **43** change what the forms require, and with it the PRD.
+  43's first stage, the chassis number, is done. Its second, the route, adds new data and
+  waits on the four points VEH-35 leaves open.
 
 Two of his points were records on the live database and not code. The word "demo" came
 off the branches and units by the owner's determination of ORG-05 the same day (a

@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.19
+**Document version:** 1.20
 **Last revised:** 7 October 2026
 
 ---
@@ -1031,9 +1031,13 @@ compulsory" two.
   legacy vehicles lawfully lack one, as with the route type and the owner (VEH-25, VEH-26).
 - The chassis number stays restricted: it is still in no list, no verification, and no log.
 - It changes PRD §9. Planned in `plans/43`, and not built until that is approved.
+
+**Built, 7 October 2026** (roadmap item 43, stage 1). A legacy vehicle without a chassis
+number is asked for one when it is declared, and every officer who may open the vehicle is
+told whether it has one, though not what it is. No format is checked: none was given.
 **Answered on.** 6 October 2026. **Answered by.** Mr Timothy, Head of Operations, in a
 recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
-**Recorded at.** — (PRD §9 is revised when `plans/43` is built.)
+**Recorded at.** PRD Requirement 9.4 (revision 1.15).
 
 ### VEH-35 · A complete route: from where, to where ⏳ (partly answered)
 
@@ -2131,6 +2135,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 7 October 2026 (item 43) | **VEH-34** is built: a vehicle is not added or declared without its chassis number (PRD revision 1.15). VEH-35, the route's from and to, still waits on its four open points. |
 | 7 October 2026 (hosting) | **GOV-02** records what is so: the live API runs on Render, on a plan that sleeps when idle, which was the long wait at sign-in that Mr Timothy reported. DigitalOcean remains the stated target. The owner's to decide; nothing was moved. |
 | 7 October 2026 (item 42) | The registration form is reduced as Mr Timothy asked (PRD revision 1.14, Requirement 7.3). **MEM-16** is built. **MEM-17** is answered: Area is no longer asked for. **MEM-07**, **MEM-08**, and **MEM-10** are closed, because the fields they ask about left the form. MEM-06 keeps its two open points. |
 | 7 October 2026 (later) | The project owner determined the rest of **ORG-05**: the one branch and one unit beneath each zone stand as the Union's own, and the word "demo" comes off them (PRD revision 1.13; a migration renames the existing rows, with an audit record each). He also confirmed the reading of the guarantor's fields in **MEM-06**: full name, telephone, and address only. |
