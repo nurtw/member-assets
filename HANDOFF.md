@@ -22,7 +22,7 @@ Three rules outrank every default:
 - **Items 38 to 40 are planned and wait for the owner.** The owner agreed
   plan 40's change to who may upload a signature.
 - Item 37 needs no migration. Neon has all 28, and the seed.
-- Item 15 is planned and waits too.
+- Item 15 waits too.
 - `auth.mfa_enforced` and `dues.go_live_date` stay off until go-live.
 
 Tests: domain 518, contracts 138, api 195, web 31; e2e 497 of 498.
