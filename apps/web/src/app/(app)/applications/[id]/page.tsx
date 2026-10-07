@@ -1,11 +1,6 @@
 "use client";
 
-import type {
-  ApplicationDetail,
-  CardSummary,
-  VehicleSummary,
-} from "@nurtw/contracts";
-import { suggestCardAddress } from "@nurtw/domain";
+import type { ApplicationDetail } from "@nurtw/contracts";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -15,11 +10,15 @@ import useSWR from "swr";
 import { DedicatedAccountPanel } from "@/components/dedicated-account-panel";
 import { MemberDuesPanel } from "@/components/dues-panel";
 import {
+  MemberCardPanel,
+  MemberVehiclesPanel,
+  memberVehiclesKey,
+} from "@/components/member-panels";
+import {
   Button,
   Detail,
   DetailList,
   ErrorNotice,
-  Field,
   Loading,
   Notice,
   PageHeader,
@@ -29,7 +28,6 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  TextInput,
   buttonVariants,
 } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -78,16 +76,6 @@ function fullName(source: Record<string, unknown> | null): string | null {
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
   const { holds } = useSession();
-  /**
-   * The card address, before the officer has touched it.
-   *
-   * `null` means "not yet edited", so the suggested value shows through. Once
-   * the officer types — including clearing the field entirely — the state holds
-   * a string and the suggestion no longer applies. That keeps the default out
-   * of an effect, so nothing races the fetch and nothing overwrites what the
-   * officer has typed when the data revalidates.
-   */
-  const [cardAddress, setCardAddress] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiError | null>(null);
   const [confirming, setConfirming] = useState<Confirming | null>(null);
@@ -107,33 +95,22 @@ export default function ApplicationDetailPage() {
   const loadError = error instanceof ApiError ? error : null;
 
   /**
-   * The member's cards.
-   *
-   * Keyed on the member, and not requested at all until the application has
-   * loaded — SWR treats a null key as "nothing to fetch", which is how a
-   * dependent request is expressed without an effect.
-   */
-  const memberId = application?.member.id ?? null;
-  const { data: cardData, mutate: mutateCards } = useSWR<{
-    cards: CardSummary[];
-  }>(memberId ? `/cards?memberId=${memberId}` : null, fetcher);
-  const cards = cardData?.cards ?? [];
-
-  /**
    * The applicant's vehicles (PRD Requirement 9.10, revision 1.3). Recorded in
    * the registration flow, possibly while the application is still pending,
    * so the reviewing officer can see them before deciding.
+   *
+   * Counted here for the tab's label. The panel reads the same address, so
+   * this is one request, and it is not made until the application has loaded:
+   * SWR treats a null key as "nothing to fetch".
    */
+  const memberId = application?.member.id ?? null;
   const canSeeVehicles = holds("vehicle.read");
   const canAddVehicle = holds("vehicle.record") || holds("vehicle.declare");
-  const { data: vehicleData } = useSWR<{ vehicles: VehicleSummary[] }>(
-    memberId && canSeeVehicles ? `/vehicles?memberId=${memberId}` : null,
+  const { data: vehicleData } = useSWR<{ vehicles: unknown[] }>(
+    memberId && canSeeVehicles ? memberVehiclesKey(memberId) : null,
     fetcher,
   );
-  const vehicles = vehicleData?.vehicles ?? [];
-  const liveCard = cards.find((card) =>
-    ["DRAFT", "PENDING_APPROVAL", "ISSUED", "ACTIVE"].includes(card.status),
-  );
+  const vehicleCount = vehicleData?.vehicles.length ?? 0;
 
   // A tab is offered only where it has something for this officer.
   const offersVehicles = canSeeVehicles || canAddVehicle;
@@ -150,19 +127,6 @@ export default function ApplicationDetailPage() {
     ...(offersCard ? [{ value: "card" as const }] : []),
   ];
   const [tab, setTab] = useTabParam(tabs);
-
-  /**
-   * What goes in the card-address field.
-   *
-   * Suggested from the residential address the officer is already looking at on
-   * this screen — **not** fetched by the card module, which cannot reach
-   * `member_contact` at all (Decision 10.1). The value travels to the API as an
-   * ordinary field the officer has confirmed.
-   */
-  const suggestedAddress = suggestCardAddress(
-    application?.contact?.residentialAddress,
-  );
-  const printedAddress = cardAddress ?? suggestedAddress;
 
   async function act(action: () => Promise<unknown>, done?: string) {
     setBusy(true);
@@ -254,6 +218,17 @@ export default function ApplicationDetailPage() {
             {member.organisation.name}
           </>
         }
+        actions={
+          // Once approved, the person has a record of their own (item 37).
+          member.status !== "PENDING" && holds("member.read") ? (
+            <Link
+              href={`/members/${member.id}`}
+              className={buttonVariants({ variant: "secondary" })}
+            >
+              Member’s record
+            </Link>
+          ) : null
+        }
       />
 
       {actionError ? (
@@ -313,8 +288,8 @@ export default function ApplicationDetailPage() {
           {tabs.map((entry) => (
             <TabsTrigger key={entry.value} value={entry.value}>
               {TAB_LABELS[entry.value]}
-              {entry.value === "vehicles" && vehicles.length > 0
-                ? ` (${vehicles.length})`
+              {entry.value === "vehicles" && vehicleCount > 0
+                ? ` (${vehicleCount})`
                 : ""}
             </TabsTrigger>
           ))}
@@ -446,49 +421,10 @@ export default function ApplicationDetailPage() {
 
         {offersVehicles ? (
           <TabsContent value="vehicles" className="grid gap-6 outline-none">
-            <Section
-              title="Vehicles"
-              description="Vehicles this member drives. A vehicle added here is on record only until it is declared and a sticker is attached."
-              actions={
-                canAddVehicle ? (
-                  <Link
-                    href={`/applications/${application.id}/vehicles`}
-                    className={buttonVariants({ variant: "secondary" })}
-                  >
-                    Add a vehicle
-                  </Link>
-                ) : null
-              }
-            >
-              {vehicles.length > 0 ? (
-                <ul className="grid gap-2">
-                  {vehicles.map((vehicle) => (
-                    <li
-                      key={vehicle.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line px-3 py-2"
-                    >
-                      <Link
-                        href={`/vehicles/${vehicle.id}`}
-                        className="font-mono text-sm font-medium text-link underline-offset-2 hover:underline"
-                      >
-                        {vehicle.plateNumberDisplay}
-                      </Link>
-                      <span className="text-sm text-muted-foreground">
-                        {vehicle.routeType?.label ?? "No route type"}
-                      </span>
-                      {/* VEH-28 — present only for a holder of vehicle.declare. */}
-                      {vehicle.status ? (
-                        <StatusChip status={vehicle.status} />
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-faint-foreground">
-                  No vehicle recorded.
-                </p>
-              )}
-            </Section>
+            <MemberVehiclesPanel
+              memberId={member.id}
+              addHref={`/applications/${application.id}/vehicles`}
+            />
           </TabsContent>
         ) : null}
 
@@ -505,75 +441,16 @@ export default function ApplicationDetailPage() {
 
         {offersCard ? (
           <TabsContent value="card" className="grid gap-6 outline-none">
-            <Section
-              title="Membership card"
-              description="A member holds one card at a time. A replacement supersedes the original rather than overwriting it."
-            >
-              {cards.length > 0 ? (
-                <ul className="grid gap-2">
-                  {cards.map((card) => (
-                    <li
-                      key={card.id}
-                      className="flex flex-wrap items-center gap-3 rounded-md border border-line px-3 py-2"
-                    >
-                      <StatusChip status={card.status} />
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {card.cardNumber ?? (
-                          <span className="font-sans italic text-faint-foreground">
-                            Not yet issued
-                          </span>
-                        )}
-                      </span>
-                      <Link
-                        href={`/cards/${card.id}`}
-                        className="ml-auto text-sm underline underline-offset-2"
-                      >
-                        Open
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-faint-foreground">
-                  No card has been prepared.
-                </p>
-              )}
-
-              {!liveCard && holds("card.issue") ? (
-                <div className="grid gap-4 border-t border-line pt-4">
-                  <Field
-                    label="Address as printed on the card"
-                    htmlFor="cardAddress"
-                    hint="Suggested from the residential address, shortened to fit the card. Amend it if the Union prints something different."
-                    required
-                  >
-                    <TextInput
-                      id="cardAddress"
-                      value={printedAddress}
-                      onChange={(event) => setCardAddress(event.target.value)}
-                    />
-                  </Field>
-                  <div>
-                    <Button
-                      type="button"
-                      disabled={busy || printedAddress.trim().length < 4}
-                      onClick={() =>
-                        void act(async () => {
-                          await api.post("/cards", {
-                            memberId: member.id,
-                            printedAddress: printedAddress.trim(),
-                          });
-                          setCardAddress(null);
-                          await mutateCards();
-                        }, "Card prepared")
-                      }
-                    >
-                      Prepare a card
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-            </Section>
+            {/*
+              The card address is suggested from the residential address the
+              officer is already looking at on this screen. It is not fetched
+              by the card module, which cannot reach `member_contact` at all
+              (Decision 10.1).
+            */}
+            <MemberCardPanel
+              memberId={member.id}
+              residentialAddress={application.contact?.residentialAddress}
+            />
           </TabsContent>
         ) : null}
       </Tabs>

@@ -115,7 +115,13 @@ describe('Membership registration (e2e)', () => {
     await cleanUp();
     fixture = await buildFixture();
 
-    for (const who of ['registrar', 'approver', 'otherbranch', 'sensitive']) {
+    for (const who of [
+      'registrar',
+      'approver',
+      'otherbranch',
+      'sensitive',
+      'reader',
+    ]) {
       cookies[who] = await login(`${who}.${TAG}@nurtw.test`);
     }
   });
@@ -534,6 +540,174 @@ describe('Membership registration (e2e)', () => {
     });
   });
 
+  // --- The member register (item 37) ---------------------------------------
+
+  describe('the member register', () => {
+    /**
+     * A member as the legacy import leaves one: active, numbered, and with no
+     * application. Until item 37 nothing could open such a member, because the
+     * only record route was the application's.
+     */
+    async function migratedMember(surname: string): Promise<string> {
+      const member = await prisma.member.create({
+        data: {
+          status: 'ACTIVE',
+          membershipNumber: `E2E-${surname.toUpperCase()}`,
+          surname,
+          firstName: 'Ada',
+          organisationId: fixture.unitAId,
+          legacyId: `${TAG}-${surname}`,
+          contact: {
+            create: {
+              phone: '+2348030000001',
+              residentialAddress: '1 Fixture Close, Awka',
+            },
+          },
+          nextOfKin: {
+            create: {
+              surname: 'Fixture',
+              firstName: 'Kin',
+              address: '1 Fixture Close, Awka',
+              phone: '+2348030000002',
+            },
+          },
+        },
+      });
+      return member.id;
+    }
+
+    it('opens a member who has no application, by the member’s own id', async () => {
+      const id = await migratedMember('Registeropen');
+
+      // `reader` holds `member.read` and nothing else.
+      const response = await request(server)
+        .get(`/api/v1/members/${id}`)
+        .set('Cookie', cookies.reader!)
+        .expect(200);
+
+      const { member } = response.body;
+      expect(member.surname).toBe('Registeropen');
+      expect(member.status).toBe('ACTIVE');
+      expect(member.organisation.id).toBe(fixture.unitAId);
+      // The path carries every ancestor's id and is never returned.
+      expect(member.organisation.path).toBeUndefined();
+      // Left out, not sent empty, for a reader who may not have them.
+      expect('application' in member).toBe(false);
+      expect('sensitive' in member).toBe(false);
+      expect(JSON.stringify(response.body)).not.toContain('2348030000001');
+      expect(JSON.stringify(response.body)).not.toContain('Fixture Close');
+    });
+
+    it('tells a reader of applications whether there is one', async () => {
+      const migrated = await migratedMember('Registernone');
+      const without = await request(server)
+        .get(`/api/v1/members/${migrated}`)
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+      expect(without.body.member.application).toBeNull();
+      // Reading applications does not confer the sensitive part.
+      expect('sensitive' in without.body.member).toBe(false);
+
+      const created = await request(server)
+        .post('/api/v1/applications')
+        .set('Cookie', cookies.registrar!)
+        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'Registerwith'))
+        .expect(201);
+      const withOne = await request(server)
+        .get(`/api/v1/members/${created.body.application.member.id}`)
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+      expect(withOne.body.member.application).toEqual({
+        id: created.body.application.id,
+        applicationNumber: created.body.application.applicationNumber,
+        status: 'DRAFT',
+      });
+    });
+
+    it('gives contact, next of kin, and guarantor only to a holder of member_sensitive.read', async () => {
+      const id = await migratedMember('Registersensitive');
+
+      const response = await request(server)
+        .get(`/api/v1/members/${id}`)
+        .set('Cookie', cookies.sensitive!)
+        .expect(200);
+
+      const { sensitive } = response.body.member;
+      expect(sensitive.contact.phone).toBe('+2348030000001');
+      expect(sensitive.nextOfKin.surname).toBe('Fixture');
+      expect(sensitive.guarantor).toBeNull();
+      // Each field is named: no row identifier or timestamp rides along.
+      expect(Object.keys(sensitive.nextOfKin).sort()).toEqual([
+        'address',
+        'area',
+        'firstName',
+        'middleName',
+        'occupation',
+        'phone',
+        'surname',
+        'townCity',
+      ]);
+    });
+
+    it('answers 404 for a member in another branch, and for one that does not exist', async () => {
+      const id = await migratedMember('Registerscope');
+
+      await request(server)
+        .get(`/api/v1/members/${id}`)
+        .set('Cookie', cookies.otherbranch!)
+        .expect(404);
+      await request(server)
+        .get('/api/v1/members/00000000-0000-4000-8000-000000000000')
+        .set('Cookie', cookies.reader!)
+        .expect(404);
+      await request(server)
+        .patch('/api/v1/members/00000000-0000-4000-8000-000000000000/status')
+        .set('Cookie', cookies.approver!)
+        .send({ status: 'SUSPENDED', reason: 'no such member' })
+        .expect(404);
+    });
+
+    it('lists by status, so the register can leave pending applicants out', async () => {
+      await migratedMember('Registerlisted');
+      await request(server)
+        .post('/api/v1/applications')
+        .set('Cookie', cookies.registrar!)
+        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'Registerpending'))
+        .expect(201);
+
+      const surnames = async (query: string): Promise<string[]> => {
+        const response = await request(server)
+          .get(`/api/v1/members?q=register${query}`)
+          .set('Cookie', cookies.reader!)
+          .expect(200);
+        return response.body.members.map((m: { surname: string }) => m.surname);
+      };
+
+      // A picker sends no status and finds applicants too.
+      const everyone = await surnames('&limit=200');
+      expect(everyone).toContain('Registerlisted');
+      expect(everyone).toContain('Registerpending');
+
+      const members = await surnames('&limit=200&status=ACTIVE,SUSPENDED,CANCELLED');
+      expect(members).toContain('Registerlisted');
+      expect(members).not.toContain('Registerpending');
+
+      expect(await surnames('&status=SUSPENDED')).toHaveLength(0);
+      expect(await surnames('&limit=1')).toHaveLength(1);
+    });
+
+    it('refuses an unknown status and a limit beyond the maximum', async () => {
+      await request(server)
+        .get('/api/v1/members?status=NONSENSE')
+        .set('Cookie', cookies.reader!)
+        .expect(400);
+      await request(server)
+        .get('/api/v1/members?limit=201')
+        .set('Cookie', cookies.reader!)
+        .expect(400);
+    });
+  });
+
   // --- Who may decide ------------------------------------------------------
 
   describe('the second-officer requirement', () => {
@@ -833,6 +1007,7 @@ describe('Membership registration (e2e)', () => {
       'member.read',
       'member_sensitive.read',
     ]);
+    await buildUser('reader', branchA.id, ['member.read']);
     await buildUser('otherbranch', branchB.id, [
       'application.read',
       'member.create',

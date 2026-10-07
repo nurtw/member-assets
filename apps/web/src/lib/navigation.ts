@@ -14,6 +14,7 @@ export type NavIcon =
   | "overview"
   | "verify"
   | "applications"
+  | "members"
   | "cards"
   | "vehicles"
   | "stickers"
@@ -81,6 +82,12 @@ export const OFFICER_NAVIGATION: readonly NavGroup[] = [
         label: "Applications",
         icon: "applications",
         permissions: ["application.read"],
+      },
+      {
+        href: "/members",
+        label: "Members",
+        icon: "members",
+        permissions: ["member.read"],
       },
       {
         href: "/cards",
@@ -211,6 +218,7 @@ export const OFFICER_LANDING_ORDER: readonly string[] = [
   "/cards",
   "/vehicles",
   "/stickers/stock",
+  "/members",
   "/settings/fees",
   "/settings/settlement",
   "/organisations",

@@ -9,6 +9,8 @@ import type {
   ApplicationSummary,
   AttachMediaInput,
   CreateApplicationInput,
+  MemberRecord,
+  MemberRecordSensitive,
   MemberSearchResult,
   ReviewApplicationInput,
   SetMemberStatusInput,
@@ -120,12 +122,21 @@ export class MembershipService {
    * vehicle declaration's owner field is the first caller. Scoped by
    * `member.read`, not `application.read`: a picker only needs to find the
    * person, never their application history, and gating it on the narrower
-   * permission lets a role that can read members but not applications (there
-   * is none today, but nothing should assume that stays true) use it too.
+   * permission lets a role that can read members but not applications (the
+   * card administrator and the auditor, for two) use it too.
+   *
+   * The Members screen (item 37) reads the same list, longer and by status.
+   * The projection is the same for both, and carries nothing Requirement 7.1
+   * keeps apart.
    */
   async searchMembers(
     userId: string,
-    filters: { q?: string; organisationId?: string },
+    filters: {
+      q?: string;
+      organisationId?: string;
+      statuses?: readonly MemberStatus[];
+      limit?: number;
+    },
   ): Promise<MemberSearchResult[]> {
     const scopes = await this.readableScopes(userId, MEMBER_READ);
     if (scopes.length === 0) {
@@ -139,6 +150,9 @@ export class MembershipService {
           { OR: scopes.map((path) => ({ organisation: { path: { startsWith: path } } })) },
           ...(filters.organisationId
             ? [{ organisationId: filters.organisationId }]
+            : []),
+          ...(filters.statuses && filters.statuses.length > 0
+            ? [{ status: { in: [...filters.statuses] } }]
             : []),
           ...(q
             ? [
@@ -167,11 +181,134 @@ export class MembershipService {
         membershipNumber: true,
         organisation: { select: { id: true, name: true, level: true } },
       },
-      orderBy: { surname: 'asc' },
-      take: 20,
+      orderBy: [{ surname: 'asc' }, { firstName: 'asc' }, { id: 'asc' }],
+      take: filters.limit ?? 20,
     });
 
     return rows;
+  }
+
+  /**
+   * One member's record (item 37).
+   *
+   * A migrated member has no application, so the application's route cannot
+   * open them; this one is keyed by the member. Scoped by `member.read` over
+   * the member's own organisation, and a member outside it answers as one that
+   * does not exist.
+   *
+   * **Built by projection, in three parts.** What a list already shows is read
+   * first. The application is read only for somebody who may read applications
+   * over this member. Contact, next of kin, and guarantor are read only for a
+   * holder of `member_sensitive.read` over this member, which is the permission
+   * that governs those fields (Requirement 7.1). The two optional parts are
+   * left out of the response, never sent empty, so nothing is fetched and then
+   * hidden.
+   */
+  async findMember(userId: string, id: string): Promise<MemberRecord> {
+    const member = await this.prisma.member.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        surname: true,
+        firstName: true,
+        middleName: true,
+        status: true,
+        membershipNumber: true,
+        organisation: {
+          select: { id: true, name: true, level: true, path: true },
+        },
+        designation: { select: { id: true, code: true, label: true } },
+      },
+    });
+    if (
+      !member ||
+      !(await this.permissions.can(userId, MEMBER_READ, member.organisation.path))
+    ) {
+      throw new NotFoundException();
+    }
+    const path = member.organisation.path;
+
+    const record: MemberRecord = {
+      id: member.id,
+      surname: member.surname,
+      firstName: member.firstName,
+      middleName: member.middleName,
+      status: member.status,
+      membershipNumber: member.membershipNumber,
+      // The path decides scope and is never returned.
+      organisation: {
+        id: member.organisation.id,
+        name: member.organisation.name,
+        level: member.organisation.level,
+      },
+      designation: member.designation,
+    };
+
+    if (await this.permissions.can(userId, READ, path)) {
+      record.application = await this.prisma.membershipApplication.findUnique({
+        where: { memberId: id },
+        select: { id: true, applicationNumber: true, status: true },
+      });
+    }
+
+    if (await this.permissions.can(userId, SENSITIVE_READ, path)) {
+      record.sensitive = await this.sensitiveParts(id);
+    }
+
+    return record;
+  }
+
+  /** Contact, next of kin, and guarantor, each field named. */
+  private async sensitiveParts(memberId: string): Promise<MemberRecordSensitive> {
+    const person = {
+      surname: true,
+      firstName: true,
+      middleName: true,
+      phone: true,
+      address: true,
+      area: true,
+      townCity: true,
+      occupation: true,
+    } as const;
+
+    const [contact, nextOfKin, guarantor] = await Promise.all([
+      this.prisma.memberContact.findUnique({
+        where: { memberId },
+        select: {
+          phone: true,
+          residentialAddress: true,
+          area: true,
+          townCity: true,
+          stateOfOrigin: true,
+          residentialLga: { select: { id: true, name: true, stateName: true } },
+        },
+      }),
+      this.prisma.nextOfKin.findUnique({ where: { memberId }, select: person }),
+      this.prisma.guarantor.findUnique({
+        where: { memberId },
+        select: {
+          ...person,
+          relationshipToApplicant: true,
+          hasCollateral: true,
+          collateralDetails: true,
+        },
+      }),
+    ]);
+
+    return {
+      contact: contact
+        ? {
+            phone: contact.phone,
+            residentialAddress: contact.residentialAddress,
+            area: contact.area,
+            townCity: contact.townCity,
+            lga: contact.residentialLga,
+            stateOfOrigin: contact.stateOfOrigin,
+          }
+        : null,
+      nextOfKin,
+      guarantor,
+    };
   }
 
   /** The full record, including the data Requirement 7.1 keeps separate. */
@@ -586,8 +723,16 @@ export class MembershipService {
     memberId: string,
     input: SetMemberStatusInput,
   ): Promise<{ id: string; status: string }> {
-    const member = await this.loadMemberWithPath(memberId);
-    if (!(await this.permissions.can(actor.userId, MEMBER_READ, member.organisation.path))) {
+    // A member who does not exist and one outside the caller's scope answer
+    // alike. `findUniqueOrThrow` here answered an unknown id with a 500.
+    const member = await this.prisma.member.findUnique({
+      where: { id: memberId },
+      include: { organisation: { select: { path: true, id: true } } },
+    });
+    if (
+      !member ||
+      !(await this.permissions.can(actor.userId, MEMBER_READ, member.organisation.path))
+    ) {
       throw new NotFoundException();
     }
     await this.require(actor.userId, MEMBER_SUSPEND, member.organisation.path);

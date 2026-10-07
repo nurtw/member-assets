@@ -1,4 +1,5 @@
 import {
+  BookUser,
   Building2,
   Bus,
   ChartColumn,
@@ -25,6 +26,7 @@ export const NAV_ICONS: Record<NavIcon, LucideIcon> = {
   overview: LayoutDashboard,
   verify: ScanLine,
   applications: FileText,
+  members: BookUser,
   cards: IdCard,
   vehicles: Bus,
   stickers: Sticker,

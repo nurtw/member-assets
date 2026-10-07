@@ -307,6 +307,24 @@ Answers across role bundles, per-user grants, and per-user revocations, with rev
 applied. `vehicle.declare` belongs to the super administrator alone and to those the super
 administrator expressly grants it to; it is in **no other role bundle**.
 
+### Finding a member, and suspending or cancelling one
+
+**Members** lists everybody who is or was a member within your area: search by name or
+membership number, or filter by status (needs `member.read`). A member brought over from
+the legacy register has no application, and is found here and nowhere else. An applicant
+who has not been approved is under **Applications**.
+
+Open the member → **Manage** (needs `member.suspend`):
+
+- **Suspend** stops the membership until it is restored. While it is suspended, a
+  membership check does not verify the member.
+- **Restore** lifts a suspension.
+- **Cancel** is final. The record and its number are kept, and the number is never given
+  to anybody else.
+
+Each asks for a reason, which is kept in the audit trail. Contact, next-of-kin, and
+guarantor details show only to an officer holding `member_sensitive.read`.
+
 ### Dissolving a unit or branch
 
 Deactivate, never delete. Deactivation is refused while active children or active members

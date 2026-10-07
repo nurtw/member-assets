@@ -15,12 +15,14 @@ import {
 import {
   attachMediaSchema,
   createApplicationSchema,
+  listMembersQuerySchema,
   reviewApplicationSchema,
   setMemberStatusSchema,
   updateApplicationSchema,
   withdrawApplicationSchema,
   type AttachMediaInput,
   type CreateApplicationInput,
+  type ListMembersQuery,
   type ReviewApplicationInput,
   type SetMemberStatusInput,
   type UpdateApplicationInput,
@@ -315,30 +317,67 @@ export class MemberController {
   @RequirePermission('member.read')
   @Get()
   @Documented({
-    summary: 'Search members by name or membership number.',
+    summary: 'List or search members by name or membership number.',
     description:
-      'A minimal lookup for pickers elsewhere in the System — vehicle declaration’s owner ' +
-      'field, for one — not a directory. Returns no next-of-kin, guarantor, contact, or ' +
-      'application data, and only the branch/unit subtrees the caller holds `member.read` in.',
+      'The Members screen’s list, and the lookup behind pickers elsewhere in the System — ' +
+      'vehicle declaration’s owner field, for one. Returns no next-of-kin, guarantor, ' +
+      'contact, or application data, and only the branch/unit subtrees the caller holds ' +
+      '`member.read` in. It is an officer’s list, never a directory for anybody else.',
     query: [
       { name: 'q', description: 'Matches surname, first name, or membership number.' },
       { name: 'organisationId', description: 'Filter to one unit.' },
+      {
+        name: 'status',
+        description:
+          'One member status, or several separated by commas. Omitted, every status is ' +
+          'returned, pending applicants included.',
+      },
+      {
+        name: 'limit',
+        description: 'How many to return, from 1 to 200. Omitted, 20.',
+      },
     ],
+    responses: { 400: 'An unknown status, or a limit outside 1 to 200.' },
   })
   async searchMembers(
     @Req() request: AuthenticatedRequest,
-    @Query('q') q?: string,
-    @Query('organisationId') organisationId?: string,
+    @Query(new ZodValidationPipe(listMembersQuerySchema)) query: ListMembersQuery,
   ) {
     if (!request.user) {
       throw new BadRequestException();
     }
     return {
       members: await this.membership.searchMembers(request.user.id, {
-        q,
-        organisationId,
+        q: query.q,
+        organisationId: query.organisationId,
+        statuses: query.status,
+        limit: query.limit,
       }),
     };
+  }
+
+  @RequirePermission('member.read')
+  @Get(':id')
+  @Documented({
+    summary: 'Retrieve one member’s record.',
+    description:
+      'Keyed by the member, so a member with no application — every migrated member — can ' +
+      'be opened. The application’s number and status are included only for a reader of ' +
+      'applications over this member. Contact, next of kin, and guarantor are included ' +
+      'only for a holder of `member_sensitive.read` over this member. A part the caller ' +
+      'may not read is left out of the response.',
+    responses: {
+      404: 'No such member, or they lie outside the caller’s scope.',
+    },
+  })
+  async findMember(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    if (!request.user) {
+      throw new BadRequestException();
+    }
+    return { member: await this.membership.findMember(request.user.id, id) };
   }
 
   @RequirePermission('member.suspend')

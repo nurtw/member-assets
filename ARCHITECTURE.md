@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.9
-**Last revised:** 6 October 2026
+**Document version:** 1.10
+**Last revised:** 7 October 2026
 **Authority:** Subordinate to `PRD.md`. Where this document and the PRD conflict, the PRD prevails.
 
 ---
@@ -546,6 +546,13 @@ owner's name, phone, and address (PRD Requirement 9.8) live in `vehicle_owner`, 
 `vehicle`, never as columns on `vehicle`. The vehicle list selects no owner field. The
 vehicle detail returns them to a caller who can read that vehicle, as the member detail
 does with contact data. No verification or aggregate path joins `vehicle_owner`.
+
+**Decision 10.1.2 — a member's record is read in parts *(item 37)*.** `GET /members/:id`
+answers with what a list already shows to a holder of `member.read` over the member. The
+application's number and status are added for a holder of `application.read`, and contact,
+next of kin, and guarantor for a holder of `member_sensitive.read`. Each part is read only
+when it may be returned, and a part that may not be is absent from the response. A record
+is never read whole and then trimmed.
 
 **Decision 10.2.** Uploaded passport photographs and signatures are held in object storage,
 never in the repository and never in the database. Access is by time-limited signed URL.

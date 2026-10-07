@@ -54,6 +54,16 @@ describe("visibleNavigation", () => {
     expect(labels("sticker.manage_stock")).not.toContain("Sticker stock");
   });
 
+  it("offers Members to an officer who reads members, and not Applications", () => {
+    const groups = visibleNavigation(
+      OFFICER_NAVIGATION,
+      holding("member.read"),
+    );
+    expect(navigationItems(groups).map((item) => item.label)).toEqual([
+      "Members",
+    ]);
+  });
+
   it("shows nothing to an officer with no permission", () => {
     expect(visibleNavigation(OFFICER_NAVIGATION, holding())).toEqual([]);
   });
@@ -98,6 +108,16 @@ describe("landingHref", () => {
         holding("vehicle.read", "verification.perform"),
       ),
     ).toBe("/verify");
+  });
+
+  it("lands an officer who records vehicles on the vehicles, not the members", () => {
+    expect(
+      landingHref(
+        OFFICER_NAVIGATION,
+        OFFICER_LANDING_ORDER,
+        holding("vehicle.read", "member.read"),
+      ),
+    ).toBe("/vehicles");
   });
 
   it("lands an officer who may only read roles on the roles", () => {

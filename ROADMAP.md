@@ -64,7 +64,7 @@ Each item is independently completable and independently testable. Status values
 | 34 | screen-restructure | `DESIGN.md` §5, §10–§12 | done (every screen swept 6 Oct) | [plan](plans/34-screen-restructure.md) |
 | 35 | sticker-prompt | §9A.7 (VEH-30) | done (clicked through 5 Oct) | [plan](plans/35-sticker-prompt.md) |
 | 36 | previous-operator-unnamed | §23.19, Req. 11.2 (rev. 1.12) | done | [plan](plans/36-previous-operator-unnamed.md) |
-| 37 | member-register | §7, §16, §25 | planned | [plan](plans/37-member-register.md) |
+| 37 | member-register | §7, §16, §25 | done (clicked through 7 Oct) | [plan](plans/37-member-register.md) |
 | 38 | union-structure | §6, §23.1 (ORG-05) | planned | [plan](plans/38-union-structure.md) |
 | 39 | reference-lists | §23.4 (ORG-06) | planned | [plan](plans/39-reference-lists.md) |
 | 40 | officer-signatures | §8, §23.7 (CARD-07) | planned | [plan](plans/40-officer-signatures.md) |
@@ -389,7 +389,8 @@ Items 37 to 40 are screens over routes that already exist, chosen by the owner o
 6 October 2026. They do not depend on one another, and each waits for the owner's
 approval. The recommended order is 37, 38, 39, 40:
 
-- **37 first**, because a migrated member cannot be opened from any screen today.
+- **37 first** (done 7 October), because a migrated member could not be opened from any
+  screen.
 - **38 and 39** let the Union enter its branches (ORG-05) and designations (ORG-06) itself.
 - **40** closes a gap in who may upload a signature, and is not needed until CARD-07.
 

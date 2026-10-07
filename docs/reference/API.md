@@ -40,8 +40,9 @@ A verification response confirms **only that a matching NURTW record exists unde
 requested criteria**. It is not evidence of ownership, roadworthiness, licensing, or
 insurance, and no integrating system should present it as such. See PRD §4.
 
-The API is not a public directory: there is no browsable member or vehicle listing, and no
-endpoint returns a collection of members.
+The API is not a public directory: an outside organisation has no browsable member or
+vehicle listing, and no endpoint it can reach returns a collection of members. An officer's
+own list of members is limited to the organisations that officer is responsible for.
 
 ---
 

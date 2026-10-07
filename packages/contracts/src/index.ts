@@ -190,10 +190,12 @@ export {
 
 export {
   APPLICATION_DECISIONS,
+  MEMBER_LIST_MAXIMUM,
   applicantSchema,
   attachMediaSchema,
   createApplicationSchema,
   guarantorSchema,
+  listMembersQuerySchema,
   nextOfKinSchema,
   organisationalAssignmentSchema,
   reviewApplicationSchema,
@@ -207,6 +209,10 @@ export {
   type AttachMediaInput,
   type CreateApplicationInput,
   type GuarantorInput,
+  type ListMembersQuery,
+  type MemberRecord,
+  type MemberRecordPerson,
+  type MemberRecordSensitive,
   type MemberSearchResult,
   type NextOfKinInput,
   type OrganisationalAssignmentInput,

@@ -465,6 +465,33 @@ That is sound: `details` describes the request the caller just sent, never the r
   carries script and would be stored XSS. Bytes are served only through a link signed over
   the id *and* an expiry; every failure answers 404.
 
+### The member register (item 37)
+
+- **A member's record is keyed by the member**: `GET /members/:id`, and `/members/[id]` on
+  the web. A migrated member has no application, so the application's page cannot open one.
+  The application's page is still the only place an application is amended or decided.
+- **The record is read in three parts, each under its own permission over that member**
+  (`MembershipService.findMember`):
+  - What a list shows: `member.read`.
+  - `application` (its id, number, and status): `application.read`. `null` means there is
+    none.
+  - `sensitive` (contact, next of kin, guarantor): `member_sensitive.read`.
+
+  A part the caller may not read is **left out of the response**, never sent empty. Each is
+  selected field by field. Do not widen any of the three.
+- **`GET /members` is the list and the picker, with one projection** (`MemberSearchResult`).
+  `status` is a comma list and `limit` runs from 1 to 200 (20 by default). The Members
+  screen asks for `ACTIVE,SUSPENDED,CANCELLED`: a pending applicant is not a member, and
+  stays on Applications. Never add contact data to this projection.
+- **It is an officer's list, never a directory.** No export, and no route an outside
+  organisation can reach.
+- **A member's vehicles and card are shared panels** (`components/member-panels.tsx`), used
+  by the application's page and the member's. Change them there, once.
+- **A member outside the caller's scope, and one that does not exist, answer the same 404**,
+  on the record and on `PATCH /members/:id/status`.
+- **Nothing amends a migrated member's details.** The amend route is the application's. No
+  item covers it yet.
+
 ### Membership cards and printing (item 06)
 
 - **A card number is allocated on issuance, never earlier.** `cardNumber` is nullable, same

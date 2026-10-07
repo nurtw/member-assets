@@ -20,7 +20,11 @@
  * - registration metadata — MEM-11, fields not visible in the photograph
  */
 
-import { isNigerianPhone, normalizeNigerianPhone } from '@nurtw/domain';
+import {
+  isNigerianPhone,
+  MEMBER_STATUSES,
+  normalizeNigerianPhone,
+} from '@nurtw/domain';
 import { z } from 'zod';
 
 // --- Shared field types ------------------------------------------------------
@@ -286,6 +290,36 @@ export const setMemberStatusSchema = z.object({
 
 export type SetMemberStatusInput = z.infer<typeof setMemberStatusSchema>;
 
+/** The most members one request may list. A picker asks for far fewer. */
+export const MEMBER_LIST_MAXIMUM = 200;
+
+/**
+ * What `GET /members` may be asked (item 37).
+ *
+ * `status` is one status, or several separated by commas. The Members screen
+ * asks for everybody who is or was a member and leaves pending applicants to
+ * Applications; a picker sends none and finds applicants too.
+ */
+export const listMembersQuerySchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  organisationId: uuid.optional(),
+  status: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) =>
+      (value ?? '')
+        .split(',')
+        .map((status) => status.trim())
+        .filter((status) => status.length > 0),
+    )
+    .pipe(z.array(z.enum(MEMBER_STATUSES)))
+    .transform((statuses) => [...new Set(statuses)]),
+  limit: z.coerce.number().int().min(1).max(MEMBER_LIST_MAXIMUM).default(20),
+});
+
+export type ListMembersQuery = z.infer<typeof listMembersQuerySchema>;
+
 // --- Responses ---------------------------------------------------------------
 
 /**
@@ -346,4 +380,60 @@ export interface MemberSearchResult {
   status: string;
   membershipNumber: string | null;
   organisation: { id: string; name: string; level: string };
+}
+
+/** A person named on a member's record: next of kin, or guarantor. */
+export interface MemberRecordPerson {
+  surname: string;
+  firstName: string;
+  middleName: string | null;
+  phone: string;
+  address: string;
+  area: string | null;
+  townCity: string | null;
+  occupation: string | null;
+}
+
+/**
+ * The part of a member's record that Requirement 7.1 keeps apart: contact, next
+ * of kin, and guarantor. Returned only to a holder of `member_sensitive.read`
+ * over the member.
+ */
+export interface MemberRecordSensitive {
+  contact: {
+    phone: string;
+    residentialAddress: string;
+    area: string | null;
+    townCity: string | null;
+    lga: { id: string; name: string; stateName: string } | null;
+    stateOfOrigin: string | null;
+  } | null;
+  nextOfKin: MemberRecordPerson | null;
+  guarantor:
+    | (MemberRecordPerson & {
+        relationshipToApplicant: string;
+        hasCollateral: boolean | null;
+        collateralDetails: string | null;
+      })
+    | null;
+}
+
+/**
+ * One member's record (item 37), from `GET /members/:id`.
+ *
+ * The named fields are what a list already shows. The two optional parts are
+ * left out, not sent empty, for a reader who may not have them:
+ *
+ * - `application` — for a reader of applications over this member. `null`
+ *   means the member has none, as every migrated member has not.
+ * - `sensitive` — for a holder of `member_sensitive.read` over this member.
+ */
+export interface MemberRecord extends MemberSearchResult {
+  designation: { id: string; code: string; label: string } | null;
+  application?: {
+    id: string;
+    applicationNumber: string;
+    status: string;
+  } | null;
+  sensitive?: MemberRecordSensitive;
 }

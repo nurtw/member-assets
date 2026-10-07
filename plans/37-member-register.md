@@ -47,8 +47,33 @@ restore, or cancel the member with a reason. Nobody reads more than they can tod
 - Reshaping the application page.
 
 ## Definition of done
-- [ ] A migrated member can be found and opened by an officer who may read them, and by
+- [x] A migrated member can be found and opened by an officer who may read them, and by
       nobody outside their organisation (404).
-- [ ] A reader without `application.read` gets no contact, next of kin, or guarantor.
-- [ ] Suspend, restore, and cancel work from the screen, each with a reason, each audited.
-- [ ] Lint, typecheck, build, and the tests pass; clicked through in both themes.
+- [x] A reader without `member_sensitive.read` gets no contact, next of kin, or guarantor
+      (see below: stricter than first planned).
+- [x] Suspend, restore, and cancel work from the screen, each with a reason, each audited.
+- [x] Lint, typecheck, build, and the tests pass; clicked through in both themes, on a
+      desktop and a phone, with synthetic members.
+
+**Decided while building (7 October 2026):**
+
+- **The sensitive part is gated by `member_sensitive.read`, not `application.read`.** The
+  plan said `application.read`, "which is who reads them today". But the code already has a
+  permission that governs exactly those fields, and it gates the printed registration form.
+  Using it means a branch administrator does not gain the contact details of migrated
+  members, whom nobody could open before. For a member with an application, nothing
+  changes: the application's page shows what it showed.
+- **`status` takes several statuses, separated by commas.** The screen needs "everybody who
+  is or was a member" in one request, which no single status gives.
+- **The vehicles and card sections became shared panels** (`components/member-panels.tsx`).
+  They were written inside the application's page; the plan wrongly said they were already
+  components. The application's page now uses the panels, and lost nothing.
+- **A member with no application adds a vehicle on the vehicle form**, where the officer
+  picks the member. The registration flow's step 2 needs an application.
+- **Home has no new tile.** Members is in the sidebar and the command menu; a ninth tile
+  would push Home past one screen on a phone.
+- **Fixed on the way:** `PATCH /members/:id/status` answered 500 for a member that does not
+  exist. It answers 404, as its documentation said.
+
+**Not checked in a browser:** a real migrated member (only synthetic ones, by rule), and a
+list longer than 200.
