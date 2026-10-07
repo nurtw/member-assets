@@ -18,8 +18,7 @@ Three rules outrank every default:
 - **Nothing is being built.** Items 37 to 39, 41, and 42 are pushed
   (`ab2ba06`). Neon has all 30 migrations.
 - **Item 43, stage 1 (the chassis number compulsory, PRD 1.15) is done and
-  clicked through.** Its commit is local, with one before it that records
-  where the API is hosted. No migration.
+  clicked through.** Two commits are local. No migration.
 - **Item 43, stage 2 (routes) is not started.** It waits on VEH-35.
 - Planned, waiting for the owner: 40 and 15.
 
@@ -27,10 +26,9 @@ Tests: domain 518, contracts 144, api 195, web 79; e2e 508 of 509.
 
 ## Conflicts
 
-- **The live API runs on Render and sleeps** (no answer in 90 seconds,
-  7 October). Recorded in GOV-02; DigitalOcean is still the stated target.
-  The sign-in pages wake it and explain the wait. Ending the wait is a
-  hosting decision, and the owner's.
+- **The live API runs on Render and sleeps** (GOV-02). The sign-in pages
+  wake it and explain the wait; ending the wait is a hosting decision, and
+  the owner's.
 - **VEH-35 has four open points.** Stage 2 of item 43 adds a table and
   must not start before they are answered.
 - Driver and Conductor are not yet first on Neon (ORG-06): the owner
