@@ -155,8 +155,11 @@ async function send<T>(
 }
 
 export const api = {
-  get: <T>(path: string, signal?: AbortSignal) =>
-    request<T>(path, { signal }),
+  get: <T>(
+    path: string,
+    signal?: AbortSignal,
+    options?: { timeoutMs?: number },
+  ) => request<T>(path, { signal, timeoutMs: options?.timeoutMs }),
   post: <T>(path: string, body?: unknown, options?: { timeoutMs?: number }) =>
     request<T>(path, { method: "POST", body, timeoutMs: options?.timeoutMs }),
   patch: <T>(path: string, body?: unknown) =>

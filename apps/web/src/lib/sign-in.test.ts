@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { SIGN_IN_LIMIT_MS, SLOW_TO_OPEN_MS, settled } from "./sign-in";
+import {
+  SIGN_IN_LIMIT_MS,
+  SLOW_TO_OPEN_MS,
+  STARTING_NOTE_MS,
+  WAKE_ATTEMPT_MS,
+  settled,
+  wasNotThere,
+} from "./sign-in";
 
 describe("settled", () => {
   beforeEach(() => {
@@ -44,5 +51,28 @@ describe("settled", () => {
 describe("the limits", () => {
   it("tells an officer the next screen is slow well before signing in would give up", () => {
     expect(SLOW_TO_OPEN_MS).toBeLessThan(SIGN_IN_LIMIT_MS);
+  });
+
+  it("waits longer for a sign-in than the API was measured to take to wake", () => {
+    // 7 October 2026: no answer in 90 seconds, then one in 37.
+    expect(SIGN_IN_LIMIT_MS).toBeGreaterThan(127_000);
+  });
+
+  it("says the System is starting long before one attempt to wake it is over", () => {
+    expect(STARTING_NOTE_MS).toBeLessThan(WAKE_ATTEMPT_MS);
+  });
+});
+
+describe("wasNotThere", () => {
+  it("is no answer at all, or a gateway answering for a server that is down", () => {
+    expect(wasNotThere(0)).toBe(true);
+    expect(wasNotThere(502)).toBe(true);
+    expect(wasNotThere(504)).toBe(true);
+  });
+
+  it("is never what the API says for itself", () => {
+    for (const status of [400, 401, 403, 404, 409, 429, 500, 503]) {
+      expect(wasNotThere(status)).toBe(false);
+    }
   });
 });

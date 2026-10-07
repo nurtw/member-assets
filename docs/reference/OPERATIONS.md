@@ -320,17 +320,32 @@ photograph to one yet.
 
 ### If signing in is slow
 
-The button reads **Signing in…** while the System checks the password, then **Opening…**
-while the next screen loads. It does not go back to **Sign in** on the way, and there is no
-need to sign in a second time. After about twelve seconds of **Opening…** the page says so
-and offers a link that opens the next screen directly.
+**The cause is the API's host putting it to sleep.** On 7 October 2026 the live API, after
+a quiet spell, gave no answer in 90 seconds and then one in 37.6; awake, it answers in
+about a second. Its response headers name Render as the host. The repository has a job
+meant to prevent this (`.github/workflows/keep-api-warm.yml`), which pings the health check
+every ten minutes if the repository variable `API_HEALTH_URL` is set. It was not keeping
+the API awake that day.
 
-If no answer comes within thirty seconds, the page says the System is taking too long.
-That is the connection or the hosting, not the password: try again.
+**What ends it** is one of:
 
-The live site's health check answered in about 0.8 seconds on 7 October, and in 3.2
-seconds on the first request after a quiet spell. If signing in stays slow, that first
-request is the place to look.
+- an instance that does not sleep (a paid plan on the host);
+- the keep-warm job working: set `API_HEALTH_URL` to the deployed health check, and
+  confirm in the Actions tab that it runs. GitHub runs scheduled jobs late, and skips them
+  on a quiet repository, so this is the weaker of the two;
+- an outside uptime monitor that requests the health check every five minutes.
+
+**What an officer sees meanwhile:**
+
+- The sign-in page wakes the API as soon as it opens. If the API has not answered within
+  four seconds, the page says **The System is starting up**, and that it can take a minute
+  or two. The officer can fill in their details while it starts.
+- Pressing **Sign in** once is enough. The button reads **Signing in…**, then
+  **Opening…** while the next screen loads, and does not go back to **Sign in** on the way.
+- After about twelve seconds of **Opening…** the page says the officer is signed in and
+  offers a link that opens the next screen directly.
+- If nothing answers within two and a half minutes, the page says the System is taking too
+  long. That is the hosting or the connection, never the password.
 
 ### Finding a member, and suspending or cancelling one
 

@@ -88,3 +88,27 @@ green, which this System's themes never use. That is the phone's browser recolou
 page. It reads correctly in the click-through's own browser, and nothing was changed.
 
 **Not checked:** a real phone's camera; the deployed site after this change.
+
+## Corrected the same day: the API was asleep
+
+The measurements above caught the API awake. Later on 7 October the live health check got
+**no answer in 90 seconds**, then one in **37.6 seconds**, then answers in about one second.
+Its response names the host: the live API runs on **Render**, whose free tier puts a
+service to sleep after a quiet spell. `.github/workflows/keep-api-warm.yml` exists to
+prevent that, and evidently does not.
+
+That is the long wait Mr Timothy reported, and the first fix was too impatient for it: a
+30-second limit would have told him to try again, several times over.
+
+- **The sign-in pages wake the API as soon as they open**, by asking the public health
+  check for a sign of life (`components/api-wake.tsx`). The API starts while the officer
+  types.
+- **If no answer has come after four seconds, the page says the System is starting up**,
+  that it can take a minute or two, and that the button need not be pressed twice.
+- **The limit on signing in is 150 seconds**, longer than the wake that was measured.
+- **A gateway's 502 or 504 reads as "still starting up"**, not as a fault in what was typed.
+- **If it cannot be reached after five tries, the page says so.**
+
+This makes the wait explicable. **It does not make it short.** That is the hosting: an
+always-on instance, or a ping that does keep it awake. It is the owner's to decide, and
+`CLAUDE.md` and `QUESTIONS.md` GOV-02 still name DigitalOcean as the host.

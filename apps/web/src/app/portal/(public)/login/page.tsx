@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { mutate } from "swr";
 
+import { ApiWakeNotice, useApiWake } from "@/components/api-wake";
 import { PortalFrame } from "@/components/portal-shell";
 import { Button, ErrorNotice, Field, TextInput } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
-import { SIGN_IN_LIMIT_MS, settled } from "@/lib/sign-in";
+import { SIGN_IN_LIMIT_MS, settled, wasNotThere } from "@/lib/sign-in";
 
 /**
  * Sign-in to the organisation portal (item 29).
@@ -23,6 +24,8 @@ export default function PortalLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
+  // Starts the API, if its host has put it to sleep, while the form is filled.
+  const wake = useApiWake();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -58,12 +61,15 @@ export default function PortalLoginPage() {
         onSubmit={submit}
         className="grid gap-4 rounded-lg border border-line bg-surface p-6"
       >
+        <ApiWakeNotice wake={wake} />
         {error ? (
           <ErrorNotice
             message={
               error.status === 401
                 ? "Those details were not accepted. After several failed tries an account is locked for a while."
-                : error.message
+                : wasNotThere(error.status) && error.status !== 0
+                  ? "The System was still starting up. Wait a moment, then sign in again."
+                  : error.message
             }
             requestId={error.requestId}
           />

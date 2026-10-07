@@ -552,6 +552,17 @@ show an officer's sign-in address.
 - **Signing in has a time limit** (`lib/sign-in.ts`), and says so when it runs out. Nothing
   retries by itself. `api.post` takes `timeoutMs` for an act a person is waiting on; do not
   give every request one, or a slow upload would be cut off.
+- **The live API goes to sleep, and the sign-in pages are built for that.** On 7 October
+  2026 its host (Render, by its own response headers; this file's stack table says
+  DigitalOcean) took over two minutes to answer after a quiet spell. So:
+  - `useApiWake` (`components/api-wake.tsx`) asks the public health check for a sign of
+    life as soon as a sign-in page opens. That request is what starts the API.
+  - After four seconds without an answer the page says the System is starting up.
+  - The sign-in limit is 150 seconds. Do not shorten it below what a wake takes.
+  - A gateway's 502 or 504 reads as "still starting up" (`wasNotThere`), never as a wrong
+    password. 503 keeps its own meaning (the second factor's key is missing).
+
+  This explains the wait. It does not shorten it: that is the hosting, and the owner's.
 - **The order of the two forms is the Union's**, and no longer the paper form's: name,
   address, telephone first (MEM-15); plate, chassis, the other details, route, then branch
   (VEH-33). Do not move a field back to match the printed form.

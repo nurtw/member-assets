@@ -5,9 +5,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { mutate } from "swr";
 
+import { ApiWakeNotice, useApiWake } from "@/components/api-wake";
 import { Button, ErrorNotice, Field, Notice, TextInput } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
-import { SIGN_IN_LIMIT_MS, SLOW_TO_OPEN_MS, settled } from "@/lib/sign-in";
+import {
+  SIGN_IN_LIMIT_MS,
+  SLOW_TO_OPEN_MS,
+  settled,
+  wasNotThere,
+} from "@/lib/sign-in";
 
 /**
  * Officer sign-in.
@@ -35,6 +41,9 @@ export default function LoginPage() {
   // which looked as if nothing had happened, and officers signed in twice.
   const [opening, setOpening] = useState(false);
   const [slowToOpen, setSlowToOpen] = useState(false);
+  // Asks the API for a sign of life as soon as the page opens, which is what
+  // starts it if its host has put it to sleep.
+  const wake = useApiWake();
 
   useEffect(() => {
     if (!opening) {
@@ -116,6 +125,8 @@ export default function LoginPage() {
           onSubmit={onSubmit}
           className="grid gap-4 rounded-lg border border-line bg-surface p-6"
         >
+          <ApiWakeNotice wake={wake} />
+
           {error ? (
             <ErrorNotice
               message={
@@ -124,7 +135,11 @@ export default function LoginPage() {
                   ? "Those credentials were not accepted."
                   : error.status === 503
                     ? "Your second factor cannot be checked at present. Tell the administrator."
-                    : error.message)
+                    : // A gateway answering for a server that is not up yet.
+                      // Nothing was wrong with what was typed.
+                      wasNotThere(error.status) && error.status !== 0
+                      ? "The System was still starting up. Wait a moment, then sign in again."
+                      : error.message)
               }
               requestId={error.requestId}
             />
