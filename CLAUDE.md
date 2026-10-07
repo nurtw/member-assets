@@ -516,6 +516,35 @@ That is sound: `details` describes the request the caller just sent, never the r
 - **Nothing amends a migrated member's details.** The amend route is the application's. No
   item covers it yet.
 
+### Signing in, the forms' order, and the photograph (item 41)
+
+From Mr Timothy's walk-through of the live System on 6 October 2026 (`QUESTIONS.md`
+MEM-15, MEM-18, VEH-33). The recordings are in `feedback/`, which git ignores: they can
+show an officer's sign-in address.
+
+- **A sign-in button stays busy until its page is gone.** On success it never goes back to
+  "Sign in"; it reads "Opening…" while the next screen loads. Clearing it early made a
+  slow connection look like a failed sign-in, and officers signed in twice. Do not put the
+  reset back in a `finally`.
+- **Signing in has a time limit** (`lib/sign-in.ts`), and says so when it runs out. Nothing
+  retries by itself. `api.post` takes `timeoutMs` for an act a person is waiting on; do not
+  give every request one, or a slow upload would be cut off.
+- **The order of the two forms is the Union's**, and no longer the paper form's: name,
+  address, telephone first (MEM-15); plate, chassis, the other details, route, then branch
+  (VEH-33). Do not move a field back to match the printed form.
+- **A photograph is sent as a JPEG or a PNG only** (`lib/photograph.ts`). The API stores
+  WebP too, but a card cannot draw one. The browser makes the picture smaller and turns it
+  the way the camera held it before it is sent.
+- **`PhotographField` uploads at once and hands back an id.** The caller attaches it with
+  `PATCH /applications/:id/media`. An upload that is replaced or abandoned is discarded
+  with `DELETE /media/:id`, which refuses a file that is still attached.
+- **The application's detail carries `passportPhotoUrl`**, a signed link good for five
+  minutes. It is in no list and on no other route. Never store it, and never add one to a
+  list: one link each would add up to a gallery.
+- **A photograph is added or changed only while the application is a draft.** Nothing
+  attaches one to a member who has no application, or after approval. No item covers it.
+- **What a photograph must look like is not decided** (MEM-14). State no rule about it.
+
 ### Membership cards and printing (item 06)
 
 - **A card number is allocated on issuance, never earlier.** `cardNumber` is nullable, same

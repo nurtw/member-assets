@@ -7,8 +7,13 @@ import type {
 } from "@nurtw/contracts";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { toast } from "sonner";
 import useSWR from "swr";
 
+import {
+  PhotographField,
+  type Photograph,
+} from "@/components/photograph-field";
 import {
   Button,
   ErrorNotice,
@@ -89,6 +94,8 @@ export default function NewApplicationPage() {
   const router = useRouter();
   const { holds } = useSession();
   const [form, setForm] = useState<FormState>(INITIAL);
+  // Uploaded as soon as it is taken, attached once the application exists.
+  const [photograph, setPhotograph] = useState<Photograph | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -210,6 +217,20 @@ export default function NewApplicationPage() {
             : undefined,
         },
       );
+      // The photograph is attached to the application just made (MEM-18). If
+      // that fails the application is still saved, so the officer is told and
+      // sent on: it can be added from the application's page.
+      if (photograph) {
+        try {
+          await api.patch(`/applications/${response.application.id}/media`, {
+            passportPhotoId: photograph.id,
+          });
+        } catch {
+          toast.error(
+            "The application was saved, but the photograph was not attached. Add it on the application’s page.",
+          );
+        }
+      }
       // PRD Requirement 9.10 (revision 1.3) — registration flows straight on
       // to the applicant's vehicle, which may be skipped. Only for an officer
       // who can add one; anyone else lands on the application as before.
@@ -275,6 +296,17 @@ export default function NewApplicationPage() {
           <TextArea id="residentialAddress" required {...text("residentialAddress")} />
         </Field>
 
+        {/* MEM-15: name, address, telephone, before anything else. */}
+        <Field
+          label="Tel. No. of Operator"
+          htmlFor="phone"
+          required
+          hint="Nigerian number, in any format."
+          error={fieldError("applicant.phone")}
+        >
+          <TextInput id="phone" type="tel" required placeholder="0803 123 4567" {...text("phone")} />
+        </Field>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Area" htmlFor="area">
             <TextInput id="area" {...text("area")} />
@@ -307,16 +339,13 @@ export default function NewApplicationPage() {
             </Select>
           </Field>
         </div>
+      </Section>
 
-        <Field
-          label="Tel. No. of Operator"
-          htmlFor="phone"
-          required
-          hint="Nigerian number, in any format."
-          error={fieldError("applicant.phone")}
-        >
-          <TextInput id="phone" type="tel" required placeholder="0803 123 4567" {...text("phone")} />
-        </Field>
+      <Section
+        title="Photograph"
+        description="The member’s photograph, taken now or chosen from this device."
+      >
+        <PhotographField value={photograph} onChange={setPhotograph} />
       </Section>
 
       <Section

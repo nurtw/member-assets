@@ -362,6 +362,11 @@ export interface ApplicationDetail extends ApplicationSummary {
   nextOfKin: Record<string, unknown> | null;
   guarantor: Record<string, unknown> | null;
   passportPhotoId: string | null;
+  /**
+   * A signed link to the photograph, good for a few minutes (item 41). For
+   * showing it on the application's page; never stored, and never in a list.
+   */
+  passportPhotoUrl: string | null;
   signatureId: string | null;
 }
 

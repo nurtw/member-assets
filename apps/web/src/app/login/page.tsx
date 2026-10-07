@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { mutate } from "swr";
 
-import { Button, ErrorNotice, Field, TextInput } from "@/components/ui";
+import { Button, ErrorNotice, Field, Notice, TextInput } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
+import { SIGN_IN_LIMIT_MS, SLOW_TO_OPEN_MS, settled } from "@/lib/sign-in";
 
 /**
  * Officer sign-in.
@@ -28,6 +29,20 @@ export default function LoginPage() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // The password was accepted and the next screen is being opened. The button
+  // stays busy from here until this page is gone (item 41): on a slow
+  // connection it used to read "Sign in" again while the next screen loaded,
+  // which looked as if nothing had happened, and officers signed in twice.
+  const [opening, setOpening] = useState(false);
+  const [slowToOpen, setSlowToOpen] = useState(false);
+
+  useEffect(() => {
+    if (!opening) {
+      return;
+    }
+    const timer = setTimeout(() => setSlowToOpen(true), SLOW_TO_OPEN_MS);
+    return () => clearTimeout(timer);
+  }, [opening]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -35,11 +50,16 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await api.post("/auth/login", {
-        email,
-        password,
-        ...(needsCode && code.trim() ? { code: code.trim() } : {}),
-      });
+      await api.post(
+        "/auth/login",
+        {
+          email,
+          password,
+          ...(needsCode && code.trim() ? { code: code.trim() } : {}),
+        },
+        // A stalled connection ends with a message. Nothing retries by itself.
+        { timeoutMs: SIGN_IN_LIMIT_MS },
+      );
       // `/auth/me` is a global SWR cache key: whoever last mounted the
       // authenticated shell (typically the pre-login redirect through
       // `/applications`) left a cached 401 there. `SessionProvider` would
@@ -48,8 +68,15 @@ export default function LoginPage() {
       // first sign-in just refreshed the page." Revalidating the key here,
       // before navigating, means the shell mounts onto fresh, authenticated
       // data instead.
-      await mutate("/auth/me");
+      //
+      // The wait is bounded. If it runs out, the stale answer is cleared, so
+      // the shell asks for itself and shows its own loading state.
+      if (!(await settled(mutate("/auth/me"), SIGN_IN_LIMIT_MS))) {
+        await mutate("/auth/me", undefined, { revalidate: false });
+      }
+      setOpening(true);
       router.replace("/overview");
+      return;
     } catch (caught) {
       const failure =
         caught instanceof ApiError
@@ -63,9 +90,10 @@ export default function LoginPage() {
       } else {
         setError(failure);
       }
-    } finally {
-      setSubmitting(false);
     }
+    // Reached only when signing in did not succeed: a success returns above
+    // and leaves the button busy.
+    setSubmitting(false);
   }
 
   return (
@@ -160,8 +188,28 @@ export default function LoginPage() {
           ) : null}
 
           <Button type="submit" disabled={submitting}>
-            {submitting ? "Signing in…" : needsCode ? "Verify and sign in" : "Sign in"}
+            {opening
+              ? "Opening…"
+              : submitting
+                ? "Signing in…"
+                : needsCode
+                  ? "Verify and sign in"
+                  : "Sign in"}
           </Button>
+
+          {slowToOpen ? (
+            <Notice tone="info" title="You are signed in" role="status">
+              The next screen is slow to open on this connection. There is no
+              need to sign in again.{" "}
+              {/* A plain link: a full page load, if the quick one has stalled. */}
+              <a
+                href="/overview"
+                className="font-medium underline underline-offset-2"
+              >
+                Open it now
+              </a>
+            </Notice>
+          ) : null}
         </form>
 
         <p className="mt-6 text-center text-xs leading-relaxed text-faint-foreground">

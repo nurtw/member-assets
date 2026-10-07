@@ -307,6 +307,31 @@ Answers across role bundles, per-user grants, and per-user revocations, with rev
 applied. `vehicle.declare` belongs to the super administrator alone and to those the super
 administrator expressly grants it to; it is in **no other role bundle**.
 
+### Taking a member's photograph
+
+On the registration form, **Photograph**: **Take a photograph** opens the camera on a
+phone, and **Choose a file** takes a picture already on the device. It is made smaller in
+the browser and uploaded at once, and it is the photograph printed on the member's card.
+
+It can be taken again, or removed, on the application's page while the application is
+still a draft. After the application is submitted it is shown and no longer changed. A
+member brought over from the legacy register has no application, and no screen adds a
+photograph to one yet.
+
+### If signing in is slow
+
+The button reads **Signing in…** while the System checks the password, then **Opening…**
+while the next screen loads. It does not go back to **Sign in** on the way, and there is no
+need to sign in a second time. After about twelve seconds of **Opening…** the page says so
+and offers a link that opens the next screen directly.
+
+If no answer comes within thirty seconds, the page says the System is taking too long.
+That is the connection or the hosting, not the password: try again.
+
+The live site's health check answered in about 0.8 seconds on 7 October, and in 3.2
+seconds on the first request after a quiet spell. If signing in stays slow, that first
+request is the place to look.
+
 ### Finding a member, and suspending or cancelling one
 
 **Members** lists everybody who is or was a member within your area: search by name or

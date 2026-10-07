@@ -939,6 +939,60 @@ describe('Membership registration (e2e)', () => {
       await request(server).get(tampered).expect(404);
     });
 
+    it('shows an attached photograph by a signed link on the application alone', async () => {
+      const created = await request(server)
+        .post('/api/v1/applications')
+        .set('Cookie', cookies.registrar!)
+        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'Photographed'))
+        .expect(201);
+      const id = created.body.application.id;
+
+      const before = await request(server)
+        .get(`/api/v1/applications/${id}`)
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+      expect(before.body.application.passportPhotoUrl).toBeNull();
+
+      const photograph = await request(server)
+        .post('/api/v1/media?kind=PASSPORT_PHOTOGRAPH')
+        .set('Cookie', cookies.registrar!)
+        .attach('file', PNG_BYTES, 'face.png')
+        .expect(201);
+      await request(server)
+        .patch(`/api/v1/applications/${id}/media`)
+        .set('Cookie', cookies.registrar!)
+        .send({ passportPhotoId: photograph.body.media.id })
+        .expect(200);
+
+      const after = await request(server)
+        .get(`/api/v1/applications/${id}`)
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+      const link: string = after.body.application.passportPhotoUrl;
+      expect(link).toContain(`/media/${photograph.body.media.id}/content`);
+
+      // The link serves the bytes that were uploaded, and nothing else does.
+      const served = await request(server)
+        .get(link)
+        .buffer(true)
+        .parse(binaryParser)
+        .expect(200);
+      expect(Buffer.compare(served.body as Buffer, PNG_BYTES)).toBe(0);
+
+      // The list carries no link: a list is where one link each would add up.
+      const list = await request(server)
+        .get('/api/v1/applications')
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+      expect(JSON.stringify(list.body)).not.toContain('/content?expires=');
+
+      // An officer of another branch gets neither the record nor the link.
+      await request(server)
+        .get(`/api/v1/applications/${id}`)
+        .set('Cookie', cookies.otherbranch!)
+        .expect(404);
+    });
+
     it('refuses to attach a signature asset as a passport photograph', async () => {
       const created = await request(server)
         .post('/api/v1/applications')

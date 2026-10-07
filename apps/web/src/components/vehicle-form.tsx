@@ -206,54 +206,37 @@ export function VehicleForm({
           />
         </Field>
 
-        <Field label="Branch or unit" htmlFor="organisationId" required>
+        {/*
+          VEH-33, the order the Union asked for: plate, chassis, the other
+          vehicle details, the route, then the branch. The chassis number is
+          not yet required here; that is VEH-34, in item 43.
+        */}
+        <Field
+          label="Chassis / VIN"
+          htmlFor="chassisVinRestricted"
+          hint="Restricted — visible only to officers holding vehicle.read_restricted, and never through verification."
+        >
+          <TextInput
+            id="chassisVinRestricted"
+            value={chassisVinRestricted}
+            onChange={(event) => setChassisVinRestricted(event.target.value)}
+          />
+        </Field>
+
+        <Field label="Vehicle type" htmlFor="vehicleCategoryId">
           <Select
-            id="organisationId"
-            required
-            value={organisationId}
-            onChange={(event) => setOrganisationId(event.target.value)}
+            id="vehicleCategoryId"
+            value={vehicleCategoryId}
+            onChange={(event) => setVehicleCategoryId(event.target.value)}
           >
-            <option value="">Select a branch or unit</option>
-            {organisations.map((org) => (
-              <option key={org.id} value={org.id}>
-                {org.name} ({org.level === "UNIT" ? "Unit" : "Branch"})
+            <option value="">Not stated</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.label}
               </option>
             ))}
           </Select>
         </Field>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Route type" htmlFor="routeTypeId" required>
-            <Select
-              id="routeTypeId"
-              required
-              value={routeTypeId}
-              onChange={(event) => setRouteTypeId(event.target.value)}
-            >
-              <option value="">Select a route type</option>
-              {routeTypes.map((routeType) => (
-                <option key={routeType.id} value={routeType.id}>
-                  {routeType.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          <Field label="Vehicle type" htmlFor="vehicleCategoryId">
-            <Select
-              id="vehicleCategoryId"
-              value={vehicleCategoryId}
-              onChange={(event) => setVehicleCategoryId(event.target.value)}
-            >
-              <option value="">Not stated</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Make" htmlFor="make">
@@ -279,16 +262,36 @@ export function VehicleForm({
           </Field>
         </div>
 
-        <Field
-          label="Chassis / VIN"
-          htmlFor="chassisVinRestricted"
-          hint="Restricted — visible only to officers holding vehicle.read_restricted, and never through verification."
-        >
-          <TextInput
-            id="chassisVinRestricted"
-            value={chassisVinRestricted}
-            onChange={(event) => setChassisVinRestricted(event.target.value)}
-          />
+        <Field label="Route type" htmlFor="routeTypeId" required>
+          <Select
+            id="routeTypeId"
+            required
+            value={routeTypeId}
+            onChange={(event) => setRouteTypeId(event.target.value)}
+          >
+            <option value="">Select a route type</option>
+            {routeTypes.map((routeType) => (
+              <option key={routeType.id} value={routeType.id}>
+                {routeType.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field label="Branch or unit" htmlFor="organisationId" required>
+          <Select
+            id="organisationId"
+            required
+            value={organisationId}
+            onChange={(event) => setOrganisationId(event.target.value)}
+          >
+            <option value="">Select a branch or unit</option>
+            {organisations.map((org) => (
+              <option key={org.id} value={org.id}>
+                {org.name} ({org.level === "UNIT" ? "Unit" : "Branch"})
+              </option>
+            ))}
+          </Select>
         </Field>
       </Section>
 

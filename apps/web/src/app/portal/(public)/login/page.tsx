@@ -8,6 +8,7 @@ import { mutate } from "swr";
 import { PortalFrame } from "@/components/portal-shell";
 import { Button, ErrorNotice, Field, TextInput } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
+import { SIGN_IN_LIMIT_MS, settled } from "@/lib/sign-in";
 
 /**
  * Sign-in to the organisation portal (item 29).
@@ -28,9 +29,18 @@ export default function PortalLoginPage() {
     setBusy(true);
     setError(null);
     try {
-      await api.post("/portal/login", { email, password });
-      // Whoever last mounted the portal left a cached 401 at this key.
-      await mutate("/portal/me");
+      // A stalled connection ends with a message (item 41). On success the
+      // button stays busy until this page is gone.
+      await api.post(
+        "/portal/login",
+        { email, password },
+        { timeoutMs: SIGN_IN_LIMIT_MS },
+      );
+      // Whoever last mounted the portal left a cached 401 at this key. The
+      // wait is bounded; if it runs out, the stale answer is cleared.
+      if (!(await settled(mutate("/portal/me"), SIGN_IN_LIMIT_MS))) {
+        await mutate("/portal/me", undefined, { revalidate: false });
+      }
       router.replace("/portal");
     } catch (caught) {
       setError(

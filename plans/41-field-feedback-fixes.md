@@ -48,9 +48,43 @@ a new `apps/web/src/components/photograph-field.tsx`, `apps/api/src/membership/`
 - How fast the hosting answers. It is measured and reported here, not changed.
 
 ## Definition of done
-- [ ] On a slow connection the sign-in button stays busy until the next screen shows, and
+- [x] On a slow connection the sign-in button stays busy until the next screen shows, and
       a stalled one ends with a message. Wrong credentials still read as they did.
-- [ ] Both forms ask in the order given above, and save what they saved before.
-- [ ] A photograph taken on the registration form shows on the application and prints on
+- [x] Both forms ask in the order given above, and save what they saved before.
+- [x] A photograph taken on the registration form shows on the application and prints on
       the card proof. Only an officer who may read the application gets its link.
-- [ ] Lint, typecheck, build, and the tests pass; clicked through on a phone's width.
+- [x] Lint, typecheck, build, and the tests pass; clicked through on a phone's width.
+
+**Measured (7 October 2026):**
+
+- The live site's public health check, through the web address: 3.2 seconds for the first
+  request, then 1.8, 1.1, and 0.8. Signing in costs more than that, because it checks a
+  password and then loads the next screen.
+- In the click-through, with the answer held for 3 seconds and the next screen for 15, the
+  button read "Signing in…" and then "Opening…", never "Sign in", and the screen opened
+  by itself after 18 seconds. With no answer at all, the page gave up at 31 seconds.
+- **"Almost five minutes" was not reproduced**, and the recording itself reaches the next
+  screen in under a minute. What the code explains is the label vanishing and the second
+  attempt. If long waits go on after this is deployed, the place to look is the hosting's
+  first request after a quiet spell, which was the slowest thing measured. That is the
+  owner's to take up with the providers.
+
+**Decided while building:**
+
+- **The limit is 30 seconds**, and the "you are signed in" note comes after 12. Both are
+  in `lib/sign-in.ts`.
+- **Only signing in has a time limit.** A limit on every request would cut off a slow
+  upload on the same connection.
+- **A photograph is sent as a JPEG or a PNG**, never WebP: the API stores WebP, but a card
+  cannot draw it. The browser re-draws the picture as a JPEG no longer than 1,200 pixels.
+- **The photograph has its own section on the form**, after the member's own details, so
+  name, address, and telephone still come first.
+- **The application's page shows the photograph by a signed link in its detail.** No list
+  carries one. The member's record (item 37) does not show it.
+- **The portal's sign-in already kept its button busy.** It gained the time limit only.
+
+**Seen and not changed:** on the phone in the recordings, links are drawn yellow and
+green, which this System's themes never use. That is the phone's browser recolouring the
+page. It reads correctly in the click-through's own browser, and nothing was changed.
+
+**Not checked:** a real phone's camera; the deployed site after this change.

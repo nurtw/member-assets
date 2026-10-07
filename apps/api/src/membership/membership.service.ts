@@ -366,6 +366,11 @@ export class MembershipService {
         ? (member.guarantor as unknown as Record<string, unknown>)
         : null,
       passportPhotoId: member.passportPhotoId,
+      // Signed here, for a reader who has just been shown the rest of the
+      // record. The link lasts minutes and names one file.
+      passportPhotoUrl: member.passportPhotoId
+        ? this.media.signUrl(member.passportPhotoId).url
+        : null,
       signatureId: member.signatureId,
     };
   }

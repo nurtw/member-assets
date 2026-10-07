@@ -1,6 +1,7 @@
 "use client";
 
 import type { ApplicationDetail } from "@nurtw/contracts";
+import { isApplicationEditable, type ApplicationStatus } from "@nurtw/domain";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -14,6 +15,10 @@ import {
   MemberVehiclesPanel,
   memberVehiclesKey,
 } from "@/components/member-panels";
+import {
+  PhotographField,
+  type Photograph,
+} from "@/components/photograph-field";
 import {
   Button,
   Detail,
@@ -176,6 +181,35 @@ export default function ApplicationDetailPage() {
   const awaitingDecision =
     application.status === "SUBMITTED" || application.status === "UNDER_REVIEW";
   const canSubmit = isDraft && holds("member.create");
+
+  // The member's photograph (MEM-18), by the signed link the detail carries.
+  // It is added or replaced only while the application can still be amended.
+  const photograph: Photograph | null =
+    application.passportPhotoId && application.passportPhotoUrl
+      ? { id: application.passportPhotoId, url: application.passportPhotoUrl }
+      : null;
+  const canAmendPhotograph =
+    isApplicationEditable(application.status as ApplicationStatus) &&
+    holds("member.create");
+
+  async function changePhotograph(next: Photograph | null) {
+    if (!application) {
+      return;
+    }
+    const replaced = application.passportPhotoId;
+    await act(
+      async () => {
+        await api.patch(`/applications/${application.id}/media`, {
+          passportPhotoId: next?.id ?? null,
+        });
+        // What it replaced is attached to nothing now, so it is discarded.
+        if (replaced && replaced !== next?.id) {
+          await api.delete(`/media/${replaced}`).catch(() => undefined);
+        }
+      },
+      next ? "Photograph saved" : "Photograph removed",
+    );
+  }
   const canDecide = awaitingDecision && holds("application.decide");
 
   /** Does a confirmed act. A failure is thrown, and shown in its dialog. */
@@ -315,6 +349,32 @@ export default function ApplicationDetailPage() {
                 missing="Not yet submitted"
               />
             </DetailList>
+          </Section>
+
+          <Section
+            title="Photograph"
+            description="The member’s photograph, as it is printed on their card."
+          >
+            {canAmendPhotograph ? (
+              <PhotographField
+                value={photograph}
+                // The one it replaces is attached to this member until the
+                // change is saved; this page discards it after that.
+                discardReplaced={false}
+                onChange={(next) => void changePhotograph(next)}
+              />
+            ) : photograph ? (
+              // eslint-disable-next-line @next/next/no-img-element -- a signed, short-lived link to the API; next/image would cache and re-serve it.
+              <img
+                src={api.mediaUrl(photograph.url)}
+                alt="The member’s photograph"
+                className="h-32 w-26 rounded-md border border-line object-cover"
+              />
+            ) : (
+              <p className="text-sm text-faint-foreground">
+                No photograph was taken.
+              </p>
+            )}
           </Section>
 
           <Section title="Section A — Personal">

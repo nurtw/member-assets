@@ -61,9 +61,49 @@ interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
   signal?: AbortSignal;
+  /**
+   * Give up after this long. For an act a person is waiting on with nothing
+   * else to look at, signing in above all: a stalled connection otherwise
+   * waits for ever, with a busy button and no way to tell it from a slow one.
+   */
+  timeoutMs?: number;
 }
 
+/** Said when a request with a time limit ran out of it. */
+export const TOOK_TOO_LONG =
+  "The service is taking too long to answer. Check your connection and try again.";
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  // A timer and a flag, not `AbortSignal.timeout`: the flag says for certain
+  // that it was the limit that ended the request, in every browser.
+  const limit = options.timeoutMs ? new AbortController() : null;
+  let ranOut = false;
+  const timer = limit
+    ? setTimeout(() => {
+        ranOut = true;
+        limit.abort();
+      }, options.timeoutMs)
+    : null;
+
+  try {
+    return await send<T>(path, options, limit?.signal ?? options.signal);
+  } catch (caught) {
+    if (ranOut) {
+      throw new ApiError(0, TOOK_TOO_LONG, undefined, []);
+    }
+    throw caught;
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+}
+
+async function send<T>(
+  path: string,
+  options: RequestOptions,
+  signal: AbortSignal | undefined,
+): Promise<T> {
   let response: Response;
 
   try {
@@ -72,7 +112,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       credentials: "include",
       headers: options.body ? { "Content-Type": "application/json" } : undefined,
       body: options.body ? JSON.stringify(options.body) : undefined,
-      signal: options.signal,
+      signal,
     });
   } catch (caught) {
     // A cancelled request is not a failure and must never be reported as one.
@@ -117,12 +157,13 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 export const api = {
   get: <T>(path: string, signal?: AbortSignal) =>
     request<T>(path, { signal }),
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: "POST", body }),
+  post: <T>(path: string, body?: unknown, options?: { timeoutMs?: number }) =>
+    request<T>(path, { method: "POST", body, timeoutMs: options?.timeoutMs }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PATCH", body }),
   put: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PUT", body }),
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 
   /**
    * Uploads a file as multipart.
