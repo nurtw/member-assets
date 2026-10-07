@@ -43,8 +43,8 @@ Tests: domain 518, contracts 138, api 195, web 64; e2e 498 of 499.
 - Under load, e2e and the PDF and password unit tests time out;
   `pay-links.e2e` can fail across an hour boundary: rerun.
 - `GET /payments/banks` answers 500 when Paystack is unreachable (item 15).
-- Never tried for real: a Paystack payment, a phone's camera, and item 41
-  on the deployed site.
+- Never tried for real: a Paystack payment, a phone's camera, item 41
+  deployed.
 
 ## Next steps
 
