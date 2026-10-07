@@ -582,13 +582,15 @@ show an officer's sign-in address.
   faint watermark, read once at module load — see `EMBLEM_BYTES` in `v1-provisional.ts`.
   `nest-cli.json` copies `card/templates/assets/**/*` into `dist`; adding another template
   asset needs no further build config.
-- **`SEED_DEMO_DATA=true` seeds placeholder demo content**, gated the same way as
-  `SEED_ADMIN_EMAIL`: one branch and unit under each of the 21 real zones, and an 8-entry
-  designation list (codes prefixed `DEMO_`). This is **not a Union answer** to ORG-05 or
-  ORG-06 — it exists so a demo deployment can complete a registration and issue a card without
-  waiting on the Union's real branch and designation lists. Never invent content this way for
-  CARD-05 (artwork) or CARD-07 (signatures): a fabricated signature or emblem misrepresents a
-  real person or the Union itself, which invented organisational names do not.
+- **`SEED_DEMO_DATA=true` seeds a placeholder designation list**, gated the same way as
+  `SEED_ADMIN_EMAIL`: eight entries, codes prefixed `DEMO_`. This is **not a Union answer**
+  to ORG-06 — it exists so a demo deployment can issue a card without waiting on the Union's
+  real list. Never invent content this way for CARD-05 (artwork) or CARD-07 (signatures): a
+  fabricated signature or emblem misrepresents a real person or the Union itself.
+- **Each zone's one branch and one unit are the Union's own** (ORG-05, the owner's
+  determination of 7 October 2026; PRD §23.1). The seed creates them with the zones, named
+  `<zone> Branch` and `<zone> Unit`. They were placeholders marked "(demo)" until then; a
+  migration renamed the existing rows. Do not mark them, or treat them, as demo content.
 - **Printing is `pdf-lib`, and no browser goes in the container** (Decision 14.1). Write
   templates in millimetres from the top-left; `apps/api/src/pdf/geometry.ts` does the one
   conversion to PDF's bottom-left points.

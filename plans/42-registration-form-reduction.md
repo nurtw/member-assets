@@ -17,8 +17,7 @@ already recorded is lost.
    leave the form.
 2. **Guarantor**, still optional as a whole: **Full name**, **Telephone number**, and
    **Address**. Relationship, occupation, town, and the collateral question leave the form.
-   This is my reading of "every other thing is not compulsory" together with "reduce very,
-   very drastically". If the owner reads it as "keep them, optional", only step 1 changes.
+   The owner confirmed this reading on 7 October 2026: only those three.
 3. **Area** leaves the form. Town / City stays.
 4. **Schema**, by one migration that adds and loosens, and removes nothing:
    - A full-name column on next of kin and on guarantor. Existing rows get theirs from the
@@ -42,7 +41,6 @@ already recorded is lost.
 - Whether a guarantor must be a member (MEM-06, still open).
 
 ## To settle before building
-- Step 2's reading of the guarantor fields.
 - Whether the Union's **paper** form is being reduced too. If it is not, the System's
   printed form and the paper one will differ.
 

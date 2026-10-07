@@ -46,7 +46,7 @@ thing a year later.
 
 | Group | Answered | Awaiting | Deferred | Total |
 |---|---|---|---|---|
-| Structure and master data (ORG) | 4 | 3 | — | 7 |
+| Structure and master data (ORG) | 5 | 2 | — | 7 |
 | Membership and registration (MEM) | 7 | 11 | — | 18 |
 | Cards (CARD) | 5 | 3 | — | 8 |
 | Vehicles and stickers (VEH) | 27 | 8 | — | 35 |
@@ -54,26 +54,26 @@ thing a year later.
 | External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 21 | 0 | — | 21 |
 | Governance and go-live (GOV) | 10 | 10 | 1 | 21 |
-| **Total** | **98** | **39** | **1** | **138** |
+| **Total** | **99** | **38** | **1** | **138** |
 
 ### Blocking production use right now
 
-Four questions. None blocks *delivery* — all the surrounding work is built and tested — but
-each stops the System being used for real in a specific way.
+Three questions. None blocks *delivery* — all the surrounding work is built and tested — but
+each stops the System being used for real in a specific way. (ORG-05 was the fourth, and was
+answered on 7 October 2026.)
 
 | ID | Question | What it stops |
 |---|---|---|
-| **ORG-05** | The Union's real branches (zones and units are now answered) | Below zone level, members can only be registered into the placeholder `Unassigned Branch / Unit`, or a demo branch/unit — see below |
 | **ORG-06** | The approved list of member designations | The designation prints blank on every card, unless demo designations are seeded — see below |
 | **CARD-05** | The full print-resolution card artwork (the emblem itself is now supplied — see above) | Cards render from a template reconstructed from a photograph and print `PROVISIONAL TEMPLATE — ARTWORK PENDING` across the foot; must not be issued to a member |
 | **CARD-07** | The signing officers' real names and signature images (the titles are now known) | Cards issue with blank signature lines. Each such issuance is recorded in the audit trail, so they can be found and replaced afterwards — see `docs/reference/OPERATIONS.md` |
 
-**For a demo deployment**, `SEED_DEMO_DATA=true` (`apps/api/prisma/seed.ts`) creates one
-branch and unit under each of the 21 real zones, and an 8-entry designation list, so a full
-registration and card issuance can be demonstrated end to end. **This is placeholder content
-the project owner asked for to unblock a demo, not a Union answer** — it is clearly marked
-"(demo)" in the organisation tree and its designation codes are prefixed `DEMO_`, and it must
-not be mistaken for ORG-05 or ORG-06 being answered. It does not run by default. Signature
+**For a demo deployment**, `SEED_DEMO_DATA=true` (`apps/api/prisma/seed.ts`) creates an
+8-entry designation list, so a full registration and card issuance can be demonstrated end to
+end. **This is placeholder content the project owner asked for to unblock a demo, not a Union
+answer** — its designation codes are prefixed `DEMO_`, and it must not be mistaken for ORG-06
+being answered. It does not run by default. (It also used to create a branch and a unit
+beneath each zone, marked "(demo)". Those now stand as the Union's own, by ORG-05.) Signature
 images (CARD-07) and the full card artwork (CARD-05) are not stood in for this way: a
 fabricated signature or emblem would misrepresent a real person or the Union's actual
 artwork, so those stay genuinely blank/provisional even in a demo.
@@ -87,7 +87,7 @@ Everything else is either answered, or needed later and not yet obstructing work
 > These block roadmap item 05. Until they are answered, members can only be registered into
 > the placeholder `Unassigned Zone / Branch / Unit` nodes.
 
-### ORG-05 · The Union's organisational structure ⏳ (partly answered)
+### ORG-05 · The Union's organisational structure ✅
 
 **Question.** Please provide the Union's zones; for each zone its branches; and for each
 branch its units (unity bodies). Names as they should appear on a membership card.
@@ -118,6 +118,20 @@ stand as the Union's real branches and units, or whether the unit is to be typed
 as he said on 14 September. Removing the word without that answer would present placeholder
 names as the Union's own. The names can now be changed by the Union itself, on the Union
 structure screen (roadmap item 38).
+
+**Answer (the rest), 7 October 2026.** Put to the project owner, who determined it: **the one
+branch and one unit beneath each zone, named after the zone, stand as the Union's real
+branches and units.** The word "demo" is removed from them. That settles the branch list
+this question was waiting for, and it is what PRD §23.1 already provided for a level the
+Union does not otherwise use. The unit is chosen from the list at registration; the
+statement of 14 September that it is typed in by hand is not built, and is superseded
+unless the Union raises it again. The Union adds, renames, and moves branches and units
+itself on the Structure screen.
+
+**Done.** Existing rows were renamed by migration `20261007090000_branches_and_units_stand`,
+each rename in the audit trail. The seed now creates them unconditionally, by those names.
+**Answered on.** 7 October 2026. **Answered by.** Project owner, at Mr Timothy's request of
+6 October. **Recorded at.** PRD §23.1 (revision 1.13).
 
 ### ORG-06 · Member designations ⏳ (partly answered)
 
@@ -222,9 +236,10 @@ required.
 form asks for **full name, telephone number, and address**, and "every other thing is not
 compulsory". He asked that the next-of-kin and guarantor parts of the form be "reduced very,
 very drastically". Read here as: those three fields are what the form shows, and the
-relationship, occupation, town, and collateral fields leave it. That reading is put to the
-owner in `plans/42`, and nothing is removed before it is approved. MEM-07, MEM-08, and MEM-10
-ask about fields this would remove; they stay open until then.
+relationship, occupation, town, and collateral fields leave it. **The project owner
+confirmed that reading on 7 October 2026**: only those three. Nothing leaves the form until
+`plans/42` is built. MEM-07, MEM-08, and MEM-10 ask about fields this removes; they are
+closed when it is.
 
 ### MEM-07 · Guarantor relationship values ⏳
 
@@ -2093,6 +2108,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 7 October 2026 (later) | The project owner determined the rest of **ORG-05**: the one branch and one unit beneath each zone stand as the Union's own, and the word "demo" comes off them (PRD revision 1.13; a migration renames the existing rows, with an audit record each). He also confirmed the reading of the guarantor's fields in **MEM-06**: full name, telephone, and address only. |
 | 7 October 2026 | The project owner passed on three recordings in which **Mr Timothy, Head of Operations**, goes through the live System (6 October). Answered: **MEM-15** (name, address, telephone first), **MEM-16** (next of kin: full name and telephone; address optional), **MEM-18** (the photograph is taken at registration and printed on the card), **VEH-33** (the order of the vehicle form), **VEH-34** (the chassis number is compulsory). Partly answered: **ORG-06** (Driver and Conductor head the list; the list itself is still not given), **MEM-17** (Area explained or dropped), **VEH-35** (a route says from where to where, which revises VEH-26). Added to **ORG-05** (remove the word "demo"; whether the placeholders stand is not settled) and **MEM-06** (a guarantor, where given: full name, telephone, address). He also reported that signing in is slow; that is a fault, not a question, and is in `plans/41`. Roadmap items 41 to 43. |
 | 6 October 2026 | The project owner took up **VEH-29** (stock by scanning, held by a new permission in no role) and gave **VEH-31** (assigning a sticker is pay, then scan) and **GOV-21** (the previous operator is not named; a screen says only "sticker"). New **VEH-32** is open: whether a second officer confirms stock. PRD revised to 1.12; roadmap items 27 and 36. Totals: 93 answered, 37 awaiting, 1 deferred. |
 | 5 October 2026 (stickers) | New VEH-30: a banner on every vehicle without a sticker, and a prompt after adding one, given and answered the same day. While new stickers are paused, a vehicle with no legacy barcode on the register is told so and charged nothing (roadmap item 35). |

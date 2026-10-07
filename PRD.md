@@ -4,9 +4,9 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.12 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.12
-**Last revised:** 6 October 2026
+1.2 to 1.13 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.13
+**Last revised:** 7 October 2026
 
 ---
 
@@ -92,6 +92,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. Payment is offered wherever a vehicle is checked, and through a personal pay link that never says what is owed. See §23.10, §23.22–§23.27, Requirements 12.11, 27.7 and 27.8. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20, PAY-21), 5 October 2026. |
 | 1.10 | 5 October 2026 | The API administrator may invite a named organisation by a personal link that opens the application form addressed to it. A link is used once, expires, and may be withdrawn; the application it produces is confirmed and decided as any other. See §23.23 and Requirement 12.11. | The project owner (`QUESTIONS.md` EXT-21), 5 October 2026. |
 | 1.11 | 5 October 2026 | A vehicle without a sticker says so on its page each time it is opened, and adding a vehicle ends on a prompt to buy and attach its sticker, which may be closed. While new NURTW stickers are not issued, a vehicle the register holds no barcode for is told so, and nothing is charged. See Requirement 9A.7. | The project owner (`QUESTIONS.md` VEH-30), 5 October 2026. |
+| 1.13 | 7 October 2026 | The one branch and one unit beneath each zone, named after it, are the Union's own and are seeded with the zones. They had been placeholders, marked as such. See §23.1. | The project owner (`QUESTIONS.md` ORG-05), 7 October 2026, at the request of the Union's Head of Operations. |
 | 1.12 | 6 October 2026 | Printed legacy stickers the register never recorded are taken into stock by scanning them, by holders of a permission that is in no role, and may then be attached to any vehicle on the new-sticker fee (Requirements 9A.4 and 9A.8). Assigning a sticker is pay first, then scan: the camera opens once the payment is confirmed (Requirement 9A.7). The previous operator is no longer named anywhere, and officer-facing wording says only "sticker" (Requirement 11.2). A front page shows the ways in. | The project owner (`QUESTIONS.md` VEH-29, VEH-31, GOV-21), 5 October 2026. |
 
 ---
@@ -813,6 +814,13 @@ rather than resolved in the plan.
 **Council → Zone → Branch → Unit → Member.** Four levels beneath the council. Where the
 Union does not presently use a level, a single default node is seeded so that the
 structure remains uniform and scope-limited administrators remain expressible.
+
+*Revision 1.13.* The zones are the 21 local government areas of Anambra State
+(`QUESTIONS.md` ORG-05, 14 September 2026). **Each zone has one branch and one unit, named
+after it, and these are the Union's own**, by the project owner's determination of
+7 October 2026 at the request of the Union's Head of Operations. They are seeded with the
+zones. The Union adds to them, renames them, and moves them through the interface; nothing
+further is supplied by the System.
 
 ### 23.2 The card's *State* field
 

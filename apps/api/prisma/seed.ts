@@ -187,9 +187,7 @@ function stableId(...parts: string[]): string {
  * Union answer, not a placeholder — seeded unconditionally, the same way the
  * LGA list itself is.
  *
- * Branches within each zone remain unanswered. These zone nodes carry no
- * branch until one is added — through the interface, or by
- * `seedDemoOrganisation` below when a demo needs one.
+ * Each zone's branch and unit are seeded by `seedBranchesAndUnits` below.
  */
 async function seedZones(councilId: string): Promise<void> {
   const council = await prisma.organisation.findUniqueOrThrow({
@@ -214,23 +212,21 @@ async function seedZones(councilId: string): Promise<void> {
 }
 
 /**
- * One demo branch and unit under every zone, so a demo deployment can
- * complete a registration without waiting on the Union's real branch list.
+ * One branch and one unit under every zone, each named after its zone.
  *
- * **Not a Union answer.** Names are marked "(demo)" so nobody mistakes them
- * for real structure the way the old "Unassigned" placeholder was marked —
- * see the module comment on `seedOrganisation`. Runs only when
- * `SEED_DEMO_DATA=true`, so a production deployment never gets invented
- * branches by default.
+ * **The rest of ORG-05, as determined by the project owner on 7 October 2026**
+ * at the request of the Union's Head of Operations: these stand as the
+ * Union's own branches and units. They began as placeholders for a demo
+ * deployment, marked "(demo)" and seeded only on request; the mark came off
+ * existing rows by migration `20261007090000_branches_and_units_stand`.
+ * PRD §23.1 already provided for a single default node at a level the Union
+ * does not otherwise use.
+ *
+ * Seeded unconditionally, as the zones are. The Union adds to them, renames
+ * them, and moves them on the Structure screen (roadmap item 38); `update: {}`
+ * means a name the Union has changed is never reset by re-running the seed.
  */
-async function seedDemoOrganisation(): Promise<void> {
-  if (process.env.SEED_DEMO_DATA !== 'true') {
-    console.log(
-      '  demo branches/units: skipped (set SEED_DEMO_DATA=true for a demo deployment)',
-    );
-    return;
-  }
-
+async function seedBranchesAndUnits(): Promise<void> {
   for (const lga of ANAMBRA_LGA_SEED) {
     const zoneId = stableId('zone', lga.code);
     const zone = await prisma.organisation.findUniqueOrThrow({
@@ -243,7 +239,7 @@ async function seedDemoOrganisation(): Promise<void> {
       where: { id: branchId },
       create: {
         id: branchId,
-        name: `${lga.name} Branch (demo)`,
+        name: `${lga.name} Branch`,
         level: 'BRANCH',
         parentId: zone.id,
         path: branchPath,
@@ -256,7 +252,7 @@ async function seedDemoOrganisation(): Promise<void> {
       where: { id: unitId },
       create: {
         id: unitId,
-        name: `${lga.name} Unit (demo)`,
+        name: `${lga.name} Unit`,
         level: 'UNIT',
         parentId: branchId,
         path: `${branchPath}${unitId}/`,
@@ -265,7 +261,7 @@ async function seedDemoOrganisation(): Promise<void> {
     });
   }
   console.log(
-    `  demo branches/units: 1 each under all ${ANAMBRA_LGA_SEED.length} zones`,
+    `  branches and units: 1 each under all ${ANAMBRA_LGA_SEED.length} zones (ORG-05)`,
   );
 }
 
@@ -633,7 +629,7 @@ async function main(): Promise<void> {
   await seedDesignations();
   await seedLgas();
   await seedZones(councilId);
-  await seedDemoOrganisation();
+  await seedBranchesAndUnits();
   await seedDemoDesignations();
   await seedSystemSettings();
   await seedDisclosureProfiles();

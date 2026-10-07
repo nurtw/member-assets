@@ -364,8 +364,9 @@ a row holds the acts (needs `organisation.manage` over that part of the structur
   and so do its members and vehicles. You need the permission where it is and where it
   goes.
 
-Nothing here is supplied by the System. The branch list is the Union's to enter
-(`QUESTIONS.md` ORG-05); the branches and units marked "(demo)" are placeholders.
+Each zone starts with one branch and one unit, named after it. They are the Union's own
+(`QUESTIONS.md` ORG-05), and the Union adds to them, renames them, and moves them here.
+Nothing more is supplied by the System.
 
 ### Dissolving a unit or branch
 

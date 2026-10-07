@@ -72,3 +72,7 @@ branch list arrives, somebody types it in. No deploy, and no seed.
 
 **Not checked in a browser:** a manager scoped to one branch (the tests cover what they
 are offered), and renaming the council.
+
+**Afterwards (7 October 2026):** the owner determined that each zone's one branch and one
+unit are the Union's own (ORG-05). The word "demo" came off them by migration, and the
+"Out of scope" line above about demo branches no longer describes them.
