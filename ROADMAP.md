@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.16
+**Document version:** 1.17
 **Last revised:** 7 October 2026
 
 ---
@@ -68,6 +68,9 @@ Each item is independently completable and independently testable. Status values
 | 38 | union-structure | §6, §23.1 (ORG-05) | done (clicked through 7 Oct) | [plan](plans/38-union-structure.md) |
 | 39 | reference-lists | §23.4 (ORG-06) | planned | [plan](plans/39-reference-lists.md) |
 | 40 | officer-signatures | §8, §23.7 (CARD-07) | planned | [plan](plans/40-officer-signatures.md) |
+| 41 | field-feedback-fixes | §7, §9, §23.16 (MEM-15, MEM-18, VEH-33) | in-progress | [plan](plans/41-field-feedback-fixes.md) |
+| 42 | registration-form-reduction | §7 (MEM-06, MEM-16, MEM-17) | planned | [plan](plans/42-registration-form-reduction.md) |
+| 43 | chassis-and-route | §9 (VEH-34, VEH-35) | planned | [plan](plans/43-chassis-and-route.md) |
 
 ### Item summaries
 
@@ -394,6 +397,20 @@ approval. The recommended order is 37, 38, 39, 40:
 - **38** (done 7 October) and **39** let the Union enter its branches (ORG-05) and
   designations (ORG-06) itself.
 - **40** closes a gap in who may upload a signature, and is not needed until CARD-07.
+
+*Field feedback, 7 October 2026:*
+
+Mr Timothy went through the live System on 6 October, and the owner passed on the
+recordings (`QUESTIONS.md`, change log). Three items came of it:
+
+- **41** is what changes no rule and no stored data: signing in, the order of the two
+  forms, and the member's photograph. The owner approved it the same day.
+- **42** and **43** change what the forms require, and with it the schema and the PRD.
+  Each waits for the owner's approval; 43's route half also waits on VEH-35.
+
+Two of his points are records on the live database and not code: the order of the
+designations (ORG-06) and the word "demo" on the placeholder branches and units (ORG-05).
+Item 38's screen changes the second, and item 39's will change the first.
 
 ## Open questions
 

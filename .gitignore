@@ -67,3 +67,8 @@ storage/
 # Uploaded member photographs and signatures (ARCHITECTURE.md Decision 10.2).
 # Personal data. A photograph committed here would survive in history.
 var/
+
+# Field feedback as it arrives: recordings, transcripts, and screenshots of the
+# live System. They can show an officer's sign-in address or a member's details.
+# What is decided from them is written into QUESTIONS.md and the plans.
+feedback/

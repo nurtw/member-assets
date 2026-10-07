@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.16
-**Last revised:** 6 October 2026
+**Document version:** 1.17
+**Last revised:** 7 October 2026
 
 ---
 
@@ -47,14 +47,14 @@ thing a year later.
 | Group | Answered | Awaiting | Deferred | Total |
 |---|---|---|---|---|
 | Structure and master data (ORG) | 4 | 3 | — | 7 |
-| Membership and registration (MEM) | 4 | 10 | — | 14 |
+| Membership and registration (MEM) | 7 | 11 | — | 18 |
 | Cards (CARD) | 5 | 3 | — | 8 |
-| Vehicles and stickers (VEH) | 25 | 7 | — | 32 |
+| Vehicles and stickers (VEH) | 27 | 8 | — | 35 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 21 | 0 | — | 21 |
 | Governance and go-live (GOV) | 10 | 10 | 1 | 21 |
-| **Total** | **93** | **37** | **1** | **131** |
+| **Total** | **98** | **39** | **1** | **138** |
 
 ### Blocking production use right now
 
@@ -110,7 +110,16 @@ can use it.
 **Answered on.** 14 September 2026. **Answered by.** Mr Timothy, Head of Operations.
 **Recorded at.** —
 
-### ORG-06 · Member designations ⏳
+**Further, 6 October 2026.** Going through the registration form on the live System,
+Mr Timothy asked that **the word "demo" be removed** from the unit names offered there.
+Those names are the placeholders described in section 3: one branch and one unit beneath
+each zone, named after the zone. **Not settled by this:** whether the placeholders are to
+stand as the Union's real branches and units, or whether the unit is to be typed in by hand,
+as he said on 14 September. Removing the word without that answer would present placeholder
+names as the Union's own. The names can now be changed by the Union itself, on the Union
+structure screen (roadmap item 38).
+
+### ORG-06 · Member designations ⏳ (partly answered)
 
 **Question.** What are the approved NURTW designations a member may hold — the values that
 print in the **Designation** field of the membership card?
@@ -124,8 +133,14 @@ describe system users rather than a member's Union designation. The list has the
 seeded as **empty** rather than guessed, because invented values would carry the appearance
 of Union authority without having it.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer (partial).** **Driver comes first in the list and Conductor second**, ahead of
+Chairman, Secretary, and every other position, "since we are concentrating on drivers".
+**Still outstanding: the list itself.** Mr Timothy was looking at the eight placeholder
+designations and asked only for their order to change. That is not a statement that those
+eight are the approved list, and their codes stay prefixed `DEMO_` until it is given.
+**Answered on.** 6 October 2026. **Answered by.** Mr Timothy, Head of Operations, in a
+recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
+**Recorded at.** —
 
 ### ORG-07 · Zone, town, and locality lists ⏳
 
@@ -203,6 +218,14 @@ required.
 **Answered on.** 14 September 2026. **Answered by.** Mr Timothy, Head of Operations.
 **Recorded at.** —
 
+**Further, 6 October 2026.** A guarantor is still not compulsory. Where one is given, the
+form asks for **full name, telephone number, and address**, and "every other thing is not
+compulsory". He asked that the next-of-kin and guarantor parts of the form be "reduced very,
+very drastically". Read here as: those three fields are what the form shows, and the
+relationship, occupation, town, and collateral fields leave it. That reading is put to the
+owner in `plans/42`, and nothing is removed before it is approved. MEM-07, MEM-08, and MEM-10
+ask about fields this would remove; they stay open until then.
+
 ### MEM-07 · Guarantor relationship values ⏳
 
 **Question.** What values should the guarantor's **Relationship with Operator** field offer?
@@ -274,6 +297,58 @@ recency, or an existing photographer arrangement?
 
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
+
+### MEM-15 · The order of a member's details on the form ✅
+
+**Question.** (Raised by Mr Timothy, going through the live form.) In what order should the
+member's own details be asked?
+
+**Answer.** **Name, then address, then telephone number, before anything else.** The
+telephone number was last in Section A.
+**Answered on.** 6 October 2026. **Answered by.** Mr Timothy, Head of Operations, in a
+recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
+**Recorded at.** `plans/41`. A change to the screen only; no rule changes.
+
+### MEM-16 · What is asked about the next of kin ✅
+
+**Question.** (Raised by Mr Timothy.) Which details of the next of kin does the Union need?
+
+**Answer.** **Full name and telephone number.** One field for the full name, not surname,
+first name, and middle name. **An address may be given and is not required.** Nothing else
+is needed: no town, local government area, state of origin, or occupation.
+
+**Consequences.** The form and the API require a surname, a first name, and an address
+today, and the database holds the name in three columns. Changing that is a change to the
+rule and to the schema, planned in `plans/42`. Details already recorded are kept.
+**Answered on.** 6 October 2026. **Answered by.** Mr Timothy, Head of Operations, in a
+recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
+**Recorded at.** — (PRD §7 is revised when `plans/42` is built.)
+
+### MEM-17 · Area, and Town or City ⏳ (partly answered)
+
+**Question.** The Union's printed form asks for both an **Area** and a **Town / City**. What
+is the difference, and should the System ask for both?
+
+**Answer (partial).** Mr Timothy does not know the difference himself. He asked that the
+form **explain each in brackets, or else drop Area and keep Town / City**. **Still
+outstanding:** what Area means on the Union's form, if it is kept. No definition is invented
+here. `plans/42` recommends that the form stop asking for Area, and that what is already
+recorded be kept. See also ORG-07.
+**Answered on.** 6 October 2026. **Answered by.** Mr Timothy, Head of Operations, in a
+recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
+**Recorded at.** —
+
+### MEM-18 · The member's photograph at registration ✅
+
+**Question.** (Raised by Mr Timothy.) Where is the member's photograph taken?
+
+**Answer.** **At registration, on the form, and that photograph is the one printed on the
+member's ID card.** The API has stored a photograph and printed it on the card since items
+05 and 06; no screen offered to take or upload one. Built in roadmap item 41. MEM-14 (what
+the photograph must look like) is still open.
+**Answered on.** 6 October 2026. **Answered by.** Mr Timothy, Head of Operations, in a
+recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
+**Recorded at.** PRD §23.16; `plans/41`.
 
 ---
 
@@ -892,6 +967,66 @@ attached, or is the audit trail enough?
 **Status.** Not asked of the owner yet. Nothing of the kind is built: one holder of
 `sticker.stock_intake` adds a sticker, and it is in stock at once. Every addition is audited
 with the officer who made it.
+
+### VEH-33 · The order of the vehicle form ✅
+
+**Question.** (Raised by Mr Timothy, going through the live form.) In what order should a
+vehicle's details be asked?
+
+**Answer.** **Plate number, then chassis number, then the other vehicle details** (type,
+make and model, colour), **then the route, then the branch.** The branch was second and the
+chassis number last.
+**Answered on.** 6 October 2026. **Answered by.** Mr Timothy, Head of Operations, in a
+recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
+**Recorded at.** `plans/41`. A change to the screen only.
+
+### VEH-34 · Is the chassis number compulsory? ✅
+
+**Question.** (Raised by Mr Timothy.) The chassis number has been optional. Must it be given?
+
+**Answer.** **Yes.** The plate number and the chassis number are "the very, very
+compulsory" two.
+
+**Consequences.**
+
+- A new vehicle is refused without a chassis number. The column stays nullable, because
+  legacy vehicles lawfully lack one, as with the route type and the owner (VEH-25, VEH-26).
+- The chassis number stays restricted: it is still in no list, no verification, and no log.
+- It changes PRD §9. Planned in `plans/43`, and not built until that is approved.
+**Answered on.** 6 October 2026. **Answered by.** Mr Timothy, Head of Operations, in a
+recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
+**Recorded at.** — (PRD §9 is revised when `plans/43` is built.)
+
+### VEH-35 · A complete route: from where, to where ⏳ (partly answered)
+
+**Question.** (Raised by Mr Timothy.) VEH-26 records only the route type. What else should a
+vehicle's route say?
+
+**Answer (partial).** "A complete route is … from your departure point to your destination
+point." By route type:
+
+- **Interstate:** the town and local government area in Anambra it leaves from, and the
+  **state** it goes to. Not the town or local government area in that state.
+- **Intercity:** the local government area and town it leaves from, and the local
+  government area and town it goes to, both in Anambra. The two may be in the same local
+  government area, where they are different towns.
+- **Town service:** a departure point and a destination point.
+
+This **revises VEH-26**, which said no free-text route is recorded.
+
+**Still outstanding:**
+
+- He described intercity as "between two different, two different or four local
+  governments". What "four" means is not clear from the recording.
+- Whether a town and a point are typed in or chosen from a list (ORG-07).
+- Whether the route is required on every new vehicle, and whether legacy vehicles need one.
+- Whether the route prints on the vehicle letter.
+
+Nothing is stored for a route beyond its type today, so this needs new data. Planned in
+`plans/43`. Place names in the recording were transcribed by machine and are not relied on.
+**Answered on.** 6 October 2026. **Answered by.** Mr Timothy, Head of Operations, in a
+recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
+**Recorded at.** —
 
 ---
 
@@ -1958,6 +2093,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 7 October 2026 | The project owner passed on three recordings in which **Mr Timothy, Head of Operations**, goes through the live System (6 October). Answered: **MEM-15** (name, address, telephone first), **MEM-16** (next of kin: full name and telephone; address optional), **MEM-18** (the photograph is taken at registration and printed on the card), **VEH-33** (the order of the vehicle form), **VEH-34** (the chassis number is compulsory). Partly answered: **ORG-06** (Driver and Conductor head the list; the list itself is still not given), **MEM-17** (Area explained or dropped), **VEH-35** (a route says from where to where, which revises VEH-26). Added to **ORG-05** (remove the word "demo"; whether the placeholders stand is not settled) and **MEM-06** (a guarantor, where given: full name, telephone, address). He also reported that signing in is slow; that is a fault, not a question, and is in `plans/41`. Roadmap items 41 to 43. |
 | 6 October 2026 | The project owner took up **VEH-29** (stock by scanning, held by a new permission in no role) and gave **VEH-31** (assigning a sticker is pay, then scan) and **GOV-21** (the previous operator is not named; a screen says only "sticker"). New **VEH-32** is open: whether a second officer confirms stock. PRD revised to 1.12; roadmap items 27 and 36. Totals: 93 answered, 37 awaiting, 1 deferred. |
 | 5 October 2026 (stickers) | New VEH-30: a banner on every vehicle without a sticker, and a prompt after adding one, given and answered the same day. While new stickers are paused, a vehicle with no legacy barcode on the register is told so and charged nothing (roadmap item 35). |
 | 5 October 2026 (interface) | New EXT-21: the API administrator invites an organisation by a personal link, given and answered the same day (roadmap item 33). PRD revised to 1.10. The owner also directed a redesign of the interface, with a sidebar and a dark theme (items 32 and 34). That is not a Union question; it is recorded in `DESIGN.md`. |
