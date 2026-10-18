@@ -4,8 +4,8 @@
 ## Source
 The owner's direction of 18 October 2026 (`QUESTIONS.md` PAY-22): "Make the existing park
 officials the collectors", and "before collecting, the collector tops up their platform
-wallet, the way an airtime vendor buys stock". PAY-23 (the float) is answered; ORG-08
-(parks) is open. **A new requirement under PRD §27, and an addition to §2.1 that §2.3 says
+wallet, the way an airtime vendor buys stock". PAY-23 (the float) and ORG-08
+(a park is a unit) are answered. **A new requirement under PRD §27, and an addition to §2.1 that §2.3 says
 needs an approved revision.** Waits for the owner's approval.
 
 ## Goal
@@ -56,8 +56,10 @@ Paystack, and an append-only ledger shows what each collector holds and why.
 Collecting (item 47). Commission (item 48). Paying out a refund, or anything else: the
 System records a refund, and the Union pays it.
 
-## To settle before building (ORG-08)
-- Whether a park is a unit, and how many collectors one park has.
+## Settled (ORG-08, 18 October 2026)
+- A park is a unit: a collector's scope is their unit, and the structure needs nothing new.
+- One park may have several collectors. Which officials they are is the officer's choice
+  when making each one; no designation is checked.
 
 PAY-23 was answered on 18 October 2026, as steps 4 and 5 describe.
 

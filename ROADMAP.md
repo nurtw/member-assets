@@ -441,7 +441,7 @@ SMS in place of voice calls for now. Nine items came of it:
   needed by most of the rest. GOV-22 is answered: Termii, the sender name "NURTW", paid
   for by the Union.
 - **46 to 48** are the park itself: the float, collecting, and the commission. PAY-23 to
-  PAY-26 are answered (18 October); ORG-08, whether a park is a unit, is open.
+  PAY-26 are answered (18 October), and ORG-08: a park is a unit, with several collectors.
 - **49** is the reminder before a due, and the list of who owes at a park.
 - **50 to 52** are the setup the direction puts first: an account for every member, the card
   that carries its number, and the year's colour on that card. They wait on a Paystack

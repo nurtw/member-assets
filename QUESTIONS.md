@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.24
+**Document version:** 1.25
 **Last revised:** 18 October 2026
 
 ---
@@ -176,7 +176,7 @@ cross-checked against the export. This question concerns the two finer-grained f
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
-### ORG-08 · Parks and park officials ⏳
+### ORG-08 · Parks and park officials ✅
 
 **Question.** (From the owner's direction of 18 October 2026, PAY-22.) Members are to be
 registered "at their park", and "the existing park officials" are to become the collectors.
@@ -190,8 +190,12 @@ and the System can draw that line only at a node of its structure (Requirement 6
 park is a unit, nothing new is needed. If it is not, the structure needs another level or a
 list of parks.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **A park is a unit**, so the structure needs nothing new, and **one park may
+have several collectors**. Which of a park's officials are made collectors was not said;
+the System checks no designation, and leaves it to the officer who makes each collector
+(`plans/46`).
+**Answered on.** 18 October 2026. **Answered by.** Project owner. **Recorded at.**
+`plans/46-collectors-and-float.md`; it goes into PRD §23 with item 46's revision.
 
 ---
 
@@ -2185,7 +2189,8 @@ itself: WhatsApp and SMS open on the officer's own device.
 
 **Collecting at the park (direction of 18 October 2026).** PAY-22 records the owner's
 direction. PAY-23 to PAY-27 and GOV-22, which it raised, were answered by the owner the same
-day. MEM-19, ORG-08, CARD-09, and CARD-10 are open. Roadmap items 44 to 52.
+day, and ORG-08 that evening (a park is a unit). MEM-19, CARD-09, and CARD-10 are open.
+Roadmap items 44 to 52.
 
 ### PAY-22 · Collecting at the park ✅
 
@@ -2485,6 +2490,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 18 October 2026 (evening) | The project owner answered **ORG-08**: a park is a unit, and may have several collectors. Item 46 no longer waits on it. |
 | 18 October 2026 (item 45) | Built: an SMS confirmation for every payment credited to a member, through Termii, off until switched on (PRD revision 1.18, Requirement 27.14). **GOV-22** records it. It waits on the sender name "NURTW" being approved and on Termii's DND route. |
 | 18 October 2026 (for onboarding) | Onboarding begins on 19 October. The project owner answered **ORG-06** (the eight designations are the Union's list, Driver and Conductor first; the `DEMO_` prefix is gone), **GOV-11** (go-live is 19 October 2026, set before every gate was met), and **VEH-37** (new: both sticker fees are ₦0 for now, and a free sticker needs no payment). PRD revision 1.17. Totals: 113 answered, 36 awaiting, 3 deferred. |
 | 18 October 2026 (item 44) | Built: a member's NIN, given at registration or on their record, sealed and shown only by its last four digits; and a photograph added or replaced on any member's record (PRD revision 1.16, Requirement 7.4). **MEM-19** stays open, so the NIN is optional. |
