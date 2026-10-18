@@ -17,11 +17,11 @@ Three rules outrank every default:
 
 - **Onboarding begins 19 October 2026.** Items 44 and 53 are live on Neon and
   pushed (NIN and photograph; free stickers, designations, go-live date).
-- **Item 45 (SMS through Termii, PRD 1.18) is built and clicked through,
-  committed locally, not released.** Off until switched on in Payments →
-  Messages. **Release order:** migration `20261018150000_sms_messages` on Neon
-  before the code, because confirming a payment now writes to `sms_message`.
-  Then `TERMII_API_KEY`, `TERMII_BASE_URL`, `TERMII_SECRET_KEY` on Render.
+- **Item 45 (SMS through Termii, PRD 1.18) is live:** migration
+  `20261018150000_sms_messages` on Neon, then pushed, 18 October. Off until
+  switched on in Payments → Messages; it needs `TERMII_API_KEY`,
+  `TERMII_BASE_URL`, and `TERMII_SECRET_KEY` on Render first. While off, each
+  confirmed payment records a "not sent" message.
 - Items 50 and 51 wait on PAY-27's Paystack test, GOV-08, and CARD-09.
 
 Tests: domain 540, contracts 154, api 199, web 88; e2e 547 of 547.
@@ -42,10 +42,10 @@ Tests: domain 540, contracts 154, api 199, web 88; e2e 547 of 547.
 
 ## Next steps
 
-1. Ask the owner when to release item 45 (recommended: after onboarding day).
-2. Owner: Termii's sender name "NURTW" and DND route; the Termii keys on
+1. Owner: Termii's sender name "NURTW" and DND route; the Termii keys on
    Render; the delivery-report address in Termii (`OPERATIONS.md`, "Text
    messages to members"); a test message, then switch on.
+2. Then items 50 and 51, once PAY-27's test, GOV-08, and CARD-09 allow.
 
 ## Do NOT
 
