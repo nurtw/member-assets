@@ -106,11 +106,15 @@ export type RefundPaymentInput = z.infer<typeof refundPaymentSchema>;
 /**
  * Money is integer kobo end to end (Requirement 27.2). A settings screen
  * converts naira to kobo before sending; the API never accepts a float.
+ *
+ * Nothing is an amount: a fee set to nothing is not charged (the owner's
+ * direction of 18 October 2026 made the stickers free, `QUESTIONS.md`
+ * VEH-37). No payment is ever started for nothing.
  */
 const amountKobo = z
   .number()
   .int('An amount must be a whole number of kobo.')
-  .positive('An amount must be greater than zero.')
+  .nonnegative('An amount cannot be below zero.')
   .max(100_000_000_00, 'That amount is implausibly large.');
 
 /** Every change to a fee type is audited with a mandatory reason (27.2). */

@@ -25,7 +25,8 @@ import { useSession } from "@/lib/session";
  * the default.
  *
  * Amounts are typed in naira and sent as integer kobo — the API never accepts
- * a float (Requirement 27.2).
+ * a float (Requirement 27.2). Nothing is an amount: a fee set to nothing is
+ * free, and no payment is taken for it (`QUESTIONS.md` VEH-37).
  */
 
 function naira(kobo: number): string {
@@ -35,14 +36,18 @@ function naira(kobo: number): string {
   })}`;
 }
 
-/** "7,000" or "7000.50" → kobo; `null` when it is not a positive amount. */
+/** "7,000", "7000.50", or "0" → kobo; `null` when it is not an amount. */
 function toKobo(input: string): number | null {
   const cleaned = input.replace(/[₦,\s]/g, "");
   if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) {
     return null;
   }
-  const kobo = Math.round(Number(cleaned) * 100);
-  return kobo > 0 ? kobo : null;
+  return Math.round(Number(cleaned) * 100);
+}
+
+/** An amount as the page shows it: nothing reads as free. */
+function shown(kobo: number): string {
+  return kobo === 0 ? "Free (₦0)" : naira(kobo);
 }
 
 const RECURRENCE: Record<string, string> = {
@@ -81,7 +86,7 @@ function AmountEditor({
                 Uses the default
               </span>
             ) : (
-              naira(currentKobo)
+              shown(currentKobo)
             )}
           </p>
         </div>
@@ -107,7 +112,12 @@ function AmountEditor({
         <ErrorNotice message={error.message} requestId={error.requestId} />
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={`${label} (₦)`} htmlFor={`${id}-amount`} required>
+        <Field
+          label={`${label} (₦)`}
+          htmlFor={`${id}-amount`}
+          required
+          hint="0 makes it free: no payment is taken."
+        >
           <TextInput
             id={`${id}-amount`}
             inputMode="decimal"
@@ -226,7 +236,7 @@ export default function FeeSettingsPage() {
                 />
               ) : (
                 <p className="py-2 text-base font-semibold">
-                  {naira(feeType.amountKobo)}
+                  {shown(feeType.amountKobo)}
                 </p>
               )}
 
@@ -252,7 +262,7 @@ export default function FeeSettingsPage() {
                       <p key={routeType.id} className="py-2 text-sm">
                         {routeType.label}:{" "}
                         <span className="font-semibold">
-                          {naira(price?.amountKobo ?? feeType.amountKobo)}
+                          {shown(price?.amountKobo ?? feeType.amountKobo)}
                         </span>
                       </p>
                     );

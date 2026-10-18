@@ -10727,7 +10727,7 @@
                   },
                   "amountKobo": {
                     "type": "integer",
-                    "exclusiveMinimum": 0,
+                    "minimum": 0,
                     "maximum": 10000000000
                   },
                   "active": {
@@ -10953,7 +10953,7 @@
                 "properties": {
                   "amountKobo": {
                     "type": "integer",
-                    "exclusiveMinimum": 0,
+                    "minimum": 0,
                     "maximum": 10000000000
                   },
                   "reason": {
@@ -22439,8 +22439,7 @@
                   }
                 },
                 "required": [
-                  "vehicleId",
-                  "paymentId"
+                  "vehicleId"
                 ]
               }
             }

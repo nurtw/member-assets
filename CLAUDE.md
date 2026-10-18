@@ -196,7 +196,8 @@ an anomaly in the reconciliation report.
   - a register barcode is presented for the plate the register records for it (a stock
     barcode has no plate until it is attached)
   - it has never been attached before, and is not withdrawn
-  - it comes with an unused, Paystack-confirmed payment of the right fee for that vehicle
+  - it comes with an unused, Paystack-confirmed payment of the right fee for that vehicle,
+    unless that fee is set to nothing (VEH-37; see "Free stickers" below)
 
   The System never produces a legacy barcode: taking one into stock records an article that
   already exists. Record which scheme resolved each verification.
@@ -462,9 +463,11 @@ types, and local government areas, one tab each. It sits on item 04's routes and
   that something changed.
 - **The page reads its tab from the address inside a `Suspense` boundary**, because it is
   built ahead of time. `useTabParam` on a static page needs one.
-- **The designation list is still placeholder content** (ORG-06): its codes begin `DEMO_`.
-  Mr Timothy gave its order (Driver, Conductor, then the rest), not the list. Never add,
-  rename, or reorder a real entry from code; the seed's order reaches a new database only.
+- **The designation list is the Union's** (ORG-06, answered 18 October 2026): Driver,
+  Conductor, then the other six. They were placeholders with codes beginning `DEMO_` until
+  the owner adopted them; migration `20261018120000_union_designations` took the prefix off
+  and set the order. The seed creates them (`DESIGNATION_SEED`) on a new database only.
+  Never add, rename, or reorder an entry from code again: officers keep the list.
 
 ### Validation and the API reference
 
@@ -679,11 +682,10 @@ PRD revision 1.16, Requirement 7.4, from the owner's direction of 18 October 202
   faint watermark, read once at module load — see `EMBLEM_BYTES` in `v1-provisional.ts`.
   `nest-cli.json` copies `card/templates/assets/**/*` into `dist`; adding another template
   asset needs no further build config.
-- **`SEED_DEMO_DATA=true` seeds a placeholder designation list**, gated the same way as
-  `SEED_ADMIN_EMAIL`: eight entries, codes prefixed `DEMO_`. This is **not a Union answer**
-  to ORG-06 — it exists so a demo deployment can issue a card without waiting on the Union's
-  real list. Never invent content this way for CARD-05 (artwork) or CARD-07 (signatures): a
-  fabricated signature or emblem misrepresents a real person or the Union itself.
+- **There is no demo data any more.** `SEED_DEMO_DATA` seeded eight placeholder
+  designations until the owner adopted them as the Union's list (ORG-06, 18 October 2026).
+  Never invent content for CARD-05 (artwork) or CARD-07 (signatures): a fabricated
+  signature or emblem misrepresents a real person or the Union itself.
 - **Each zone's one branch and one unit are the Union's own** (ORG-05, the owner's
   determination of 7 October 2026; PRD §23.1). The seed creates them with the zones, named
   `<zone> Branch` and `<zone> Unit`. They were placeholders marked "(demo)" until then; a
@@ -841,7 +843,29 @@ The owner's direction of 5 October 2026 (VEH-29, VEH-31; PRD 1.12).
   camera needs HTTPS (or `localhost`) and the officer's leave. Its dialog holds a form, so
   never render it inside another form: React would pass its submit up to the outer one.
 - **The assignment panel is three steps:** payment, scan, confirm
-  (`components/onboarding-section.tsx`). The camera opens only once a payment is confirmed.
+  (`components/onboarding-section.tsx`). The camera opens only once a payment is confirmed,
+  or at once for a free sticker.
+
+### Free stickers (VEH-37, PRD 1.17)
+
+The owner's direction of 18 October 2026, the day before onboarding: both sticker fees are
+₦0 "for now", and can be changed in settings.
+
+- **A fee of nothing is free, and that is the whole switch.** Nothing in code says stickers
+  are free. Setting an amount again on the Fees screen brings the payment step back.
+- **`checkAttachment` takes `feeKobo` and a nullable `payment`.** No payment is refused
+  unless the fee is nothing. A payment presented anyway is checked in full, and every other
+  condition holds. The attachment's audit event records `feeKobo` and `paymentId: null`.
+- **The fee is read the way a payment would be priced** (`FeeTypeService.amountFor`, through
+  `StickerService.stickerFeeKobo`), whether or not the fee type is offered. A fee type
+  switched off is not free.
+- **No payment is started for nothing.** `PaymentsService.quote` answers zeros for a free
+  fee (`calculateFees` throws on nothing), and `initiate` refuses it with a 400.
+- **`OnboardingState.stickerFeesKobo`** tells the screens which sticker is free. The panel
+  then says "Free" for the payment step and opens the scan; the banner and the prompt say
+  "It is free at present".
+- **A fee amount may be nothing** (`amountKobo` is non-negative). The Fees screen shows
+  "Free (₦0)".
 
 ### The vehicle letter (item 18)
 

@@ -9,6 +9,8 @@ import request from 'supertest';
 import { AppModule } from './../src/app.module.js';
 import { hashPassword } from './../src/auth/password-hashing.js';
 import { AllExceptionsFilter } from './../src/common/all-exceptions.filter.js';
+import { FeeTypeService } from './../src/payments/fee-type.service.js';
+import { PaymentsService } from './../src/payments/payments.service.js';
 
 /**
  * Sticker issuance and attachment, end to end (PRD §10, §26, §9A,
@@ -26,6 +28,9 @@ import { AllExceptionsFilter } from './../src/common/all-exceptions.filter.js';
  * being onboarded; every refusal is audited with its reason; the onboarding
  * state and the internal legacy lookup; and the restricted security code
  * never leaving the database.
+ *
+ * VEH-37 adds: a sticker whose fee is set to nothing is attached without a
+ * payment, and every other condition still holds.
  */
 
 const prisma = new PrismaClient({
@@ -676,6 +681,138 @@ describe('Sticker issuance and attachment (e2e)', () => {
         .get(`/api/v1/stickers/onboarding/${vehicle.id}`)
         .set('Cookie', cookies.bystander!)
         .expect(403);
+    });
+  });
+
+  describe('a free sticker (QUESTIONS.md VEH-37)', () => {
+    /** Prices both sticker fees at nothing for this app only. */
+    function stickersFree() {
+      const feeTypes = app.get(FeeTypeService);
+      const real = feeTypes.amountFor.bind(feeTypes);
+      return vi
+        .spyOn(feeTypes, 'amountFor')
+        .mockImplementation(async (feeType, subject) =>
+          feeType.code.startsWith('STICKER_') ? 0 : real(feeType, subject),
+        );
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('refuses an attachment without a payment while the sticker costs something', async () => {
+      const vehicle = await declareVehicle('KK1');
+      const sticker = await registerBarcode('unpaid', vehicle.plateNumberNormalized);
+
+      const state = await request(server)
+        .get(`/api/v1/stickers/onboarding/${vehicle.id}`)
+        .set('Cookie', cookies.attacher!)
+        .expect(200);
+      expect(Object.keys(state.body.onboarding.stickerFeesKobo).sort()).toEqual([
+        'STICKER_NEW',
+        'STICKER_REATTACHMENT',
+      ]);
+
+      await request(server)
+        .post('/api/v1/stickers/attach')
+        .set('Cookie', cookies.attacher!)
+        .send({ legacyBarcode: sticker.legacyBarcode, vehicleId: vehicle.id })
+        .expect(409);
+      expect(await refusalReason(sticker.id)).toBe('PAYMENT_NOT_CONFIRMED');
+    });
+
+    it('attaches without a payment once the fee is nothing, saying what applied', async () => {
+      stickersFree();
+      const vehicle = await declareVehicle('KK2');
+      const sticker = await registerBarcode('free', vehicle.plateNumberNormalized);
+
+      const state = await request(server)
+        .get(`/api/v1/stickers/onboarding/${vehicle.id}`)
+        .set('Cookie', cookies.attacher!)
+        .expect(200);
+      expect(state.body.onboarding.stickerFeesKobo).toEqual({
+        STICKER_REATTACHMENT: 0,
+        STICKER_NEW: 0,
+      });
+
+      await request(server)
+        .post('/api/v1/stickers/attach')
+        .set('Cookie', cookies.attacher!)
+        .send({ legacyBarcode: sticker.legacyBarcode, vehicleId: vehicle.id })
+        .expect(201);
+
+      const stored = await prisma.sticker.findUniqueOrThrow({
+        where: { id: sticker.id },
+      });
+      expect(stored.status).toBe('ACTIVE');
+      expect(stored.vehicleId).toBe(vehicle.id);
+      expect(stored.attachmentPaymentId).toBeNull();
+
+      const event = await prisma.auditEvent.findFirstOrThrow({
+        where: { action: 'sticker.attach', subjectId: sticker.id },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(event.afterValue).toMatchObject({
+        outcome: 'ATTACHED',
+        paymentId: null,
+        feeKobo: 0,
+        origin: 'REGISTER',
+      });
+      // Onboarding still produces the vehicle letter.
+      expect(
+        await prisma.vehicleLetter.count({ where: { stickerId: sticker.id } }),
+      ).toBe(1);
+    });
+
+    it('still refuses a sticker recorded for another plate, with no override', async () => {
+      stickersFree();
+      const vehicle = await declareVehicle('KK3');
+      const sticker = await registerBarcode('free-elsewhere', 'E2ESTKKK9');
+
+      await request(server)
+        .post('/api/v1/stickers/attach')
+        .set('Cookie', cookies.attacher!)
+        .send({ legacyBarcode: sticker.legacyBarcode, vehicleId: vehicle.id })
+        .expect(409);
+      expect(await refusalReason(sticker.id)).toBe('PLATE_MISMATCH');
+    });
+
+    it('still checks a payment presented anyway', async () => {
+      stickersFree();
+      const vehicle = await declareVehicle('KK4');
+      const sticker = await registerBarcode('free-paid', vehicle.plateNumberNormalized);
+      const levy = await confirmedPayment(vehicle.id, 'LEVY');
+
+      await request(server)
+        .post('/api/v1/stickers/attach')
+        .set('Cookie', cookies.attacher!)
+        .send({
+          legacyBarcode: sticker.legacyBarcode,
+          vehicleId: vehicle.id,
+          paymentId: levy.id,
+        })
+        .expect(409);
+      expect(await refusalReason(sticker.id)).toBe('PAYMENT_WRONG_FEE_TYPE');
+    });
+
+    it('starts no payment for a fee of nothing', async () => {
+      stickersFree();
+      const vehicle = await declareVehicle('KK5');
+
+      await expect(
+        app.get(PaymentsService).initiate({
+          feeTypeCode: 'STICKER_REATTACHMENT',
+          subjectType: 'vehicle',
+          subjectId: vehicle.id,
+          payerEmail: `payer.${TAG}@nurtw.test`,
+          initiatedByUserId: null,
+        }),
+      ).rejects.toThrow('nothing to pay');
+      expect(
+        await prisma.payment.count({
+          where: { subjectType: 'vehicle', subjectId: vehicle.id },
+        }),
+      ).toBe(0);
     });
   });
 

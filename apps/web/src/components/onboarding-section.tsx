@@ -53,6 +53,9 @@ import { useSession } from "@/lib/session";
  * the audit trail (Requirement 14.3), so this screen asks first: once a
  * sticker is scanned it reads what that sticker can be for this vehicle, and
  * offers to attach it only when it can be.
+ *
+ * A sticker whose fee is set to nothing takes no payment (`QUESTIONS.md`
+ * VEH-37): the first step says it is free, and the camera opens at once.
  */
 
 /** Which sticker the vehicle is being given, which decides the fee. */
@@ -88,6 +91,8 @@ function unreachable(caught: unknown): ApiError {
 function cannotAttach(
   read: Read,
   feeCode: string,
+  paid: boolean,
+  isFree: (code: string) => boolean,
 ): { title: string; text: string } | null {
   if (read.kind === "SIGNED") {
     return NEW_STICKERS_IN_USE
@@ -122,6 +127,15 @@ function cannotAttach(
     case "CAN_ATTACH":
       if (reading.feeTypeCode === feeCode) {
         return null;
+      }
+      if (!paid) {
+        // Nothing has been paid, so the fee that matters is this sticker's.
+        return isFree(reading.feeTypeCode)
+          ? null
+          : {
+              title: "This sticker has a fee",
+              text: "A sticker of this kind is paid for first. Choose it above, take the payment, then scan it again.",
+            };
       }
       return reading.feeTypeCode === FEE_FOR.OWN
         ? {
@@ -415,12 +429,20 @@ export function OnboardingSection({
   const feeCode = FEE_FOR[source];
   const payment =
     confirmed.find((entry) => entry.feeTypeCode === feeCode) ?? null;
+  // An API released before VEH-37 sends no fees: nothing is then free.
+  const fees: Partial<Record<string, number>> = state.stickerFeesKobo ?? {};
+  const isFree = (code: string) => fees[code] === 0;
+  // Free (VEH-37): nothing to pay, so the scan opens at once.
+  const free = isFree(feeCode);
+  const ready = payment !== null || free;
   // Both are possible only for a vehicle the register knows, while stock (or
   // a signed sticker) can replace the one it carried.
   const canChoose =
     state.registerHoldsBarcodeForPlate &&
     (state.stockHasStickers || NEW_STICKERS_IN_USE);
-  const refusal = read ? cannotAttach(read, feeCode) : null;
+  const refusal = read
+    ? cannotAttach(read, feeCode, payment !== null, isFree)
+    : null;
 
   async function pay(where: "HERE" | "PAYER") {
     await run(async () => {
@@ -482,14 +504,14 @@ export function OnboardingSection({
   }
 
   async function attach() {
-    if (!read || !payment) {
+    if (!read || !ready) {
       return;
     }
     await run(async () => {
       try {
         await api.post("/stickers/attach", {
           vehicleId: vehicle.id,
-          paymentId: payment.id,
+          ...(payment ? { paymentId: payment.id } : {}),
           ...(read.kind === "LEGACY"
             ? { legacyBarcode: read.code }
             : { stickerQrId: read.stickerQrId }),
@@ -498,7 +520,9 @@ export function OnboardingSection({
         if (caught instanceof ApiError && caught.status === 409) {
           throw new ApiError(
             409,
-            "The sticker was not assigned. It may have been assigned or withdrawn a moment ago, or the payment used. Scan the sticker again to see where it stands. The exact reason is in the audit trail.",
+            payment
+              ? "The sticker was not assigned. It may have been assigned or withdrawn a moment ago, or the payment used. Scan the sticker again to see where it stands. The exact reason is in the audit trail."
+              : "The sticker was not assigned. It may have been assigned or withdrawn a moment ago, or its fee changed. Reload the page, then scan the sticker again. The exact reason is in the audit trail.",
             caught.requestId,
           );
         }
@@ -515,7 +539,11 @@ export function OnboardingSection({
   return (
     <Section
       title="Assign a sticker"
-      description="Pay the sticker fee, then scan the sticker. Assigning a sticker does not declare the vehicle; the two are separate and may happen in either order."
+      description={`${
+        free && !payment
+          ? "Scan the sticker, then confirm. It is free at present."
+          : "Pay the sticker fee, then scan the sticker."
+      } Assigning a sticker does not declare the vehicle; the two are separate and may happen in either order.`}
     >
       {error ? (
         <ErrorNotice message={error.message} requestId={error.requestId} />
@@ -553,7 +581,7 @@ export function OnboardingSection({
       ) : null}
 
       <ol className="grid">
-        <Step number={1} title="Payment" done={payment !== null}>
+        <Step number={1} title="Payment" done={ready}>
           {payment ? (
             <p className="text-sm">
               <span className="font-semibold">
@@ -562,6 +590,13 @@ export function OnboardingSection({
               {payment.confirmedAt ? ` on ${day(payment.confirmedAt)}` : ""}.{" "}
               <span className="text-muted-foreground">
                 {payment.feeTypeLabel}, confirmed by Paystack and not yet used.
+              </span>
+            </p>
+          ) : free ? (
+            <p className="text-sm">
+              <span className="font-semibold">Free.</span>{" "}
+              <span className="text-muted-foreground">
+                No payment is taken for this sticker at present.
               </span>
             </p>
           ) : !holds("payment.initiate") ? (
@@ -666,9 +701,9 @@ export function OnboardingSection({
           number={2}
           title="Scan the sticker"
           done={read !== null && refusal === null}
-          locked={payment === null}
+          locked={!ready}
         >
-          {payment === null ? (
+          {!ready ? (
             <p className="text-sm text-faint-foreground">
               Opens once the payment is confirmed.
             </p>
@@ -712,17 +747,17 @@ export function OnboardingSection({
         <Step
           number={3}
           title="Confirm"
-          locked={payment === null || read === null || refusal !== null}
+          locked={!ready || read === null || refusal !== null}
         >
-          {payment && read && !refusal ? (
+          {ready && read && !refusal ? (
             <div className="grid gap-3">
               <p className="text-sm">
                 Put this sticker on{" "}
                 <span className="font-mono font-semibold">
                   {vehicle.plateNumberDisplay}
                 </span>
-                , then confirm. A sticker is assigned once in its life, and the
-                payment is used with it.
+                , then confirm. A sticker is assigned once in its life
+                {payment ? ", and the payment is used with it" : ""}.
               </p>
               <div>
                 <Button

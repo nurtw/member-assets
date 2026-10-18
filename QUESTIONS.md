@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.22
+**Document version:** 1.23
 **Last revised:** 18 October 2026
 
 ---
@@ -46,37 +46,33 @@ thing a year later.
 
 | Group | Answered | Awaiting | Deferred | Total |
 |---|---|---|---|---|
-| Structure and master data (ORG) | 5 | 3 | — | 8 |
+| Structure and master data (ORG) | 6 | 2 | — | 8 |
 | Membership and registration (MEM) | 11 | 8 | — | 19 |
 | Cards (CARD) | 5 | 5 | — | 10 |
-| Vehicles and stickers (VEH) | 27 | 8 | 1 | 36 |
+| Vehicles and stickers (VEH) | 28 | 8 | 1 | 37 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 27 | 0 | — | 27 |
-| Governance and go-live (GOV) | 11 | 10 | 2 | 23 |
-| **Total** | **110** | **38** | **3** | **151** |
+| Governance and go-live (GOV) | 12 | 9 | 2 | 23 |
+| **Total** | **113** | **36** | **3** | **152** |
 
 ### Blocking production use right now
 
-Three questions. None blocks *delivery* — all the surrounding work is built and tested — but
-each stops the System being used for real in a specific way. (ORG-05 was the fourth, and was
-answered on 7 October 2026.)
+Two questions. Neither blocks *delivery* — all the surrounding work is built and tested — but
+each stops the System being used for real in a specific way. (ORG-05 and ORG-06 were the
+others, answered on 7 and 18 October 2026.)
 
 | ID | Question | What it stops |
 |---|---|---|
-| **ORG-06** | The approved list of member designations | The designation prints blank on every card, unless demo designations are seeded — see below |
 | **CARD-05** | The full print-resolution card artwork (the emblem itself is now supplied — see above) | Cards render from a template reconstructed from a photograph and print `PROVISIONAL TEMPLATE — ARTWORK PENDING` across the foot; must not be issued to a member |
 | **CARD-07** | The signing officers' real names and signature images (the titles are now known) | Cards issue with blank signature lines. Each such issuance is recorded in the audit trail, so they can be found and replaced afterwards — see `docs/reference/OPERATIONS.md` |
 
-**For a demo deployment**, `SEED_DEMO_DATA=true` (`apps/api/prisma/seed.ts`) creates an
-8-entry designation list, so a full registration and card issuance can be demonstrated end to
-end. **This is placeholder content the project owner asked for to unblock a demo, not a Union
-answer** — its designation codes are prefixed `DEMO_`, and it must not be mistaken for ORG-06
-being answered. It does not run by default. (It also used to create a branch and a unit
-beneath each zone, marked "(demo)". Those now stand as the Union's own, by ORG-05.) Signature
-images (CARD-07) and the full card artwork (CARD-05) are not stood in for this way: a
+**The designations were placeholders until 18 October 2026.** An 8-entry list was seeded for
+a demo, its codes prefixed `DEMO_`; the project owner then adopted it as the Union's list
+(ORG-06), and a migration took the prefix off. The seed no longer has a demo flag. Signature
+images (CARD-07) and the full card artwork (CARD-05) were never stood in for this way: a
 fabricated signature or emblem would misrepresent a real person or the Union's actual
-artwork, so those stay genuinely blank/provisional even in a demo.
+artwork, so those stay genuinely blank/provisional.
 
 Everything else is either answered, or needed later and not yet obstructing work.
 
@@ -133,7 +129,7 @@ each rename in the audit trail. The seed now creates them unconditionally, by th
 **Answered on.** 7 October 2026. **Answered by.** Project owner, at Mr Timothy's request of
 6 October. **Recorded at.** PRD §23.1 (revision 1.13).
 
-### ORG-06 · Member designations ⏳ (partly answered)
+### ORG-06 · Member designations ✅
 
 **Question.** What are the approved NURTW designations a member may hold — the values that
 print in the **Designation** field of the membership card?
@@ -156,6 +152,14 @@ The order is changed on the Reference lists screen (roadmap item 39): Conductor 
 to the top, then Driver. A new database is seeded in that order.
 **Answered on.** 6 October 2026. **Answered by.** Mr Timothy, Head of Operations, in a
 recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
+
+**Answer (the list).** **The eight are the Union's list**: Driver, Conductor, Chairman,
+Secretary, Treasurer, Financial Secretary, Public Relations Officer, Auditor, in that order.
+The project owner, the day before onboarding: "remove demo from the roles". Migration
+`20261018120000_union_designations` took the `DEMO_` prefix off their codes and put Driver
+and Conductor first on every database; the seed now creates them.
+**Answered on.** 18 October 2026. **Answered by.** Project owner. **Recorded at.** PRD §23.4
+(revision 1.17).
 **Recorded at.** —
 
 ### ORG-07 · Zone, town, and locality lists ⏳
@@ -1145,6 +1149,23 @@ Nothing is stored for a route beyond its type today, so this needs new data. Pla
 recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
 **Recorded at.** —
 
+### VEH-37 · Free stickers for now ✅
+
+**Question.** (The project owner's direction, the day before onboarding.) "Set the price of
+sticker to 0 for now, free sticker, can be changed in settings."
+
+**Why it is needed.** Requirement 9A.4 required a Paystack-confirmed payment for every
+attachment, and Paystack cannot take a payment of nothing. Setting the fee to ₦0 without a
+change would have stopped every sticker being assigned.
+
+**Answer.** **Both sticker fees are ₦0 from 18 October 2026**, until the Union sets an
+amount again on the Fees screen. A sticker whose fee is nothing is attached without a
+payment; every other control of Requirement 9A.4 still holds, and a payment presented anyway
+is checked in full. No payment is ever started for nothing. The fee that applied is in the
+attachment's audit event.
+**Answered on.** 18 October 2026. **Answered by.** Project owner. **Recorded at.** PRD
+Requirements 9A.4 and 27.2 (revision 1.17).
+
 ---
 
 ## 8. Open — legacy migration (item 09)
@@ -1547,7 +1568,7 @@ the Union's risk decision, not an engineering preference.
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
-### GOV-11 · Go-live date and parallel running ⏳ (partly answered)
+### GOV-11 · Go-live date and parallel running ✅
 
 **Question.** What is the target go-live date, and will the previous system run in parallel
 for a period? If so, which is authoritative during that period?
@@ -1560,6 +1581,12 @@ and the domains (GOV-08). **Still outstanding: the date itself**, which then bec
 `dues.go_live_date` setting.
 **Answered on.** 5 October 2026. **Answered by.** Project owner, adopting the
 recommendation. **Recorded at.** PRD §23.27.
+
+**Answer (the date).** **19 October 2026**, when onboarding begins. Set as
+`dues.go_live_date` that day. The gates above were not all met: item 15, CARD-05, CARD-07,
+GOV-18, and GOV-08 were still open. The owner set the date regardless.
+**Answered on.** 18 October 2026. **Answered by.** Project owner. **Recorded at.** PRD
+§23.27 (revision 1.17).
 
 ### GOV-12 · Officer training and support ⏳
 
@@ -2452,6 +2479,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 18 October 2026 (for onboarding) | Onboarding begins on 19 October. The project owner answered **ORG-06** (the eight designations are the Union's list, Driver and Conductor first; the `DEMO_` prefix is gone), **GOV-11** (go-live is 19 October 2026, set before every gate was met), and **VEH-37** (new: both sticker fees are ₦0 for now, and a free sticker needs no payment). PRD revision 1.17. Totals: 113 answered, 36 awaiting, 3 deferred. |
 | 18 October 2026 (item 44) | Built: a member's NIN, given at registration or on their record, sealed and shown only by its last four digits; and a photograph added or replaced on any member's record (PRD revision 1.16, Requirement 7.4). **MEM-19** stays open, so the NIN is optional. |
 | 18 October 2026 (later) | The project owner answered **PAY-23** (each collector tops up through a dedicated account of their own, settling straight to NURTW; float pays dues only and is refunded only when a collector stops), **PAY-24** (a percentage, unset until the Union names it, from NURTW's share, paid as float; none on a collector's own dues), **PAY-25** (oldest due first, as now; no monthly due for a member without a vehicle), **PAY-26** (own park only; the limits are settings; seven days to reverse a mistake), **PAY-27** (Paystack is tested first; each account uses an address on the Union's domain), and **GOV-22** (Termii, the sender name "NURTW", paid for by the Union, English first, reminders three days before a due between 8 a.m. and 8 p.m.). Totals: 110 answered, 38 awaiting, 3 deferred. |
 | 18 October 2026 | The project owner set out how dues are to be collected at the parks: collectors with a float and a commission, a photograph to confirm the member, an SMS for every payment, the dedicated account on the card, reminders, and the year's colour on renewal. Recorded as **PAY-22**. Voice calls (**GOV-23**) and the yearly sticker (**VEH-36**) are deferred by the owner. New open questions: **PAY-23** to **PAY-27**, **MEM-19**, **ORG-08**, **CARD-09**, **CARD-10**, and **GOV-22**. Roadmap items 44 to 52, planned; the PRD is revised as each is built. Totals: 104 answered, 44 awaiting, 3 deferred. |

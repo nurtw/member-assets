@@ -28,6 +28,7 @@ import {
   stickerStockStanding,
   type AttachmentRefusalReason,
   type LegacyBarcodeReading,
+  type OnboardingFeeTypeCode,
   type QrVerificationResult,
 } from '@nurtw/domain';
 import { Prisma } from '@prisma/client';
@@ -35,6 +36,7 @@ import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service.js';
 import { PermissionService } from '../auth/permission.service.js';
 import { loadEnvironment } from '../config/environment.js';
+import { FeeTypeService } from '../payments/fee-type.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { VehicleLetterService } from '../vehicle-letter/vehicle-letter.service.js';
 
@@ -124,6 +126,7 @@ export class StickerService {
     private readonly permissions: PermissionService,
     private readonly audit: AuditService,
     private readonly letters: VehicleLetterService,
+    private readonly feeTypes: FeeTypeService,
   ) {}
 
   async issue(actorUserId: string, input: IssueStickerInput) {
@@ -165,6 +168,9 @@ export class StickerService {
    * The caller sees only the generic 409 (Requirement 14.3). The audit trail
    * holds the reason, and the onboarding screen checks the barcode and lists
    * only eligible payments first, so an officer rarely meets a refusal blind.
+   *
+   * A sticker whose fee is set to nothing is attached without a payment
+   * (`QUESTIONS.md` VEH-37); the audit event records the fee that applied.
    */
   async attach(actorUserId: string, input: AttachStickerInput) {
     const vehicle = await this.prisma.vehicle.findUnique({
@@ -236,11 +242,15 @@ export class StickerService {
       throw new NotFoundException('No such sticker.');
     }
 
-    const payment = await this.prisma.payment.findUnique({
-      where: { id: input.paymentId },
-      include: { feeType: { select: { code: true } } },
-    });
-    if (!payment || payment.status !== 'CONFIRMED') {
+    // A payment presented must be confirmed. None at all is for the rule to
+    // decide: a sticker whose fee is nothing needs none (VEH-37).
+    const payment = input.paymentId
+      ? await this.prisma.payment.findUnique({
+          where: { id: input.paymentId },
+          include: { feeType: { select: { code: true } } },
+        })
+      : null;
+    if (input.paymentId && (!payment || payment.status !== 'CONFIRMED')) {
       return refuse('PAYMENT_NOT_CONFIRMED', sticker.id);
     }
 
@@ -254,10 +264,22 @@ export class StickerService {
       return refuse('VEHICLE_ALREADY_HAS_STICKER', sticker.id);
     }
 
-    const paymentAlreadyUsed = await this.prisma.sticker.findUnique({
-      where: { attachmentPaymentId: payment.id },
-      select: { id: true },
+    const paymentAlreadyUsed = payment
+      ? await this.prisma.sticker.findUnique({
+          where: { attachmentPaymentId: payment.id },
+          select: { id: true },
+        })
+      : null;
+
+    const origin = stickerOrigin({
+      isLegacyBarcode: sticker.legacyBarcode !== null,
+      registeredPlateNormalized: sticker.registeredPlateNormalized,
+      inStock: sticker.stockAddedAt !== null,
     });
+    // An unknown origin is refused before the fee matters.
+    const feeKobo = origin
+      ? await this.stickerFeeKobo(requiredOnboardingFeeType(origin), vehicle.id)
+      : 0;
 
     const check = checkAttachment({
       isLegacyBarcode: sticker.legacyBarcode !== null,
@@ -266,9 +288,14 @@ export class StickerService {
       stickerStatus: sticker.status,
       targetPlateNormalized: vehicle.plateNumberNormalized,
       previouslyAttachedAt: sticker.attachedAt,
-      paymentReferenceAlreadyUsed: paymentAlreadyUsed !== null,
-      paymentFeeTypeCode: payment.feeType.code,
-      paymentSubject: { type: payment.subjectType, id: payment.subjectId },
+      feeKobo,
+      payment: payment
+        ? {
+            alreadyUsed: paymentAlreadyUsed !== null,
+            feeTypeCode: payment.feeType.code,
+            subject: { type: payment.subjectType, id: payment.subjectId },
+          }
+        : null,
       targetVehicleId: vehicle.id,
     });
     if (!check.allowed) {
@@ -289,7 +316,7 @@ export class StickerService {
             plateNumberAtIssue: vehicle.plateNumberNormalized,
             attachedAt: new Date(),
             attachedByUserId: actorUserId,
-            attachmentPaymentId: payment.id,
+            attachmentPaymentId: payment?.id ?? null,
             status: 'ACTIVE',
           },
         });
@@ -305,13 +332,10 @@ export class StickerService {
             after: {
               outcome: 'ATTACHED',
               vehicleId: vehicle.id,
-              paymentId: payment.id,
+              paymentId: payment?.id ?? null,
+              feeKobo,
               kind: sticker.legacyBarcode ? 'LEGACY' : 'SIGNED',
-              origin: stickerOrigin({
-                isLegacyBarcode: sticker.legacyBarcode !== null,
-                registeredPlateNormalized: sticker.registeredPlateNormalized,
-                inStock: sticker.stockAddedAt !== null,
-              }),
+              origin,
             },
           },
           tx,
@@ -371,7 +395,8 @@ export class StickerService {
       throw new NotFoundException();
     }
 
-    const [attached, registerEntries, stockEntry, payments] = await Promise.all([
+    const [attached, registerEntries, stockEntry, payments, fees] =
+      await Promise.all([
       this.prisma.sticker.findFirst({
         where: { vehicleId: vehicle.id, attachedAt: { not: null } },
         orderBy: { attachedAt: 'desc' },
@@ -422,6 +447,12 @@ export class StickerService {
           feeType: { select: { code: true, label: true } },
         },
       }),
+      Promise.all(
+        Object.values(ONBOARDING_FEE_TYPE_CODES).map(
+          async (code) =>
+            [code, await this.stickerFeeKobo(code, vehicle.id)] as const,
+        ),
+      ),
     ]);
 
     return {
@@ -448,7 +479,24 @@ export class StickerService {
         paystackReference: payment.paystackReference,
         confirmedAt: payment.confirmedAt?.toISOString() ?? null,
       })),
+      stickerFeesKobo: Object.fromEntries(fees),
     };
+  }
+
+  /**
+   * What a sticker fee costs this vehicle now (Requirement 27.1), priced the
+   * way a payment for it would be. Read whether or not the fee type is
+   * offered: one switched off still costs what it says, and is not free.
+   */
+  private async stickerFeeKobo(
+    code: OnboardingFeeTypeCode,
+    vehicleId: string,
+  ): Promise<number> {
+    const feeType = await this.prisma.feeType.findUniqueOrThrow({
+      where: { code },
+      include: { prices: { select: { routeTypeId: true, amountKobo: true } } },
+    });
+    return this.feeTypes.amountFor(feeType, { type: 'vehicle', id: vehicleId });
   }
 
   /**

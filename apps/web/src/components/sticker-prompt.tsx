@@ -3,6 +3,7 @@
 import type { OnboardingState } from "@nurtw/contracts";
 import {
   NEW_STICKERS_IN_USE,
+  ONBOARDING_FEE_TYPE_CODES,
   stickerCanBeGiven,
   stickerOffer,
   type StickerOffer,
@@ -32,7 +33,8 @@ import { useSession } from "@/lib/session";
  * sticker and who can assign one. Nothing here takes money: payment is started
  * in the panel on the vehicle's page, and only where a sticker can be given.
  * A vehicle with no sticker recorded for its plate, while stock holds none, is
- * told so and charged nothing.
+ * told so and charged nothing. A sticker whose fee is set to nothing is said
+ * to be free (`QUESTIONS.md` VEH-37).
  */
 
 /** The onboarding panel reads the same key, so the state is fetched once. */
@@ -48,6 +50,8 @@ export function useStickerOffer(
   offer: StickerOffer | null;
   canAttach: boolean;
   needsRouteType: boolean;
+  /** Whether the sticker on offer costs nothing at present. */
+  free: boolean;
 } {
   const { holds } = useSession();
   const canAttach = holds("sticker.attach");
@@ -56,28 +60,46 @@ export function useStickerOffer(
     fetcher,
   );
   if (attached) {
-    return { offer: "ATTACHED", canAttach, needsRouteType: false };
+    return { offer: "ATTACHED", canAttach, needsRouteType: false, free: false };
   }
   const state = data?.onboarding;
   if (!state) {
-    return { offer: null, canAttach, needsRouteType: false };
+    return { offer: null, canAttach, needsRouteType: false, free: false };
   }
+  const offer = stickerOffer({
+    attached: state.attachment !== null,
+    registerHoldsBarcodeForPlate: state.registerHoldsBarcodeForPlate,
+    stockHasStickers: state.stockHasStickers,
+    newStickersInUse: NEW_STICKERS_IN_USE,
+  });
+  const feeCode =
+    offer === "REATTACH"
+      ? ONBOARDING_FEE_TYPE_CODES.reattachment
+      : ONBOARDING_FEE_TYPE_CODES.newSticker;
+  // An API released before VEH-37 sends no fees: nothing is then free.
+  const fees: Partial<Record<string, number>> = state.stickerFeesKobo ?? {};
   return {
-    offer: stickerOffer({
-      attached: state.attachment !== null,
-      registerHoldsBarcodeForPlate: state.registerHoldsBarcodeForPlate,
-      stockHasStickers: state.stockHasStickers,
-      newStickersInUse: NEW_STICKERS_IN_USE,
-    }),
+    offer,
     canAttach,
     needsRouteType: !state.hasRouteType,
+    free: fees[feeCode] === 0,
   };
 }
 
 const NOTHING_YET =
   "There is no sticker to give it yet: none is recorded for this plate, and stock holds none. Stickers are added to stock by scanning them. Nothing is charged.";
 
-function whatToDo(offer: StickerOffer, needsRouteType: boolean): string {
+function whatToDo(
+  offer: StickerOffer,
+  needsRouteType: boolean,
+  free: boolean,
+): string {
+  if (free) {
+    const scan = needsRouteType ? "Set its route type, then scan" : "Scan";
+    return offer === "REATTACH"
+      ? `A sticker is recorded for this plate. ${scan} the sticker the vehicle carries. It is free at present.`
+      : `${scan} a sticker from stock. It is free at present.`;
+  }
   const first = needsRouteType ? "Set its route type, then take" : "Take";
   return offer === "REATTACH"
     ? `A sticker is recorded for this plate. ${first} the reattachment fee, then scan the sticker the vehicle carries.`
@@ -95,7 +117,7 @@ export function StickerBanner({
   /** Takes the officer to the onboarding panel. */
   onAssign: () => void;
 }) {
-  const { offer, canAttach, needsRouteType } = useStickerOffer(
+  const { offer, canAttach, needsRouteType, free } = useStickerOffer(
     vehicleId,
     attached,
   );
@@ -131,7 +153,7 @@ export function StickerBanner({
         </Button>
       }
     >
-      {whatToDo(offer, needsRouteType)}
+      {whatToDo(offer, needsRouteType, free)}
     </Notice>
   );
 }
@@ -153,7 +175,7 @@ export function StickerPromptDialog({
   onAssign: () => void;
   onLater: () => void;
 }) {
-  const { offer, needsRouteType } = useStickerOffer(vehicleId, false);
+  const { offer, needsRouteType, free } = useStickerOffer(vehicleId, false);
   const canBeGiven = offer !== null && stickerCanBeGiven(offer);
   return (
     <Dialog
@@ -171,7 +193,7 @@ export function StickerPromptDialog({
             {offer === null
               ? "Checking whether a sticker can be assigned…"
               : canBeGiven
-                ? `It has no sticker yet. ${whatToDo(offer, needsRouteType)}`
+                ? `It has no sticker yet. ${whatToDo(offer, needsRouteType, free)}`
                 : `It has no sticker yet. ${NOTHING_YET}`}
           </DialogDescription>
         </DialogHeader>

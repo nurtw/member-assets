@@ -4,8 +4,8 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.16 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.16
+1.2 to 1.17 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.17
 **Last revised:** 18 October 2026
 
 ---
@@ -92,6 +92,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. Payment is offered wherever a vehicle is checked, and through a personal pay link that never says what is owed. See §23.10, §23.22–§23.27, Requirements 12.11, 27.7 and 27.8. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20, PAY-21), 5 October 2026. |
 | 1.10 | 5 October 2026 | The API administrator may invite a named organisation by a personal link that opens the application form addressed to it. A link is used once, expires, and may be withdrawn; the application it produces is confirmed and decided as any other. See §23.23 and Requirement 12.11. | The project owner (`QUESTIONS.md` EXT-21), 5 October 2026. |
 | 1.11 | 5 October 2026 | A vehicle without a sticker says so on its page each time it is opened, and adding a vehicle ends on a prompt to buy and attach its sticker, which may be closed. While new NURTW stickers are not issued, a vehicle the register holds no barcode for is told so, and nothing is charged. See Requirement 9A.7. | The project owner (`QUESTIONS.md` VEH-30), 5 October 2026. |
+| 1.17 | 18 October 2026 | A sticker whose fee is set to nothing is attached without a payment, since none can be taken; every other attachment control still holds. A fee amount may be nothing, and is changed back in settings. Both sticker fees are set to nothing for now. The eight placeholder designations are the Union's list, Driver and Conductor first. The go-live date is 19 October 2026. See Requirements 9A.4 and 27.2, §23.4, and §23.27. | The project owner's directions of 18 October 2026, for onboarding on 19 October (`QUESTIONS.md` VEH-37, ORG-06, GOV-11). |
 | 1.16 | 18 October 2026 | A member's National Identification Number may be recorded, at registration or on the member's record. It is optional until the Union says otherwise, kept sealed, never shown whole, printed, or disclosed, and held by one member's record at a time. A member's photograph may be added or replaced on their record after approval, a migrated member included. See Requirements 7.1, 7.3, and 7.4. | The project owner's direction of 18 October 2026 on collecting dues at the parks (`QUESTIONS.md` PAY-22), for roadmap item 44. |
 | 1.15 | 7 October 2026 | A vehicle cannot be added, or declared, without its chassis number. A legacy vehicle that has none keeps its record and is asked for one when it is declared. The number stays restricted. See Requirement 9.4. | The Union's Head of Operations, 6 October 2026, and the project owner (`QUESTIONS.md` VEH-34), 7 October 2026. |
 | 1.14 | 7 October 2026 | The registration form asks for less than the paper form: the member's name, address, and telephone come first; Area is not asked for; a next of kin is a full name and a telephone number, with an address if there is one; a guarantor, where there is one, is a full name, a telephone number, and an address. What an earlier registration recorded is kept. The member's photograph is taken on the form. See Requirement 7.3. | The Union's Head of Operations, 6 October 2026, and the project owner (`QUESTIONS.md` MEM-06, MEM-15 to MEM-18), 7 October 2026. |
@@ -422,7 +423,9 @@ reason.
    once in its life.
 4. **A Paystack-confirmed payment accompanies it**, made for this vehicle, not used before,
    and of the right fee: the reattachment fee for a register barcode, the new-sticker fee
-   for one from stock.
+   for one from stock. *Revision 1.17 (VEH-37):* while that fee is set to nothing, no
+   payment is needed, because none can be taken. A payment presented anyway is checked in
+   full, and conditions 1 to 3 still hold.
 
 **Requirement 9A.5 — the legacy security code.** The export's `security_code` is imported
 as a record only. It is not printed on the sticker (VEH-14), so it plays no part in
@@ -888,6 +891,11 @@ and extended by the Union through the interface. Designations, branches, units, 
 categories, and statuses are therefore data, not code, and item 04 is not gated on the
 Union supplying lists in advance.
 
+*Revision 1.17* (`QUESTIONS.md` ORG-06, 18 October 2026): the member designations are
+Driver, Conductor, Chairman, Secretary, Treasurer, Financial Secretary, Public Relations
+Officer, and Auditor, in that order. They were seeded as placeholders, and the project owner
+adopted them as the Union's list.
+
 ### 23.5 Expiry and renewal
 
 **Configurable validity per template.** Each card and sticker template carries a validity
@@ -1171,6 +1179,9 @@ Determined 5 October 2026 (`QUESTIONS.md` GOV-11, partly answered; GOV-18).
   (ORG-05); the card artwork and the signing officers' signatures (CARD-05, CARD-07); the
   second-factor requirement on (GOV-18, §23.26); and the domains (GOV-08). The date then
   becomes the `dues.go_live_date` setting (Requirement 27.13).
+- *Revision 1.17* (GOV-11, 18 October 2026): **the go-live date is 19 October 2026**, set
+  by the project owner for onboarding to begin. Item 15, CARD-05, CARD-07, GOV-18, and
+  GOV-08 were still open on that day; the owner set the date regardless.
 
 ---
 
@@ -1362,6 +1373,10 @@ reason. The launch amounts are set by the owner (PAY-02) and are not placeholder
 | `STICKER_NEW` | ₦2,000 |
 | `LEVY` | ₦7,000 per vehicle per month for each route type (interstate, intercity, town service), until different amounts are set. Revised from ₦5,000 by revision 1.3. |
 | `MEMBERSHIP` | ₦30,000 per year |
+
+*Revision 1.17* (VEH-37): an amount may be **nothing**, which makes the fee free: no
+payment is started for it, and a sticker it pays for is attached without one. Both sticker
+fees are set to nothing from 18 October 2026, until the Union sets an amount again.
 
 A fee type created later may be marked as a **placeholder**, and in live mode the System
 refuses to charge against a placeholder amount. Test mode is unaffected. Money is held as

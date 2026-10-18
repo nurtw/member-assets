@@ -29,7 +29,9 @@ export type IssueStickerInput = z.infer<typeof issueStickerSchema>;
 
 /**
  * Attaches a sticker to the vehicle named by `vehicleId`, funded by the
- * confirmed payment `paymentId`. The sticker is named by exactly one of:
+ * confirmed payment `paymentId`. A sticker whose fee is set to nothing is
+ * attached without one (`QUESTIONS.md` VEH-37); for any other, leaving it out
+ * is refused. The sticker is named by exactly one of:
  *
  * - `stickerId` — a freshly issued sticker, by its record id;
  * - `stickerQrId` — the same, by the number printed on it (item 17: an
@@ -53,7 +55,7 @@ export const attachStickerSchema = z
       .transform(stickerCodeFromScan)
       .optional(),
     vehicleId: uuid,
-    paymentId: uuid,
+    paymentId: uuid.optional(),
   })
   .refine(
     (value) =>
@@ -228,6 +230,12 @@ export interface OnboardingState {
   registerHoldsBarcodeForPlate: boolean;
   stockHasStickers: boolean;
   eligiblePayments: EligibleOnboardingPayment[];
+  /**
+   * What each sticker fee costs this vehicle now, in kobo, by fee type code
+   * (`STICKER_REATTACHMENT`, `STICKER_NEW`). Nothing means that sticker is
+   * free and needs no payment (VEH-37).
+   */
+  stickerFeesKobo: Record<string, number>;
 }
 
 /**

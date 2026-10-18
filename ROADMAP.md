@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.19
+**Document version:** 1.20
 **Last revised:** 18 October 2026
 
 ---
@@ -80,6 +80,7 @@ Each item is independently completable and independently testable. Status values
 | 50 | dedicated-accounts-for-all | Req. 27.7 (PAY-22, PAY-27) | planned | [plan](plans/50-dedicated-accounts-for-all.md) |
 | 51 | card-with-account-number | §8 (PAY-22, CARD-09) | planned | [plan](plans/51-card-with-account-number.md) |
 | 52 | year-colour-renewal | §8, §23.5 (PAY-22, CARD-10) | planned | [plan](plans/52-year-colour-renewal.md) |
+| 53 | onboarding-day | Req. 9A.4, 27.2, §23.4, §23.27 (rev. 1.17); VEH-37, ORG-06, GOV-11 | done (18 Oct, for onboarding on 19 Oct) | [plan](plans/53-onboarding-day.md) |
 
 ### Item summaries
 

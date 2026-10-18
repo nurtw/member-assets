@@ -860,8 +860,8 @@ export class CardService {
         .filter((part): part is string => Boolean(part && part.trim()))
         .join(' ')
         .toUpperCase(),
-      // Blank until ORG-06 arrives: the Union has not supplied its designation
-      // list, and `Member.designationId` is nullable in consequence.
+      // Blank for a member with no designation: `Member.designationId` is
+      // nullable, because members were registered before ORG-06 was answered.
       designation: member.designation?.label ?? '',
       /**
        * PRD Requirement 8.2 — the **issuing council's** state, never the

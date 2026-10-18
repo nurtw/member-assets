@@ -106,16 +106,23 @@ export const ANAMBRA_LGA_SEED = [
 export const ANAMBRA_STATE_NAME = 'ANAMBRA';
 
 /**
- * Member designations are seeded as **nothing**, deliberately.
+ * Member designations: the Union's list (`QUESTIONS.md` ORG-06, answered by the
+ * project owner on 18 October 2026). Driver first and Conductor second, "since
+ * we are concentrating on drivers" (Mr Timothy, 6 October 2026).
  *
- * PRD §23.4 directs that master data be seeded from the legacy export. The export
- * carries no designation list: `owner_account_role` holds legacy *system account*
- * roles (`VEHICLE_OWNER`, `DIRECTOR`, `AIRS_ADMIN`), which describe the previous
- * software's users rather than a member's approved NURTW designation.
- *
- * Inventing a list would place values carrying the appearance of Union authority
- * in front of an administrator without it, and §23.4 states that this item is not
- * gated on the Union supplying lists in advance. The Union creates them through
- * the interface; an empty administrable list is the honest state.
+ * The legacy export carries no designation list, so these were seeded as
+ * placeholders, with codes beginning `DEMO_`, until the owner adopted them.
+ * Migration `20261018120000_union_designations` renamed those rows. The order
+ * here reaches a new database only; the list is kept on the Reference lists
+ * screen (roadmap item 39).
  */
-export const DESIGNATION_SEED: readonly MasterDataSeedEntry[] = [];
+export const DESIGNATION_SEED: readonly MasterDataSeedEntry[] = [
+  { code: 'DRIVER', label: 'Driver' },
+  { code: 'CONDUCTOR', label: 'Conductor' },
+  { code: 'CHAIRMAN', label: 'Chairman' },
+  { code: 'SECRETARY', label: 'Secretary' },
+  { code: 'TREASURER', label: 'Treasurer' },
+  { code: 'FINANCIAL_SECRETARY', label: 'Financial Secretary' },
+  { code: 'PRO', label: 'Public Relations Officer' },
+  { code: 'AUDITOR', label: 'Auditor' },
+];

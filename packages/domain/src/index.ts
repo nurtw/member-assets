@@ -214,6 +214,7 @@ export {
   stickerOrigin,
   type AttachmentCheck,
   type AttachmentContext,
+  type AttachmentPayment,
   type AttachmentRefusalReason,
   type OnboardingFeeTypeCode,
   type StickerOrigin,

@@ -76,6 +76,18 @@ export class PaymentsService {
     // Requirement 27.1 / PAY-14 — the levy charges the vehicle's route-type
     // amount where one is set.
     const dueKobo = await this.feeTypes.amountFor(feeType, subject);
+    if (dueKobo === 0) {
+      // Free (VEH-37): no fee on top of nothing, and `initiate` starts none.
+      return {
+        feeTypeCode: feeType.code,
+        label: feeType.label,
+        isPlaceholder: feeType.isPlaceholder,
+        active: feeType.active,
+        dueKobo: 0,
+        contractorFeeKobo: 0,
+        totalChargedKobo: 0,
+      };
+    }
     const fees = calculateFees({
       due: dueKobo / 100,
       contractorFee: DEFAULT_FEE_SCHEDULES.contractorFee,
@@ -107,6 +119,13 @@ export class PaymentsService {
       feeType.code,
       { type: input.subjectType, id: input.subjectId },
     );
+    // A fee set to nothing is not charged (`QUESTIONS.md` VEH-37). Paystack
+    // cannot take nothing, and the fee on top alone is no payment for it.
+    if (dueKobo === 0) {
+      throw new BadRequestException(
+        `Fee type "${feeType.code}" costs nothing at present, so there is nothing to pay.`,
+      );
+    }
     const reference = `nurtw_${randomUUID()}`;
 
     let subaccountCode: string | undefined;

@@ -5,9 +5,19 @@ import {
   requiredOnboardingFeeType,
   stickerOrigin,
   type AttachmentContext,
+  type AttachmentPayment,
 } from './attachment.js';
 
 const VEHICLE_ID = 'vehicle-1';
+
+function paid(overrides: Partial<AttachmentPayment> = {}): AttachmentPayment {
+  return {
+    alreadyUsed: false,
+    feeTypeCode: 'STICKER_REATTACHMENT',
+    subject: { type: 'vehicle', id: VEHICLE_ID },
+    ...overrides,
+  };
+}
 
 function context(overrides: Partial<AttachmentContext> = {}): AttachmentContext {
   return {
@@ -17,9 +27,8 @@ function context(overrides: Partial<AttachmentContext> = {}): AttachmentContext 
     stickerStatus: 'ISSUED',
     targetPlateNormalized: 'AA123XY',
     previouslyAttachedAt: null,
-    paymentReferenceAlreadyUsed: false,
-    paymentFeeTypeCode: 'STICKER_REATTACHMENT',
-    paymentSubject: { type: 'vehicle', id: VEHICLE_ID },
+    feeKobo: 200_000,
+    payment: paid(),
     targetVehicleId: VEHICLE_ID,
     ...overrides,
   };
@@ -38,7 +47,7 @@ describe('checkAttachment (PRD Requirement 9A.4)', () => {
 
   it('refuses a reused payment reference', () => {
     expect(
-      checkAttachment(context({ paymentReferenceAlreadyUsed: true })),
+      checkAttachment(context({ payment: paid({ alreadyUsed: true }) })),
     ).toEqual({ allowed: false, reason: 'PAYMENT_REFERENCE_REUSED' });
   });
 
@@ -53,7 +62,7 @@ describe('checkAttachment (PRD Requirement 9A.4)', () => {
       context({
         registeredPlateNormalized: null,
         inStock: true,
-        paymentFeeTypeCode: 'STICKER_NEW',
+        payment: paid({ feeTypeCode: 'STICKER_NEW' }),
         ...overrides,
       });
 
@@ -66,7 +75,7 @@ describe('checkAttachment (PRD Requirement 9A.4)', () => {
     it('is paid for as a new sticker, never as a reattachment', () => {
       expect(
         checkAttachment(
-          fromStock({ paymentFeeTypeCode: 'STICKER_REATTACHMENT' }),
+          fromStock({ payment: paid({ feeTypeCode: 'STICKER_REATTACHMENT' }) }),
         ),
       ).toEqual({ allowed: false, reason: 'PAYMENT_WRONG_FEE_TYPE' });
     });
@@ -88,11 +97,20 @@ describe('checkAttachment (PRD Requirement 9A.4)', () => {
     it('still needs the payment to be for this vehicle, and unused', () => {
       expect(
         checkAttachment(
-          fromStock({ paymentSubject: { type: 'vehicle', id: 'vehicle-2' } }),
+          fromStock({
+            payment: paid({
+              feeTypeCode: 'STICKER_NEW',
+              subject: { type: 'vehicle', id: 'vehicle-2' },
+            }),
+          }),
         ),
       ).toEqual({ allowed: false, reason: 'PAYMENT_WRONG_VEHICLE' });
       expect(
-        checkAttachment(fromStock({ paymentReferenceAlreadyUsed: true })),
+        checkAttachment(
+          fromStock({
+            payment: paid({ feeTypeCode: 'STICKER_NEW', alreadyUsed: true }),
+          }),
+        ),
       ).toEqual({ allowed: false, reason: 'PAYMENT_REFERENCE_REUSED' });
     });
   });
@@ -129,7 +147,7 @@ describe('checkAttachment (PRD Requirement 9A.4)', () => {
           isLegacyBarcode: false,
           registeredPlateNormalized: null,
           targetPlateNormalized: 'ZZ000ZZ',
-          paymentFeeTypeCode: 'STICKER_NEW',
+          payment: paid({ feeTypeCode: 'STICKER_NEW' }),
         }),
       ),
     ).toEqual({ allowed: true });
@@ -170,7 +188,7 @@ describe('checkAttachment (PRD Requirement 9A.4)', () => {
       'refuses a reattachment paid as %s',
       (code) => {
         expect(
-          checkAttachment(context({ paymentFeeTypeCode: code })),
+          checkAttachment(context({ payment: paid({ feeTypeCode: code }) })),
         ).toEqual({ allowed: false, reason: 'PAYMENT_WRONG_FEE_TYPE' });
       },
     );
@@ -181,7 +199,7 @@ describe('checkAttachment (PRD Requirement 9A.4)', () => {
           context({
             isLegacyBarcode: false,
             registeredPlateNormalized: null,
-            paymentFeeTypeCode: 'STICKER_REATTACHMENT',
+            payment: paid({ feeTypeCode: 'STICKER_REATTACHMENT' }),
           }),
         ),
       ).toEqual({ allowed: false, reason: 'PAYMENT_WRONG_FEE_TYPE' });
@@ -190,7 +208,9 @@ describe('checkAttachment (PRD Requirement 9A.4)', () => {
     it('refuses a payment made for another vehicle', () => {
       expect(
         checkAttachment(
-          context({ paymentSubject: { type: 'vehicle', id: 'vehicle-2' } }),
+          context({
+            payment: paid({ subject: { type: 'vehicle', id: 'vehicle-2' } }),
+          }),
         ),
       ).toEqual({ allowed: false, reason: 'PAYMENT_WRONG_VEHICLE' });
     });
@@ -198,9 +218,68 @@ describe('checkAttachment (PRD Requirement 9A.4)', () => {
     it('refuses a payment made for a member, even with a matching id', () => {
       expect(
         checkAttachment(
-          context({ paymentSubject: { type: 'member', id: VEHICLE_ID } }),
+          context({
+            payment: paid({ subject: { type: 'member', id: VEHICLE_ID } }),
+          }),
         ),
       ).toEqual({ allowed: false, reason: 'PAYMENT_WRONG_VEHICLE' });
+    });
+  });
+
+  describe('a free sticker (VEH-37)', () => {
+    it('is refused without a payment while it costs something', () => {
+      expect(checkAttachment(context({ payment: null }))).toEqual({
+        allowed: false,
+        reason: 'PAYMENT_NOT_CONFIRMED',
+      });
+    });
+
+    it('attaches without a payment once its fee is nothing', () => {
+      expect(checkAttachment(context({ feeKobo: 0, payment: null }))).toEqual({
+        allowed: true,
+      });
+      expect(
+        checkAttachment(
+          context({
+            registeredPlateNormalized: null,
+            inStock: true,
+            targetPlateNormalized: 'ZZ000ZZ',
+            feeKobo: 0,
+            payment: null,
+          }),
+        ),
+      ).toEqual({ allowed: true });
+    });
+
+    it('still holds every other condition', () => {
+      const free = { feeKobo: 0, payment: null };
+      expect(
+        checkAttachment(context({ ...free, targetPlateNormalized: 'BB999ZZ' })),
+      ).toEqual({ allowed: false, reason: 'PLATE_MISMATCH' });
+      expect(
+        checkAttachment(
+          context({ ...free, previouslyAttachedAt: new Date('2026-10-01') }),
+        ),
+      ).toEqual({ allowed: false, reason: 'ALREADY_ATTACHED' });
+      expect(
+        checkAttachment(context({ ...free, stickerStatus: 'CANCELLED' })),
+      ).toEqual({ allowed: false, reason: 'STICKER_NOT_AVAILABLE' });
+      expect(
+        checkAttachment(context({ ...free, registeredPlateNormalized: null })),
+      ).toEqual({ allowed: false, reason: 'UNKNOWN_BARCODE' });
+    });
+
+    it('checks a payment presented anyway in full', () => {
+      expect(
+        checkAttachment(
+          context({ feeKobo: 0, payment: paid({ feeTypeCode: 'LEVY' }) }),
+        ),
+      ).toEqual({ allowed: false, reason: 'PAYMENT_WRONG_FEE_TYPE' });
+      expect(
+        checkAttachment(
+          context({ feeKobo: 0, payment: paid({ alreadyUsed: true }) }),
+        ),
+      ).toEqual({ allowed: false, reason: 'PAYMENT_REFERENCE_REUSED' });
     });
   });
 

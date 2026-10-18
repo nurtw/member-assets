@@ -489,6 +489,9 @@ ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
 Like every setting, it is read per request, so it takes effect at once. A value
 that is not a `YYYY-MM-DD` date reads as unset.
 
+**Set on 18 October 2026 to `2026-10-19`**, the day onboarding began (GOV-11, PRD §23.27
+revision 1.17).
+
 ### Changing a fee amount
 
 Always through the Fees settings page or `/fee-types`, never by editing
@@ -497,6 +500,11 @@ Always through the Fees settings page or `/fee-types`, never by editing
 each past month of levy at the amount in force when it fell due (item 22). A
 direct edit leaves no history row, so the System would treat the new amount as
 having applied all along, and every month already paid would show a shortfall.
+
+**An amount of 0 makes a fee free** (PRD Requirement 27.2, revision 1.17). No payment is
+started for it. A free sticker fee means a sticker is assigned with no payment step (below).
+Both sticker fees were set to 0 on 18 October 2026, by the owner's direction (`QUESTIONS.md`
+VEH-37); type an amount again on the Fees page to start charging.
 
 ### Setting or changing the NURTW settlement account
 
@@ -655,6 +663,10 @@ a sticker**, by an officer holding `sticker.attach` over the vehicle. The order 
    The System says if that sticker cannot go on this vehicle, and why.
 3. **Confirm.** Put the sticker on the vehicle and press **Assign this sticker**. A sticker
    is assigned once in its life, and the payment is used with it.
+
+**While the sticker's fee is ₦0** (VEH-37), step 1 reads **Free** and the camera opens at
+once. Every other check still applies: the plate, once in its life, and stock. The audit
+event records that the fee was nothing.
 
 Which fee is taken follows which sticker is given:
 

@@ -21,13 +21,19 @@
  *
  * A barcode with no row at all never reaches this function (there is no
  * sticker to pass in); the caller refuses it as `UNKNOWN_BARCODE` itself.
+ *
+ * A sticker whose fee is set to nothing is given without a payment (the
+ * owner's direction of 18 October 2026, `QUESTIONS.md` VEH-37): Paystack
+ * cannot take a payment of nothing. Every other condition still holds, and a
+ * payment presented anyway is checked in full.
  */
 
 /**
  * Every reason an attachment can be refused. `checkAttachment` produces most
- * of them; three are decided before it can run, by the caller, because the
- * row it would need is missing: `UNKNOWN_BARCODE` (no register row),
- * `PAYMENT_NOT_CONFIRMED` (no confirmed payment), and
+ * of them; three are also decided before it can run, by the caller, because
+ * the row it would need is missing: `UNKNOWN_BARCODE` (no register row),
+ * `PAYMENT_NOT_CONFIRMED` (a payment presented that is not confirmed; no
+ * payment at all for a sticker that costs something is refused here), and
  * `VEHICLE_ALREADY_HAS_STICKER` (replacing one is `sticker.replace`'s act).
  */
 export type AttachmentRefusalReason =
@@ -121,19 +127,30 @@ export interface AttachmentContext {
   targetPlateNormalized: string;
   /** `null` if this sticker has never been attached before. One-shot. */
   previouslyAttachedAt: Date | null;
-  /** Whether the accompanying Paystack payment reference has been used before. */
-  paymentReferenceAlreadyUsed: boolean;
+  /**
+   * What this sticker costs this vehicle now, in kobo: the fee type its
+   * origin is paid with, at the vehicle's route-type amount where one is set.
+   * Nothing means the sticker is free, and needs no payment (VEH-37).
+   */
+  feeKobo: number;
+  /** The confirmed payment presented with the attachment; `null` for none. */
+  payment: AttachmentPayment | null;
+  /** The vehicle being onboarded. A payment must have been made for it. */
+  targetVehicleId: string;
+}
+
+export interface AttachmentPayment {
+  /** Whether this payment has funded an attachment before. */
+  alreadyUsed: boolean;
   /**
    * The fee type the payment was made for. A reattachment must be paid as
    * `STICKER_REATTACHMENT`; a sticker from stock, or a signed one, as
    * `STICKER_NEW`. A membership fee or a levy is not an onboarding payment
    * (Requirement 9A.2).
    */
-  paymentFeeTypeCode: string;
+  feeTypeCode: string;
   /** What the payment was made for, as recorded on it at initiation. */
-  paymentSubject: { type: string; id: string };
-  /** The vehicle being onboarded. The payment must have been made for it. */
-  targetVehicleId: string;
+  subject: { type: string; id: string };
 }
 
 export type AttachmentCheck =
@@ -147,21 +164,28 @@ export function checkAttachment(context: AttachmentContext): AttachmentCheck {
   if (context.stickerStatus !== 'ISSUED') {
     return { allowed: false, reason: 'STICKER_NOT_AVAILABLE' };
   }
-  if (context.paymentReferenceAlreadyUsed) {
+  const { payment } = context;
+  if (payment?.alreadyUsed) {
     return { allowed: false, reason: 'PAYMENT_REFERENCE_REUSED' };
   }
   const origin = stickerOrigin(context);
   if (origin === null) {
     return { allowed: false, reason: 'UNKNOWN_BARCODE' };
   }
-  if (context.paymentFeeTypeCode !== requiredOnboardingFeeType(origin)) {
-    return { allowed: false, reason: 'PAYMENT_WRONG_FEE_TYPE' };
-  }
-  if (
-    context.paymentSubject.type !== 'vehicle' ||
-    context.paymentSubject.id !== context.targetVehicleId
-  ) {
-    return { allowed: false, reason: 'PAYMENT_WRONG_VEHICLE' };
+  if (payment === null) {
+    if (context.feeKobo > 0) {
+      return { allowed: false, reason: 'PAYMENT_NOT_CONFIRMED' };
+    }
+  } else {
+    if (payment.feeTypeCode !== requiredOnboardingFeeType(origin)) {
+      return { allowed: false, reason: 'PAYMENT_WRONG_FEE_TYPE' };
+    }
+    if (
+      payment.subject.type !== 'vehicle' ||
+      payment.subject.id !== context.targetVehicleId
+    ) {
+      return { allowed: false, reason: 'PAYMENT_WRONG_VEHICLE' };
+    }
   }
   // Only a register barcode carries a plate to be held to (VEH-16). A stock
   // barcode is bound to its plate by this attachment.

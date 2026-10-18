@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { DESIGNATION_SEED } from '@nurtw/contracts';
 import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 
@@ -98,15 +99,22 @@ describe('Master data (e2e)', () => {
     expect(names).toContain('Awka South');
   });
 
-  it('seeds no designations, leaving the list for the Union to populate', async () => {
-    // PRD §23.4 — the legacy export carries no designation list, and inventing
-    // one would present values with the appearance of Union authority.
+  it("holds the Union's designations, Driver first and Conductor second", async () => {
+    // QUESTIONS.md ORG-06, answered 18 October 2026: the placeholders became
+    // the Union's list, and no code is marked as a placeholder any longer.
     const response = await request(server)
       .get('/api/v1/master-data/designations')
       .set('Cookie', cookie)
       .expect(200);
 
-    expect(response.body.entries).toEqual([]);
+    const codes = (response.body.entries as { code: string }[]).map(
+      (entry) => entry.code,
+    );
+    expect(codes.slice(0, 2)).toEqual(['DRIVER', 'CONDUCTOR']);
+    expect(codes).toEqual(
+      expect.arrayContaining(DESIGNATION_SEED.map((entry) => entry.code)),
+    );
+    expect(codes.filter((code) => code.startsWith('DEMO_'))).toEqual([]);
   });
 
   it('rejects an unknown collection without touching the database', async () => {

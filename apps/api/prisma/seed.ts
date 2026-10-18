@@ -266,54 +266,6 @@ async function seedBranchesAndUnits(): Promise<void> {
 }
 
 /**
- * A plausible designation list for a demo deployment, standing in for
- * **ORG-06** until the Union supplies the approved one.
- *
- * Deliberately kept out of `DESIGNATION_SEED` in `@nurtw/contracts` — that
- * list is empty on purpose (see its own comment) because inventing values
- * there would place them in front of every seed run, demo or not. These codes
- * are prefixed `DEMO_` so they are easy to find and remove once ORG-06 is
- * answered; the printed *label* is left clean, because it is meant to look
- * right on a demo card, not to announce itself as a placeholder.
- */
-const DEMO_DESIGNATIONS = [
-  // ORG-06, in part (Mr Timothy, 6 October 2026): Driver first, Conductor
-  // second, "since we are concentrating on drivers". The order here reaches a
-  // new database only; an existing one is reordered on the Reference lists
-  // screen (roadmap item 39).
-  { code: 'DEMO_DRIVER', label: 'Driver' },
-  { code: 'DEMO_CONDUCTOR', label: 'Conductor' },
-  { code: 'DEMO_CHAIRMAN', label: 'Chairman' },
-  { code: 'DEMO_SECRETARY', label: 'Secretary' },
-  { code: 'DEMO_TREASURER', label: 'Treasurer' },
-  { code: 'DEMO_FINANCIAL_SECRETARY', label: 'Financial Secretary' },
-  { code: 'DEMO_PRO', label: 'Public Relations Officer' },
-  { code: 'DEMO_AUDITOR', label: 'Auditor' },
-] as const;
-
-async function seedDemoDesignations(): Promise<void> {
-  if (process.env.SEED_DEMO_DATA !== 'true') {
-    console.log(
-      '  demo designations: skipped (set SEED_DEMO_DATA=true for a demo deployment)',
-    );
-    return;
-  }
-
-  for (const [index, designation] of DEMO_DESIGNATIONS.entries()) {
-    await prisma.designation.upsert({
-      where: { code: designation.code },
-      create: {
-        code: designation.code,
-        label: designation.label,
-        sortOrder: index,
-      },
-      update: {},
-    });
-  }
-  console.log(`  demo designations: ${DEMO_DESIGNATIONS.length}`);
-}
-
-/**
  * PRD §23.4 — master data is administrable, seeded from the legacy export and
  * corrected by the Union thereafter. `update: {}` is deliberate: a label the
  * Union has already corrected must not be reset by re-running the seed.
@@ -369,17 +321,9 @@ async function seedLgas(): Promise<void> {
 }
 
 /**
- * Designations, of which there are deliberately none.
- *
- * PRD §23.4 directs that master data be seeded from the legacy export. The export
- * carries no designation list — `owner_account_role` holds the previous software's
- * *account* roles, not a member's approved NURTW designation — so there is nothing
- * to seed. Inventing a list would place values carrying the appearance of Union
- * authority in front of an administrator without it.
- *
- * The loop stays so that the moment the Union supplies a list, it seeds through
- * the same idempotent path as every other collection rather than through a
- * one-off script.
+ * Designations: the Union's list (`QUESTIONS.md` ORG-06, answered 18 October
+ * 2026), in the order `DESIGNATION_SEED` gives. An existing entry is left as an
+ * officer last saved it.
  */
 async function seedDesignations(): Promise<void> {
   for (const [index, designation] of DESIGNATION_SEED.entries()) {
@@ -393,11 +337,7 @@ async function seedDesignations(): Promise<void> {
       update: {},
     });
   }
-  console.log(
-    DESIGNATION_SEED.length === 0
-      ? '  designations: none (created by the Union through the interface, PRD §23.4)'
-      : `  designations: ${DESIGNATION_SEED.length}`,
-  );
+  console.log(`  designations: ${DESIGNATION_SEED.length}`);
 }
 
 /**
@@ -634,7 +574,6 @@ async function main(): Promise<void> {
   await seedLgas();
   await seedZones(councilId);
   await seedBranchesAndUnits();
-  await seedDemoDesignations();
   await seedSystemSettings();
   await seedDisclosureProfiles();
   await seedRateLimitProfiles();
