@@ -9,6 +9,14 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import {
+  CardBands,
+  EmblemRoundabout,
+  PublicBackdrop,
+  RoadStrip,
+  SteeringWheel,
+  UnionRule,
+} from "@/components/shell/identity";
 import { ThemeButton } from "@/components/shell/theme";
 import { cn } from "@/lib/cn";
 
@@ -48,27 +56,43 @@ function WayIn({
     <Link
       href={href}
       className={cn(
-        "group flex items-center gap-4 rounded-xl border p-4 transition-colors sm:flex-col sm:items-start sm:p-5",
+        "group relative flex items-center gap-4 overflow-hidden rounded-2xl border p-4 shadow-card transition-[transform,box-shadow,background-color,border-color] duration-200 hover:-translate-y-0.5 hover:shadow-lift sm:flex-col sm:items-start sm:p-5",
         primary
           ? "border-primary bg-primary text-on-solid hover:bg-primary-hover"
-          : "border-line bg-surface hover:border-line-strong hover:bg-surface-muted",
+          : "border-line bg-surface/85 backdrop-blur hover:border-line-strong",
       )}
     >
+      {/* The diamond lattice in the corner: always on the filled way in, on
+          hover on the others. */}
+      <span
+        aria-hidden
+        className={cn(
+          "fade-corner absolute inset-0 transition-opacity duration-300",
+          primary ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+        )}
+      >
+        <span
+          className={cn(
+            "absolute inset-0 pattern-diamond",
+            primary && "ink-on-solid",
+          )}
+        />
+      </span>
       <span
         className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-lg border",
+          "relative flex size-11 shrink-0 items-center justify-center rounded-xl border transition-transform duration-300 group-hover:-rotate-6",
           primary
-            ? "border-on-solid/40"
+            ? "border-on-solid/40 bg-on-solid/10"
             : "border-line bg-surface-muted text-brand-text",
         )}
       >
         <Icon className="size-5" aria-hidden />
       </span>
-      <span className="min-w-0 flex-1">
+      <span className="relative min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-base font-semibold">
           {title}
           <ArrowRight
-            className="size-4 transition-transform group-hover:translate-x-0.5"
+            className="size-4 transition-transform duration-200 group-hover:translate-x-1"
             aria-hidden
           />
         </span>
@@ -91,11 +115,16 @@ export default async function FrontPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-1 flex-col bg-background">
-      <header className="flex h-14 shrink-0 items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-2.5">
-          {/* eslint-disable-next-line @next/next/no-img-element -- a small, static public asset; next/image's build-time optimisation buys nothing here. */}
-          <img src="/logo.png" alt="" className="size-8 object-contain" />
+    <div className="relative isolate flex min-h-dvh flex-1 flex-col lg:px-9">
+      <PublicBackdrop id="front-network" />
+      <CardBands />
+
+      <header className="flex h-16 shrink-0 items-center justify-between px-4 sm:px-8">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-full bg-paper shadow-card ring-1 ring-line">
+            {/* eslint-disable-next-line @next/next/no-img-element -- a small, static public asset; next/image's build-time optimisation buys nothing here. */}
+            <img src="/logo.png" alt="" className="size-7 object-contain" />
+          </span>
           <span className="leading-tight">
             <span className="block text-sm font-semibold tracking-tight">
               NURTW
@@ -108,21 +137,34 @@ export default async function FrontPage() {
         <ThemeButton />
       </header>
 
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center gap-8 px-4 py-6 sm:px-6">
-        <div>
-          <p className="text-sm font-medium text-brand-text">
+      <main className="mx-auto grid w-full max-w-6xl flex-1 content-center items-center gap-8 px-4 py-6 sm:px-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-x-12">
+        <div className="animate-rise-in">
+          <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface/80 px-3 py-1 text-xs font-medium text-brand-text shadow-card backdrop-blur">
+            <SteeringWheel className="size-3.5 animate-steer-once" />
             National Union of Road Transport Workers
           </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-5xl">
-            Membership and Vehicle Verification System
+          <h1 className="mt-5 text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
+            Membership and{" "}
+            <span className="bg-linear-to-r from-brand-text to-link bg-clip-text text-transparent forced-colors:bg-none forced-colors:text-[CanvasText]">
+              Vehicle Verification
+            </span>{" "}
+            System
           </h1>
-          <p className="mt-3 max-w-2xl text-base text-muted-foreground">
+          <UnionRule className="mt-5" />
+          <p className="mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
             The Union&apos;s record of its members, their vehicles, and their
             stickers. Choose where you are going.
           </p>
         </div>
 
-        <nav aria-label="Ways in" className="grid gap-3 sm:grid-cols-3">
+        <div className="hidden justify-center lg:flex">
+          <EmblemRoundabout size={320} />
+        </div>
+
+        <nav
+          aria-label="Ways in"
+          className="grid gap-3 sm:grid-cols-3 lg:col-span-2"
+        >
           <WayIn
             primary
             href="/login"
@@ -145,12 +187,13 @@ export default async function FrontPage() {
         </nav>
       </main>
 
-      <footer className="shrink-0 px-4 pb-5 sm:px-6">
-        <p className="mx-auto max-w-4xl text-xs text-faint-foreground">
+      <footer className="shrink-0">
+        <p className="mx-auto max-w-6xl px-4 pb-4 text-xs text-faint-foreground sm:px-8">
           There is no public list of members or vehicles here. A verification
           confirms only that a matching NURTW record exists; it is not evidence
           of ownership, roadworthiness, licensing, or insurance.
         </p>
+        <RoadStrip />
       </footer>
     </div>
   );

@@ -21,6 +21,7 @@ import { useState } from "react";
 import useSWR from "swr";
 
 import { AssignStickerDialog } from "@/components/assign-sticker-dialog";
+import { SteeringWheel, UnionRule } from "@/components/shell/identity";
 import { fetcher } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useSession } from "@/lib/session";
@@ -37,7 +38,14 @@ import { useSession } from "@/lib/session";
  */
 
 const tileClass =
-  "group flex min-h-24 flex-col justify-between gap-3 rounded-xl border border-line bg-surface p-4 text-left transition-colors hover:border-line-strong hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-5";
+  "group relative isolate flex min-h-24 animate-rise-in flex-col justify-between gap-3 overflow-hidden rounded-2xl border p-4 text-left shadow-card transition-[transform,box-shadow,background-color,border-color] duration-200 hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-5";
+
+/** The first tile is the filled one (DESIGN.md §11). */
+function tileTone(primary: boolean): string {
+  return primary
+    ? "border-primary bg-primary text-on-solid hover:bg-primary-hover"
+    : "border-line bg-surface hover:border-line-strong";
+}
 
 function TileBody({
   icon: Icon,
@@ -52,11 +60,27 @@ function TileBody({
 }) {
   return (
     <>
+      {/* The diamond lattice in the corner: always on the filled tile, on
+          hover on the others. */}
+      <span
+        aria-hidden
+        className={cn(
+          "fade-corner absolute inset-0 -z-10 transition-opacity duration-300",
+          primary ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+        )}
+      >
+        <span
+          className={cn(
+            "absolute inset-0 pattern-diamond",
+            primary && "ink-on-solid",
+          )}
+        />
+      </span>
       <span
         className={cn(
-          "flex size-10 items-center justify-center rounded-lg border",
+          "flex size-11 items-center justify-center rounded-xl border transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105",
           primary
-            ? "border-primary bg-primary text-on-solid"
+            ? "border-on-solid/40 bg-on-solid/10"
             : "border-line bg-surface-muted text-brand-text",
         )}
       >
@@ -67,7 +91,12 @@ function TileBody({
           {title}
         </span>
         {/* The words fit a phone's tile only from a small tablet up. */}
-        <span className="mt-1 hidden text-sm text-muted-foreground sm:block">
+        <span
+          className={cn(
+            "mt-1 hidden text-sm sm:block",
+            primary ? "text-on-solid" : "text-muted-foreground",
+          )}
+        >
           {text}
         </span>
       </span>
@@ -248,10 +277,12 @@ export default function HomePage() {
     // screen and does not scroll.
     <div className="flex min-h-[calc(100dvh-12.5rem)] flex-col gap-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="flex items-center gap-2.5 text-2xl font-semibold tracking-tight">
+          <SteeringWheel className="size-6 shrink-0 animate-steer-once text-brand-text" />
           {user ? `Welcome, ${user.fullName.split(" ")[0]}` : "Welcome"}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <UnionRule className="mt-2.5" />
+        <p className="mt-2 text-sm text-muted-foreground">
           What would you like to do?
         </p>
       </div>
@@ -313,9 +344,17 @@ export default function HomePage() {
               actions.length > 4 ? "lg:grid-cols-4" : "lg:grid-cols-2",
             )}
           >
-            {actions.map((action, index) =>
-              action.href ? (
-                <Link key={action.key} href={action.href} className={tileClass}>
+            {actions.map((action, index) => {
+              const className = cn(tileClass, tileTone(index === 0));
+              // The tiles arrive one after another.
+              const style = { animationDelay: `${60 + index * 45}ms` };
+              return action.href ? (
+                <Link
+                  key={action.key}
+                  href={action.href}
+                  className={className}
+                  style={style}
+                >
                   <TileBody {...action} primary={index === 0} />
                 </Link>
               ) : (
@@ -323,12 +362,13 @@ export default function HomePage() {
                   key={action.key}
                   type="button"
                   onClick={action.onClick}
-                  className={tileClass}
+                  className={className}
+                  style={style}
                 >
                   <TileBody {...action} primary={index === 0} />
                 </button>
-              ),
-            )}
+              );
+            })}
           </div>
         </section>
       ) : (

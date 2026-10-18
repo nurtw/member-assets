@@ -21,7 +21,7 @@ export function Table({
   return (
     <div
       className={cn(
-        "relative w-full rounded-lg border border-line bg-surface",
+        "relative w-full rounded-xl border border-line bg-surface shadow-card",
         stacked ? "sm:overflow-x-auto" : "overflow-x-auto",
       )}
     >

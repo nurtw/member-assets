@@ -8,6 +8,7 @@ import { useEffect, type ReactNode } from "react";
 import { AccountMenu } from "@/components/shell/account-menu";
 import { AppFrame, type CommandAction } from "@/components/shell/app-frame";
 import { Brand } from "@/components/shell/brand";
+import { UnionLoader } from "@/components/shell/identity";
 import { setThemeChoice } from "@/components/shell/theme";
 import { Card, Notice } from "@/components/ui";
 import {
@@ -65,9 +66,7 @@ function Shell({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-dvh flex-1 items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      </div>
+      <UnionLoader />
     );
   }
 

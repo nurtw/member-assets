@@ -6,6 +6,13 @@ import { Suspense, useState, type FormEvent } from "react";
 import useSWR from "swr";
 
 import { naira } from "@/components/dues-panel";
+import {
+  EmblemBadge,
+  PublicBackdrop,
+  RoadStrip,
+  UnionLoader,
+  UnionRule,
+} from "@/components/shell/identity";
 import { Button, ErrorNotice, Field, TextInput } from "@/components/ui";
 import { ApiError, api, fetcher } from "@/lib/api";
 
@@ -20,34 +27,34 @@ import { ApiError, api, fetcher } from "@/lib/api";
  */
 export default function PayPage() {
   return (
-    <main className="flex min-h-full flex-1 items-start justify-center bg-surface-muted px-4 py-10">
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element -- a small, static public asset; next/image's build-time optimisation buys nothing here. */}
-          <img
-            src="/logo.png"
-            alt="NURTW emblem"
-            className="mx-auto mb-3 h-14 w-14 object-contain"
-          />
-          <h1 className="text-xl font-semibold tracking-tight">
-            Pay NURTW dues
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Anambra State Council
-          </p>
+    <div className="relative isolate flex min-h-full flex-1 flex-col">
+      <PublicBackdrop id="pay-network" />
+      <main className="flex flex-1 items-start justify-center px-4 py-10">
+        <div className="w-full max-w-md animate-rise-in">
+          <div className="mb-6 text-center">
+            <EmblemBadge className="mb-3" />
+            <h1 className="text-xl font-semibold tracking-tight">
+              Pay NURTW dues
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Anambra State Council
+            </p>
+            <UnionRule className="mt-3 justify-center" />
+          </div>
+          {/* `useSearchParams` needs a boundary to render under. */}
+          <Suspense fallback={<UnionLoader compact />}>
+            <Pay />
+          </Suspense>
         </div>
-        {/* `useSearchParams` needs a boundary to render under. */}
-        <Suspense fallback={<Notice>Loading…</Notice>}>
-          <Pay />
-        </Suspense>
-      </div>
-    </main>
+      </main>
+      <RoadStrip />
+    </div>
   );
 }
 
 function Notice({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-line bg-surface p-6 text-sm">
+    <div className="rounded-2xl border border-line bg-surface/90 p-6 text-sm shadow-lift backdrop-blur">
       {children}
     </div>
   );
@@ -68,7 +75,7 @@ function Pay() {
   const [payAgain, setPayAgain] = useState(false);
 
   if (isLoading) {
-    return <Notice>Loading…</Notice>;
+    return <UnionLoader compact />;
   }
   if (error || !data) {
     const status = error instanceof ApiError ? error.status : 0;

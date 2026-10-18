@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { cn } from "@/lib/cn";
 
-/** The Union's emblem and a name, at the head of a sidebar or a public page. */
+/** The Union's emblem, on white, and a name, at the head of a sidebar. */
 export function Brand({
   href,
   title,
@@ -18,12 +18,19 @@ export function Brand({
     <Link
       href={href}
       className={cn(
-        "flex min-w-0 items-center gap-2.5 rounded-md p-1 transition-colors hover:bg-surface-muted",
+        "group flex min-w-0 items-center gap-2.5 rounded-md p-1 transition-colors hover:bg-surface-muted",
         collapsed && "justify-center",
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- a small, static public asset; next/image's build-time optimisation buys nothing here. */}
-      <img src="/logo.png" alt="" className="size-7 shrink-0 object-contain" />
+      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-paper shadow-card ring-1 ring-line">
+        {/* The emblem is a steering wheel; pointing at it turns the wheel. */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- a small, static public asset; next/image's build-time optimisation buys nothing here. */}
+        <img
+          src="/logo.png"
+          alt=""
+          className="size-6 object-contain transition-transform duration-500 group-hover:-rotate-[20deg]"
+        />
+      </span>
       {collapsed ? (
         <span className="sr-only">{title}</span>
       ) : (

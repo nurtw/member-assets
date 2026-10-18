@@ -7,6 +7,7 @@ import { useEffect, type ReactNode } from "react";
 import { AccountMenu } from "@/components/shell/account-menu";
 import { AppFrame } from "@/components/shell/app-frame";
 import { Brand } from "@/components/shell/brand";
+import { UnionLoader } from "@/components/shell/identity";
 import { PORTAL_NAVIGATION } from "@/lib/navigation";
 import { PortalSessionProvider, usePortalSession } from "@/lib/portal-session";
 
@@ -43,10 +44,8 @@ function Shell({ children }: { children: ReactNode }) {
 
   if (!me) {
     return (
-      <main className="flex min-h-dvh flex-1 items-center justify-center bg-surface-muted">
-        <p className="text-sm text-muted-foreground">
-          {loading ? "Loading…" : "Signing you in…"}
-        </p>
+      <main className="flex min-h-dvh flex-1">
+        <UnionLoader label={loading ? "Loading…" : "Signing you in…"} />
       </main>
     );
   }

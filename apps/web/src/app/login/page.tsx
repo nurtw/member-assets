@@ -6,6 +6,13 @@ import { useEffect, useState, type FormEvent } from "react";
 import { mutate } from "swr";
 
 import { ApiWakeNotice, useApiWake } from "@/components/api-wake";
+import {
+  EmblemBadge,
+  EmblemRoundabout,
+  PublicBackdrop,
+  RouteNetwork,
+  UnionRule,
+} from "@/components/shell/identity";
 import { Button, ErrorNotice, Field, Notice, TextInput } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import {
@@ -106,140 +113,175 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-full flex-1 items-center justify-center bg-surface-muted px-4 py-12">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element -- a small, static public asset; next/image's build-time optimisation buys nothing here. */}
-          <img
-            src="/logo.png"
-            alt="NURTW emblem"
-            className="mx-auto mb-4 h-14 w-14 object-contain"
-          />
-          <h1 className="text-xl font-semibold tracking-tight">
-            NURTW Membership System
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Anambra State Council</p>
+    <div className="relative isolate flex min-h-full flex-1">
+      <PublicBackdrop id="sign-in-network" />
+
+      {/* The card's green, on a wide screen: the Union's name and its motto
+          (CARD-06) beside the form. */}
+      <section className="ink-on-solid relative hidden w-[44%] max-w-2xl flex-col justify-between overflow-hidden bg-nurtw-green-deep p-10 text-on-solid lg:flex">
+        <div
+          aria-hidden
+          className="absolute inset-0 pattern-diamond opacity-60"
+        />
+        <RouteNetwork
+          id="sign-in-panel-network"
+          grid={false}
+          className="absolute inset-0 size-full"
+        />
+        <p className="relative text-sm font-semibold tracking-tight">
+          National Union of Road Transport Workers
+          <span className="block font-normal text-on-solid/80">
+            Anambra State Council
+          </span>
+        </p>
+        <div className="relative">
+          <EmblemRoundabout size={232} className="mb-10" />
+          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-on-solid/80">
+            Safety and Unity
+          </p>
+          <p className="mt-3 max-w-md text-3xl font-semibold leading-tight tracking-tight text-balance">
+            The Union&apos;s record of its members, their vehicles, and their
+            stickers.
+          </p>
         </div>
+        <p className="relative text-xs text-on-solid/80">
+          Membership and Vehicle Verification System
+        </p>
+      </section>
 
-        <form
-          onSubmit={onSubmit}
-          className="grid gap-4 rounded-lg border border-line bg-surface p-6"
-        >
-          <ApiWakeNotice wake={wake} />
+      <main className="relative flex flex-1 items-center justify-center px-4 py-12">
+        <div className="w-full max-w-sm animate-rise-in">
+          <div className="mb-8 text-center">
+            <EmblemBadge className="mb-4" />
+            <h1 className="text-xl font-semibold tracking-tight">
+              NURTW Membership System
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Anambra State Council
+            </p>
+            <UnionRule className="mt-4 justify-center" />
+          </div>
 
-          {error ? (
-            <ErrorNotice
-              message={
-                error.fieldError("code") ??
-                (error.status === 401
-                  ? "Those credentials were not accepted."
-                  : error.status === 503
-                    ? "Your second factor cannot be checked at present. Tell the administrator."
-                    : // A gateway answering for a server that is not up yet.
-                      // Nothing was wrong with what was typed.
-                      wasNotThere(error.status) && error.status !== 0
-                      ? "The System was still starting up. Wait a moment, then sign in again."
-                      : error.message)
-              }
-              requestId={error.requestId}
-            />
-          ) : null}
+          <form
+            onSubmit={onSubmit}
+            className="grid gap-4 rounded-2xl border border-line bg-surface/90 p-6 shadow-lift backdrop-blur"
+          >
+            <ApiWakeNotice wake={wake} />
 
-          <Field label="Official email address" htmlFor="email" required>
-            <TextInput
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="username"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </Field>
-
-          <Field label="Password" htmlFor="password" required>
-            <div className="relative">
-              <TextInput
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="pr-10"
+            {error ? (
+              <ErrorNotice
+                message={
+                  error.fieldError("code") ??
+                  (error.status === 401
+                    ? "Those credentials were not accepted."
+                    : error.status === 503
+                      ? "Your second factor cannot be checked at present. Tell the administrator."
+                      : // A gateway answering for a server that is not up yet.
+                        // Nothing was wrong with what was typed.
+                        wasNotThere(error.status) && error.status !== 0
+                        ? "The System was still starting up. Wait a moment, then sign in again."
+                        : error.message)
+                }
+                requestId={error.requestId}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword((current) => !current)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                aria-pressed={showPassword}
-                tabIndex={-1}
-                className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-faint-foreground hover:text-muted-foreground"
-              >
-                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-              </button>
-            </div>
-          </Field>
+            ) : null}
 
-          {needsCode ? (
-            <Field
-              label="Authenticator code"
-              htmlFor="code"
-              required
-              hint="The six-digit code from your authenticator app, or one of your recovery codes."
-            >
+            <Field label="Official email address" htmlFor="email" required>
               <TextInput
-                id="code"
-                name="code"
-                inputMode="text"
-                autoComplete="one-time-code"
-                autoFocus
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="username"
                 required
-                value={code}
-                onChange={(event) => setCode(event.target.value)}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
               />
             </Field>
-          ) : null}
 
-          <Button type="submit" disabled={submitting}>
-            {opening
-              ? "Opening…"
-              : submitting
-                ? "Signing in…"
-                : needsCode
-                  ? "Verify and sign in"
-                  : "Sign in"}
-          </Button>
+            <Field label="Password" htmlFor="password" required>
+              <div className="relative">
+                <TextInput
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                  tabIndex={-1}
+                  className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-faint-foreground hover:text-muted-foreground"
+                >
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+            </Field>
 
-          {slowToOpen ? (
-            <Notice tone="info" title="You are signed in" role="status">
-              The next screen is slow to open on this connection. There is no
-              need to sign in again.{" "}
-              {/* A plain link: a full page load, if the quick one has stalled. */}
-              <a
-                href="/overview"
-                className="font-medium underline underline-offset-2"
+            {needsCode ? (
+              <Field
+                label="Authenticator code"
+                htmlFor="code"
+                required
+                hint="The six-digit code from your authenticator app, or one of your recovery codes."
               >
-                Open it now
-              </a>
-            </Notice>
-          ) : null}
-        </form>
+                <TextInput
+                  id="code"
+                  name="code"
+                  inputMode="text"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  required
+                  value={code}
+                  onChange={(event) => setCode(event.target.value)}
+                />
+              </Field>
+            ) : null}
 
-        <p className="mt-6 text-center text-xs leading-relaxed text-faint-foreground">
-          Access is restricted to authorised officers of the Union. Activity on
-          this System is recorded.
-        </p>
-        <p className="mt-2 text-center text-xs text-faint-foreground">
-          An outside organisation?{" "}
-          <Link href="/portal/login" className="underline underline-offset-2">
-            Use the organisation portal
-          </Link>
-          .
-        </p>
-      </div>
-    </main>
+            <Button type="submit" disabled={submitting}>
+              {opening
+                ? "Opening…"
+                : submitting
+                  ? "Signing in…"
+                  : needsCode
+                    ? "Verify and sign in"
+                    : "Sign in"}
+            </Button>
+
+            {slowToOpen ? (
+              <Notice tone="info" title="You are signed in" role="status">
+                The next screen is slow to open on this connection. There is no
+                need to sign in again.{" "}
+                {/* A plain link: a full page load, if the quick one has stalled. */}
+                <a
+                  href="/overview"
+                  className="font-medium underline underline-offset-2"
+                >
+                  Open it now
+                </a>
+              </Notice>
+            ) : null}
+          </form>
+
+          <p className="mt-6 text-center text-xs leading-relaxed text-faint-foreground">
+            Access is restricted to authorised officers of the Union. Activity
+            on this System is recorded.
+          </p>
+          <p className="mt-2 text-center text-xs text-faint-foreground">
+            An outside organisation?{" "}
+            <Link href="/portal/login" className="underline underline-offset-2">
+              Use the organisation portal
+            </Link>
+            .
+          </p>
+        </div>
+      </main>
+    </div>
   );
 }
 
@@ -267,7 +309,12 @@ function EyeOffIcon() {
         strokeLinejoin="round"
       />
       <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M3 17 17 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path
+        d="M3 17 17 3"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

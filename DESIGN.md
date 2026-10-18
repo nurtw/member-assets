@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.2
-**Last revised:** 6 October 2026
+**Document version:** 1.3
+**Last revised:** 18 October 2026
 **Authority:** Subordinate to `PRD.md`. Technical decisions remain in `ARCHITECTURE.md`.
 
 ---
@@ -268,3 +268,41 @@ simple, 100dvh, straight to the point". Asked which was meant, the owner chose b
   many were added; it closes on the first read everywhere else.
 - **Nothing says where a sticker came from.** A sticker is "a sticker" (PRD Requirement
   11.2, `QUESTIONS.md` GOV-21).
+
+## 13. Pattern and motion *(revision 1.3)*
+
+The owner's direction of 18 October 2026: the interface was too plain; it should be
+professional and beautiful, with geometric patterns, minimal background animation, and
+animation that belongs to the Union. The answer is one idea, **the road network**, drawn
+in the card's colours. It lives in `components/shell/identity.tsx`, with its geometry in
+`lib/route-network.ts` (tested) and its inks, patterns, and keyframes in `globals.css`.
+
+| Element | What it is | Where |
+|---|---|---|
+| The road network | Roads on a triangular lattice (0°, 60°, 120° only), routes with their lane markings flowing, parks where routes meet, a vehicle on each route | Behind public pages; behind a page's head in the shell, from a tablet up |
+| The roundabout | The emblem on white, a tyre's tread turning round it, two vehicles going round anticlockwise | The front page; the sign-in panel |
+| The steering wheel | Drawn after the emblem's; it turns one way and the other while a screen loads, and once beside the welcome | Loading screens; Home |
+| The card's bands | The card's green side bands, carrying the Union's name and its motto (CARD-06) | Down each side of the front page on a wide screen |
+| The Union's rule | A green bar and a red one, as the card sets its bands beside its banner | Under every page's title |
+| The patterns | A diamond lattice (each diamond with one at its heart), chevrons, and dots | Sidebar, page heads, tiles, empty states |
+| The road | Asphalt with its lane markings moving by | The foot of the front page and the pay page |
+| The traveller | A vehicle crossing the top bar once, each time the screen changes | The shell |
+
+Rules that go with them:
+
+- **Decoration only.** Every piece is hidden from assistive technology, takes no pointer,
+  and draws nothing from any record.
+- **Never behind a verdict, a list, or a form.** The Verify panels, tables, and form sections
+  sit on their own solid surfaces. Pattern and motion fade out before a page's content.
+- **Every colour is a pattern ink** mixed from one base in each theme, so both themes, and
+  a green panel (`ink-on-solid`), recolour it without a second drawing. The test that
+  forbids raw colour classes still holds.
+- **A device that asks for less motion sees it standing still.** CSS motion obeys the rule
+  at the foot of `globals.css`; SVG's own motion (the vehicles, the parks' pulse) is hidden
+  outright.
+- **The working screens stay quiet.** In the shell, motion is limited to the faint network
+  behind a page's head (not on a phone), the traveller, and a page's content rising into
+  place as it opens. Nothing moves continuously beside what an officer is reading.
+- **A page that arrives keeps no transform** (`animation-fill-mode: backwards`), so nothing
+  fixed inside it is thrown off.
+- **The first Home tile is filled** (§11), with the lattice in its corner.

@@ -6,7 +6,10 @@ import { cn } from "@/lib/cn";
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("rounded-lg border border-line bg-surface", className)}
+      className={cn(
+        "rounded-xl border border-line bg-surface shadow-card",
+        className,
+      )}
       {...props}
     />
   );
@@ -26,7 +29,7 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-line bg-surface p-5">
+    <section className="rounded-xl border border-line bg-surface p-5 shadow-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-base font-semibold">{title}</h2>

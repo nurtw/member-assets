@@ -2,6 +2,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { HTMLAttributes, ReactNode } from "react";
 
+import { UnionRule } from "@/components/shell/identity";
 import { cn } from "@/lib/cn";
 
 /**
@@ -59,8 +60,9 @@ export function PageHeader({
             </h1>
             {status}
           </div>
+          <UnionRule className="mt-2.5" />
           {meta ? (
-            <p className="mt-1 text-sm text-muted-foreground">{meta}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{meta}</p>
           ) : null}
           {description ? (
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
@@ -164,7 +166,7 @@ export function Skeleton({
   return (
     <div
       aria-hidden
-      className={cn("animate-pulse rounded-md bg-surface-muted", className)}
+      className={cn("skeleton-shimmer rounded-md", className)}
       {...props}
     />
   );
@@ -205,13 +207,32 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-lg border border-dashed border-line px-6 py-12 text-center",
+        "relative isolate flex flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-line px-6 py-12 text-center",
         className,
       )}
     >
+      <div aria-hidden className="fade-radial absolute inset-0 -z-10">
+        <div className="size-full pattern-dots" />
+      </div>
       {icon ? (
-        <div className="mb-3 rounded-full border border-line bg-surface p-2.5 text-muted-foreground [&_svg]:size-5">
-          {icon}
+        <div className="relative mb-3 grid size-14 place-items-center">
+          {/* A tread turning slowly round the icon. */}
+          <svg
+            aria-hidden
+            viewBox="0 0 56 56"
+            className="absolute inset-0 size-full animate-tread"
+          >
+            <circle
+              cx="28"
+              cy="28"
+              r="26.5"
+              className="halo-ring"
+              strokeDasharray="2 5"
+            />
+          </svg>
+          <div className="rounded-full border border-line bg-surface p-2.5 text-muted-foreground shadow-card [&_svg]:size-5">
+            {icon}
+          </div>
         </div>
       ) : null}
       <p className="text-sm font-medium">{title}</p>

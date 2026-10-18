@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { Breadcrumbs } from "@/components/shell/breadcrumbs";
+import { RouteNetwork } from "@/components/shell/identity";
 import { NAV_ICONS } from "@/components/shell/nav-icon";
 import {
   CommandDialog,
@@ -109,10 +110,13 @@ function SidebarLink({
       href={item.href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex h-8 items-center gap-2.5 rounded-md px-2 text-sm transition-colors",
+        "relative flex h-8 items-center gap-2.5 rounded-md px-2 text-sm transition-colors",
+        // The screen open now carries a green bar at its edge as well as its
+        // weight, so it is told apart without colour (DESIGN.md §3).
+        "before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-primary before:transition-transform before:duration-200",
         active
-          ? "bg-surface-muted font-medium text-foreground"
-          : "text-muted-foreground hover:bg-surface-muted/70 hover:text-foreground",
+          ? "bg-surface-muted font-medium text-foreground before:scale-y-100"
+          : "text-muted-foreground before:scale-y-0 hover:bg-surface-muted/70 hover:text-foreground",
         collapsed && "justify-center px-0",
       )}
     >
@@ -311,10 +315,19 @@ export function AppFrame({
       <div className="flex min-h-dvh flex-1">
         <aside
           className={cn(
-            "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-line bg-sidebar transition-[width] duration-200 md:flex",
+            "sticky top-0 isolate hidden h-dvh shrink-0 flex-col border-r border-line bg-sidebar transition-[width] duration-200 md:flex",
             collapsed ? "w-14" : "w-64",
           )}
         >
+          {/* The diamond lattice behind the emblem, fading down the sidebar.
+              Beneath everything in it: the sidebar is its own stacking
+              context. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-44 fade-b"
+          >
+            <div className="size-full pattern-diamond" />
+          </div>
           <SidebarContents
             brand={brand}
             groups={groups}
@@ -326,8 +339,38 @@ export function AppFrame({
           />
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="relative isolate flex min-w-0 flex-1 flex-col">
+          {/* Behind each page's head: a light from the corner, the lattice,
+              and on a wider screen the road network, all fading out before
+              the page's content. Lists and forms sit on their own surfaces. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[26rem] overflow-hidden"
+          >
+            <div className="glow-corner absolute inset-0" />
+            <div className="fade-corner absolute inset-0">
+              <div className="size-full pattern-dots" />
+            </div>
+            <div className="fade-corner absolute inset-0 hidden opacity-70 md:block">
+              <RouteNetwork
+                id="shell-network"
+                grid={false}
+                className="size-full"
+              />
+            </div>
+          </div>
           <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-line bg-background/85 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:px-4">
+            {/* The bar's foot: the Union's green fading to its red, and a
+                vehicle crossing it each time the screen changes. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 -bottom-px h-0.5 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-linear-to-r from-primary/50 via-transparent to-nurtw-red/30" />
+              <div key={pathname} className="traveller absolute inset-0">
+                <span className="block h-full w-20 rounded-full bg-linear-to-r from-transparent via-primary to-primary" />
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}

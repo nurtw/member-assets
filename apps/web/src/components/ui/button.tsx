@@ -13,13 +13,14 @@ import { cn } from "@/lib/cn";
  */
 export const buttonVariants = cva(
   "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium " +
-    "transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+    "transition-[color,background-color,border-color,box-shadow,transform] duration-150 active:translate-y-px outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
     "focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 " +
     "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        primary: "bg-primary text-on-solid hover:bg-primary-hover",
+        primary:
+          "bg-primary text-on-solid shadow-sm shadow-primary/25 hover:bg-primary-hover hover:shadow-md hover:shadow-primary/20",
         secondary:
           "border border-line bg-surface text-foreground shadow-xs hover:bg-surface-muted",
         ghost:
