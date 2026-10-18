@@ -12,6 +12,7 @@ import { HealthModule } from './health/health.module.js';
 import { MasterDataModule } from './master-data/master-data.module.js';
 import { MediaModule } from './media/media.module.js';
 import { MembershipModule } from './membership/membership.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 import { OrganisationModule } from './organisation/organisation.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { PortalModule } from './portal/portal.module.js';
@@ -50,6 +51,7 @@ import { VerificationModule } from './verification/verification.module.js';
     MediaModule,
     VehicleModule,
     PaymentsModule,
+    NotificationsModule,
     StickerModule,
     VehicleLetterModule,
     VerificationModule,

@@ -146,6 +146,7 @@ describe('API reference (e2e)', () => {
       'GET /api/v1/portal/invitations/:code',
       'POST /api/v1/auth/login',
       'POST /api/v1/auth/logout',
+      'POST /api/v1/notifications/sms/delivery',
       'POST /api/v1/pay/:code',
       'POST /api/v1/payments/webhook',
       'POST /api/v1/portal/applications',

@@ -99,6 +99,15 @@ const STATUS_TONES: Record<string, Tone> = {
   // assigned did its work. Withdrawn reads as WITHDRAWN does above.
   IN_STOCK: "neutral",
   ASSIGNED: "affirm",
+  // A text message (item 45). Every one says in words what happened beside
+  // the chip, so the tone is never the only signal.
+  QUEUED: "waiting",
+  SENDING: "waiting",
+  SENT: "neutral",
+  DELIVERED: "affirm",
+  FAILED: "deny",
+  UNSENDABLE: "deny",
+  NOT_SENT: "neutral",
 };
 
 export function StatusChip({

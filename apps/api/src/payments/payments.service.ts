@@ -8,6 +8,7 @@ import { calculateFees, DEFAULT_FEE_SCHEDULES } from '@nurtw/domain';
 import { randomUUID } from 'node:crypto';
 
 import { AuditService } from '../audit/audit.service.js';
+import { queuePaymentNotice } from '../notifications/sms-outbox.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { FeeTypeService } from './fee-type.service.js';
 import { PaystackClient } from './paystack/paystack.client.js';
@@ -35,6 +36,9 @@ export interface PaymentQuote {
   contractorFeeKobo: number;
   totalChargedKobo: number;
 }
+
+/** The dues a member is sent a confirmation for (item 45). */
+const DUES_FEE_TYPES = new Set(['MEMBERSHIP', 'LEVY']);
 
 /** How many of a subject's open payments one check asks Paystack about. */
 const OPEN_PAYMENTS_CHECKED = 5;
@@ -284,6 +288,7 @@ export class PaymentsService {
   ): Promise<boolean> {
     const payment = await this.prisma.payment.findUnique({
       where: { paystackReference: reference },
+      include: { feeType: { select: { code: true } } },
     });
     if (!payment || payment.status === 'CONFIRMED') {
       return false;
@@ -330,6 +335,26 @@ export class PaymentsService {
         },
         tx,
       );
+      // Item 45: a due paid is confirmed to the member by SMS ("no message,
+      // not paid"). A levy is the member's who drives the vehicle; a vehicle
+      // with none has nobody to tell.
+      if (DUES_FEE_TYPES.has(payment.feeType.code)) {
+        const memberId =
+          payment.subjectType === 'member'
+            ? payment.subjectId
+            : (
+                await tx.vehicle.findUnique({
+                  where: { id: payment.subjectId },
+                  select: { declaredByMemberId: true },
+                })
+              )?.declaredByMemberId;
+        if (memberId) {
+          await queuePaymentNotice(tx, memberId, {
+            type: 'payment',
+            id: payment.id,
+          });
+        }
+      }
     });
     return true;
   }

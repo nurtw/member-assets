@@ -23,6 +23,7 @@ import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service.js';
 import { PermissionService } from '../auth/permission.service.js';
 import { loadEnvironment } from '../config/environment.js';
+import { queuePaymentNotice } from '../notifications/sms-outbox.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   DEDICATED_ALLOCATION_ORDER,
@@ -415,6 +416,11 @@ export class DedicatedAccountService implements OnModuleInit, OnModuleDestroy {
             tx,
           );
           await this.allocateHeld(tx, account.memberId, now);
+          // Item 45: the member is told by SMS, once the credit is in.
+          await queuePaymentNotice(tx, account.memberId, {
+            type: 'dedicated_account_transfer',
+            id: transfer.id,
+          });
         },
         { maxWait: 10_000, timeout: 30_000 },
       );

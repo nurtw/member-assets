@@ -14082,6 +14082,445 @@
         }
       }
     },
+    "/api/v1/members/{id}/messages": {
+      "get": {
+        "summary": "The text messages sent to a member.",
+        "description": "The latest 20: what each was for, its status, and what it said. Only the last four digits of the number it went to. **Internal only** (Requirement 27.8).\n\n**Permission required:** `payment.read`.",
+        "operationId": "MemberMessagesController_list",
+        "tags": [
+          "MemberMessages"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold payment.read in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such member, or they lie outside the caller’s scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/members/{id}/messages/{messageId}/resend": {
+      "post": {
+        "summary": "Send a payment confirmation again.",
+        "description": "Made up afresh from what is true now, and audited. Refused while messages are switched off.\n\n**Permission required:** `payment.initiate`.",
+        "operationId": "MemberMessagesController_resend",
+        "tags": [
+          "MemberMessages"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold payment.initiate in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such member or message, or the member lies outside the caller’s scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Messages are switched off.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/members/{id}/nin": {
       "put": {
         "summary": "Record or replace a member’s NIN.",
@@ -15356,6 +15795,823 @@
             ]
           }
         ]
+      }
+    },
+    "/api/v1/notifications/sms": {
+      "get": {
+        "summary": "Text messages: the switch, the sender name, the route, and the words.",
+        "description": "Item 45 (PRD Requirement 27.14). Says whether each part of the provider’s configuration is present (the API key, the account’s base URL, the delivery-report secret), never its value.\n\n**Permission required:** `system_setting.manage`.",
+        "operationId": "SmsController_state",
+        "tags": [
+          "Sms"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold system_setting.manage in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/sms/delivery": {
+      "post": {
+        "summary": "Termii's delivery reports.",
+        "description": "Verified by HMAC-SHA512 over the raw body against `X-Termii-Signature`, under the secret key. Updates the message the report names; an unknown message is ignored.\n\n**Authentication:** none. This route is deliberately public.",
+        "operationId": "SmsController_delivery",
+        "tags": [
+          "Sms"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "The signature is missing or wrong.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/notifications/sms/settings": {
+      "put": {
+        "summary": "Switch text messages on or off, or change the sender name or route.",
+        "description": "Audited with the reason. Messages cannot be switched on while the provider is not configured. While they are off, confirmations are recorded as not sent, and none is sent later.\n\n**Permission required:** `system_setting.manage`.",
+        "operationId": "SmsController_updateSettings",
+        "tags": [
+          "Sms"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "senderId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9 ]{3,11}$"
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "dnd",
+                      "generic"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold system_setting.manage in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The provider is not configured, so messages cannot be switched on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/sms/templates/{key}": {
+      "put": {
+        "summary": "Change the words of one message.",
+        "description": "A new version, audited with the reason; earlier versions are kept. A template may use only {amount}, {member}, {date}, and {owed}, must keep to the SMS alphabet (naira is written N), and must fit in two SMS once filled in.\n\n**Permission required:** `system_setting.manage`.",
+        "operationId": "SmsController_updateTemplate",
+        "tags": [
+          "Sms"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "maxLength": 612
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "body",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold system_setting.manage in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The words were changed by someone else a moment ago.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/sms/test": {
+      "post": {
+        "summary": "Send one test message to a number.",
+        "description": "Sent at once, whether or not messages are switched on, to prove the key, the sender name, and the route. Fixed words. Recorded and audited with the last four digits of the number only.\n\n**Permission required:** `system_setting.manage`.",
+        "operationId": "SmsController_sendTest",
+        "tags": [
+          "Sms"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "phone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 24
+                  }
+                },
+                "required": [
+                  "phone"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold system_setting.manage in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The provider is not configured.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/officer-signatures": {

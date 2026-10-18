@@ -20,6 +20,7 @@ export type NavIcon =
   | "stickers"
   | "fees"
   | "settlement"
+  | "messages"
   | "organisations"
   | "profiles"
   | "limits"
@@ -131,6 +132,12 @@ export const OFFICER_NAVIGATION: readonly NavGroup[] = [
         icon: "settlement",
         permissions: ["payment.manage_settlement"],
       },
+      {
+        href: "/settings/messages",
+        label: "Messages",
+        icon: "messages",
+        permissions: ["system_setting.manage"],
+      },
     ],
   },
   {
@@ -241,6 +248,7 @@ export const OFFICER_LANDING_ORDER: readonly string[] = [
   "/members",
   "/settings/fees",
   "/settings/settlement",
+  "/settings/messages",
   "/organisations",
   "/organisations/profiles",
   "/organisations/limits",

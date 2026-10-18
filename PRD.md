@@ -4,8 +4,8 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.17 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.17
+1.2 to 1.18 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.18
 **Last revised:** 18 October 2026
 
 ---
@@ -92,6 +92,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. Payment is offered wherever a vehicle is checked, and through a personal pay link that never says what is owed. See §23.10, §23.22–§23.27, Requirements 12.11, 27.7 and 27.8. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20, PAY-21), 5 October 2026. |
 | 1.10 | 5 October 2026 | The API administrator may invite a named organisation by a personal link that opens the application form addressed to it. A link is used once, expires, and may be withdrawn; the application it produces is confirmed and decided as any other. See §23.23 and Requirement 12.11. | The project owner (`QUESTIONS.md` EXT-21), 5 October 2026. |
 | 1.11 | 5 October 2026 | A vehicle without a sticker says so on its page each time it is opened, and adding a vehicle ends on a prompt to buy and attach its sticker, which may be closed. While new NURTW stickers are not issued, a vehicle the register holds no barcode for is told so, and nothing is charged. See Requirement 9A.7. | The project owner (`QUESTIONS.md` VEH-30), 5 October 2026. |
+| 1.18 | 18 October 2026 | Each payment credited to a member is confirmed to them by SMS, through Termii under the sender name "NURTW", once messages are switched on: the amount paid and what is still owed. The words are the Union's, versioned, and changed in settings. No message carries a NIN, an address, a whole telephone number, or a link. See Requirements 27.8 and 27.14. | The project owner's direction of 18 October 2026 (`QUESTIONS.md` PAY-22, GOV-22), for roadmap item 45. |
 | 1.17 | 18 October 2026 | A sticker whose fee is set to nothing is attached without a payment, since none can be taken; every other attachment control still holds. A fee amount may be nothing, and is changed back in settings. Both sticker fees are set to nothing for now. The eight placeholder designations are the Union's list, Driver and Conductor first. The go-live date is 19 October 2026. See Requirements 9A.4 and 27.2, §23.4, and §23.27. | The project owner's directions of 18 October 2026, for onboarding on 19 October (`QUESTIONS.md` VEH-37, ORG-06, GOV-11). |
 | 1.16 | 18 October 2026 | A member's National Identification Number may be recorded, at registration or on the member's record. It is optional until the Union says otherwise, kept sealed, never shown whole, printed, or disclosed, and held by one member's record at a time. A member's photograph may be added or replaced on their record after approval, a migrated member included. See Requirements 7.1, 7.3, and 7.4. | The project owner's direction of 18 October 2026 on collecting dues at the parks (`QUESTIONS.md` PAY-22), for roadmap item 44. |
 | 1.15 | 7 October 2026 | A vehicle cannot be added, or declared, without its chassis number. A legacy vehicle that has none keeps its record and is asked for one when it is declared. The number stays restricted. See Requirement 9.4. | The Union's Head of Operations, 6 October 2026, and the project owner (`QUESTIONS.md` VEH-34), 7 October 2026. |
@@ -1450,6 +1451,11 @@ rule above is unchanged.
 - **On the public sticker page (§23.13)**, once it is built, every result that names a
   vehicle carries the same "Pay NURTW dues" button, whether or not anything is owed.
 
+*Revision 1.18 (PAY-22):* a member is told, by SMS to their own registered number, what
+they still owe when a payment of theirs is credited (Requirement 27.14). That is the member
+learning their own dues, not a disclosure: it reaches no external response, public page, or
+disclosure profile.
+
 The payment route is a separate public route in the payments module. The verification path
 stays read-only. Roadmap item 31.
 
@@ -1515,7 +1521,20 @@ it is first set.
   - the due, the processing fee, and the total
   - the Paystack reference and the date
 
-  Paystack's email receipt goes to the payer where an email address is held. SMS receipts
-  are deferred.
+  Paystack's email receipt goes to the payer where an email address is held.
+- **SMS confirmations** *(revision 1.18, PAY-22, GOV-22)*. Each payment credited to a member
+  (a membership fee or a levy paid by link, or money into their dedicated account) is
+  confirmed to the member's registered number: the amount paid and what is still owed.
+  "No message, not paid."
+  - Sent through Termii, under the sender name "NURTW", paid for by the Union. English
+    first; another language only in words the Union writes.
+  - Off until an administrator switches messages on. While off, a confirmation is recorded
+    as not sent, and is never sent later.
+  - Queued in the same transaction as the credit, retried while the provider is
+    unavailable, and its delivery recorded. An officer sees what was sent to a member and
+    can send a confirmation again.
+  - The words are settings, versioned, changed with a reason. A message carries only the
+    amount, the membership number, the date, and what is owed: never a NIN, an address, a
+    whole telephone number, a next of kin or guarantor, a chassis number, or a link.
 
 Nothing in §27 remains open.

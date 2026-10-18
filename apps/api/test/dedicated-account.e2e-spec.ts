@@ -559,6 +559,12 @@ describe('Dedicated accounts (e2e)', () => {
         creditKobo: credit,
         creditBasis: 'PAYSTACK_SPLIT',
       });
+      // Item 45: the member is told, once, by SMS.
+      const notices = () =>
+        prisma.smsMessage.count({
+          where: { sourceType: 'dedicated_account_transfer', sourceId: recorded.id },
+        });
+      expect(await notices()).toBe(1);
 
       const paid = await allocations(reference);
       expect(paid.map((p) => [p.feeType.code, p.duePeriod, p.dueKobo])).toEqual([
@@ -595,6 +601,7 @@ describe('Dedicated accounts (e2e)', () => {
       expect(await prisma.dedicatedAccountTransfer.count({ where: { paystackReference: reference } }))
         .toBe(1);
       expect(await allocations(reference)).toHaveLength(3);
+      expect(await notices()).toBe(1);
     });
 
     it('holds what is left, and pays the next month once it falls', async () => {

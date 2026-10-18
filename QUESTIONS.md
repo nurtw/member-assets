@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.23
+**Document version:** 1.24
 **Last revised:** 18 October 2026
 
 ---
@@ -1725,7 +1725,13 @@ words; reminders three days before a due, between 8 a.m. and 8 p.m.
 - **Reminders go three days before a due, between 8 a.m. and 8 p.m.** Both are settings.
 
 **Answered on.** 18 October 2026. **Answered by.** Project owner; the languages and the
-timing adopting the recommendation. **Recorded at.** `plans/45`, `plans/49`.
+timing adopting the recommendation. **Recorded at.** `plans/45`, `plans/49`; PRD
+Requirement 27.14 (revision 1.18).
+
+**Built as** (roadmap item 45, 18 October 2026): a confirmation for every payment credited
+to a member, through Termii, off until switched on; the sender name and the route are
+settings, and the words are versioned settings. Waiting on Termii: the sender name's
+approval, and the DND route switched on for the account.
 
 ---
 
@@ -2479,6 +2485,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 18 October 2026 (item 45) | Built: an SMS confirmation for every payment credited to a member, through Termii, off until switched on (PRD revision 1.18, Requirement 27.14). **GOV-22** records it. It waits on the sender name "NURTW" being approved and on Termii's DND route. |
 | 18 October 2026 (for onboarding) | Onboarding begins on 19 October. The project owner answered **ORG-06** (the eight designations are the Union's list, Driver and Conductor first; the `DEMO_` prefix is gone), **GOV-11** (go-live is 19 October 2026, set before every gate was met), and **VEH-37** (new: both sticker fees are ₦0 for now, and a free sticker needs no payment). PRD revision 1.17. Totals: 113 answered, 36 awaiting, 3 deferred. |
 | 18 October 2026 (item 44) | Built: a member's NIN, given at registration or on their record, sealed and shown only by its last four digits; and a photograph added or replaced on any member's record (PRD revision 1.16, Requirement 7.4). **MEM-19** stays open, so the NIN is optional. |
 | 18 October 2026 (later) | The project owner answered **PAY-23** (each collector tops up through a dedicated account of their own, settling straight to NURTW; float pays dues only and is refunded only when a collector stops), **PAY-24** (a percentage, unset until the Union names it, from NURTW's share, paid as float; none on a collector's own dues), **PAY-25** (oldest due first, as now; no monthly due for a member without a vehicle), **PAY-26** (own park only; the limits are settings; seven days to reverse a mistake), **PAY-27** (Paystack is tested first; each account uses an address on the Union's domain), and **GOV-22** (Termii, the sender name "NURTW", paid for by the Union, English first, reminders three days before a due between 8 a.m. and 8 p.m.). Totals: 110 answered, 38 awaiting, 3 deferred. |

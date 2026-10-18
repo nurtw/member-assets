@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.11
+**Document version:** 1.12
 **Last revised:** 18 October 2026
 **Authority:** Subordinate to `PRD.md`. Where this document and the PRD conflict, the PRD prevails.
 
@@ -96,6 +96,7 @@ module's Prisma models directly.
 | `reporting` | Operational dashboards |
 | `admin` | Configuration, backup, restoration |
 | `auth` | Authentication, roles, multi-factor authentication |
+| `notifications` | Text messages to members (item 45, PRD revision 1.18) |
 
 **Decision 4.1 — modular monolith, service-shaped.** The System deploys as a single
 process. Each module is nonetheless constructed as though it were independently
@@ -107,6 +108,16 @@ service, that extraction becomes a deployment change rather than a rewrite.
 **Decision 4.2.** Cross-module reads that would otherwise require a join are served by an
 explicit query method on the owning module's service. Where this proves materially
 expensive, a read model is introduced rather than the boundary being breached.
+
+**Decision 4.3 — messages go through an outbox *(item 45, PRD revision 1.18)*.** A
+payment confirmation is a row in `sms_message`, written in the same transaction as the
+credit it announces, by a plain function the payments module calls
+(`queuePaymentNotice`), so payments does not depend on notifications. The notifications
+module drains the outbox every 15 seconds: it makes the text up when the message goes,
+from what is then true (reading dues through `DuesService`), sends it through
+`TermiiClient`, the only code that knows the provider, retries while the provider is
+unavailable, and records signed delivery reports. One message per source, by a partial
+unique index. The whole telephone number is read when the message goes and never stored.
 
 ---
 

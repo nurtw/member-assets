@@ -181,6 +181,8 @@ start.
 | `STICKER_SIGNING_SECRET` / `STICKER_SIGNING_KEY_ID` | From item 08 | Never reaches the web application or a QR payload |
 | `IDENTITY_ENCRYPTION_KEY` | To record NINs | Seals members' NINs (item 44). Without it, recording one answers 503 and the rest of registering works. **Set it once and never change it**: every recorded NIN would become unreadable |
 | `PAYSTACK_SECRET_KEY` | For payments | A test key (`sk_test_…`) everywhere except production. Also verifies the webhook signature |
+| `TERMII_API_KEY` / `TERMII_BASE_URL` | For text messages | Termii's API key, and the account's own base URL from Termii's dashboard (item 45). Without both, nothing is sent and messages cannot be switched on |
+| `TERMII_SECRET_KEY` | For delivery reports | Termii's secret key, which signs delivery reports. Without it every report is refused, and messages read "Sent" rather than "Delivered" |
 | `PAYSTACK_DVA_PREFERRED_BANK` | No | The bank dedicated accounts are opened with (item 23). `test-bank` in test mode; a provider slug such as `wema-bank` in live mode. Unset lets Paystack choose |
 | `CLOUDINARY_URL` | No | Selects `CloudinaryStorage` over the local-filesystem adapter for uploaded media (`media.module.ts`). Unset in development stores under `MEDIA_STORAGE_DIR` on disk instead — set this in production, since a container's filesystem does not survive a redeploy. |
 | `MEDIA_STORAGE_DIR` | No | Local-filesystem adapter only; ignored once `CLOUDINARY_URL` is set. Default `var/media` |
@@ -189,7 +191,7 @@ start.
 ### Secrets that must never be logged or exported
 
 API tokens, passport images, signatures, guarantor details, chassis and VIN numbers, NINs,
-internal notes, the sticker signing secret, and password hashes. Nothing in this list may
+internal notes, the sticker signing secret, the Termii keys, and password hashes. Nothing in this list may
 appear in a log line, an error message, a URL, a QR payload, or a support ticket.
 
 ---
@@ -567,6 +569,45 @@ SELECT created_at, after_value FROM audit_event
 it into dues as they fall, so a member who sends two months' levy at once has the second
 month paid within the hour of it falling due. The order dues are paid in is the
 `payments.dedicated_account.allocation_order` setting, `OLDEST_FIRST` as PAY-12 answered.
+
+### Text messages to members
+
+Item 45 (PRD Requirement 27.14, revision 1.18; `QUESTIONS.md` GOV-22). Each payment
+credited to a member is confirmed to their registered number: the amount paid and what is
+still owed. **Payments → Messages**, for an officer holding `system_setting.manage`.
+
+**Setting it up, once:**
+
+1. **Termii:** register the sender name "NURTW" (it takes days), and ask Termii support to
+   switch on the **DND route** for the account, so messages reach numbers on the
+   do-not-disturb list. Until it is on, choose the generic route on the Messages page.
+2. **On the API**, set `TERMII_API_KEY`, `TERMII_BASE_URL` (the account's own address,
+   shown on Termii's dashboard), and `TERMII_SECRET_KEY`, and redeploy. The Messages page
+   shows each as set or not set, never its value.
+3. **In Termii's dashboard**, set the delivery-report address to the API's address followed
+   by `/api/v1/notifications/sms/delivery`.
+4. **Send a test message** to your own phone from the Messages page. It goes whether or
+   not messages are on.
+5. **Switch messages on**, with a reason. Audited as `sms.settings.update`.
+
+**While messages are off**, each payment is recorded as not messaged and is never sent
+later, so switching on sends no backlog. A message not sent within a day expires.
+
+**The words** are on the same page. Each change is a new version, with a reason (audited as
+`sms.template.update`). A message may use only `{amount}`, `{member}`, `{date}`, and
+`{owed}`, must keep to the SMS alphabet (write naira as `N`), and must fit in two SMS.
+
+**A member says they had no message.** Their page, **Dues** tab, **Text messages** lists
+each confirmation, its status in words, and the last four digits of the number it went to.
+**Send the latest again** (needs `payment.initiate`) makes it up afresh from what is true
+now; audited as `sms.resend`.
+
+```sql
+-- Messages not delivered in the last day, by reason.
+SELECT status, failure, count(*) FROM sms_message
+ WHERE created_at > now() - interval '1 day' AND status NOT IN ('SENT', 'DELIVERED')
+ GROUP BY status, failure;
+```
 
 ### Getting a payer paying: Pay now and pay links
 

@@ -10,6 +10,7 @@ import useSWR from "swr";
 import { explained } from "@/components/api-access";
 import { DedicatedAccountPanel } from "@/components/dedicated-account-panel";
 import { MemberDuesPanel } from "@/components/dues-panel";
+import { MemberMessagesPanel } from "@/components/member-messages";
 import {
   MemberNinSection,
   MemberPhotographSection,
@@ -350,7 +351,10 @@ export default function MemberRecordPage() {
           <TabsContent value="dues" className="grid gap-6 outline-none">
             <MemberDuesPanel memberId={member.id} />
             {holds("payment.read") ? (
-              <DedicatedAccountPanel memberId={member.id} />
+              <>
+                <DedicatedAccountPanel memberId={member.id} />
+                <MemberMessagesPanel memberId={member.id} />
+              </>
             ) : null}
           </TabsContent>
         ) : null}

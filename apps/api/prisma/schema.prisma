@@ -358,6 +358,7 @@ model Member {
 
   dedicatedAccounts  DedicatedAccount[]
   dedicatedTransfers DedicatedAccountTransfer[]
+  smsMessages        SmsMessage[]
 
   @@index([organisationId])
   @@index([status])
@@ -2163,4 +2164,102 @@ model DedicatedAccountTransfer {
   @@index([memberId])
   @@index([dedicatedAccountId])
   @@map("dedicated_account_transfer")
+}
+
+// --- Text messages (item 45, PRD Requirement 27.14 revision 1.18) ----------
+
+enum SmsPurpose {
+  /// A payment credited to the member: "No message, not paid" (PAY-22).
+  PAYMENT_RECEIVED
+  /// One message to a number an administrator typed, to try the provider.
+  TEST
+}
+
+enum SmsStatus {
+  QUEUED
+  SENDING
+  /// Handed to the provider; no delivery report yet.
+  SENT
+  DELIVERED
+  /// Refused by the provider, or reported undelivered, or out of retries.
+  FAILED
+  /// No number, or one that cannot be read as a Nigerian mobile number.
+  UNSENDABLE
+  /// Messages were switched off when it came to be sent.
+  NOT_SENT
+  /// Not sent within a day, and no longer worth sending.
+  EXPIRED
+}
+
+/// The outbox (item 45). A row is written in the same transaction as the
+/// credit it announces, so a credit is never left unannounced because the
+/// provider was down, and nothing is sent for a credit that rolled back.
+/// The text is made up when the row is sent, from what is then true.
+///
+/// The whole telephone number is never stored here: it is read from the
+/// member's contact when the message goes, and only its last four digits are
+/// kept. A partial unique index, `sms_message_one_per_source` (raw SQL in
+/// migration `20261018150000_sms_messages`), allows one message per source,
+/// besides those an officer asks to send again.
+model SmsMessage {
+  id String @id @default(uuid()) @db.Uuid
+
+  memberId String?    @map("member_id") @db.Uuid
+  purpose  SmsPurpose
+
+  /// What it announces: `payment` or `dedicated_account_transfer`.
+  sourceType String? @map("source_type")
+  sourceId   String? @map("source_id") @db.Uuid
+  /// The message this one sends again, by an officer's request.
+  resendOfId String? @map("resend_of_id") @db.Uuid
+
+  status        SmsStatus @default(QUEUED)
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(now()) @map("next_attempt_at")
+
+  recipientLastFour String? @map("recipient_last_four")
+  text              String?
+  templateKey       String? @map("template_key")
+  templateVersion   Int?    @map("template_version")
+
+  providerMessageId String? @unique @map("provider_message_id")
+  /// The provider's own delivery status, as reported.
+  providerStatus    String? @map("provider_status")
+  /// Why it was not sent or not delivered: a short code, never the
+  /// provider's text, which can repeat the number.
+  failure           String?
+
+  requestedByUserId String? @map("requested_by_user_id") @db.Uuid
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  sentAt      DateTime? @map("sent_at")
+  deliveredAt DateTime? @map("delivered_at")
+
+  member   Member?      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  resendOf SmsMessage?  @relation("SmsResend", fields: [resendOfId], references: [id], onDelete: NoAction)
+  resends  SmsMessage[] @relation("SmsResend")
+
+  @@index([memberId, createdAt])
+  @@index([status, nextAttemptAt])
+  @@index([purpose, sourceType, sourceId])
+  @@map("sms_message")
+}
+
+/// The words of each message (item 45), versioned so the Union changes them
+/// without a release. A change is a new row; the newest version is used. A
+/// key with no row uses the words in `SMS_TEMPLATE_DEFAULTS` (version 0).
+model SmsTemplate {
+  id String @id @default(uuid()) @db.Uuid
+
+  key     String
+  version Int
+  body    String
+
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  reason          String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@unique([key, version])
+  @@map("sms_template")
 }

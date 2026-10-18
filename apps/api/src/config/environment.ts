@@ -64,6 +64,16 @@ export interface Environment {
    * recorded NIN unreadable and unmatched, so it is set once.
    */
   readonly identityEncryptionKey: string | undefined;
+  /**
+   * Termii, the SMS provider (item 45, `QUESTIONS.md` GOV-22). The API key
+   * sends; the secret key signs delivery reports; the base URL is the
+   * account's own, shown on Termii's dashboard. Held only by the API and never
+   * logged. Where any is missing, nothing is sent and the settings screen says
+   * which.
+   */
+  readonly termiiApiKey: string | undefined;
+  readonly termiiBaseUrl: string | undefined;
+  readonly termiiSecretKey: string | undefined;
 }
 
 class EnvironmentError extends Error {
@@ -133,6 +143,10 @@ export function loadEnvironment(): Environment {
     mfaEncryptionKey: process.env.MFA_ENCRYPTION_KEY?.trim() || undefined,
     identityEncryptionKey:
       process.env.IDENTITY_ENCRYPTION_KEY?.trim() || undefined,
+    termiiApiKey: process.env.TERMII_API_KEY?.trim() || undefined,
+    termiiBaseUrl:
+      process.env.TERMII_BASE_URL?.trim().replace(/\/+$/, '') || undefined,
+    termiiSecretKey: process.env.TERMII_SECRET_KEY?.trim() || undefined,
   };
 }
 

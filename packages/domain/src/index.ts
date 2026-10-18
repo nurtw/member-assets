@@ -417,3 +417,28 @@ export {
   type ReportingPeriod,
   type ReportingPeriodKind,
 } from './aggregate/totals.js';
+
+export {
+  SMS_LONGEST_VALUES,
+  SMS_MAX_PARTS,
+  SMS_PLACEHOLDERS,
+  SMS_RETRY_DELAYS_MS,
+  SMS_STALE_AFTER_MS,
+  SMS_TEMPLATE_DEFAULTS,
+  SMS_TEMPLATE_KEYS,
+  checkSmsTemplate,
+  nextSmsAttempt,
+  nonSmsCharacters,
+  renderSmsTemplate,
+  smsDate,
+  smsDeliveryOutcome,
+  smsLastFour,
+  smsNaira,
+  smsParts,
+  smsRecipient,
+  type SmsDeliveryOutcome,
+  type SmsPlaceholder,
+  type SmsTemplateIssue,
+  type SmsTemplateKey,
+  type SmsValues,
+} from './notifications/sms.js';

@@ -211,3 +211,15 @@ export const AUTH_LOCKOUT_MINUTES = 'auth.lockout_minutes';
  * Decision 9.7.3.
  */
 export const REQUIRE_SEPARATE_OFFICER = 'approval.require_separate_officer';
+
+/**
+ * Text messages to members (item 45, `QUESTIONS.md` GOV-22). Off until the
+ * Union's sender name is approved and an administrator switches them on; the
+ * sender name is "NURTW" unless set; the route is `dnd`, which reaches
+ * numbers on the do-not-disturb list once Termii has enabled it, or
+ * `generic`. Changed only through `PUT /notifications/sms/settings`, which
+ * audits each change.
+ */
+export const SMS_ENABLED = 'sms.enabled';
+export const SMS_SENDER_ID = 'sms.sender_id';
+export const SMS_CHANNEL = 'sms.channel';

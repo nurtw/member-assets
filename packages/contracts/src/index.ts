@@ -393,3 +393,22 @@ export {
   type ResetPortalPasswordInput,
   type WithdrawInvitationInput,
 } from './portal.js';
+
+export {
+  SMS_CHANNELS,
+  describeSmsTemplateIssue,
+  sendTestSmsSchema,
+  smsSenderIdSchema,
+  smsTemplateKeySchema,
+  updateSmsSettingsSchema,
+  updateSmsTemplateSchema,
+  type MemberSmsMessages,
+  type SendTestSmsInput,
+  type SmsChannel,
+  type SmsMessageSummary,
+  type SmsSettingsState,
+  type SmsStatus,
+  type SmsTemplateState,
+  type UpdateSmsSettingsInput,
+  type UpdateSmsTemplateInput,
+} from './notifications.js';

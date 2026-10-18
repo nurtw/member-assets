@@ -63,9 +63,32 @@ WhatsApp.
 - **English first.** Another language comes later, in words the Union writes and approves.
 
 ## Definition of done
-- [ ] A credited transfer queues one message in its own transaction. A rollback queues
+- [x] A credited transfer queues one message in its own transaction. A rollback queues
       none, and a replayed webhook queues no second.
-- [ ] A failed send is retried and delivery is recorded. Nothing is sent while switched off.
-- [ ] No template can carry a NIN, an address, or a whole telephone number.
-- [ ] An officer sees what was sent to a member and can send a confirmation again.
-- [ ] PRD revised. Every test passes; clicked through against the stand-in.
+- [x] A failed send is retried and delivery is recorded. Nothing is sent while switched off.
+- [x] No template can carry a NIN, an address, or a whole telephone number.
+- [x] An officer sees what was sent to a member and can send a confirmation again.
+- [x] PRD revised (1.18). Every test passes; clicked through against the stand-in,
+      18 October 2026.
+
+**Decided while building (18 October 2026):**
+
+- **Link payments are confirmed too**, not only dedicated-account transfers: a membership
+  fee or a levy confirmed by `PaymentsService.settle`. Tomorrow's payments are links, and
+  "no message, not paid" must hold for them. A levy goes to the member who drives the
+  vehicle (`declaredByMemberId`); a sticker fee sends nothing.
+- **The text is made up when the message goes**, not when it is queued, so what is owed is
+  read from committed state. The outbox row holds the source, not the words, until then.
+- **While switched off, a queued message is marked not sent**, never held back: switching
+  on sends no backlog of old receipts. A message not sent within a day expires.
+- **The amount is what the member paid** (a link's total, a transfer's whole amount), as
+  their bank or Paystack showed it, and what is owed is what remains after the credit.
+- **The whole number is not stored**: read from `member_contact` when the message goes,
+  with only the last four digits kept.
+- **A test message** goes at once to a typed number, whether or not messages are on, so
+  the key, the sender name, and the route are proved first.
+- **The route is a setting** (`dnd` or `generic`): Termii must switch the DND route on for
+  the account, and the generic route serves until it does.
+- **Termii's base URL is the account's own** (its dashboard), so it is configuration, not a
+  constant. Delivery reports are signed HMAC-SHA512 under the secret key; Termii does not
+  say hex or base64, so both are accepted.

@@ -867,6 +867,44 @@ The owner's direction of 18 October 2026, the day before onboarding: both sticke
 - **A fee amount may be nothing** (`amountKobo` is non-negative). The Fees screen shows
   "Free (₦0)".
 
+### Text messages to members (item 45, PRD 1.18)
+
+"No message, not paid" (`QUESTIONS.md` PAY-22). Termii, sender name "NURTW", the Union pays,
+English first (GOV-22). Off until an administrator switches it on (`sms.enabled`).
+
+- **A confirmation is queued in the credit's own transaction**, by `queuePaymentNotice`
+  (`notifications/sms-outbox.ts`): in `PaymentsService.settle` for a membership fee or a
+  levy (a levy goes to the vehicle's `declaredByMemberId`), and in
+  `DedicatedAccountService.receive`. It is a plain function so payments does not import
+  the notifications module. Any new way of crediting a member must call it too.
+- **One message per source**, by the partial unique index `sms_message_one_per_source`
+  (`WHERE resend_of_id IS NULL AND source_id IS NOT NULL`). Preserve it. A resend names
+  the message it repeats and is not counted.
+- **The text is made up when the message goes** (`SmsService.drain`, every 15 seconds, not
+  under `NODE_ENV=test`; suites call `drain()`): the amount the member paid (a link's total,
+  a transfer's amount), and what they still owe from `DuesService.memberOutstanding`.
+- **While switched off, a queued message becomes `NOT_SENT`**, and nothing is sent for it
+  later. A message older than a day is `EXPIRED`. Retries follow `SMS_RETRY_DELAYS_MS`; a
+  provider refusal is final.
+- **The whole telephone number is never stored.** It is read from `member_contact` when
+  the message goes; `sms_message` keeps its last four digits. Errors keep a short code
+  (`failure`), never the provider's text.
+- **Templates allow only `{amount}`, `{member}`, `{date}`, `{owed}`** (`SMS_PLACEHOLDERS`
+  in `@nurtw/domain`), the SMS alphabet (naira is written `N`), and two SMS at most when
+  filled in. That is the control that keeps a NIN, an address, or a whole number out of a
+  message. Do not add a placeholder for anything sensitive. A change is a new
+  `sms_template` version.
+- **`TermiiClient` is the only code that knows Termii.** `TERMII_API_KEY`,
+  `TERMII_BASE_URL` (the account's own, from Termii's dashboard), and `TERMII_SECRET_KEY`
+  (delivery reports, HMAC-SHA512 over the raw body in `X-Termii-Signature`, hex or base64).
+  Never log any of them or a number.
+- **Routes:** `GET`/`PUT /notifications/sms…` and the test message need
+  `system_setting.manage`; `GET /members/:id/messages` needs `payment.read` over the member,
+  and resending needs `payment.initiate` over the member; `POST
+  /notifications/sms/delivery` is public and checks the signature first.
+- **Tests** replace `TermiiClient.send`, and decide the switch by spying on
+  `SettingsService.isEnabled`, as `sms.e2e-spec.ts` does.
+
 ### The vehicle letter (item 18)
 
 - **Issued inside the attachment's transaction** (`VehicleLetterService.issueInTransaction`,

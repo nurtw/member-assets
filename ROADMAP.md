@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.20
+**Document version:** 1.21
 **Last revised:** 18 October 2026
 
 ---
@@ -72,7 +72,7 @@ Each item is independently completable and independently testable. Status values
 | 42 | registration-form-reduction | §7, Req. 7.3 (rev. 1.14) | done (clicked through 7 Oct) | [plan](plans/42-registration-form-reduction.md) |
 | 43 | chassis-and-route | §9, Req. 9.4 (rev. 1.15); VEH-35 | stage 1 done (the chassis number; clicked through 7 Oct). Stage 2 (the route) waits on VEH-35 | [plan](plans/43-chassis-and-route.md) |
 | 44 | member-identity | §7, Req. 7.4 (rev. 1.16); PAY-22, MEM-19 | done (clicked through 18 Oct) | [plan](plans/44-member-identity.md) |
-| 45 | sms-notices | Req. 27.8, 27.14 (PAY-22, GOV-22) | planned | [plan](plans/45-sms-notices.md) |
+| 45 | sms-notices | Req. 27.8, 27.14 (PAY-22, GOV-22; rev. 1.18) | done (clicked through 18 Oct against a Termii stand-in; off until the sender name is approved) | [plan](plans/45-sms-notices.md) |
 | 46 | collectors-and-float | §2.1, §27 (PAY-22, PAY-23, ORG-08) | planned | [plan](plans/46-collectors-and-float.md) |
 | 47 | park-collection | §27 (PAY-22, PAY-25, PAY-26) | planned | [plan](plans/47-park-collection.md) |
 | 48 | collector-commission | §27 (PAY-22, PAY-24) | planned | [plan](plans/48-collector-commission.md) |
