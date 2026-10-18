@@ -52,9 +52,9 @@ thing a year later.
 | Vehicles and stickers (VEH) | 27 | 8 | 1 | 36 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
-| Payments (PAY) | 22 | 5 | — | 27 |
-| Governance and go-live (GOV) | 10 | 11 | 2 | 23 |
-| **Total** | **104** | **44** | **3** | **151** |
+| Payments (PAY) | 27 | 0 | — | 27 |
+| Governance and go-live (GOV) | 11 | 10 | 2 | 23 |
+| **Total** | **110** | **38** | **3** | **151** |
 
 ### Blocking production use right now
 
@@ -1664,7 +1664,7 @@ not state that some QR codes are from [it]." Given by the project owner on 5 Oct
 **What it does not reach.** Audit events written before 5 October 2026 keep their wording,
 because the audit trail is never rewritten. Git history before that date keeps it too.
 
-### GOV-22 · Sending SMS ⏳
+### GOV-22 · Sending SMS ✅
 
 **Question.** The System is to send SMS to members (PAY-22): a confirmation of each payment
 first, and reminders before a due date later.
@@ -1686,8 +1686,17 @@ about thirty a month, so the cost of each message matters.
 owner; the sender name "NURTW"; English first, then other languages in the Union's own
 words; reminders three days before a due, between 8 a.m. and 8 p.m.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.**
+
+- **Termii**, with the sender name **"NURTW"**. Registering the name with Termii is the
+  owner's to start, and it takes time.
+- **The Union pays** for each message.
+- **English first.** Another language is added later, in words the Union writes and
+  approves. Nothing is machine-translated.
+- **Reminders go three days before a due, between 8 a.m. and 8 p.m.** Both are settings.
+
+**Answered on.** 18 October 2026. **Answered by.** Project owner; the languages and the
+timing adopting the recommendation. **Recorded at.** `plans/45`, `plans/49`.
 
 ---
 
@@ -2140,8 +2149,8 @@ A link pays one month's levy, or one yearly fee, at a time. The System sends no 
 itself: WhatsApp and SMS open on the officer's own device.
 
 **Collecting at the park (direction of 18 October 2026).** PAY-22 records the owner's
-direction. PAY-23 to PAY-27 are what it leaves for the owner and the Union to settle, with
-MEM-19, ORG-08, CARD-09, CARD-10, and GOV-22. Roadmap items 44 to 52.
+direction. PAY-23 to PAY-27 and GOV-22, which it raised, were answered by the owner the same
+day. MEM-19, ORG-08, CARD-09, and CARD-10 are open. Roadmap items 44 to 52.
 
 ### PAY-22 · Collecting at the park ✅
 
@@ -2181,7 +2190,7 @@ it requires, and PAY-20 collects no identifier; the NIN is new.
 **Answered on.** 18 October 2026. **Answered by.** Project owner.
 **Recorded at.** `plans/44` to `plans/52`. The PRD is revised as each is built.
 
-### PAY-23 · The collector's float ⏳
+### PAY-23 · The collector's float ✅
 
 **Question.** A collector buys float before collecting (PAY-22).
 
@@ -2204,10 +2213,15 @@ subaccount like members' accounts, and credited as theirs are, with what NURTW r
 Float is spent only on dues and is not refunded, except by the Union to a collector who
 stops, as a reversing entry.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **As recommended.** Each collector has a dedicated account of their own. A
+transfer or PoS payment into it splits at Paystack straight to the NURTW subaccount, as a
+member's does, and becomes float worth what NURTW received: the collector bears Paystack's
+charge and the contractor's percentage. Float pays dues only. It is refunded only when a
+collector stops, by the Union, and recorded as a reversing entry.
+**Answered on.** 18 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** `plans/46`; the PRD is revised when it is built.
 
-### PAY-24 · The collector's commission ⏳
+### PAY-24 · The collector's commission ✅
 
 **Question.** Collectors earn "a commission on every payment" (PAY-22).
 
@@ -2226,10 +2240,14 @@ SMS of its own.
 **Recommended.** A percentage the Union sets, funded from NURTW's share, and paid as float
 with each collection; none on a collector's own dues.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **As recommended.** A percentage of each collection, held as a setting. It
+starts unset, so nothing is earned until the Union names the figure. It comes out of NURTW's
+share and is added to the collector's float with each collection, so no money moves. A
+collector earns nothing on collections for their own membership.
+**Answered on.** 18 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** `plans/48`; the PRD is revised when it is built.
 
-### PAY-25 · How small payments are applied ⏳
+### PAY-25 · How small payments are applied ✅
 
 **Question.** "Small payments add up to the monthly dues, and anything extra goes toward the
 yearly renewal" (PAY-22).
@@ -2249,10 +2267,19 @@ may need a new fee type.
 **Built as.** Oldest due first (PAY-12), for dedicated-account transfers. Collections follow
 the same rule until this is answered.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.**
 
-### PAY-26 · Limits, reach, and corrections at the park ⏳
+1. **The rule stays as it is.** Money pays the oldest outstanding due first, and the rest
+   waits for whichever due falls next (PAY-12). The owner chose this over the direction's
+   "anything extra goes toward the yearly renewal": the renewal is paid from what is held
+   when it falls due.
+2. **No monthly due for a member without a vehicle.** What they pay builds toward the yearly
+   fee, and their message says what is left of that fee, not of the month.
+
+**Answered on.** 18 October 2026. **Answered by.** Project owner; point 2 adopting the
+recommendation. **Recorded at.** `plans/45`, `plans/47`.
+
+### PAY-26 · Limits, reach, and corrections at the park ✅
 
 **Question.**
 
@@ -2270,10 +2297,14 @@ entry; nothing is deleted (Requirement 27.9).
 **Recommended.** Both limits as settings, starting at figures the Union names. Own park only
 at first. Reversal by a holder of `collection.manage`, with a reason, within seven days.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **As recommended.** A collector serves their own park only, at first. The
+smallest and largest amounts are settings, which the Union fills in. A holder of
+`collection.manage` reverses a mistaken collection within seven days, with a reason, and the
+member is told by SMS.
+**Answered on.** 18 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** `plans/47`; the PRD is revised when it is built.
 
-### PAY-27 · Opening a dedicated account on a NIN ⏳
+### PAY-27 · Opening a dedicated account on a NIN ✅
 
 **Question.**
 
@@ -2292,8 +2323,12 @@ built (as PAY-20 did). For the email, an address on the Union's own domain, made
 membership number and delivered to one mailbox the Union keeps; it waits on the domain
 (GOV-08).
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **As recommended.** Paystack is asked, and tried in test mode, before anything
+is built for item 50, and what it accepts decides whether a NIN is sent. Each member's
+account uses an address on the Union's own domain, made from the membership number and
+delivered to one mailbox the Union keeps. That waits on the domain (GOV-08).
+**Answered on.** 18 October 2026. **Answered by.** Project owner, adopting the
+recommendation. **Recorded at.** `plans/50`.
 
 ---
 
@@ -2414,6 +2449,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 18 October 2026 (later) | The project owner answered **PAY-23** (each collector tops up through a dedicated account of their own, settling straight to NURTW; float pays dues only and is refunded only when a collector stops), **PAY-24** (a percentage, unset until the Union names it, from NURTW's share, paid as float; none on a collector's own dues), **PAY-25** (oldest due first, as now; no monthly due for a member without a vehicle), **PAY-26** (own park only; the limits are settings; seven days to reverse a mistake), **PAY-27** (Paystack is tested first; each account uses an address on the Union's domain), and **GOV-22** (Termii, the sender name "NURTW", paid for by the Union, English first, reminders three days before a due between 8 a.m. and 8 p.m.). Totals: 110 answered, 38 awaiting, 3 deferred. |
 | 18 October 2026 | The project owner set out how dues are to be collected at the parks: collectors with a float and a commission, a photograph to confirm the member, an SMS for every payment, the dedicated account on the card, reminders, and the year's colour on renewal. Recorded as **PAY-22**. Voice calls (**GOV-23**) and the yearly sticker (**VEH-36**) are deferred by the owner. New open questions: **PAY-23** to **PAY-27**, **MEM-19**, **ORG-08**, **CARD-09**, **CARD-10**, and **GOV-22**. Roadmap items 44 to 52, planned; the PRD is revised as each is built. Totals: 104 answered, 44 awaiting, 3 deferred. |
 | 7 October 2026 (item 43) | **VEH-34** is built: a vehicle is not added or declared without its chassis number (PRD revision 1.15). VEH-35, the route's from and to, still waits on its four open points. |
 | 7 October 2026 (hosting) | **GOV-02** records what is so: the live API runs on Render, on a plan that sleeps when idle, which was the long wait at sign-in that Mr Timothy reported. DigitalOcean remains the stated target. The owner's to decide; nothing was moved. |

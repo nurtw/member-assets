@@ -4,10 +4,11 @@
 ## Source
 The owner's direction of 18 October 2026 (`QUESTIONS.md` PAY-22): every member gets "a
 dedicated account number", created "with their NIN, since most won't have a BVN". Item 23
-opens one at a time, by an officer who types in an email. PAY-27 (the NIN, the email) is
-open; PAY-20 (no BVN) and PAY-11 (the percentage, still unset) stand. Needs item 44 (the
-NIN) and item 45 (to tell the member). **Requirement 27.7 sends Paystack only what it
-requires, and PAY-20 collects no identifier, so sending a NIN changes the PRD.**
+opens one at a time, by an officer who types in an email. PAY-27 is answered: Paystack is
+tested first, and each account uses an address on the Union's domain. PAY-20 (no BVN) and
+PAY-11 (the percentage, still unset) stand. Needs item 44 (the NIN) and item 45 (to tell
+the member). **Requirement 27.7 sends Paystack only what it requires, and PAY-20 collects
+no identifier, so sending a NIN changes the PRD.**
 
 ## Goal
 Every active member has a dedicated account without an officer opening each one: on
@@ -15,6 +16,9 @@ approval, and in batches for members approved before. The member is told the num
 SMS. Where Paystack needs identification and accepts a NIN, the NIN is sent.
 
 ## Approach
+**Paystack first** (PAY-27). Nothing here is built until Paystack has said, and a
+test-mode account has shown, what it needs to open an account. That test waits on PAY-11.
+
 1. **On approval**, the account is opened after the decision has committed, never inside
    it: a provider fault must not undo an approval. A failure is recorded, and the batch
    retries it.
@@ -22,8 +26,10 @@ SMS. Where Paystack needs identification and accepts a NIN, the NIN is sent.
    the members within their scope: a few accounts at a time, within Paystack's limits,
    resumable after a stop, with a report of each refusal and its reason (no telephone, no
    email, no NIN, refused by Paystack).
-3. **The email** Paystack requires, which most drivers do not have, is PAY-27's.
-4. **The NIN**, if PAY-27 finds Paystack opens accounts on one: decrypted at the moment of
+3. **The email** Paystack requires, which most drivers do not have (PAY-27): an address on
+   the Union's own domain, made from the membership number and delivered to one mailbox the
+   Union keeps. It waits on the domain (GOV-08).
+4. **The NIN**, if the test finds Paystack opens accounts on one: decrypted at the moment of
    opening, sent, and never logged or audited. Otherwise PAY-20 stands.
 5. **The member is told** by SMS: "NURTW: your account for dues is 0123456789 (bank). Pay
    by transfer or at any PoS." That serves until a card carries it (item 51).
@@ -38,9 +44,10 @@ approval), `apps/api/src/payments/paystack/paystack.client.ts`,
 Closing or replacing an account. Another provider (PAY-16; that needs a PRD revision). A
 BVN.
 
-## To settle before building (PAY-27)
-- Will Paystack open an account on a NIN, and with what else?
-- Which email each member's account is opened with.
+## Before building
+- Paystack's answer, and a test-mode account (PAY-27). Both wait on the percentage
+  (PAY-11) and the settlement account.
+- The Union's domain (GOV-08), for the addresses.
 
 ## Definition of done
 - [ ] Approval opens an account. A provider fault leaves the approval standing and the

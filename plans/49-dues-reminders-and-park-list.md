@@ -4,8 +4,8 @@
 ## Source
 The owner's direction of 18 October 2026 (`QUESTIONS.md` PAY-22): "A few days before a due
 date, members who owe get a … reminder, and collectors see a list of who owes at their
-park." By SMS, with no calls for now (GOV-23). GOV-22 (timing and wording) is open. Needs
-items 45 and 46.
+park." By SMS, with no calls for now (GOV-23). GOV-22 is answered: three days before a
+due, between 8 a.m. and 8 p.m., in English first. Needs items 45 and 46.
 
 ## Goal
 A member who will owe a due gets one SMS a set number of days before it falls. A collector
@@ -15,10 +15,11 @@ opens a list of the members at their park who owe, and how much.
 1. **Who owes, and when, is item 22's** (`DuesService`). There is no second rule: the levy
    falls on the 1st, and the membership fee on its anniversary (Requirement 27.13).
 2. **The reminder.** A daily run picks members with a due falling in N days
-   (`sms.reminder_days_before`) that their held credit will not cover, and queues one
+   (`sms.reminder_days_before`, 3) that their held credit will not cover, and queues one
    message each through item 45's outbox:
    - once per member and due, so a second run the same day queues nothing;
-   - only within the quiet-hours setting, and only while `sms.reminders_enabled` is on;
+   - only between 8 a.m. and 8 p.m. (a setting), and only while `sms.reminders_enabled` is
+     on;
    - never under test, where suites call the run themselves, as with the held-credit sweep.
 
    For example: "NURTW: your dues of N7,000 fall on 1 Nov. Pay your park collector, or
@@ -40,13 +41,14 @@ screens.
 Voice calls (GOV-23). Further reminders once a due has fallen, which the direction does not
 ask for.
 
-## To settle before building (GOV-22)
-- How many days before a due, and between which hours.
-- The wording, and the languages.
+## Settled (GOV-22, 18 October 2026)
+- Three days before a due, between 8 a.m. and 8 p.m. Both are settings.
+- English first. Another language comes later, in words the Union writes and approves.
 
 ## Definition of done
 - [ ] One reminder per member per due, N days before, and none where credit covers it.
-- [ ] A second run sends nothing more. Nothing is sent while off, or in quiet hours.
+- [ ] A second run sends nothing more. Nothing is sent while off, or outside 8 a.m. to
+      8 p.m.
 - [ ] The park's list shows only the collector's park, with no contact details or
       photographs.
 - [ ] Every test passes; clicked through.

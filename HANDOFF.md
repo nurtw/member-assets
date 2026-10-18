@@ -20,8 +20,7 @@ Three rules outrank every default:
 - **Collecting at the park is planned: items 44 to 52** (PAY-22, the
   owner's direction of 18 October). SMS first. Voice calls and the yearly
   sticker are set aside (GOV-23, VEH-36). Each needs the owner's approval.
-- Item 43 stage 2 waits on VEH-35 (questions with the owner). Items 40 and
-  15 wait too.
+- Item 43 stage 2 waits on VEH-35. Items 40 and 15 wait too.
 
 Tests: domain 518, contracts 144, api 195, web 79; e2e 508 of 509.
 
@@ -30,8 +29,8 @@ Tests: domain 518, contracts 144, api 195, web 79; e2e 508 of 509.
 - **Items 44 to 52 change the PRD.** They add to §2.1 (§2.3 needs an
   approved revision), revise Requirements 27.7, 27.8, and 27.14, and add
   the NIN to the sensitive data. Revise the PRD as each is built.
-- **Open questions block them:** PAY-23 to PAY-27, MEM-19, ORG-08,
-  CARD-09, CARD-10, GOV-22.
+- **Open questions block them:** MEM-19, ORG-08, CARD-09, CARD-10. Money
+  and SMS questions are answered.
 - **The live API sleeps on Render** (GOV-02): the owner's call.
 - VEH-35 blocks item 43 stage 2. VEH-32: no second officer for stock.
 - Driver and Conductor are not yet first on Neon (ORG-06).
@@ -46,8 +45,9 @@ Tests: domain 518, contracts 144, api 195, web 79; e2e 508 of 509.
 ## Next steps
 
 1. Ask the owner about pushing and the next item (44 recommended).
-2. Owner: the questions above; the hosting; the settlement account; PAY-11;
-   GOV-08; EXT-05; the GOV-11 date; ORG-06, CARD-05, CARD-07.
+2. Owner: the questions above; register "NURTW" with Termii; the hosting;
+   the settlement account; PAY-11; GOV-08; EXT-05; the GOV-11 date; ORG-06,
+   CARD-05, CARD-07.
 
 ## Do NOT
 

@@ -5,9 +5,9 @@
 The owner's direction of 18 October 2026 (`QUESTIONS.md` PAY-22): each payment is confirmed
 to the member with "the amount and what's left for the month", and members learn one rule,
 no message, not paid. The owner: "focus on SMS first instead of calls … no calls for now"
-(GOV-23, deferred). GOV-22 (provider, sender name, cost, languages) is open. **Changes the
-PRD:** Requirement 27.14 defers SMS receipts, and Requirement 27.8 shows dues on internal
-screens only. Waits for the owner's approval.
+(GOV-23, deferred). GOV-22 is answered: Termii, the sender name "NURTW", paid for by the
+Union, and English first. **Changes the PRD:** Requirement 27.14 defers SMS receipts, and
+Requirement 27.8 shows dues on internal screens only. Waits for the owner's approval.
 
 ## Goal
 The System can send an SMS to a member's registered telephone, reliably and on the record.
@@ -16,9 +16,10 @@ this month. Nothing is sent until it is switched on.
 
 ## Approach
 1. **One interface, one adapter.** An `SmsSender` interface in a new `notifications`
-   module. Only its adapter knows the provider GOV-22 settles on, as only `PaystackClient`
-   knows Paystack (PAY-16). A local stand-in serves tests and click-throughs, as the
-   Paystack stand-in does.
+   module, and an adapter for Termii (GOV-22), the only code that knows the provider, as
+   only `PaystackClient` knows Paystack (PAY-16). Termii's key comes from the environment
+   and, like Paystack's, never reaches a log, an error, or the web. A local stand-in serves
+   tests and click-throughs, as the Paystack stand-in does.
 2. **An outbox, written in the same transaction as the credit** (`sms_message`: member,
    purpose, number, text, template version, status, attempts, the provider's id). A sender
    drains it with retries, and the provider's delivery reports update it. So a credit is
@@ -28,7 +29,8 @@ this month. Nothing is sent until it is switched on.
    `receive`), and on each collection once item 47 exists. For example: "NURTW: N2,000
    received for member <number> on 18 Oct. Still to pay this month: N5,000." What is still
    to pay is what the member owes once the credit is allocated
-   (`DuesService.memberOutstanding`).
+   (`DuesService.memberOutstanding`). A member with no vehicle owes no month, so their
+   message says what is left of the yearly fee instead (PAY-25).
 4. **Texts are data**, versioned, so the Union's wording changes without a deploy. English
    first; another language only in words the Union supplies, never machine-translated.
    Amounts are written "N2,000": the naira sign is outside the SMS character set, and
@@ -54,10 +56,11 @@ this month. Nothing is sent until it is switched on.
 Voice calls (GOV-23). Reminders (item 49). Messages to officers or organisations. Replies.
 WhatsApp.
 
-## To settle before building (GOV-22)
-- Which provider, and the sender name to register with it. Registering takes time.
-- Who pays for each message.
-- Which languages, and who writes and approves each text.
+## Settled (GOV-22, 18 October 2026)
+- **Termii**, with the sender name "NURTW". The owner registers the name with Termii, which
+  takes time, and provides the account's key.
+- **The Union pays** for each message.
+- **English first.** Another language comes later, in words the Union writes and approves.
 
 ## Definition of done
 - [ ] A credited transfer queues one message in its own transaction. A rollback queues
