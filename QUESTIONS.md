@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.20
-**Last revised:** 7 October 2026
+**Document version:** 1.21
+**Last revised:** 18 October 2026
 
 ---
 
@@ -46,15 +46,15 @@ thing a year later.
 
 | Group | Answered | Awaiting | Deferred | Total |
 |---|---|---|---|---|
-| Structure and master data (ORG) | 5 | 2 | — | 7 |
-| Membership and registration (MEM) | 11 | 7 | — | 18 |
-| Cards (CARD) | 5 | 3 | — | 8 |
-| Vehicles and stickers (VEH) | 27 | 8 | — | 35 |
+| Structure and master data (ORG) | 5 | 3 | — | 8 |
+| Membership and registration (MEM) | 11 | 8 | — | 19 |
+| Cards (CARD) | 5 | 5 | — | 10 |
+| Vehicles and stickers (VEH) | 27 | 8 | 1 | 36 |
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
-| Payments (PAY) | 21 | 0 | — | 21 |
-| Governance and go-live (GOV) | 10 | 10 | 1 | 21 |
-| **Total** | **103** | **34** | **1** | **138** |
+| Payments (PAY) | 22 | 5 | — | 27 |
+| Governance and go-live (GOV) | 10 | 11 | 2 | 23 |
+| **Total** | **104** | **44** | **3** | **151** |
 
 ### Blocking production use right now
 
@@ -168,6 +168,23 @@ gives clean reporting; free text is faster to launch and tolerant of local namin
 
 **Note.** The 21 Anambra LGAs are already seeded from public administrative geography and
 cross-checked against the export. This question concerns the two finer-grained fields only.
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### ORG-08 · Parks and park officials ⏳
+
+**Question.** (From the owner's direction of 18 October 2026, PAY-22.) Members are to be
+registered "at their park", and "the existing park officials" are to become the collectors.
+
+1. Is a park the same as a unit (the Unity Body) in the System's structure, or something
+   within it or beside it?
+2. Which officials collect, and how many collectors may one park have?
+
+**Why it is needed.** A collector reaches only the members of their own park (`plans/46`),
+and the System can draw that line only at a node of its structure (Requirement 6.2). If a
+park is a unit, nothing new is needed. If it is not, the structure needs another level or a
+list of parks.
 
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
@@ -388,6 +405,27 @@ the photograph must look like) is still open.
 recorded walk-through of the live System, passed on by the project owner on 7 October 2026.
 **Recorded at.** PRD §23.16; `plans/41`.
 
+### MEM-19 · The NIN at registration ⏳
+
+**Question.** (From the owner's direction of 18 October 2026, PAY-22.) Each member is to be
+registered with their National Identification Number.
+
+1. Is it required? What is done for a member who has none, and for members registered
+   before it was asked for?
+2. Is it checked with NIMC, through a paid verification service, or recorded as the member
+   gives it?
+
+**Why it is needed.** A NIN is among the most sensitive identifiers a Nigerian holds.
+Requiring one turns away anyone without it, and recording one unchecked lets a mistyped
+number reach the dedicated account it is collected for (PAY-27). The member-facing privacy
+notice (GOV-13) must say that it is collected, and why.
+
+**Planned.** `plans/44` keeps it encrypted, never shows it whole, and lets one NIN belong to
+one member only. It is optional until this is answered.
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
 ---
 
 ## 6. Open — membership cards (item 06)
@@ -466,6 +504,41 @@ signature images, which is what actually unblocks issuing a real card.
 
 **Question.** What is the process when a card is lost or damaged — who authorises a
 replacement, and is the original marked lost, void, or superseded?
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### CARD-09 · The dedicated account number on the card ⏳
+
+**Question.** (From the owner's direction of 18 October 2026, PAY-22.) The card is to show
+the member's dedicated account number.
+
+1. Are the account number and its bank both printed, and where on the card?
+2. Are cards already printed replaced with one that carries it, or does it arrive as each
+   member renews?
+
+**Why it is needed.** What a card prints is fixed when it is issued (Requirement 8.1), so
+the number needs a new template version, and an account must exist before the card is
+printed. Until then the member is told the number by SMS (`plans/50`, `plans/51`).
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### CARD-10 · The year's colour ⏳
+
+**Question.** (From the owner's direction of 18 October 2026, PAY-22.) "On renewal,
+members get a new card … in that year's colour, so officers can see at a glance who has
+paid."
+
+1. Which colour goes with which year, and which part of the card takes it? Today the band
+   that carries the year is green.
+2. Must the yearly fee be paid before a card is renewed? PAY-05 says renewal does not
+   require it.
+3. Once the next year's card is issued, does the old one stay valid until it expires?
+
+**Why it is needed.** Colour alone must never carry a verdict (`DESIGN.md` §3), so the year
+stays printed large, as it is now, and a card reads correctly without its colour. Point 2
+would revise PAY-05 and Requirement 27.8. Planned in `plans/52`.
 
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
@@ -1591,6 +1664,31 @@ not state that some QR codes are from [it]." Given by the project owner on 5 Oct
 **What it does not reach.** Audit events written before 5 October 2026 keep their wording,
 because the audit trail is never rewritten. Git history before that date keeps it too.
 
+### GOV-22 · Sending SMS ⏳
+
+**Question.** The System is to send SMS to members (PAY-22): a confirmation of each payment
+first, and reminders before a due date later.
+
+1. Which SMS provider? Most Nigerian providers reach numbers on the do-not-disturb list only
+   on a transactional route, with a registered sender name.
+2. Which sender name, for example "NURTW"? Registering one takes time, so it is best begun
+   early.
+3. Who pays for each message: the Union, the contractor, or the member, inside a fee?
+4. Which languages? Who writes each message, and who approves it? Nothing will be
+   machine-translated.
+5. How many days before a due date does a reminder go, and between which hours?
+
+**Why it is needed.** "No message, not paid" makes the SMS the member's receipt. It must
+arrive, read plainly, and come from a name members trust. A member who pays daily receives
+about thirty a month, so the cost of each message matters.
+
+**Recommended.** A provider with a transactional route and delivery reports, chosen by the
+owner; the sender name "NURTW"; English first, then other languages in the Union's own
+words; reminders three days before a due, between 8 a.m. and 8 p.m.
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
 ---
 
 ## 11. Payments (direction of 22 September 2026)
@@ -2041,6 +2139,162 @@ Requirement 27.8 (revision 1.9).
 A link pays one month's levy, or one yearly fee, at a time. The System sends no message
 itself: WhatsApp and SMS open on the officer's own device.
 
+**Collecting at the park (direction of 18 October 2026).** PAY-22 records the owner's
+direction. PAY-23 to PAY-27 are what it leaves for the owner and the Union to settle, with
+MEM-19, ORG-08, CARD-09, CARD-10, and GOV-22. Roadmap items 44 to 52.
+
+### PAY-22 · Collecting at the park ✅
+
+**Direction.** Given by the project owner on 18 October 2026:
+
+- **Once, to set up.** Each member is registered at their park with their name, telephone
+  number, NIN, and photograph, and given a photo ID card showing their membership number
+  and a dedicated account number, opened with their NIN "since most won't have a BVN". The
+  existing park officials become the collectors, with a commission on every payment, "so
+  they gain from the system instead of fighting it".
+- **At the park.** The collector first tops up a float, "the way an airtime vendor buys
+  stock". A member hands over cash, any amount, daily or weekly. The collector types in the
+  membership number or telephone number, and the member's photograph comes up to confirm
+  who they are. The collector enters the amount, which moves from the float to the member's
+  dues. The cash stays with the collector, who has already paid it in.
+- **The member is told.** An automated message confirms the amount and what is left for the
+  month. Every member learns one rule: no message, not paid.
+- **With no collector about.** The member takes cash and their card to any PoS agent, who
+  transfers to the account number on the card, and the System credits the member by itself
+  (item 23 does this today). Relatives, and members with bank accounts, can transfer to it
+  too.
+- **Month end and renewal.** Small payments add up to the monthly dues, and anything extra
+  goes toward the yearly renewal. A few days before a due date, members who owe get a
+  reminder, and collectors see who owes at their park. On renewal, members get a new card or
+  sticker in that year's colour.
+- **SMS first.** "We can focus on SMS first instead of calls then do the calls later. No
+  calls for now." The direction's voice calls are deferred (GOV-23).
+- **No sticker for now.** Later the same day the owner set the yearly sticker aside: "ignore
+  the sticker for now" (VEH-36). The card in the year's colour stands.
+
+**What it changes.** It adds to PRD §2.1 (collectors, their float and commission, and
+messages to members), which §2.3 says needs an approved revision. Requirement 27.14 defers
+SMS receipts, and Requirement 27.8 shows dues on internal screens only; both change, since
+the message tells a member what they still owe. Requirement 27.7 sends Paystack only what
+it requires, and PAY-20 collects no identifier; the NIN is new.
+
+**Answered on.** 18 October 2026. **Answered by.** Project owner.
+**Recorded at.** `plans/44` to `plans/52`. The PRD is revised as each is built.
+
+### PAY-23 · The collector's float ⏳
+
+**Question.** A collector buys float before collecting (PAY-22).
+
+1. **How is it topped up?** By a dedicated account of the collector's own (a transfer or a
+   PoS payment, confirmed as a member's is), or by a Paystack payment of the amount they
+   choose? A card top-up can be charged back after the float is spent; a transfer cannot.
+2. **Where does the money settle?** Straight to the NURTW subaccount at top-up, as
+   dedicated-account dues do (PAY-11), so the contractor never holds Union money, or
+   elsewhere?
+3. **Who bears Paystack's charge on a top-up**, the collector or the Union?
+4. **Is unused float ever refunded?** What becomes of it when a collector stops?
+
+**Why it is needed.** Float is money the Union has received before it is any member's dues.
+Float that can be spent only on dues is the airtime-vendor model the direction describes.
+Float that can be cashed out begins to look like a stored-value wallet, which is regulated;
+the owner may wish to confirm the arrangement with Paystack and the Union's adviser.
+
+**Recommended.** A dedicated account for each collector, settling straight to the NURTW
+subaccount like members' accounts, and credited as theirs are, with what NURTW received.
+Float is spent only on dues and is not refunded, except by the Union to a collector who
+stops, as a reversing entry.
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### PAY-24 · The collector's commission ⏳
+
+**Question.** Collectors earn "a commission on every payment" (PAY-22).
+
+1. What is the rate: a percentage of each collection, a fixed sum, or both, and with a cap?
+2. Who funds it: NURTW's share, the contractor's, or both?
+3. How is it paid: added to the collector's float at once, or paid by the Union from a
+   statement, and how often?
+4. Does a collector earn commission on their own dues?
+
+**Why it is needed.** If float settles to NURTW (PAY-23), commission comes out of NURTW's
+money however it is paid. Paid as float, no money moves, and the Union receives that much
+less in dues. Paid in cash, the Union pays it from its own account, and the System keeps the
+statement. A fixed sum per collection rewards splitting one payment into many, each with an
+SMS of its own.
+
+**Recommended.** A percentage the Union sets, funded from NURTW's share, and paid as float
+with each collection; none on a collector's own dues.
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### PAY-25 · How small payments are applied ⏳
+
+**Question.** "Small payments add up to the monthly dues, and anything extra goes toward the
+yearly renewal" (PAY-22).
+
+1. Money a member sends today pays the **oldest outstanding due first**, and any remainder
+   waits for **whichever due falls next**, usually the next month's levy (PAY-12). Once the
+   current month is paid, should the remainder be kept for the yearly renewal instead?
+2. A member with no vehicle owes the yearly fee and no levy (PAY-03). Does such a member, a
+   conductor for instance, owe a monthly due, or does everything they pay go toward the
+   yearly fee?
+
+**Why it is needed.** Point 1 changes the allocation rule, which is a setting with three
+values today: oldest first, member dues first, and vehicle dues first. Point 2 decides what
+"what is left for the month" means in the message to a member who owns no vehicle, and it
+may need a new fee type.
+
+**Built as.** Oldest due first (PAY-12), for dedicated-account transfers. Collections follow
+the same rule until this is answered.
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### PAY-26 · Limits, reach, and corrections at the park ⏳
+
+**Question.**
+
+1. Is there a smallest and a largest amount a collector may take at once? Each collection
+   sends an SMS, and each SMS costs money (GOV-22).
+2. May a collector collect for a member of another park? Drivers travel.
+3. A collector credits the wrong member. Who may reverse it, and for how long afterwards?
+   Either way, the member is told by SMS.
+
+**Why it is needed.** A collector finds members only within their scope, and only by the
+whole membership or telephone number, so the System does not become a directory (PRD §2.2).
+Widening a collector's reach is a role assignment, not code. A correction is a reversing
+entry; nothing is deleted (Requirement 27.9).
+
+**Recommended.** Both limits as settings, starting at figures the Union names. Own park only
+at first. Reversal by a holder of `collection.manage`, with a reason, within seven days.
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### PAY-27 · Opening a dedicated account on a NIN ⏳
+
+**Question.**
+
+1. Will Paystack open a dedicated account on a member's NIN (PAY-22)? PAY-20 records
+   Paystack's identity check as a BVN or the member's own bank account; a NIN is not among
+   them. If Paystack will not, does the account open without identification, as item 23
+   does now, or is another provider worth a PRD revision (PAY-16)?
+2. Paystack needs an email address for every customer, and most drivers have none. Which
+   address is used?
+
+**Why it is needed.** Item 23 opens an account one member at a time, with an email an
+officer types in. Opening one for every member (`plans/50`) needs both answers.
+
+**Recommended.** Ask Paystack, and try it with a test-mode account, before anything is
+built (as PAY-20 did). For the email, an address on the Union's own domain, made from the
+membership number and delivered to one mailbox the Union keeps; it waits on the domain
+(GOV-08).
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
 ---
 
 ## 12. Deferred by the Union
@@ -2059,6 +2313,31 @@ rather than an engineering task, and it gates no implementation work.
 
 **Answer.** _Deferred._
 **Answered on.** — **Answered by.** — **Recorded at.** `ROADMAP.md` → Open questions
+
+### GOV-23 · Voice calls 🔒
+
+**Question.** The direction (PAY-22) has an automated voice call, in the member's own
+language, confirm each payment and remind members before a due date.
+
+**Status.** Deferred by the owner on 18 October 2026: "no calls for now". SMS does both jobs
+until then (`plans/45`, `plans/49`). Item 45's outbox is built so that a call could later go
+the same way.
+
+**Answer.** _Deferred._
+**Answered on.** — **Answered by.** — **Recorded at.** `ROADMAP.md`
+
+### VEH-36 · A sticker in the year's colour 🔒
+
+**Question.** The direction (PAY-22) gives members "a new card or sticker in that year's
+colour" on renewal. A sticker belongs to a vehicle, is attached once by a recorded event,
+and is paid for once (Requirement 9A.4), and new signed stickers are paused (VEH-20), so a
+yearly sticker would change the sticker model and the fee types.
+
+**Status.** Set aside by the owner on 18 October 2026: "ignore the sticker for now". The
+card in the year's colour is planned (`plans/52`). Nothing is planned for stickers.
+
+**Answer.** _Deferred._
+**Answered on.** — **Answered by.** — **Recorded at.** `ROADMAP.md`
 
 ---
 
@@ -2135,6 +2414,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 18 October 2026 | The project owner set out how dues are to be collected at the parks: collectors with a float and a commission, a photograph to confirm the member, an SMS for every payment, the dedicated account on the card, reminders, and the year's colour on renewal. Recorded as **PAY-22**. Voice calls (**GOV-23**) and the yearly sticker (**VEH-36**) are deferred by the owner. New open questions: **PAY-23** to **PAY-27**, **MEM-19**, **ORG-08**, **CARD-09**, **CARD-10**, and **GOV-22**. Roadmap items 44 to 52, planned; the PRD is revised as each is built. Totals: 104 answered, 44 awaiting, 3 deferred. |
 | 7 October 2026 (item 43) | **VEH-34** is built: a vehicle is not added or declared without its chassis number (PRD revision 1.15). VEH-35, the route's from and to, still waits on its four open points. |
 | 7 October 2026 (hosting) | **GOV-02** records what is so: the live API runs on Render, on a plan that sleeps when idle, which was the long wait at sign-in that Mr Timothy reported. DigitalOcean remains the stated target. The owner's to decide; nothing was moved. |
 | 7 October 2026 (item 42) | The registration form is reduced as Mr Timothy asked (PRD revision 1.14, Requirement 7.3). **MEM-16** is built. **MEM-17** is answered: Area is no longer asked for. **MEM-07**, **MEM-08**, and **MEM-10** are closed, because the fields they ask about left the form. MEM-06 keeps its two open points. |

@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.17
-**Last revised:** 7 October 2026
+**Document version:** 1.18
+**Last revised:** 18 October 2026
 
 ---
 
@@ -71,6 +71,15 @@ Each item is independently completable and independently testable. Status values
 | 41 | field-feedback-fixes | §7, §9, §23.16 (MEM-15, MEM-18, VEH-33) | done (clicked through 7 Oct, with a slowed connection and a drawn photograph) | [plan](plans/41-field-feedback-fixes.md) |
 | 42 | registration-form-reduction | §7, Req. 7.3 (rev. 1.14) | done (clicked through 7 Oct) | [plan](plans/42-registration-form-reduction.md) |
 | 43 | chassis-and-route | §9, Req. 9.4 (rev. 1.15); VEH-35 | stage 1 done (the chassis number; clicked through 7 Oct). Stage 2 (the route) waits on VEH-35 | [plan](plans/43-chassis-and-route.md) |
+| 44 | member-identity | §7, Req. 7.1 (PAY-22, MEM-19) | planned | [plan](plans/44-member-identity.md) |
+| 45 | sms-notices | Req. 27.8, 27.14 (PAY-22, GOV-22) | planned | [plan](plans/45-sms-notices.md) |
+| 46 | collectors-and-float | §2.1, §27 (PAY-22, PAY-23, ORG-08) | planned | [plan](plans/46-collectors-and-float.md) |
+| 47 | park-collection | §27 (PAY-22, PAY-25, PAY-26) | planned | [plan](plans/47-park-collection.md) |
+| 48 | collector-commission | §27 (PAY-22, PAY-24) | planned | [plan](plans/48-collector-commission.md) |
+| 49 | dues-reminders-and-park-list | Req. 27.13 (PAY-22, GOV-22) | planned | [plan](plans/49-dues-reminders-and-park-list.md) |
+| 50 | dedicated-accounts-for-all | Req. 27.7 (PAY-22, PAY-27) | planned | [plan](plans/50-dedicated-accounts-for-all.md) |
+| 51 | card-with-account-number | §8 (PAY-22, CARD-09) | planned | [plan](plans/51-card-with-account-number.md) |
+| 52 | year-colour-renewal | §8, §23.5 (PAY-22, CARD-10) | planned | [plan](plans/52-year-colour-renewal.md) |
 
 ### Item summaries
 
@@ -413,6 +422,33 @@ Two of his points were records on the live database and not code. The word "demo
 off the branches and units by the owner's determination of ORG-05 the same day (a
 migration, applied). The order of the designations (ORG-06) is changed on item 39's
 screen, once it is deployed.
+
+*Collecting at the park, 18 October 2026:*
+
+The owner set out how dues are to be collected at the parks (`QUESTIONS.md` PAY-22), with
+SMS in place of voice calls for now. Nine items came of it:
+
+```text
+44 identity --+
+45 SMS -------+--> 47 collecting --> 48 commission
+46 float -----+
+45 + 46 ---------> 49 reminders and the park's list
+44 + 45 ---------> 50 accounts for all --> 51 the card --> 52 the year's colour
+```
+
+- **44 and 45** are needed by most of the rest, and wait on the fewest answers: MEM-19, and
+  GOV-22 before anything is sent for real.
+- **46 to 48** are the park itself: the float, collecting, and the commission. They wait on
+  PAY-23 to PAY-26 and ORG-08.
+- **49** is the reminder before a due, and the list of who owes at a park.
+- **50 to 52** are the setup the direction puts first: an account for every member, the card
+  that carries its number, and the year's colour on that card. They wait on Paystack
+  (PAY-27, PAY-11) and the Union (CARD-09, CARD-10).
+
+Each adds to PRD §2.1, so each waits for the owner's approval, and the PRD is revised as it
+is built. The recommended order is the numbers' order. Two parts of the direction are set
+aside by the owner for now: voice calls (GOV-23) and a sticker in each year's colour
+(VEH-36).
 
 ## Open questions
 

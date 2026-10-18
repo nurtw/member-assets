@@ -1,11 +1,11 @@
 # Session Handoff
 
-**Last revised:** 7 October 2026
+**Last revised:** 18 October 2026
 
 ## Cold start
 
 Read `CLAUDE.md`, `PRD.md` (1.15), `ARCHITECTURE.md` (1.10), `DESIGN.md` (1.2),
-`ROADMAP.md` (1.17), and `QUESTIONS.md` (1.20).
+`ROADMAP.md` (1.18), and `QUESTIONS.md` (1.21).
 
 Three rules outrank every default:
 
@@ -15,27 +15,26 @@ Three rules outrank every default:
 
 ## Status
 
-- **Nothing is being built.** Items 37 to 39, 41, and 42 are pushed
-  (`ab2ba06`). Neon has all 30 migrations.
-- **Item 43, stage 1 (the chassis number compulsory, PRD 1.15) is done and
-  clicked through.** Two commits are local. No migration.
-- **Item 43, stage 2 (routes) is not started.** It waits on VEH-35.
-- Planned, waiting for the owner: 40 and 15.
+- **Nothing is being built.** Everything up to item 43 stage 1 is pushed
+  (`ba6f73b`). Neon has all 30 migrations.
+- **Collecting at the park is planned: items 44 to 52** (PAY-22, the
+  owner's direction of 18 October). SMS first. Voice calls and the yearly
+  sticker are set aside (GOV-23, VEH-36). Each needs the owner's approval.
+- Item 43 stage 2 waits on VEH-35 (questions with the owner). Items 40 and
+  15 wait too.
 
 Tests: domain 518, contracts 144, api 195, web 79; e2e 508 of 509.
 
 ## Conflicts
 
-- **The live API runs on Render and sleeps** (GOV-02). The sign-in pages
-  wake it and explain the wait; ending the wait is a hosting decision, and
-  the owner's.
-- **VEH-35 has four open points.** Stage 2 of item 43 adds a table and
-  must not start before they are answered.
-- Driver and Conductor are not yet first on Neon (ORG-06): the owner
-  moves them on the Reference lists screen.
-- No item covers amending a migrated member, moving an approved member,
-  or a photograph after approval.
-- **VEH-32 is open.** Do not build a second officer for stock.
+- **Items 44 to 52 change the PRD.** They add to §2.1 (§2.3 needs an
+  approved revision), revise Requirements 27.7, 27.8, and 27.14, and add
+  the NIN to the sensitive data. Revise the PRD as each is built.
+- **Open questions block them:** PAY-23 to PAY-27, MEM-19, ORG-08,
+  CARD-09, CARD-10, GOV-22.
+- **The live API sleeps on Render** (GOV-02): the owner's call.
+- VEH-35 blocks item 43 stage 2. VEH-32: no second officer for stock.
+- Driver and Conductor are not yet first on Neon (ORG-06).
 
 ## Known issues — don't re-attempt these fixes
 
@@ -46,16 +45,15 @@ Tests: domain 518, contracts 144, api 195, web 79; e2e 508 of 509.
 
 ## Next steps
 
-1. Ask the owner about pushing, and which item is next.
-2. Owner: the hosting; VEH-35's open points; VEH-32; the settlement
-   account; GOV-08; EXT-05; the GOV-11 date; PAY-11; ORG-06, CARD-05,
-   CARD-07.
+1. Ask the owner about pushing and the next item (44 recommended).
+2. Owner: the questions above; the hosting; the settlement account; PAY-11;
+   GOV-08; EXT-05; the GOV-11 date; ORG-06, CARD-05, CARD-07.
 
 ## Do NOT
 
 - Edit `apps/api/.env`, write Neon rows, or push without a go-ahead.
+- Return a NIN whole, or put a NIN or a photograph link in any list.
 - Check a chassis number's format, or return one outside
   `vehicle.read_restricted`.
 - Drop a column the form no longer asks for, or write one on an amendment.
-- Put a sign-in button's reset back in a `finally`, or a photograph's
-  link in a list.
+- Put a sign-in button's reset back in a `finally`.
