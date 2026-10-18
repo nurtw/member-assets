@@ -4,8 +4,8 @@
 
 ## Cold start
 
-Read `CLAUDE.md`, `PRD.md` (1.15), `ARCHITECTURE.md` (1.10), `DESIGN.md` (1.2),
-`ROADMAP.md` (1.18), and `QUESTIONS.md` (1.21).
+Read `CLAUDE.md`, `PRD.md` (1.16), `ARCHITECTURE.md` (1.11), `DESIGN.md` (1.2),
+`ROADMAP.md` (1.19), and `QUESTIONS.md` (1.22).
 
 Three rules outrank every default:
 
@@ -15,22 +15,23 @@ Three rules outrank every default:
 
 ## Status
 
-- **Nothing is being built.** Everything up to item 43 stage 1 is pushed
-  (`ba6f73b`). Neon has all 30 migrations.
-- **Collecting at the park is planned: items 44 to 52** (PAY-22, the
-  owner's direction of 18 October). SMS first. Voice calls and the yearly
-  sticker are set aside (GOV-23, VEH-36). Each needs the owner's approval.
-- Item 43 stage 2 waits on VEH-35. Items 40 and 15 wait too.
+- **Item 44 (a member's NIN and photograph, PRD 1.16) is done and clicked
+  through.** Committed locally, not pushed. Its migration
+  (`20261018090000_member_identity`) is applied locally only.
+- **Release order matters.** The member and application pages read the new
+  table, so the migration must reach Neon before the code is pushed. Then
+  `IDENTITY_ENCRYPTION_KEY` goes on the live API; until then, recording a
+  NIN answers 503.
+- Items 45 to 52 (collecting at the park) are planned; 45 is next. Item 43
+  stage 2 waits on VEH-35. Items 40 and 15 wait too.
 
-Tests: domain 518, contracts 144, api 195, web 79; e2e 508 of 509.
+Tests: domain 518, contracts 149, api 199, web 84; e2e 523 of 524.
 
 ## Conflicts
 
-- **Items 44 to 52 change the PRD.** They add to §2.1 (§2.3 needs an
-  approved revision), revise Requirements 27.7, 27.8, and 27.14, and add
-  the NIN to the sensitive data. Revise the PRD as each is built.
-- **Open questions block them:** MEM-19, ORG-08, CARD-09, CARD-10. Money
-  and SMS questions are answered.
+- **Items 45 to 52 change the PRD** (§2.1, Requirements 27.7, 27.8,
+  27.14). Revise it as each is built.
+- **Open questions block them:** MEM-19, ORG-08, CARD-09, CARD-10.
 - **The live API sleeps on Render** (GOV-02): the owner's call.
 - VEH-35 blocks item 43 stage 2. VEH-32: no second officer for stock.
 - Driver and Conductor are not yet first on Neon (ORG-06).
@@ -44,15 +45,15 @@ Tests: domain 518, contracts 144, api 195, web 79; e2e 508 of 509.
 
 ## Next steps
 
-1. Ask the owner about pushing and the next item (44 recommended).
-2. Owner: the questions above; register "NURTW" with Termii; the hosting;
-   the settlement account; PAY-11; GOV-08; EXT-05; the GOV-11 date; ORG-06,
-   CARD-05, CARD-07.
+1. Ask the owner to apply item 44's migration to Neon, then push.
+2. Owner: `IDENTITY_ENCRYPTION_KEY` on the live API; register "NURTW"
+   with Termii; the hosting; the settlement account; PAY-11; GOV-08.
 
 ## Do NOT
 
 - Edit `apps/api/.env`, write Neon rows, or push without a go-ahead.
-- Return a NIN whole, or put a NIN or a photograph link in any list.
+- Return a NIN whole, put one or a photograph link in any list, or change
+  `IDENTITY_ENCRYPTION_KEY` once NINs are recorded.
 - Check a chassis number's format, or return one outside
   `vehicle.read_restricted`.
 - Drop a column the form no longer asks for, or write one on an amendment.

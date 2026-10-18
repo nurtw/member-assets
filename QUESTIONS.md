@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.21
+**Document version:** 1.22
 **Last revised:** 18 October 2026
 
 ---
@@ -420,8 +420,10 @@ Requiring one turns away anyone without it, and recording one unchecked lets a m
 number reach the dedicated account it is collected for (PAY-27). The member-facing privacy
 notice (GOV-13) must say that it is collected, and why.
 
-**Planned.** `plans/44` keeps it encrypted, never shows it whole, and lets one NIN belong to
-one member only. It is optional until this is answered.
+**Built as** (roadmap item 44, 18 October 2026). It is optional. It is kept encrypted and
+never shown whole, and one member's record holds a NIN at a time; a cancelled membership
+releases its own, so somebody who rejoins can be registered with it. It is not checked with
+NIMC. PRD Requirement 7.4 (revision 1.16).
 
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
@@ -2188,7 +2190,8 @@ the message tells a member what they still owe. Requirement 27.7 sends Paystack 
 it requires, and PAY-20 collects no identifier; the NIN is new.
 
 **Answered on.** 18 October 2026. **Answered by.** Project owner.
-**Recorded at.** `plans/44` to `plans/52`. The PRD is revised as each is built.
+**Recorded at.** `plans/44` to `plans/52`. The PRD is revised as each is built: item 44
+as revision 1.16 (Requirement 7.4).
 
 ### PAY-23 · The collector's float ✅
 
@@ -2449,6 +2452,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 18 October 2026 (item 44) | Built: a member's NIN, given at registration or on their record, sealed and shown only by its last four digits; and a photograph added or replaced on any member's record (PRD revision 1.16, Requirement 7.4). **MEM-19** stays open, so the NIN is optional. |
 | 18 October 2026 (later) | The project owner answered **PAY-23** (each collector tops up through a dedicated account of their own, settling straight to NURTW; float pays dues only and is refunded only when a collector stops), **PAY-24** (a percentage, unset until the Union names it, from NURTW's share, paid as float; none on a collector's own dues), **PAY-25** (oldest due first, as now; no monthly due for a member without a vehicle), **PAY-26** (own park only; the limits are settings; seven days to reverse a mistake), **PAY-27** (Paystack is tested first; each account uses an address on the Union's domain), and **GOV-22** (Termii, the sender name "NURTW", paid for by the Union, English first, reminders three days before a due between 8 a.m. and 8 p.m.). Totals: 110 answered, 38 awaiting, 3 deferred. |
 | 18 October 2026 | The project owner set out how dues are to be collected at the parks: collectors with a float and a commission, a photograph to confirm the member, an SMS for every payment, the dedicated account on the card, reminders, and the year's colour on renewal. Recorded as **PAY-22**. Voice calls (**GOV-23**) and the yearly sticker (**VEH-36**) are deferred by the owner. New open questions: **PAY-23** to **PAY-27**, **MEM-19**, **ORG-08**, **CARD-09**, **CARD-10**, and **GOV-22**. Roadmap items 44 to 52, planned; the PRD is revised as each is built. Totals: 104 answered, 44 awaiting, 3 deferred. |
 | 7 October 2026 (item 43) | **VEH-34** is built: a vehicle is not added or declared without its chassis number (PRD revision 1.15). VEH-35, the route's from and to, still waits on its four open points. |

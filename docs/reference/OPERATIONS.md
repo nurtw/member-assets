@@ -123,16 +123,18 @@ SELECT indexname, indexdef FROM pg_indexes
  WHERE indexname IN (
    'vehicle_one_active_declaration_per_plate',
    'card_one_live_per_member',
-   'officer_signature_one_active_per_position'
+   'officer_signature_one_active_per_position',
+   'member_identity_one_held_per_nin'
  );
 ```
 
-All three must be present after every migration.
+All four must be present after every migration.
 
 | Index | What it prevents |
 |---|---|
 | `card_one_live_per_member` | Two credentials answering for one member. Covers `ISSUED` and `ACTIVE`; `EXPIRED`, `REPLACED`, `LOST`, and `CANCELLED` accumulate without limit, which is PRD Requirement 8.1 |
 | `officer_signature_one_active_per_position` | Two active president signatures, which would make "which signature was this card composited from" a matter of query ordering |
+| `member_identity_one_held_per_nin` | One NIN recorded for two members (item 44). Its definition must carry `WHERE (released_at IS NULL)`: a cancelled membership releases its own, so a rejoining member can be registered with it |
 
 Item 23 adds `dedicated_account_one_active_per_member` (`WHERE active`). Without it, two
 officers assigning at once could give one member two dedicated accounts, and transfers
@@ -177,6 +179,7 @@ start.
 | `NODE_ENV` | No | `production` enables `secure` cookies |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | No | One run only, then remove |
 | `STICKER_SIGNING_SECRET` / `STICKER_SIGNING_KEY_ID` | From item 08 | Never reaches the web application or a QR payload |
+| `IDENTITY_ENCRYPTION_KEY` | To record NINs | Seals members' NINs (item 44). Without it, recording one answers 503 and the rest of registering works. **Set it once and never change it**: every recorded NIN would become unreadable |
 | `PAYSTACK_SECRET_KEY` | For payments | A test key (`sk_test_…`) everywhere except production. Also verifies the webhook signature |
 | `PAYSTACK_DVA_PREFERRED_BANK` | No | The bank dedicated accounts are opened with (item 23). `test-bank` in test mode; a provider slug such as `wema-bank` in live mode. Unset lets Paystack choose |
 | `CLOUDINARY_URL` | No | Selects `CloudinaryStorage` over the local-filesystem adapter for uploaded media (`media.module.ts`). Unset in development stores under `MEDIA_STORAGE_DIR` on disk instead — set this in production, since a container's filesystem does not survive a redeploy. |
@@ -185,7 +188,7 @@ start.
 
 ### Secrets that must never be logged or exported
 
-API tokens, passport images, signatures, guarantor details, chassis and VIN numbers,
+API tokens, passport images, signatures, guarantor details, chassis and VIN numbers, NINs,
 internal notes, the sticker signing secret, and password hashes. Nothing in this list may
 appear in a log line, an error message, a URL, a QR payload, or a support ticket.
 
@@ -314,9 +317,30 @@ phone, and **Choose a file** takes a picture already on the device. It is made s
 the browser and uploaded at once, and it is the photograph printed on the member's card.
 
 It can be taken again, or removed, on the application's page while the application is
-still a draft. After the application is submitted it is shown and no longer changed. A
-member brought over from the legacy register has no application, and no screen adds a
-photograph to one yet.
+still a draft. After that, and for a member brought over from the legacy register, who has
+no application, it is added or replaced on the member's own page: **Details** →
+**Photograph**, for an officer who may amend members (`member.update`). A card already
+printed keeps the photograph it was printed with, and the next card prints the new one. A
+photograph on a member's page is replaced, never removed.
+
+### Recording a member's NIN
+
+The API needs `IDENTITY_ENCRYPTION_KEY`, a long random value kept somewhere safe. Without
+it, recording a NIN answers `503`, and a registration that gives one is not saved: the form
+says to leave the NIN out and add it later. **Never change the key once NINs are
+recorded.** Every one would become unreadable, and none could be matched again.
+
+- **At registration**, the NIN field follows the telephone. It is optional while MEM-19 is
+  open.
+- **On the member's page**, **Details** → **National Identification Number**, an officer
+  who may amend members can **Record the NIN** or **Replace the NIN**. A NIN is never shown
+  again: only whether one is recorded, and to an officer who may read contact details, its
+  last four digits. A wrong one is replaced, or taken off with **Remove** and a reason.
+- **"It may already be recorded for another member"** means one NIN is held by one record.
+  If it was recorded against the wrong member, remove it there first. The System does not
+  say which member holds it.
+- **A cancelled membership** keeps its NIN on its record but releases it, so somebody who
+  rejoins can be registered with it. A cancelled record is not changed.
 
 ### If signing in is slow
 

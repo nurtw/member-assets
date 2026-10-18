@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.18
+**Document version:** 1.19
 **Last revised:** 18 October 2026
 
 ---
@@ -71,7 +71,7 @@ Each item is independently completable and independently testable. Status values
 | 41 | field-feedback-fixes | §7, §9, §23.16 (MEM-15, MEM-18, VEH-33) | done (clicked through 7 Oct, with a slowed connection and a drawn photograph) | [plan](plans/41-field-feedback-fixes.md) |
 | 42 | registration-form-reduction | §7, Req. 7.3 (rev. 1.14) | done (clicked through 7 Oct) | [plan](plans/42-registration-form-reduction.md) |
 | 43 | chassis-and-route | §9, Req. 9.4 (rev. 1.15); VEH-35 | stage 1 done (the chassis number; clicked through 7 Oct). Stage 2 (the route) waits on VEH-35 | [plan](plans/43-chassis-and-route.md) |
-| 44 | member-identity | §7, Req. 7.1 (PAY-22, MEM-19) | planned | [plan](plans/44-member-identity.md) |
+| 44 | member-identity | §7, Req. 7.4 (rev. 1.16); PAY-22, MEM-19 | done (clicked through 18 Oct) | [plan](plans/44-member-identity.md) |
 | 45 | sms-notices | Req. 27.8, 27.14 (PAY-22, GOV-22) | planned | [plan](plans/45-sms-notices.md) |
 | 46 | collectors-and-float | §2.1, §27 (PAY-22, PAY-23, ORG-08) | planned | [plan](plans/46-collectors-and-float.md) |
 | 47 | park-collection | §27 (PAY-22, PAY-25, PAY-26) | planned | [plan](plans/47-park-collection.md) |
@@ -436,8 +436,9 @@ SMS in place of voice calls for now. Nine items came of it:
 44 + 45 ---------> 50 accounts for all --> 51 the card --> 52 the year's colour
 ```
 
-- **44 and 45** are needed by most of the rest, and wait on the fewest answers: MEM-19
-  for 44. GOV-22 is answered: Termii, the sender name "NURTW", paid for by the Union.
+- **44** is done (18 October), with the NIN optional while MEM-19 is open. **45** is
+  needed by most of the rest. GOV-22 is answered: Termii, the sender name "NURTW", paid
+  for by the Union.
 - **46 to 48** are the park itself: the float, collecting, and the commission. PAY-23 to
   PAY-26 are answered (18 October); ORG-08, whether a park is a unit, is open.
 - **49** is the reminder before a due, and the list of who owes at a park.

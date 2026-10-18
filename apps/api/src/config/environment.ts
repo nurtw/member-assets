@@ -56,6 +56,14 @@ export interface Environment {
    * every enrolled secret unreadable, so every officer must enrol again.
    */
   readonly mfaEncryptionKey: string | undefined;
+  /**
+   * The key that seals members' NINs at rest (item 44), and from which the
+   * keyed hash that stops one NIN being recorded twice is derived. Held only by
+   * the API. `undefined` where it is not configured: recording a NIN then
+   * answers 503 instead of storing one in the clear. Changing it makes every
+   * recorded NIN unreadable and unmatched, so it is set once.
+   */
+  readonly identityEncryptionKey: string | undefined;
 }
 
 class EnvironmentError extends Error {
@@ -123,6 +131,8 @@ export function loadEnvironment(): Environment {
       // Matches .env.example's documented default (roadmap item 08).
       process.env.STICKER_SIGNING_KEY_ID?.trim() || 'k1',
     mfaEncryptionKey: process.env.MFA_ENCRYPTION_KEY?.trim() || undefined,
+    identityEncryptionKey:
+      process.env.IDENTITY_ENCRYPTION_KEY?.trim() || undefined,
   };
 }
 

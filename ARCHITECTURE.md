@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.10
-**Last revised:** 7 October 2026
+**Document version:** 1.11
+**Last revised:** 18 October 2026
 **Authority:** Subordinate to `PRD.md`. Where this document and the PRD conflict, the PRD prevails.
 
 ---
@@ -553,6 +553,14 @@ application's number and status are added for a holder of `application.read`, an
 next of kin, and guarantor for a holder of `member_sensitive.read`. Each part is read only
 when it may be returned, and a part that may not be is absent from the response. A record
 is never read whole and then trimmed.
+
+**Decision 10.1.3 — a member's NIN is sealed and write-only *(item 44, PRD revision
+1.16)*.** The NIN lives in `member_identity`, 1:1 with `member`, sealed under a key of its
+own (`IDENTITY_ENCRYPTION_KEY`), with a keyed hash to match it and its last four digits to
+name it. One service reads the sealed value, and no response carries it. One record holds a
+NIN at a time, by a partial unique index; a cancelled membership releases its own for a new
+registration. The card module never joins the table, and no verification or aggregate path
+does.
 
 **Decision 10.2.** Uploaded passport photographs and signatures are held in object storage,
 never in the repository and never in the database. Access is by time-limited signed URL.

@@ -45,6 +45,10 @@ import { useSession } from "@/lib/session";
  * address if there is one (MEM-16); and a guarantor, where there is one, is a
  * full name, a telephone number, and an address (MEM-06). Do not put a field
  * back to match the paper form.
+ *
+ * **It asks one thing the paper form does not:** the NIN (item 44), optional
+ * while MEM-19 is open. It is sent once and never shown again: the API seals
+ * it, and says afterwards only whether one is recorded.
  */
 
 interface FormState {
@@ -60,6 +64,7 @@ const INITIAL: FormState = {
   residentialLgaId: "",
   stateOfOrigin: "",
   phone: "",
+  nin: "",
   organisationId: "",
   designationId: "",
   nokFullName: "",
@@ -80,6 +85,32 @@ function collectUnits(
       : []),
     ...collectUnits(node.children),
   ]);
+}
+
+/**
+ * The API answers every conflict alike (Requirement 14.3), so the form says
+ * what a 409, or a 503, can mean here. Neither says who holds a NIN.
+ */
+function explainRegistration(error: ApiError, gaveNin: boolean): ApiError {
+  if (error.status === 409) {
+    return new ApiError(
+      409,
+      gaveNin
+        ? "The registration was not saved. The NIN may already be recorded for another member, so check it; or the unit may no longer take members."
+        : "The registration was not saved. The unit may no longer take members: choose another, or ask an administrator.",
+      error.requestId,
+      error.details,
+    );
+  }
+  if (error.status === 503 && gaveNin) {
+    return new ApiError(
+      503,
+      "The registration was not saved, because a NIN cannot be recorded at the moment. Leave the NIN out to register now, and add it on the member’s record later.",
+      error.requestId,
+      error.details,
+    );
+  }
+  return error;
 }
 
 export default function NewApplicationPage() {
@@ -175,6 +206,7 @@ export default function NewApplicationPage() {
             residentialLgaId: optional("residentialLgaId"),
             stateOfOrigin: optional("stateOfOrigin"),
             phone: form.phone,
+            nin: optional("nin"),
           },
           assignment: {
             organisationId: form.organisationId,
@@ -222,7 +254,7 @@ export default function NewApplicationPage() {
     } catch (caught) {
       setError(
         caught instanceof ApiError
-          ? caught
+          ? explainRegistration(caught, optional("nin") !== undefined)
           : new ApiError(0, "The service could not be reached."),
       );
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -285,6 +317,16 @@ export default function NewApplicationPage() {
           error={fieldError("applicant.phone")}
         >
           <TextInput id="phone" type="tel" required placeholder="0803 123 4567" {...text("phone")} />
+        </Field>
+
+        {/* Item 44: not on the paper form, and optional while MEM-19 is open. */}
+        <Field
+          label="National Identification Number (NIN)"
+          htmlFor="nin"
+          hint="Eleven digits, if the applicant has one. It is kept sealed: never printed, and afterwards shown only by its last four digits."
+          error={fieldError("applicant.nin")}
+        >
+          <TextInput id="nin" inputMode="numeric" autoComplete="off" maxLength={20} {...text("nin")} />
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">

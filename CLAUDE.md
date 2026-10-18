@@ -139,7 +139,7 @@ These come from PRD §4 and are not negotiable design preferences — they are t
   (`data/users.csv`). Do not commit it, and do not copy rows into docs, plans, commit
   messages, test fixtures, or issue text. Use synthetic fixtures for tests.
 - Never log full API tokens, passport images, signatures, guarantor details, chassis/VIN,
-  or internal notes.
+  NINs, or internal notes.
 - Sensitive registration data (next-of-kin, guarantor, collateral, phone, residential
   address, signature) is stored separately from card-display data and is never reachable
   through a verification path.
@@ -536,8 +536,8 @@ That is sound: `details` describes the request the caller just sent, never the r
   by the application's page and the member's. Change them there, once.
 - **A member outside the caller's scope, and one that does not exist, answer the same 404**,
   on the record and on `PATCH /members/:id/status`.
-- **Nothing amends a migrated member's details.** The amend route is the application's. No
-  item covers it yet.
+- **Nothing amends a migrated member's details**, but for the photograph and the NIN
+  (item 44). The amend route is the application's. No item covers the rest yet.
 
 ### Signing in, the forms' order, and the photograph (item 41)
 
@@ -572,11 +572,12 @@ show an officer's sign-in address.
 - **`PhotographField` uploads at once and hands back an id.** The caller attaches it with
   `PATCH /applications/:id/media`. An upload that is replaced or abandoned is discarded
   with `DELETE /media/:id`, which refuses a file that is still attached.
-- **The application's detail carries `passportPhotoUrl`**, a signed link good for five
-  minutes. It is in no list and on no other route. Never store it, and never add one to a
-  list: one link each would add up to a gallery.
-- **A photograph is added or changed only while the application is a draft.** Nothing
-  attaches one to a member who has no application, or after approval. No item covers it.
+- **An application's detail and a member's record carry `passportPhotoUrl`** (item 44),
+  a signed link good for five minutes, for one person. It is in no list. Never store it,
+  and never add one to a list: one link each would add up to a gallery.
+- **On an application, a photograph is added or changed only while it is a draft.** After
+  that, and for a member with no application, it is changed on the member's record
+  (item 44).
 - **What a photograph must look like is not decided** (MEM-14). State no rule about it.
 
 ### The registration form, reduced (item 42)
@@ -604,6 +605,42 @@ PRD revision 1.14, Requirement 7.3: the Union asked for less than its paper form
   would read as something missing.
 - **The printed registration form follows the screen, not the paper form.** Whether the
   Union's paper form is being reduced too is not known.
+
+### A member's NIN and photograph (item 44)
+
+PRD revision 1.16, Requirement 7.4, from the owner's direction of 18 October 2026
+(`QUESTIONS.md` PAY-22). Whether a NIN is required is MEM-19, still open: it is optional.
+
+- **A NIN is sealed, in a table of its own** (`member_identity`), under
+  `IDENTITY_ENCRYPTION_KEY` (`common/secret-box.ts`, shared with the second factor).
+  Without the key, recording one answers 503, and a registration that gives one saves
+  nothing at all.
+- **Only `MemberIdentityService` touches the sealed column.** `member-identity.spec.ts`
+  fails if any other source file names it. Item 50 adds the one method that opens it, to
+  send it to Paystack, and only if PAY-27's test finds Paystack takes one.
+- **No route returns a NIN.**
+  - `ninRecorded` goes to every reader of a member.
+  - `ninLastFour` goes only with the sensitive part, and on an application's detail.
+  - Nothing else: no list, card, verification, log, audit event, or message. The audit
+    trail records that it changed, never what to.
+- **It is write-only on the screens.** A wrong one is replaced, or taken off with a reason;
+  it is never read back to be edited. An amendment that leaves it out keeps it.
+- **One NIN, one record.**
+  - A NIN is matched by a keyed hash (`lookupHash`), never by comparing plain values.
+  - The partial unique index `member_identity_one_held_per_nin` is the control.
+  - Cancelling a membership releases its NIN (`releasedAt`), so a rejoining member can be
+    registered with it. The cancelled record keeps it, and is not changed afterwards.
+- **Who may change them:**
+  - On the record, either needs `member.update` over the member, with one 404 for out of
+    scope and for no such member alike.
+  - At registration, the NIN rides in the form under `member.create`: a field enumerator
+    registers members and holds no `member.update`.
+- **A photograph on the record comes with the request** (`POST /members/:id/photograph`,
+  multipart), not through `POST /media`, which needs `member.create`; branch and unit
+  administrators hold `member.update` and not that. The photograph it replaces is
+  discarded unless a card printed it.
+- **Never change `IDENTITY_ENCRYPTION_KEY` once NINs are recorded.** Every one would become
+  unreadable, and none could be matched.
 
 ### Membership cards and printing (item 06)
 
@@ -706,6 +743,10 @@ could be retired exactly once and never again.
 Revision 1.3 adds a second one, `vehicle_one_on_record_per_plate` (`WHERE status =
 'ON_RECORD'`, migration `20260926083136_add_vehicle_recording`), so two enumerators cannot
 record the same plate at once. Preserve it too.
+
+Item 44 adds `member_identity_one_held_per_nin` (`WHERE released_at IS NULL`, migration
+`20261018090000_member_identity`): one NIN held by one record at a time, while a cancelled
+membership keeps its own. Preserve it as well.
 
 ### Vehicle owners, route types, and fee prices (revision 1.3)
 

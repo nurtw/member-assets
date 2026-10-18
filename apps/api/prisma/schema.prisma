@@ -349,6 +349,7 @@ model Member {
   signature     MediaAsset?  @relation("MemberSignature", fields: [signatureId], references: [id])
 
   contact     MemberContact?
+  identity    MemberIdentity?
   nextOfKin   NextOfKin?
   guarantor   Guarantor?
   application MembershipApplication?
@@ -361,6 +362,47 @@ model Member {
   @@index([organisationId])
   @@index([status])
   @@map("member")
+}
+
+/// A member's National Identification Number (item 44; QUESTIONS.md PAY-22,
+/// MEM-19; PRD Requirement 7.4). A table of its own, apart from
+/// `member_contact`, because it is more sensitive than a telephone number or
+/// an address (Decision 10.1.3).
+///
+/// Never stored in the clear:
+///
+/// - `ninCiphertext` is sealed under IDENTITY_ENCRYPTION_KEY
+///   (`common/secret-box.ts`). Only `MemberIdentityService` reads it; a test
+///   fails if anything else names it.
+/// - `ninLookupHash` is a keyed hash, so a NIN can be matched without the
+///   System comparing plain values. At most one record holds each NIN, by
+///   the partial unique index `member_identity_one_held_per_nin` (raw SQL in
+///   the migration, which Prisma cannot express):
+///
+///       CREATE UNIQUE INDEX member_identity_one_held_per_nin
+///       ON member_identity (nin_lookup_hash) WHERE released_at IS NULL
+///
+///   Preserve it in later migrations.
+/// - `ninLastFour` lets an officer tell which NIN is recorded.
+///
+/// A cancelled membership releases its NIN (`releasedAt`), so somebody who
+/// rejoins can be registered with it, and the cancelled record keeps it.
+model MemberIdentity {
+  id       String @id @default(uuid()) @db.Uuid
+  memberId String @unique @map("member_id") @db.Uuid
+
+  ninCiphertext String    @map("nin_ciphertext")
+  ninLookupHash String    @map("nin_lookup_hash")
+  ninLastFour   String    @map("nin_last_four")
+  releasedAt    DateTime? @map("released_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([ninLookupHash])
+  @@map("member_identity")
 }
 
 /// Sensitive member data — telephone, residential address, state of origin.

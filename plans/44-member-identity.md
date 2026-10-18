@@ -52,9 +52,29 @@ photograph must look like (MEM-14). Amending a migrated member's other details.
 - Is it checked with NIMC through a paid service, or recorded as given?
 
 ## Definition of done
-- [ ] A NIN can be given at registration and on a member's record. It is stored encrypted,
+- [x] A NIN can be given at registration and on a member's record. It is stored encrypted,
       never returned whole, and one NIN cannot be recorded for two members.
-- [ ] No list, card, verification, log, audit event, or message carries it; a test says so.
-- [ ] An officer holding `member.update` over any member, migrated or approved, can add or
+- [x] No list, card, verification, log, audit event, or message carries it; a test says so.
+- [x] An officer holding `member.update` over any member, migrated or approved, can add or
       replace their photograph. A printed card keeps the photograph it printed.
-- [ ] PRD revised. Lint, typecheck, build, and every test pass; clicked through.
+- [x] PRD revised (1.16). Lint, typecheck, build, and every test pass; clicked through
+      18 October 2026.
+
+**Decided while building (18 October 2026):**
+
+- **A photograph on the record comes with the request** (`POST /members/:id/photograph`),
+  not through `POST /media`. That route needs `member.create`, which branch and unit
+  administrators lack, though they hold `member.update`. The photograph it replaces is
+  discarded unless a card printed it.
+- **A NIN can be taken off a record, with a reason**: for one recorded against the wrong
+  member, which would otherwise keep it from its owner.
+- **A cancelled membership releases its NIN** (`releasedAt`), so somebody who rejoins can be
+  registered with it. That is why the index keeping one NIN to one record is partial. A
+  cancelled record's NIN and photograph are not changed afterwards.
+- **Whether a NIN is recorded goes to every reader of the member**, as whether a chassis
+  number is does (item 43). Its last four digits go only with the sensitive part, and on an
+  application's detail.
+- **The registration form gives the NIN under `member.create`**, because field enumerators
+  register members and hold no `member.update`. The record needs `member.update`.
+- **The sealing moved to `common/secret-box.ts`**, shared with the second factor's secret.
+- **Nothing was backfilled.** Members registered before are given a NIN on their record.

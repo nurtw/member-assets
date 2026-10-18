@@ -1,6 +1,4 @@
 import {
-  createCipheriv,
-  createDecipheriv,
   createHash,
   createHmac,
   randomBytes,
@@ -157,38 +155,8 @@ export function hashRecoveryCode(value: string): string {
 
 /**
  * The shared secret is the one thing here that must be recoverable, so it is
- * encrypted, not hashed (AES-256-GCM, under a key from the environment). A
- * leaked database backup then yields no working second factor.
+ * encrypted, not hashed, under `MFA_ENCRYPTION_KEY`. A leaked database backup
+ * then yields no working second factor. The sealing is shared with the
+ * member's NIN (item 44), so it lives in `common/secret-box.ts`.
  */
-function keyFrom(material: string): Buffer {
-  return createHash('sha256').update(material).digest();
-}
-
-export function encryptSecret(secret: string, keyMaterial: string): string {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', keyFrom(keyMaterial), iv);
-  const sealed = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
-  return [
-    'v1',
-    iv.toString('base64url'),
-    cipher.getAuthTag().toString('base64url'),
-    sealed.toString('base64url'),
-  ].join(':');
-}
-
-export function decryptSecret(stored: string, keyMaterial: string): string {
-  const [version, iv, tag, sealed] = stored.split(':');
-  if (version !== 'v1' || !iv || !tag || !sealed) {
-    throw new Error('Unreadable second-factor secret.');
-  }
-  const decipher = createDecipheriv(
-    'aes-256-gcm',
-    keyFrom(keyMaterial),
-    Buffer.from(iv, 'base64url'),
-  );
-  decipher.setAuthTag(Buffer.from(tag, 'base64url'));
-  return Buffer.concat([
-    decipher.update(Buffer.from(sealed, 'base64url')),
-    decipher.final(),
-  ]).toString('utf8');
-}
+export { decryptSecret, encryptSecret } from '../common/secret-box.js';

@@ -41,6 +41,7 @@ import {
 } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiError, api, fetcher } from "@/lib/api";
+import { ninStatement } from "@/lib/nin";
 import { useSession } from "@/lib/session";
 import { useTabParam } from "@/lib/use-tab-param";
 
@@ -370,6 +371,8 @@ export default function ApplicationDetailPage() {
           <Section title="Section A — Personal">
             <DetailList>
               <Detail label="Telephone" value={application.contact?.phone} />
+              {/* Item 44: whether one is recorded, and its end. Never the NIN. */}
+              <Detail label="NIN" value={ninStatement(application)} />
               <Detail
                 label="State of origin"
                 value={application.contact?.stateOfOrigin}

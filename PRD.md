@@ -4,9 +4,9 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.15 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.15
-**Last revised:** 7 October 2026
+1.2 to 1.16 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.16
+**Last revised:** 18 October 2026
 
 ---
 
@@ -92,6 +92,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. Payment is offered wherever a vehicle is checked, and through a personal pay link that never says what is owed. See §23.10, §23.22–§23.27, Requirements 12.11, 27.7 and 27.8. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20, PAY-21), 5 October 2026. |
 | 1.10 | 5 October 2026 | The API administrator may invite a named organisation by a personal link that opens the application form addressed to it. A link is used once, expires, and may be withdrawn; the application it produces is confirmed and decided as any other. See §23.23 and Requirement 12.11. | The project owner (`QUESTIONS.md` EXT-21), 5 October 2026. |
 | 1.11 | 5 October 2026 | A vehicle without a sticker says so on its page each time it is opened, and adding a vehicle ends on a prompt to buy and attach its sticker, which may be closed. While new NURTW stickers are not issued, a vehicle the register holds no barcode for is told so, and nothing is charged. See Requirement 9A.7. | The project owner (`QUESTIONS.md` VEH-30), 5 October 2026. |
+| 1.16 | 18 October 2026 | A member's National Identification Number may be recorded, at registration or on the member's record. It is optional until the Union says otherwise, kept sealed, never shown whole, printed, or disclosed, and held by one member's record at a time. A member's photograph may be added or replaced on their record after approval, a migrated member included. See Requirements 7.1, 7.3, and 7.4. | The project owner's direction of 18 October 2026 on collecting dues at the parks (`QUESTIONS.md` PAY-22), for roadmap item 44. |
 | 1.15 | 7 October 2026 | A vehicle cannot be added, or declared, without its chassis number. A legacy vehicle that has none keeps its record and is asked for one when it is declared. The number stays restricted. See Requirement 9.4. | The Union's Head of Operations, 6 October 2026, and the project owner (`QUESTIONS.md` VEH-34), 7 October 2026. |
 | 1.14 | 7 October 2026 | The registration form asks for less than the paper form: the member's name, address, and telephone come first; Area is not asked for; a next of kin is a full name and a telephone number, with an address if there is one; a guarantor, where there is one, is a full name, a telephone number, and an address. What an earlier registration recorded is kept. The member's photograph is taken on the form. See Requirement 7.3. | The Union's Head of Operations, 6 October 2026, and the project owner (`QUESTIONS.md` MEM-06, MEM-15 to MEM-18), 7 October 2026. |
 | 1.13 | 7 October 2026 | The one branch and one unit beneath each zone, named after it, are the Union's own and are seeded with the zones. They had been placeholders, marked as such. See §23.1. | The project owner (`QUESTIONS.md` ORG-05), 7 October 2026, at the request of the Union's Head of Operations. |
@@ -220,9 +221,9 @@ Four data groups are captured: **applicant**, **organisational assignment**, **n
 kin**, and **guarantor**, together with a **review and approval** record.
 
 **Requirement 7.1.** Sensitive registration data — next-of-kin details, guarantor details,
-signatures, collateral responses, telephone numbers, and residential addresses — must be
-stored separately from card-display data and must not be reachable through any
-verification path.
+signatures, collateral responses, telephone numbers, residential addresses, and *(revision
+1.16)* national identification numbers — must be stored separately from card-display data
+and must not be reachable through any verification path.
 
 **Requirement 7.2.** Where the state and the local government area are both captured as
 structured values, the System must validate that the local government area belongs to the
@@ -239,11 +240,32 @@ specification sets out, by the Union's direction of 6 October 2026:
   **telephone number**, and an **address**. Nothing else is asked for, the collateral
   question included.
 - **The photograph** of the applicant is taken or uploaded on the form, and is the one
-  printed on the membership card (§23.16).
+  printed on the membership card (§23.16). *Revision 1.16:* it may also be added or
+  replaced afterwards on the member's record, after approval and for a migrated member. A
+  card keeps the photograph it was printed with.
 
 Nothing recorded under a field that is no longer asked for is removed. A registration made
 before this revision shows, and prints, everything it was given. The applicant's own name
 stays in three parts, because the card prints it.
+
+**Requirement 7.4** *(revision 1.16)*. A member's **National Identification Number** may be
+recorded, at registration or afterwards on the member's record, by the project owner's
+direction of 18 October 2026 (`QUESTIONS.md` PAY-22). Whether it is required is not decided
+(MEM-19), so it is optional.
+
+- It is eleven digits, the national format.
+- It is stored sealed, apart from every other member field, and no route returns it whole.
+  An officer who may read the member is told whether one is recorded; one who may read
+  contact details is also told its last four digits.
+- It appears on no card, and in no list, verification, aggregate, export, log, audit event,
+  or message. The audit trail records that it changed, never what to.
+- One member's record holds a NIN at a time. A cancelled membership releases its own, so
+  that somebody who rejoins can be registered with it, and the cancelled record keeps it.
+- Recording, replacing, or removing it on a member's record needs the permission to amend
+  members, within the officer's scope. A cancelled membership is not changed.
+- It is not checked with NIMC (MEM-19 asks whether it should be), and is sent to nobody.
+  Sending it to the payment provider, if the provider needs it, is a later revision (roadmap
+  item 50, `QUESTIONS.md` PAY-27).
 
 ---
 

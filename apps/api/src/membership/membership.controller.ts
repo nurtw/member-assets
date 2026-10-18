@@ -7,23 +7,31 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   Res,
   StreamableFile,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   attachMediaSchema,
   createApplicationSchema,
   listMembersQuerySchema,
+  removeMemberNinSchema,
   reviewApplicationSchema,
+  setMemberNinSchema,
   setMemberStatusSchema,
   updateApplicationSchema,
   withdrawApplicationSchema,
   type AttachMediaInput,
   type CreateApplicationInput,
   type ListMembersQuery,
+  type RemoveMemberNinInput,
   type ReviewApplicationInput,
+  type SetMemberNinInput,
   type SetMemberStatusInput,
   type UpdateApplicationInput,
   type WithdrawApplicationInput,
@@ -34,8 +42,19 @@ import type { AuthenticatedRequest } from '../auth/authorisation.guard.js';
 import { RequirePermission } from '../auth/require-permission.decorator.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { Documented } from '../docs/documented.decorator.js';
+import { MAX_IMAGE_BYTES } from '../media/media.service.js';
 import type { ActorContext } from '../organisation/organisation.service.js';
 import { MembershipService } from './membership.service.js';
+
+/**
+ * The part of multer's uploaded file the photograph route uses: the bytes.
+ * The declared type and the file's name are the caller's to choose, so they
+ * are not read (see `MediaController`).
+ */
+interface UploadedPhotograph {
+  buffer: Buffer;
+  size: number;
+}
 
 /**
  * Membership registration (PRD §7).
@@ -414,6 +433,98 @@ export class MemberController {
         id,
         body,
       ),
+    };
+  }
+
+  @RequirePermission('member.update')
+  @Put(':id/nin')
+  @Documented({
+    summary: 'Record or replace a member’s NIN.',
+    description:
+      'Item 44 (PRD Requirement 7.4). Eleven digits; spaces and dashes are taken out. The ' +
+      'NIN is sealed at rest and returned by no route: the answer says only that one is ' +
+      'recorded, and its last four digits. For any member but a cancelled one, migrated ' +
+      'and approved members included. The audit trail records that it changed, not to what.',
+    body: setMemberNinSchema,
+    responses: {
+      404: 'No such member, or they lie outside the caller’s scope.',
+      409: 'The NIN is recorded for another member, or the membership is cancelled.',
+      503: 'IDENTITY_ENCRYPTION_KEY is not configured, so no NIN can be sealed.',
+    },
+  })
+  async setNin(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(setMemberNinSchema)) body: SetMemberNinInput,
+  ) {
+    return { identity: await this.membership.setNin(this.actor(request), id, body) };
+  }
+
+  @RequirePermission('member.update')
+  @Post(':id/nin/removal')
+  @Documented({
+    summary: 'Take a member’s NIN off their record.',
+    description:
+      'Item 44. For a NIN recorded against the wrong member, which would otherwise keep it ' +
+      'from the member it belongs to. A reason is required and is recorded.',
+    body: removeMemberNinSchema,
+    responses: {
+      404: 'No such member, or they lie outside the caller’s scope.',
+      409: 'No NIN is recorded for this member, or the membership is cancelled.',
+    },
+  })
+  async removeNin(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(removeMemberNinSchema)) body: RemoveMemberNinInput,
+  ) {
+    return { identity: await this.membership.removeNin(this.actor(request), id, body) };
+  }
+
+  @RequirePermission('member.update')
+  @Post(':id/photograph')
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: MAX_IMAGE_BYTES } }),
+  )
+  @Documented({
+    summary: 'Add or replace a member’s photograph.',
+    description:
+      'Item 44. Multipart, field name `file`. For any member but a cancelled one, after ' +
+      'approval included; an application still in draft attaches its photograph as before. ' +
+      'The bytes decide what the file is, as for every upload. A card keeps the photograph ' +
+      'it printed, and the one replaced is discarded unless a card holds it. The answer ' +
+      'carries a signed link to the new photograph, good for a few minutes.',
+    responses: {
+      400: 'No file, an empty or oversized one, or bytes that are not a supported image.',
+      404: 'No such member, or they lie outside the caller’s scope.',
+      409: 'The membership is cancelled.',
+    },
+  })
+  async setPhotograph(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: UploadedPhotograph | undefined,
+  ) {
+    if (!file) {
+      throw new BadRequestException('A file is required.');
+    }
+    return {
+      photograph: await this.membership.setPhotograph(
+        this.actor(request),
+        id,
+        file.buffer,
+      ),
+    };
+  }
+
+  private actor(request: AuthenticatedRequest): ActorContext {
+    if (!request.user) {
+      throw new BadRequestException();
+    }
+    return {
+      userId: request.user.id,
+      requestId: request.header('x-request-id') ?? null,
+      ipAddress: request.ip ?? null,
     };
   }
 }

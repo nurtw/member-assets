@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type {
@@ -9,12 +11,16 @@ import type {
   ApplicationSummary,
   AttachMediaInput,
   CreateApplicationInput,
+  MemberNinState,
+  MemberPhotograph,
   MemberRecord,
   MemberRecordSensitive,
   MemberSearchResult,
   RegistrationGuarantor,
   RegistrationNextOfKin,
+  RemoveMemberNinInput,
   ReviewApplicationInput,
+  SetMemberNinInput,
   SetMemberStatusInput,
   UpdateApplicationInput,
   WithdrawApplicationInput,
@@ -41,6 +47,7 @@ import {
   REQUIRE_SEPARATE_OFFICER,
   SettingsService,
 } from '../settings/settings.service.js';
+import { MemberIdentityService } from './member-identity.service.js';
 import {
   renderRegistrationForm,
   type FormSection,
@@ -52,6 +59,7 @@ const DECIDE = 'application.decide';
 const MEMBER_READ = 'member.read';
 const MEMBER_SUSPEND = 'member.suspend';
 const SENSITIVE_READ = 'member_sensitive.read';
+const MEMBER_UPDATE = 'member.update';
 
 /** Attempts before a membership-number collision is treated as a real fault. */
 const IDENTIFIER_ATTEMPTS = 5;
@@ -103,12 +111,15 @@ const GUARANTOR_SELECT = {
  */
 @Injectable()
 export class MembershipService {
+  private readonly logger = new Logger(MembershipService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly audit: AuditService,
     private readonly media: MediaService,
     private readonly settings: SettingsService,
+    private readonly identity: MemberIdentityService,
   ) {}
 
   // --- Reads ---------------------------------------------------------------
@@ -252,6 +263,7 @@ export class MembershipService {
           select: { id: true, name: true, level: true, path: true },
         },
         designation: { select: { id: true, code: true, label: true } },
+        passportPhotoId: true,
       },
     });
     if (
@@ -261,6 +273,9 @@ export class MembershipService {
       throw new NotFoundException();
     }
     const path = member.organisation.path;
+    // Whether a NIN is recorded goes to every reader of the member; its last
+    // four digits only with the sensitive part. The NIN itself goes to nobody.
+    const nin = await this.identity.state(id);
 
     const record: MemberRecord = {
       id: member.id,
@@ -276,6 +291,13 @@ export class MembershipService {
         level: member.organisation.level,
       },
       designation: member.designation,
+      ninRecorded: nin.ninRecorded,
+      passportPhotoId: member.passportPhotoId,
+      // Signed here, for one member, as on an application's detail. The link
+      // lasts minutes and names one file, and no list carries one.
+      passportPhotoUrl: member.passportPhotoId
+        ? this.media.signUrl(member.passportPhotoId).url
+        : null,
     };
 
     if (await this.permissions.can(userId, READ, path)) {
@@ -286,14 +308,17 @@ export class MembershipService {
     }
 
     if (await this.permissions.can(userId, SENSITIVE_READ, path)) {
-      record.sensitive = await this.sensitiveParts(id);
+      record.sensitive = await this.sensitiveParts(id, nin.ninLastFour);
     }
 
     return record;
   }
 
-  /** Contact, next of kin, and guarantor, each field named. */
-  private async sensitiveParts(memberId: string): Promise<MemberRecordSensitive> {
+  /** Contact, next of kin, guarantor, and the NIN's last four digits, each field named. */
+  private async sensitiveParts(
+    memberId: string,
+    ninLastFour: string | null,
+  ): Promise<MemberRecordSensitive> {
     const [contact, nextOfKin, guarantor] = await Promise.all([
       this.prisma.memberContact.findUnique({
         where: { memberId },
@@ -329,6 +354,7 @@ export class MembershipService {
         : null,
       nextOfKin,
       guarantor,
+      ninLastFour,
     };
   }
 
@@ -348,6 +374,8 @@ export class MembershipService {
         guarantor: { select: GUARANTOR_SELECT },
       },
     });
+    // Whether a NIN is recorded, and its last four digits. Never the NIN.
+    const nin = await this.identity.state(member.id);
 
     return {
       id: application.id,
@@ -391,6 +419,8 @@ export class MembershipService {
         ? this.media.signUrl(member.passportPhotoId).url
         : null,
       signatureId: member.signatureId,
+      ninRecorded: nin.ninRecorded,
+      ninLastFour: nin.ninLastFour,
     };
   }
 
@@ -419,6 +449,11 @@ export class MembershipService {
 
     await this.assertLgaAvailable(input.applicant.residentialLgaId);
     await this.assertDesignationExists(input.assignment.designationId);
+    if (input.applicant.nin) {
+      // Before anything is written: without the key nothing is saved, rather
+      // than everything but the NIN.
+      this.identity.assertAvailable();
+    }
 
     const created = await this.prisma.$transaction(async (tx) => {
       const member = await tx.member.create({
@@ -439,6 +474,9 @@ export class MembershipService {
             : undefined,
         },
       });
+      if (input.applicant.nin) {
+        await this.identity.record(tx, member.id, input.applicant.nin);
+      }
 
       const application = await tx.membershipApplication.create({
         data: {
@@ -468,6 +506,8 @@ export class MembershipService {
             memberId: member.id,
             surname: member.surname,
             firstName: member.firstName,
+            // That a NIN was given, never which (Requirement 7.4).
+            ninRecorded: Boolean(input.applicant.nin),
           },
           requestId: actor.requestId,
           ipAddress: actor.ipAddress,
@@ -510,6 +550,9 @@ export class MembershipService {
     }
     if (input.applicant) {
       await this.assertLgaAvailable(input.applicant.residentialLgaId);
+      if (input.applicant.nin) {
+        this.identity.assertAvailable();
+      }
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -523,6 +566,11 @@ export class MembershipService {
             contact: { update: this.contactData(input.applicant) },
           },
         });
+        // Given, it replaces the NIN recorded; left out, that one stays. A NIN
+        // is never read back to be sent again, so an amendment never blanks one.
+        if (input.applicant.nin) {
+          await this.identity.record(tx, member.id, input.applicant.nin);
+        }
       }
       if (input.assignment) {
         await tx.member.update({
@@ -556,7 +604,11 @@ export class MembershipService {
           subjectId: id,
           organisationId: member.organisationId,
           actorUserId: actor.userId,
-          after: { sectionsAmended: Object.keys(input) },
+          after: {
+            sectionsAmended: Object.keys(input),
+            // That a NIN was given, never which (Requirement 7.4).
+            ninRecorded: Boolean(input.applicant?.nin),
+          },
           requestId: actor.requestId,
           ipAddress: actor.ipAddress,
         },
@@ -772,6 +824,11 @@ export class MembershipService {
         data: { status: input.status },
         select: { id: true, status: true },
       });
+      if (input.status === 'CANCELLED') {
+        // Somebody who rejoins is registered again, with the same NIN. The
+        // cancelled record keeps its own (item 44).
+        await this.identity.release(tx, memberId, new Date());
+      }
 
       await this.audit.record(
         {
@@ -793,6 +850,137 @@ export class MembershipService {
     });
 
     return updated;
+  }
+
+  // --- The member's NIN and photograph (item 44) ---------------------------
+
+  /**
+   * Records a member's NIN, or replaces it (item 44; PRD Requirement 7.4).
+   *
+   * For any member but a cancelled one: an approved or migrated member has no
+   * draft to amend, which is the other way a NIN is given. Needs
+   * `member.update` over the member. The audit trail records that it changed,
+   * never what it became.
+   */
+  async setNin(
+    actor: ActorContext,
+    memberId: string,
+    input: SetMemberNinInput,
+  ): Promise<MemberNinState> {
+    const member = await this.loadForChange(actor.userId, memberId);
+    this.identity.assertAvailable();
+
+    await this.prisma.$transaction(async (tx) => {
+      const { replaced } = await this.identity.record(tx, memberId, input.nin);
+      await this.audit.record(
+        {
+          action: 'member.nin.record',
+          subjectType: 'member',
+          subjectId: memberId,
+          organisationId: member.organisationId,
+          actorUserId: actor.userId,
+          before: { ninRecorded: replaced },
+          after: { ninRecorded: true },
+          requestId: actor.requestId,
+          ipAddress: actor.ipAddress,
+        },
+        tx,
+      );
+    });
+
+    return this.identity.state(memberId);
+  }
+
+  /**
+   * Takes a member's NIN off their record, with a reason: for one recorded
+   * against the wrong member, which would otherwise keep it from its owner.
+   */
+  async removeNin(
+    actor: ActorContext,
+    memberId: string,
+    input: RemoveMemberNinInput,
+  ): Promise<MemberNinState> {
+    const member = await this.loadForChange(actor.userId, memberId);
+
+    await this.prisma.$transaction(async (tx) => {
+      if (!(await this.identity.remove(tx, memberId))) {
+        throw new ConflictException('No NIN is recorded for this member.');
+      }
+      await this.audit.record(
+        {
+          action: 'member.nin.remove',
+          subjectType: 'member',
+          subjectId: memberId,
+          organisationId: member.organisationId,
+          actorUserId: actor.userId,
+          reason: input.reason,
+          before: { ninRecorded: true },
+          after: { ninRecorded: false },
+          requestId: actor.requestId,
+          ipAddress: actor.ipAddress,
+        },
+        tx,
+      );
+    });
+
+    return { ninRecorded: false, ninLastFour: null };
+  }
+
+  /**
+   * Adds or replaces a member's photograph on their record (item 44): an
+   * approved or migrated member included, whose application, if any, can no
+   * longer be amended.
+   *
+   * The file comes with the request, so an officer who may change a member
+   * but not register one needs no upload permission of the registration's.
+   * A card keeps the photograph it printed (`printedPhotoId`); the one this
+   * replaces is discarded unless a card holds it.
+   */
+  async setPhotograph(
+    actor: ActorContext,
+    memberId: string,
+    bytes: Buffer,
+  ): Promise<MemberPhotograph> {
+    const member = await this.loadForChange(actor.userId, memberId);
+    // The bytes decide what the file is, as for every upload.
+    const stored = await this.media.upload(bytes, 'PASSPORT_PHOTOGRAPH');
+    const previous = member.passportPhotoId;
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.member.update({
+          where: { id: memberId },
+          data: { passportPhotoId: stored.id },
+        });
+        await this.audit.record(
+          {
+            action: 'member.photograph.set',
+            subjectType: 'member',
+            subjectId: memberId,
+            organisationId: member.organisationId,
+            actorUserId: actor.userId,
+            before: { passportPhotoId: previous },
+            after: { passportPhotoId: stored.id },
+            requestId: actor.requestId,
+            ipAddress: actor.ipAddress,
+          },
+          tx,
+        );
+      });
+    } catch (error) {
+      // Not attached, so nothing holds the new file.
+      await this.discardReplaced(stored.id);
+      throw error;
+    }
+
+    if (previous) {
+      await this.discardReplaced(previous);
+    }
+
+    return {
+      passportPhotoId: stored.id,
+      passportPhotoUrl: this.media.signUrl(stored.id).url,
+    };
   }
 
   // --- The print-ready form (PRD §23.16) -----------------------------------
@@ -1086,6 +1274,51 @@ export class MembershipService {
       where: { id: memberId },
       include: { organisation: { select: { path: true, id: true } } },
     });
+  }
+
+  /**
+   * A member about to be changed on their record (item 44). 404 alike for one
+   * that does not exist and one the caller may not read; 403 without
+   * `member.update` over them; 409 once the membership is cancelled, which is
+   * final, and whose NIN is released for a new registration.
+   */
+  private async loadForChange(userId: string, memberId: string) {
+    const member = await this.prisma.member.findUnique({
+      where: { id: memberId },
+      select: {
+        id: true,
+        status: true,
+        organisationId: true,
+        passportPhotoId: true,
+        organisation: { select: { path: true } },
+      },
+    });
+    if (
+      !member ||
+      !(await this.permissions.can(userId, MEMBER_READ, member.organisation.path))
+    ) {
+      throw new NotFoundException();
+    }
+    await this.require(userId, MEMBER_UPDATE, member.organisation.path);
+    if (member.status === 'CANCELLED') {
+      throw new ConflictException('A cancelled membership is not changed.');
+    }
+    return member;
+  }
+
+  /**
+   * Discards a photograph that is no longer attached. `MediaService.discard`
+   * refuses one a card printed, which is history and stays: that refusal is
+   * expected, and anything else is only logged, because the change is made.
+   */
+  private async discardReplaced(assetId: string): Promise<void> {
+    try {
+      await this.media.discard(assetId);
+    } catch (error) {
+      if (!(error instanceof BadRequestException)) {
+        this.logger.warn(`Photograph ${assetId} was not discarded: ${String(error)}`);
+      }
+    }
   }
 
   private async loadOrganisation(id: string) {

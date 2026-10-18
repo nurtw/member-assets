@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MEMBER_LIST_MAXIMUM,
+  applicantSchema,
   guarantorSchema,
   listMembersQuerySchema,
   nextOfKinSchema,
+  ninSchema,
+  removeMemberNinSchema,
+  setMemberNinSchema,
 } from './membership.js';
 
 describe('what the members list may be asked', () => {
@@ -109,5 +113,63 @@ describe('what the registration form asks for since revision 1.14', () => {
     });
     expect(parsed).not.toHaveProperty('relationshipToApplicant');
     expect(parsed).not.toHaveProperty('hasCollateral');
+  });
+});
+
+describe('a NIN (item 44)', () => {
+  const applicant = {
+    surname: 'Okeke',
+    firstName: 'Chidi',
+    residentialAddress: '14 Zik Avenue, Awka',
+    phone: '0803 123 4567',
+  };
+
+  it('is eleven digits, with spaces and dashes taken out', () => {
+    expect(ninSchema.parse('12345678901')).toBe('12345678901');
+    expect(ninSchema.parse(' 123 4567 8901 ')).toBe('12345678901');
+    expect(ninSchema.parse('123-4567-8901')).toBe('12345678901');
+  });
+
+  it('anything else is refused, with the reason', () => {
+    for (const wrong of [
+      '1234567890',
+      '123456789012',
+      '1234567890O',
+      '',
+      '   ',
+    ]) {
+      const result = ninSchema.safeParse(wrong);
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toBe('A NIN is eleven digits.');
+    }
+  });
+
+  it('is optional at registration while MEM-19 is open', () => {
+    expect(applicantSchema.parse(applicant)).not.toHaveProperty('nin');
+    expect(
+      applicantSchema.parse({ ...applicant, nin: '123 4567 8901' }).nin,
+    ).toBe('12345678901');
+    expect(
+      applicantSchema.safeParse({ ...applicant, nin: '12345' }).success,
+    ).toBe(false);
+  });
+
+  it('is required when it is the thing being recorded', () => {
+    expect(setMemberNinSchema.safeParse({}).success).toBe(false);
+    expect(setMemberNinSchema.parse({ nin: '12345678901' })).toEqual({
+      nin: '12345678901',
+    });
+  });
+
+  it('is taken off a record only with a reason', () => {
+    expect(removeMemberNinSchema.safeParse({}).success).toBe(false);
+    expect(removeMemberNinSchema.safeParse({ reason: 'no' }).success).toBe(
+      false,
+    );
+    expect(
+      removeMemberNinSchema.parse({ reason: ' Recorded on the wrong member ' }),
+    ).toEqual({
+      reason: 'Recorded on the wrong member',
+    });
   });
 });

@@ -11,6 +11,10 @@ import { explained } from "@/components/api-access";
 import { DedicatedAccountPanel } from "@/components/dedicated-account-panel";
 import { MemberDuesPanel } from "@/components/dues-panel";
 import {
+  MemberNinSection,
+  MemberPhotographSection,
+} from "@/components/member-identity";
+import {
   MemberCardPanel,
   MemberVehiclesPanel,
   memberVehiclesKey,
@@ -151,6 +155,8 @@ export default function MemberRecordPage() {
     .join(" ");
   const application = member.application;
   const sensitive = member.sensitive;
+  // A cancelled membership is final: its NIN and photograph stay as they are.
+  const canChange = holds("member.update") && member.status !== "CANCELLED";
 
   /** Does a confirmed change. A failure is thrown, and shown in its dialog. */
   async function change(which: Change, reason: string) {
@@ -266,6 +272,18 @@ export default function MemberRecordPage() {
               ) : null}
             </DetailList>
           </Section>
+
+          <MemberPhotographSection
+            member={member}
+            canChange={canChange}
+            onChanged={() => mutate()}
+          />
+
+          <MemberNinSection
+            member={member}
+            canChange={canChange}
+            onChanged={() => mutate()}
+          />
 
           {sensitive ? (
             <>

@@ -98,6 +98,20 @@ const stateOfOrigin = z.string().trim().min(2).max(60).optional();
  */
 const signedOn = z.iso.date().optional();
 
+/**
+ * A National Identification Number (item 44; `QUESTIONS.md` PAY-22, MEM-19; PRD
+ * Requirement 7.4). Eleven digits, the national format. Spaces and dashes typed
+ * between the digits are taken out, and nothing else is changed.
+ *
+ * Write-only: no response carries a NIN, only whether one is recorded and its
+ * last four digits. Whether one is required is MEM-19, still open, so the
+ * registration schemas take it as optional.
+ */
+export const ninSchema = z
+  .string()
+  .transform((value) => value.replace(/[\s-]/g, ''))
+  .pipe(z.string().regex(/^\d{11}$/, 'A NIN is eleven digits.'));
+
 // --- Section A — Personal ----------------------------------------------------
 
 export const applicantSchema = z.object({
@@ -119,6 +133,12 @@ export const applicantSchema = z.object({
 
   /** A3.1 */
   phone,
+
+  /**
+   * Not on the paper form (item 44). Optional until MEM-19 says otherwise. On
+   * an amendment it replaces the one recorded; left out, it changes nothing.
+   */
+  nin: ninSchema.optional(),
 
   /** A4.2 — see MEM-09 */
   signedOn,
@@ -291,6 +311,21 @@ export const setMemberStatusSchema = z.object({
 
 export type SetMemberStatusInput = z.infer<typeof setMemberStatusSchema>;
 
+/** Recording, or replacing, a member's NIN on their record (item 44). */
+export const setMemberNinSchema = z.object({ nin: ninSchema });
+
+export type SetMemberNinInput = z.infer<typeof setMemberNinSchema>;
+
+/**
+ * Taking a member's NIN off their record (item 44). For one recorded against
+ * the wrong member, which would otherwise keep it from the member it is.
+ */
+export const removeMemberNinSchema = z.object({
+  reason: z.string().trim().min(4, 'A reason is required.').max(1000),
+});
+
+export type RemoveMemberNinInput = z.infer<typeof removeMemberNinSchema>;
+
 /** The most members one request may list. A picker asks for far fewer. */
 export const MEMBER_LIST_MAXIMUM = 200;
 
@@ -369,6 +404,12 @@ export interface ApplicationDetail extends ApplicationSummary {
    */
   passportPhotoUrl: string | null;
   signatureId: string | null;
+  /**
+   * Whether a NIN is recorded, and its last four digits (item 44), for a reader
+   * who is already shown the telephone and the address. Never the NIN.
+   */
+  ninRecorded: boolean;
+  ninLastFour: string | null;
 }
 
 /**
@@ -434,6 +475,8 @@ export interface MemberRecordSensitive {
   } | null;
   nextOfKin: RegistrationNextOfKin | null;
   guarantor: RegistrationGuarantor | null;
+  /** The last four digits of the NIN recorded, if one is (item 44). Never the NIN. */
+  ninLastFour: string | null;
 }
 
 /**
@@ -448,10 +491,39 @@ export interface MemberRecordSensitive {
  */
 export interface MemberRecord extends MemberSearchResult {
   designation: { id: string; code: string; label: string } | null;
+  /**
+   * Whether a NIN is recorded (item 44), told to everybody who may open the
+   * member, so an officer who may record one knows whether to. Which one it is,
+   * by its last four digits, is in `sensitive`. The NIN itself is never sent.
+   */
+  ninRecorded: boolean;
+  passportPhotoId: string | null;
+  /**
+   * A signed link to the photograph, good for a few minutes (item 44), as on an
+   * application's detail. For showing it here; never stored, never in a list.
+   */
+  passportPhotoUrl: string | null;
   application?: {
     id: string;
     applicationNumber: string;
     status: string;
   } | null;
   sensitive?: MemberRecordSensitive;
+}
+
+/** What recording or removing a NIN answers (item 44). Never the NIN. */
+export interface MemberNinState {
+  ninRecorded: boolean;
+  ninLastFour: string | null;
+}
+
+/**
+ * What adding or replacing a member's photograph on their record answers
+ * (item 44). The photograph is sent to `POST /members/:id/photograph` itself,
+ * as a file: an approved or migrated member has no draft to attach one to.
+ */
+export interface MemberPhotograph {
+  passportPhotoId: string;
+  /** Good for a few minutes. */
+  passportPhotoUrl: string;
 }
