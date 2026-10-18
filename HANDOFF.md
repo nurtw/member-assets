@@ -17,11 +17,10 @@ Three rules outrank every default:
 
 - **Onboarding begins 19 October 2026.** Item 44 (NIN and photograph) is live:
   migrated to Neon and pushed.
-- **Item 53 (onboarding day, PRD 1.17) is done and clicked through:** free
-  stickers (VEH-37), the Union's designations (ORG-06), and the go-live date
-  (GOV-11). Release on Neon: migration `20261018120000_union_designations`,
-  then the push, then the date (`OPERATIONS.md`, "Setting the go-live date")
-  and both sticker fees at ₦0 on the Fees screen.
+- **Item 53 (onboarding day, PRD 1.17) is live:** free stickers (VEH-37), the
+  Union's designations (ORG-06), and go-live on 19 October (GOV-11). On Neon:
+  migration `20261018120000_union_designations`, `dues.go_live_date`, and both
+  sticker fees at ₦0 (with history and audit), all 18 October.
 - Items 50 and 51 (the park plan's accounts and card) wait on PAY-27's
   Paystack test, GOV-08, and CARD-09. Item 45 is next after them.
 
@@ -44,10 +43,11 @@ Tests: domain 522, contracts 149, api 199, web 84; e2e 529 of 529.
 
 ## Next steps
 
-1. Release item 53 on Neon as above, once the owner says so.
-2. Owner, before onboarding: `IDENTITY_ENCRYPTION_KEY` on Render; officer
-   accounts and roles; scan stickers into stock; try a phone's camera on the
-   live site; one real payment (the yearly fee) to prove Paystack.
+1. Owner, before onboarding (a checklist was given as a page):
+   `IDENTITY_ENCRYPTION_KEY` on Render; officer accounts; a role holding
+   `sticker.attach`, which no system role has; stock; a phone's camera; the
+   first real payment; one dedicated account (PAY-27's test).
+2. Then items 50 and 51, or 45, by the owner's choice.
 
 ## Do NOT
 
