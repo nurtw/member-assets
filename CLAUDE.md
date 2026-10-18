@@ -750,6 +750,10 @@ Item 44 adds `member_identity_one_held_per_nin` (`WHERE released_at IS NULL`, mi
 `20261018090000_member_identity`): one NIN held by one record at a time, while a cancelled
 membership keeps its own. Preserve it as well.
 
+Item 45 adds `sms_message_one_per_source` (`WHERE resend_of_id IS NULL AND source_id IS NOT
+NULL`, migration `20261018150000_sms_messages`): one payment confirmation per payment or
+transfer, so a replayed webhook texts nobody twice. Preserve it too.
+
 ### Vehicle owners, route types, and fee prices (revision 1.3)
 
 - **Owner details live in `vehicle_owner`, never on `vehicle`** (Decision 10.1.1). Phone and

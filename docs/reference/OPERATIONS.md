@@ -144,6 +144,10 @@ Item 31 adds `pay_link_one_live_per_subject` (`WHERE revoked_at IS NULL`). Witho
 vehicle or member could hold two working pay links, and replacing one would leave the
 other in use.
 
+Item 45 adds `sms_message_one_per_source` (`WHERE resend_of_id IS NULL AND source_id IS NOT
+NULL`). Without it, a replayed Paystack webhook would text a member a second confirmation
+for one payment.
+
 ### Destructive commands
 
 `prisma migrate reset` **drops every table and all data**. It is gated behind an
