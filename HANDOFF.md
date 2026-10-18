@@ -39,7 +39,8 @@ Tests: domain 522, contracts 149, api 199, web 84; e2e 529 of 529.
 
 - Under load, e2e and the PDF and password tests time out: rerun.
 - `GET /payments/banks` answers 500 when Paystack is unreachable (item 15).
-- Never tried for real: Paystack, a phone's camera, the site as deployed.
+- Paystack live works (18 October): a ₦511 test split ₦500 to NURTW.
+  Never tried: a payment through the live API, a phone's camera.
 
 ## Next steps
 
