@@ -15,14 +15,11 @@ Three rules outrank every default:
 
 ## Status
 
-- **Onboarding began 19 October 2026.** Items 44, 53, and 45 are live. SMS stays
-  off until Termii is set up (`OPERATIONS.md`, "Text messages to members").
-- **The Union's pattern and motion** (`DESIGN.md` §13) are pushed, with their
-  contrast fixes.
-- **Item 54, the public docs page** (`plans/54-public-api-docs.md`), is
-  pushed (19 October). `/docs` for anyone; the whole route map only for a
-  holder of `docs.read_internal`. `db:seed` has run on Neon (19 October): the
-  super administrator holds it, and no other role does.
+- **Onboarding began 19 October 2026.** Items 44, 53, 45, and 54 are live. SMS
+  stays off until Termii is set up (`OPERATIONS.md`, "Text messages to members").
+- **The API also runs on DigitalOcean**: App Platform app `member-assets`
+  (doctl context `nurtw`, region `fra`), healthy at
+  `https://member-assets-aa8oq.ondigitalocean.app`. Render still serves the web.
 
 Tests: domain 540, contracts 155, api 199, web 100; e2e 554 of 554.
 
@@ -30,7 +27,7 @@ Tests: domain 540, contracts 155, api 199, web 100; e2e 554 of 554.
 
 - **Go-live was set before its gates** (PRD §23.27): item 15, CARD-05, CARD-07,
   GOV-18, and GOV-08 are open. The owner's call, recorded.
-- **The live API sleeps on Render** (GOV-02).
+- **Two APIs share Neon** until Render is suspended; both run the background jobs.
 - Items 46 to 52 change the PRD; MEM-19, CARD-09, and CARD-10 block some.
 
 ## Known issues — don't re-attempt these fixes
@@ -38,14 +35,18 @@ Tests: domain 540, contracts 155, api 199, web 100; e2e 554 of 554.
 - Under load, e2e and the PDF and password tests time out: rerun.
 - Run e2e with the local `DATABASE_URL` exported: `.env` points at Neon.
 - A click-through web build needs `NEXT_PUBLIC_API_BASE_URL` with `/api/v1`.
-- Never tried: a payment through the live API, a phone's camera, real Termii.
 
 ## Next steps
 
-1. Owner: open `/docs` signed out, then as the super administrator.
-2. Owner: Termii's sender name and DND route, its keys on Render, then a test.
-3. Item 46 needs the owner's go-ahead and a PRD revision. Items 50 and 51 wait
-   on PAY-27's test, GOV-08, and CARD-09.
+1. Owner: copy `MFA_ENCRYPTION_KEY`, `MEDIA_URL_SIGNING_SECRET`, and the sticker
+   signing pair from Render; check `IDENTITY_ENCRYPTION_KEY` matches; encrypt
+   the variables.
+2. Owner, to cut over: Vercel's `NEXT_PUBLIC_API_BASE_URL` to the new address
+   with `/api/v1`, then redeploy the web; Paystack's webhook to
+   `/api/v1/payments/webhook`; suspend Render. Then update `OPERATIONS.md` §2 and
+   `CLAUDE.md`'s stack table.
+3. Owner: open `/docs` signed out, then as the super administrator.
+4. Termii's keys go on DigitalOcean. Item 46 needs a go-ahead and a PRD revision.
 
 ## Do NOT
 
@@ -55,3 +56,5 @@ Tests: domain 540, contracts 155, api 199, web 100; e2e 554 of 554.
 - Treat stickers as free in code: a ₦0 fee is the only switch (VEH-37).
 - Return a NIN whole, or change `IDENTITY_ENCRYPTION_KEY` once NINs exist.
 - Add an SMS placeholder for anything sensitive, or store a whole number.
+- Let App Platform add a Functions component for `packages/`, or set `NODE_ENV`
+  at build time.
