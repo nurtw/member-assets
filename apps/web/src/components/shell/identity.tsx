@@ -268,7 +268,7 @@ export function UnionLoader({
   const scene = (
     <div
       aria-hidden
-      className={cn("relative", compact ? "size-24" : "size-40")}
+      className={cn("relative", compact ? "size-24" : "size-52")}
     >
       <div className="absolute inset-[16%] rounded-full bg-glow blur-xl" />
       <svg
@@ -385,7 +385,7 @@ export function UnionRule({ className }: { className?: string }) {
  */
 export function CardBands() {
   const band =
-    "pointer-events-none fixed inset-y-0 z-0 hidden w-9 items-center justify-center overflow-hidden bg-nurtw-green lg:flex";
+    "pointer-events-none fixed inset-y-0 z-0 hidden w-9 items-center justify-center overflow-hidden bg-nurtw-green-deep lg:flex";
   const words =
     "relative rotate-180 text-[11px] font-semibold uppercase tracking-[0.45em] text-on-solid [writing-mode:vertical-rl]";
   return (
@@ -419,7 +419,7 @@ export function PublicBackdrop({ id }: { id: string }) {
       <RouteNetwork
         id={id}
         grid={false}
-        className="fade-corner absolute inset-0 size-full"
+        className="fade-corner absolute inset-0 size-full opacity-60"
       />
     </div>
   );

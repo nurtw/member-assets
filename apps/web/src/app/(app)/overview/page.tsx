@@ -43,7 +43,8 @@ const tileClass =
 /** The first tile is the filled one (DESIGN.md §11). */
 function tileTone(primary: boolean): string {
   return primary
-    ? "border-primary bg-primary text-on-solid hover:bg-primary-hover"
+    ? // The deeper green, so its words keep AA over the lattice.
+      "border-nurtw-green-deep bg-nurtw-green-deep text-on-solid hover:border-primary"
     : "border-line bg-surface hover:border-line-strong";
 }
 

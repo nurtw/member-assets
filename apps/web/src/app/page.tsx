@@ -58,7 +58,8 @@ function WayIn({
       className={cn(
         "group relative flex items-center gap-4 overflow-hidden rounded-2xl border p-4 shadow-card transition-[transform,box-shadow,background-color,border-color] duration-200 hover:-translate-y-0.5 hover:shadow-lift sm:flex-col sm:items-start sm:p-5",
         primary
-          ? "border-primary bg-primary text-on-solid hover:bg-primary-hover"
+          ? // The deeper green, so its words keep AA over the lattice.
+            "border-nurtw-green-deep bg-nurtw-green-deep text-on-solid hover:border-primary"
           : "border-line bg-surface/85 backdrop-blur hover:border-line-strong",
       )}
     >

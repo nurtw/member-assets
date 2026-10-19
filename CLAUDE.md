@@ -1257,6 +1257,21 @@ dialogs, menus, and the sheet from their own files). See `DESIGN.md` §8–§9 a
 - **The theme script** in `app/layout.tsx` runs before the first paint. If item 15 adds a
   content security policy, allow it by its hash.
 - **The web has unit tests** for its pure modules: `pnpm --filter web test`.
+- **Pattern and motion are the road network** (`DESIGN.md` §13, the owner's direction of
+  18 October 2026): `components/shell/identity.tsx`, its geometry in
+  `lib/route-network.ts`, and its inks, patterns (`pattern-diamond`, `pattern-chevron`,
+  `pattern-dots`), and keyframes in `globals.css`.
+  - Decoration only: `aria-hidden`, no pointer, nothing from a record, and never behind a
+    verdict, a list, or a form.
+  - Colour it with the pattern inks, never a raw colour. A green panel takes
+    `ink-on-solid`.
+  - Fade a pattern from a wrapper (`fade-*`): a fade on the same element replaces the
+    tile's mask.
+  - SVG's own motion ignores the reduced-motion rule, so hide it there by class, as
+    `.net-vehicle` is.
+  - Keep the working screens quiet: nothing moves continuously beside what an officer
+    reads.
+  - The loading screen is `UnionLoader`.
 
 ### Clicking through the app
 
