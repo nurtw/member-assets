@@ -21,8 +21,8 @@ Three rules outrank every default:
   the contrast fixes (`603707c`) are committed, not pushed.
 - **Item 54, the public docs page** (`plans/54-public-api-docs.md`), is
   committed, not pushed. `/docs` for anyone; the whole route map only for a
-  holder of `docs.read_internal`. **Its release needs `db:seed` on Neon once,
-  after the deploy**, or nobody holds the permission.
+  holder of `docs.read_internal`. `db:seed` has run on Neon (19 October): the
+  super administrator holds it, and no other role does.
 
 Tests: domain 540, contracts 155, api 199, web 100; e2e 554 of 554.
 
@@ -42,7 +42,7 @@ Tests: domain 540, contracts 155, api 199, web 100; e2e 554 of 554.
 
 ## Next steps
 
-1. Owner: push, then `db:seed` on Neon for item 54.
+1. Owner: push `603707c` and `e80eea1` (the session could not).
 2. Owner: Termii's sender name and DND route, its keys on Render, then a test.
 3. Item 46 needs the owner's go-ahead and a PRD revision. Items 50 and 51 wait
    on PAY-27's test, GOV-08, and CARD-09.
