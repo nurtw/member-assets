@@ -41,5 +41,5 @@ Changing any limit's value, or how an address is stored or shown.
 - [x] A browser cannot supply either forwarding header.
 - [x] Unit, e2e, and web tests pass (api 208, web 106, e2e 559 of 559); clicked through on
       the local stack, through a website with the secret, one without, and directly.
-- [ ] After the deploy, the live log shows this machine's address, directly and through
-      the website.
+- [x] After the deploy, the live log shows this machine's address, directly and through
+      the website, and neither a Cloudflare address nor a forged one (19 October).

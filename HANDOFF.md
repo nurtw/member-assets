@@ -19,9 +19,9 @@ Three rules outrank every default:
   is off until Termii is set up.
 - **The API runs on DigitalOcean only** (GOV-02; `OPERATIONS.md` §2 and §7). The
   owner deleted Render on 19 October; the keep-warm job is gone.
-- **Item 55, the caller's address** (`plans/55-caller-address.md`), is built and
-  committed, not pushed. Until then, every caller is recorded at a Cloudflare
-  address, so per-address limits are shared.
+- **Item 55, the caller's address** (`plans/55-caller-address.md`), is live
+  (19 October): `EDGE_PROXY` and `WEB_FORWARDING_SECRET` are set on DigitalOcean,
+  the secret on Vercel. The live log shows real addresses.
 - The sticker key is `k2`. The 9 unattached signed stickers from September
   (`k1`) no longer verify.
 
@@ -41,10 +41,8 @@ Tests: domain 540, contracts 155, api 208, web 106; e2e 559 of 559.
 
 ## Next steps
 
-1. Owner: approve the push. Then `EDGE_PROXY=cloudflare` and one
-   `WEB_FORWARDING_SECRET` on DigitalOcean, the same secret on Vercel, and a web
-   redeploy, then the live log.
-2. Owner: encrypt DigitalOcean's variables. Termii: its keys there, then a test.
+1. Owner: encrypt DigitalOcean's variables.
+2. Termii: its keys on DigitalOcean, then a test.
 3. Item 46 needs a go-ahead and a PRD revision.
 
 ## Do NOT
