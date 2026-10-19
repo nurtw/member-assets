@@ -209,7 +209,53 @@ const ERROR_SCHEMA = {
 export interface OpenApiOptions {
   version: string;
   serverUrl: string;
+  /**
+   * Who the document is for (item 54). `internal`, the default, describes
+   * every route and what it requires. `integration` is for an approved outside
+   * organisation, on the public docs page: give it only the routes that name a
+   * scope (`integrationRoutes`), and it describes only the API token.
+   */
+  audience?: 'internal' | 'integration';
 }
+
+/**
+ * The routes an outside organisation calls: those that name a scope. Nothing
+ * else reaches the public document, so it cannot describe an officer's route.
+ */
+export function integrationRoutes(
+  routes: readonly DiscoveredRoute[],
+): DiscoveredRoute[] {
+  return routes.filter((route) => route.scope !== null);
+}
+
+const INTERNAL_DESCRIPTION =
+  'Internal administration API for the National Union of Road Transport Workers, ' +
+  'Anambra State Council.\n\n' +
+  'A verification enquiry answered by this system confirms only that a matching ' +
+  'NURTW record exists under the requested criteria. It is not evidence of ' +
+  'ownership, roadworthiness, licensing, or insurance, and no response should be ' +
+  'presented as such.\n\n' +
+  'This document is generated from the running application: the route list is read ' +
+  'from the dependency-injection container and request bodies from the same schemas ' +
+  'the API validates against. It cannot describe a route that does not exist.';
+
+const INTEGRATION_DESCRIPTION =
+  'The verification API of the National Union of Road Transport Workers, Anambra ' +
+  'State Council, for organisations the Union has approved.\n\n' +
+  'A match confirms only that a matching NURTW record exists under the requested ' +
+  'criteria. It is not evidence of ownership, roadworthiness, licensing, or ' +
+  'insurance, and no response should be presented as such.\n\n' +
+  'Generated from the running application, so it describes the routes as they are.';
+
+const API_TOKEN_SCHEME = {
+  type: 'http',
+  scheme: 'bearer',
+  description:
+    'An API token issued to an approved external organisation, sent as ' +
+    '`Authorization: Bearer <token>` and nowhere else. It authenticates only the ' +
+    'routes that name a scope. It is shown once, when issued or rotated, and ' +
+    'expires after 90 days.',
+};
 
 /**
  * Builds an OpenAPI 3.1 document from the discovered routes.
@@ -332,21 +378,30 @@ export function buildOpenApiDocument(
     };
   }
 
+  if (options.audience === 'integration') {
+    return {
+      openapi: '3.1.0',
+      info: {
+        title: 'NURTW Verification API',
+        version: options.version,
+        description: INTEGRATION_DESCRIPTION,
+      },
+      servers: [{ url: options.serverUrl }],
+      components: {
+        securitySchemes: { apiToken: API_TOKEN_SCHEME },
+        schemas: { Error: ERROR_SCHEMA },
+      },
+      security: [{ apiToken: [] }],
+      paths,
+    };
+  }
+
   return {
     openapi: '3.1.0',
     info: {
       title: 'NURTW Membership and Vehicle Verification System',
       version: options.version,
-      description:
-        'Internal administration API for the National Union of Road Transport Workers, ' +
-        'Anambra State Council.\n\n' +
-        'A verification enquiry answered by this system confirms only that a matching ' +
-        'NURTW record exists under the requested criteria. It is not evidence of ' +
-        'ownership, roadworthiness, licensing, or insurance, and no response should be ' +
-        'presented as such.\n\n' +
-        'This document is generated from the running application: the route list is read ' +
-        'from the dependency-injection container and request bodies from the same schemas ' +
-        'the API validates against. It cannot describe a route that does not exist.',
+      description: INTERNAL_DESCRIPTION,
     },
     servers: [{ url: options.serverUrl }],
     components: {
@@ -367,15 +422,7 @@ export function buildOpenApiDocument(
             "An outside organisation's own portal session, issued by POST /portal/login. It " +
             'reaches the portal routes and nothing else, and satisfies no permission.',
         },
-        apiToken: {
-          type: 'http',
-          scheme: 'bearer',
-          description:
-            'An API token issued to an approved external organisation, sent as ' +
-            '`Authorization: Bearer <token>` and nowhere else. It authenticates only the ' +
-            'routes that name a scope. It is shown once, when issued or rotated, and ' +
-            'expires after 90 days.',
-        },
+        apiToken: API_TOKEN_SCHEME,
       },
       schemas: { Error: ERROR_SCHEMA },
     },

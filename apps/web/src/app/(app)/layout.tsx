@@ -1,6 +1,15 @@
 "use client";
 
-import { Bus, FilePlus2, LogOut, Monitor, Moon, Sun, UserRound } from "lucide-react";
+import {
+  BookOpen,
+  Bus,
+  FilePlus2,
+  LogOut,
+  Monitor,
+  Moon,
+  Sun,
+  UserRound,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
@@ -93,6 +102,16 @@ function Shell({ children }: { children: ReactNode }) {
       icon: Bus,
       keywords: ["plate", "vehicle", "record"],
       run: () => router.push("/vehicles/new"),
+    });
+  }
+  // Item 54 — the docs page, where its holder also sees the whole map.
+  if (holds("docs.read_internal")) {
+    actions.push({
+      id: "api-docs",
+      label: "API documentation",
+      icon: BookOpen,
+      keywords: ["api", "openapi", "reference", "routes", "integration"],
+      run: () => router.push("/docs"),
     });
   }
   actions.push(

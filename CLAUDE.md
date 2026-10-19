@@ -346,7 +346,8 @@ every route added without thought would become a hole nobody notices until an au
 
 - `@RequirePermission('vehicle.declare')` — names a *permission*, never a role.
 - `@Public()` — health, login, logout, the signed media link, the Paystack webhook, the
-  pay page's two routes (item 31), and an invitation's page (item 33).
+  pay page's two routes (item 31), an invitation's page (item 33), Termii's delivery
+  reports (item 45), and the integration reference (item 54).
   `test/openapi.e2e-spec.ts` pins the list. The QR verification page (PRD §23.13) is not
   built yet.
 - `@SignedIn()` — any session, no permission: the officer's own account only (item 28).
@@ -908,6 +909,26 @@ English first (GOV-22). Off until an administrator switches it on (`sms.enabled`
   /notifications/sms/delivery` is public and checks the signature first.
 - **Tests** replace `TermiiClient.send`, and decide the switch by spying on
   `SettingsService.isEnabled`, as `sms.e2e-spec.ts` does.
+
+### The public docs page (item 54)
+
+The owner's direction of 19 October 2026: "create the public docs page, only display
+sensitive information when superadmin is signed in". `/docs` on the web, for anyone.
+
+- **The sensitive part is the whole map of routes**, every route and the permission it
+  needs: `GET /docs/openapi.json`, under `docs.read_internal`. That permission is a
+  permission, never a role check. It is grant-only and needs the second factor once that
+  is on: the super administrator holds it, and gives it to whom they choose.
+- **`GET /docs/integration.json` is public**: the same generator over `integrationRoutes`,
+  the routes that name a scope, with only the API-token scheme. Never widen that filter.
+  `openapi.e2e-spec.ts` pins its seven routes and that it names no permission.
+- **The page's code holds nothing sensitive.** Its words are what `API.md` §10 to §12
+  already give integrators. The map is fetched only when `/auth/me` shows the permission,
+  and the API checks it again. Never write an internal route, a threshold, or anything
+  from `OPERATIONS.md` into the page itself: a hidden section is still in the bundle.
+- **A visitor's browser asks nothing it would be refused.** The page asks `/auth/me` only
+  when the session cookie is present, as the front page reads it.
+- The page's reading of a document is `lib/api-docs.ts`, with tests.
 
 ### The vehicle letter (item 18)
 

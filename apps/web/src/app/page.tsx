@@ -189,11 +189,20 @@ export default async function FrontPage() {
       </main>
 
       <footer className="shrink-0">
-        <p className="mx-auto max-w-6xl px-4 pb-4 text-xs text-faint-foreground sm:px-8">
-          There is no public list of members or vehicles here. A verification
-          confirms only that a matching NURTW record exists; it is not evidence
-          of ownership, roadworthiness, licensing, or insurance.
-        </p>
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 pb-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6 sm:px-8">
+          <p className="text-xs text-faint-foreground">
+            There is no public list of members or vehicles here. A verification
+            confirms only that a matching NURTW record exists; it is not
+            evidence of ownership, roadworthiness, licensing, or insurance.
+          </p>
+          <Link
+            href="/docs"
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-link hover:underline"
+          >
+            API documentation
+            <ArrowRight className="size-3.5" aria-hidden />
+          </Link>
+        </div>
         <RoadStrip />
       </footer>
     </div>

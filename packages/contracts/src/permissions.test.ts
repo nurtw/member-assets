@@ -5,6 +5,7 @@ import {
   DECLARE_PERMISSION,
   PERMISSIONS,
   PERMISSION_CODES,
+  READ_INTERNAL_DOCS_PERMISSION,
   RECORD_VEHICLE_PERMISSION,
   STOCK_INTAKE_PERMISSION,
   SYSTEM_ROLES,
@@ -137,6 +138,23 @@ describe('sticker.stock_intake containment', () => {
   it('appears in the super administrator bundle and no other', () => {
     const holders = SYSTEM_ROLES.filter((role) =>
       (role.permissions as readonly string[]).includes(STOCK_INTAKE_PERMISSION),
+    ).map((role) => role.code);
+
+    expect(holders).toEqual(['SUPER_ADMINISTRATOR']);
+  });
+});
+
+describe('docs.read_internal containment', () => {
+  /**
+   * Item 54 — the owner's direction of 19 October 2026: the full API reference
+   * is shown only to the super administrator. It reaches anyone else only by an
+   * express grant.
+   */
+  it('appears in the super administrator bundle and no other', () => {
+    const holders = SYSTEM_ROLES.filter((role) =>
+      (role.permissions as readonly string[]).includes(
+        READ_INTERNAL_DOCS_PERMISSION,
+      ),
     ).map((role) => role.code);
 
     expect(holders).toEqual(['SUPER_ADMINISTRATOR']);

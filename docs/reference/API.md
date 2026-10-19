@@ -2,7 +2,7 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Last revised:** 3 October 2026 · **API version:** v1
+**Last revised:** 19 October 2026 · **API version:** v1
 
 ---
 
@@ -25,8 +25,17 @@ Regenerate after any routing change:
 pnpm --filter api docs:openapi
 ```
 
-Authenticated users may also fetch the current document from a running instance at
-`GET /api/v1/docs/openapi.json`.
+A running instance serves it in two parts (item 54, the owner's direction of 19 October
+2026):
+
+- **`GET /api/v1/docs/integration.json` is public.** It describes the routes an approved
+  outside organisation calls, those that name a scope, and nothing else. The public docs
+  page, `/docs` on the web application, is built on it, and says in words what §10 to §12
+  say here.
+- **`GET /api/v1/docs/openapi.json` needs `docs.read_internal`.** It maps every route and the
+  permission it needs, which is what someone probing the API would otherwise have to learn.
+  The permission is in no role: the super administrator holds it, and grants it to whom they
+  choose. `/docs` adds this map, with a search and a download, for a holder.
 
 ---
 

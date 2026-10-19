@@ -15,15 +15,16 @@ Three rules outrank every default:
 
 ## Status
 
-- **Onboarding begins 19 October 2026.** Items 44, 53, and 45 are live on Neon
-  and pushed. SMS stays off until Termii is set up (`OPERATIONS.md`, "Text
-  messages to members").
-- **The interface has the Union's pattern and motion** (`DESIGN.md` §13, the
-  owner's direction of 18 October): the road network, the roundabout emblem,
-  the card's bands, and `UnionLoader`. Web only; clicked through.
-- **ORG-08 is answered:** a park is a unit, with several collectors.
+- **Onboarding began 19 October 2026.** Items 44, 53, and 45 are live. SMS stays
+  off until Termii is set up (`OPERATIONS.md`, "Text messages to members").
+- **The Union's pattern and motion** (`DESIGN.md` §13) are pushed (`f82b053`);
+  the contrast fixes (`603707c`) are committed, not pushed.
+- **Item 54, the public docs page** (`plans/54-public-api-docs.md`), is
+  committed, not pushed. `/docs` for anyone; the whole route map only for a
+  holder of `docs.read_internal`. **Its release needs `db:seed` on Neon once,
+  after the deploy**, or nobody holds the permission.
 
-Tests: domain 540, contracts 154, api 199, web 94; e2e 547 of 547.
+Tests: domain 540, contracts 155, api 199, web 100; e2e 554 of 554.
 
 ## Conflicts
 
@@ -35,23 +36,22 @@ Tests: domain 540, contracts 154, api 199, web 94; e2e 547 of 547.
 ## Known issues — don't re-attempt these fixes
 
 - Under load, e2e and the PDF and password tests time out: rerun.
-- `GET /payments/banks` answers 500 when Paystack is unreachable (item 15).
-- Never tried: a payment through the live API, a phone's camera, real Termii.
+- Run e2e with the local `DATABASE_URL` exported: `.env` points at Neon.
 - A click-through web build needs `NEXT_PUBLIC_API_BASE_URL` with `/api/v1`.
+- Never tried: a payment through the live API, a phone's camera, real Termii.
 
 ## Next steps
 
-1. Owner: Termii's sender name and DND route, its keys on Render, the
-   delivery-report address, a test message, then switch on.
-2. Item 46 (collectors and float) no longer waits on ORG-08; it needs the
-   owner's go-ahead and a PRD revision. Items 50 and 51 wait on PAY-27's test,
-   GOV-08, and CARD-09.
+1. Owner: push, then `db:seed` on Neon for item 54.
+2. Owner: Termii's sender name and DND route, its keys on Render, then a test.
+3. Item 46 needs the owner's go-ahead and a PRD revision. Items 50 and 51 wait
+   on PAY-27's test, GOV-08, and CARD-09.
 
 ## Do NOT
 
 - Edit `apps/api/.env`, write Neon rows, or push without a go-ahead.
+- Write anything internal into the docs page's code (`CLAUDE.md`, item 54).
 - Put pattern or motion behind a verdict, a list, or a form (`DESIGN.md` §13).
 - Treat stickers as free in code: a ₦0 fee is the only switch (VEH-37).
 - Return a NIN whole, or change `IDENTITY_ENCRYPTION_KEY` once NINs exist.
 - Add an SMS placeholder for anything sensitive, or store a whole number.
-- Add, rename, or reorder a designation from code again.

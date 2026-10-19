@@ -240,6 +240,17 @@ export const PERMISSIONS = [
     description: 'Revoke an individual permission from a user',
   },
   { code: 'system_setting.manage', description: 'Amend runtime configuration' },
+  /**
+   * Item 54 — the full API reference on the public docs page: every route and
+   * the permission it needs, which is what an attacker would otherwise have to
+   * learn by probing. In no role; the super administrator holds it, and gives
+   * it to whom they choose (`GRANT_ONLY_PERMISSIONS`).
+   */
+  {
+    code: 'docs.read_internal',
+    description:
+      'Read the full API reference: every route and what it requires',
+  },
 ] as const satisfies readonly PermissionDefinition[];
 
 export type PermissionCode = (typeof PERMISSIONS)[number]['code'];
@@ -271,6 +282,10 @@ export const STOCK_INTAKE_PERMISSION =
 /** PRD Requirement 27.12 / PAY-13 — the settlement-account change permission. */
 export const MANAGE_SETTLEMENT_PERMISSION =
   'payment.manage_settlement' satisfies PermissionCode;
+
+/** Item 54 — the full API reference, beside the public guide on `/docs`. */
+export const READ_INTERNAL_DOCS_PERMISSION =
+  'docs.read_internal' satisfies PermissionCode;
 
 export interface RoleDefinition {
   readonly code: string;

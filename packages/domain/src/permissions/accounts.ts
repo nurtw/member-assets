@@ -32,6 +32,7 @@ export const SECOND_FACTOR_PERMISSIONS: readonly string[] = [
   'payment.manage_settlement',
   'vehicle.declare',
   'sticker.stock_intake',
+  'docs.read_internal',
 ];
 
 export function needsSecondFactor(permission: string): boolean {
@@ -49,6 +50,9 @@ export const GRANT_ONLY_PERMISSIONS: readonly string[] = [
   // PRD Requirement 9A.8 (VEH-29) — whoever adds stickers to stock decides
   // which stickers count, because a legacy barcode proves nothing by itself.
   'sticker.stock_intake',
+  // Item 54 — the full API reference: every route and what it requires. The
+  // owner's direction of 19 October 2026 shows it to the super administrator.
+  'docs.read_internal',
 ];
 
 export function isGrantOnly(permission: string): boolean {

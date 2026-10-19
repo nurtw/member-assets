@@ -10447,10 +10447,26 @@
         }
       }
     },
+    "/api/v1/docs/integration.json": {
+      "get": {
+        "summary": "Retrieve the OpenAPI 3.1 description of the verification API.",
+        "description": "The routes an approved outside organisation calls, each named with the scope it needs, and nothing else. The public docs page is built on it.\n\n**Authentication:** none. This route is deliberately public.",
+        "operationId": "DocsController_integration",
+        "tags": [
+          "Docs"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          }
+        },
+        "security": []
+      }
+    },
     "/api/v1/docs/openapi.json": {
       "get": {
         "summary": "Retrieve the OpenAPI 3.1 description of this API.",
-        "description": "Generated from the running application rather than maintained by hand, so it cannot describe a route that does not exist.\n\n**Permission required:** `organisation.read`.",
+        "description": "Every route, and what it requires. Generated from the running application rather than maintained by hand, so it cannot describe a route that does not exist.\n\n**Permission required:** `docs.read_internal`.",
         "operationId": "DocsController_document",
         "tags": [
           "Docs"
@@ -10514,7 +10530,7 @@
             }
           },
           "403": {
-            "description": "The session does not hold organisation.read in the relevant scope.",
+            "description": "The session does not hold docs.read_internal in the relevant scope.",
             "content": {
               "application/json": {
                 "schema": {

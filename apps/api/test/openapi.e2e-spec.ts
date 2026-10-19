@@ -139,7 +139,12 @@ describe('API reference (e2e)', () => {
     // because the organisation invited has no account yet. It says only whom
     // the form is addressed to and until when, answers every closed link
     // alike, and is limited per address. An invitation confirms nobody.
+    //
+    // The integration reference (item 54) is public because an organisation
+    // reads it before it has a token. It describes only the routes that name a
+    // scope; the whole map of routes needs `docs.read_internal`.
     expect(publicRoutes).toEqual([
+      'GET /api/v1/docs/integration.json',
       'GET /api/v1/health',
       'GET /api/v1/media/:id/content',
       'GET /api/v1/pay/:code',
@@ -297,5 +302,61 @@ describe('API reference (e2e)', () => {
     expect(serialised).not.toMatch(/mfaSecret|mfa_secret/);
     expect(serialised).not.toMatch(/STICKER_SIGNING_SECRET/);
     expect(serialised).not.toMatch(/tokenHash|token_hash/);
+  });
+
+  describe('the integration reference, which anyone may read (item 54)', () => {
+    const integration = () =>
+      openApi.getIntegrationDocument() as {
+        paths: Record<string, Record<string, { security?: unknown[] }>>;
+        components: { securitySchemes: Record<string, unknown> };
+      };
+
+    it('describes the routes an outside organisation calls, and no other', () => {
+      const routes = Object.entries(integration().paths)
+        .flatMap(([path, operations]) =>
+          Object.keys(operations).map(
+            (method) => `${method.toUpperCase()} ${path}`,
+          ),
+        )
+        .sort();
+      const external = openApi
+        .getRoutes()
+        .filter((route) => route.scope !== null)
+        .map(
+          (route) =>
+            `${route.method.toUpperCase()} ${route.path.replace(/:(\w+)/g, '{$1}')}`,
+        )
+        .sort();
+
+      expect(routes).toEqual(external);
+      expect(routes).toEqual([
+        'GET /api/v1/aggregates/vehicles',
+        'GET /api/v1/aggregates/vehicles/total',
+        'GET /api/v1/metadata/organisation',
+        'POST /api/v1/verification/membership',
+        'POST /api/v1/verification/sticker/qr',
+        'POST /api/v1/verification/vehicle/combined',
+        'POST /api/v1/verification/vehicle/plate',
+      ]);
+    });
+
+    it('names no permission, session, or portal, only the API token', () => {
+      const document = integration();
+      const serialised = JSON.stringify(document);
+
+      expect(Object.keys(document.components.securitySchemes)).toEqual([
+        'apiToken',
+      ]);
+      expect(serialised).not.toMatch(/Permission required/);
+      expect(serialised).not.toMatch(/nurtw_session|nurtw_portal_session/);
+      expect(serialised).not.toMatch(/sessionCookie|portalCookie/);
+      for (const operations of Object.values(document.paths)) {
+        for (const operation of Object.values(operations)) {
+          expect(operation.security).toEqual([
+            { apiToken: [expect.any(String)] },
+          ]);
+        }
+      }
+    });
   });
 });

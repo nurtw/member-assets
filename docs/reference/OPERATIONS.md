@@ -210,7 +210,8 @@ are established at go-live hardening. What is fixed already:
 - **A release that adds a permission needs `db:seed` run once after `db:deploy`.** The seed
   is what puts a new permission in the catalogue and in the super administrator's role; it
   is safe to run again. Without it nobody holds the permission, and its screens stay
-  hidden. `sticker.stock_intake` (item 27) is one such.
+  hidden. `sticker.stock_intake` (item 27) is one such, and `docs.read_internal` (item 54)
+  another.
 - The container reads configuration from the environment; no configuration is baked in.
 - Production data resides in an **EU region** (London or Frankfurt), per Decision 10.4.
 
@@ -573,6 +574,20 @@ SELECT created_at, after_value FROM audit_event
 it into dues as they fall, so a member who sends two months' levy at once has the second
 month paid within the hour of it falling due. The order dues are paid in is the
 `payments.dedicated_account.allocation_order` setting, `OLDEST_FIRST` as PAY-12 answered.
+
+### The public docs page
+
+`/docs` on the web application (item 54) tells an outside organisation how to use the
+verification API. Anyone may open it; send an organisation there before it applies.
+
+- **Its routes come from the API** (`GET /api/v1/docs/integration.json`, public): the routes
+  that name a scope, and nothing else. A route that is not external cannot appear on it.
+- **The whole map of routes appears only for a holder of `docs.read_internal`.** The super
+  administrator holds it once `db:seed` has run after the release that added it. To show it
+  to someone else, grant them the permission on Settings → Officers; take it away the same
+  way. Nobody else's browser receives the map.
+- If the routes do not load, the API is asleep or down (GOV-02): the rest of the page still
+  reads.
 
 ### Text messages to members
 

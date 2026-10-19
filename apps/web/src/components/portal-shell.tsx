@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import {
@@ -35,6 +36,13 @@ export function PortalFrame({
           <UnionRule className="mt-3 justify-center" />
         </div>
         {children}
+        <p className="mt-6 text-center text-xs text-faint-foreground">
+          How the verification API works:{" "}
+          <Link href="/docs" className="underline underline-offset-2">
+            the API documentation
+          </Link>
+          .
+        </p>
       </div>
     </main>
   );

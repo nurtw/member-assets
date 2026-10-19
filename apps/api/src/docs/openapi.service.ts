@@ -4,6 +4,7 @@ import { DiscoveryService, MetadataScanner } from '@nestjs/core';
 import {
   buildOpenApiDocument,
   discoverRoutes,
+  integrationRoutes,
   type DiscoveredRoute,
 } from './openapi.builder.js';
 
@@ -20,6 +21,7 @@ export const API_GLOBAL_PREFIX = 'api/v1';
 export class OpenApiService implements OnModuleInit {
   private routes: DiscoveredRoute[] = [];
   private document: Record<string, unknown> = {};
+  private integrationDocument: Record<string, unknown> = {};
 
   constructor(
     private readonly discovery: DiscoveryService,
@@ -32,15 +34,26 @@ export class OpenApiService implements OnModuleInit {
       this.scanner,
       API_GLOBAL_PREFIX,
     );
-    this.document = buildOpenApiDocument(this.routes, {
+    const options = {
       version: process.env.npm_package_version ?? '0.1.0',
       serverUrl:
         process.env.API_PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 3001}`,
-    });
+    };
+    this.document = buildOpenApiDocument(this.routes, options);
+    this.integrationDocument = buildOpenApiDocument(
+      integrationRoutes(this.routes),
+      { ...options, audience: 'integration' },
+    );
   }
 
+  /** Every route and what it requires: for `docs.read_internal` only. */
   getDocument(): Record<string, unknown> {
     return this.document;
+  }
+
+  /** The routes an outside organisation calls, for anyone (item 54). */
+  getIntegrationDocument(): Record<string, unknown> {
+    return this.integrationDocument;
   }
 
   /** Every route as the container exposes it — used by the drift test. */
