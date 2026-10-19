@@ -86,7 +86,7 @@ their content into it.
 | Web | Next.js (App Router) | Internal dashboard + officer verification portal |
 | ORM | Prisma | Schema is the single source of truth; migrations are the audit trail |
 | DB | PostgreSQL (Neon) | Branch-per-preview; legacy export is also Postgres |
-| API hosting | DigitalOcean (the stated target) | Containerized; keep the image cloud-agnostic. **The live API runs on Render today**, on a plan that puts it to sleep when idle (found 7 October 2026; see item 41) |
+| API hosting | DigitalOcean App Platform | Containerized; keep the image cloud-agnostic. **Moved from Render on 19 October 2026** (GOV-02): app `member-assets`, region `fra`. See `OPERATIONS.md` §2 and §7 |
 | Web hosting | Vercel | |
 
 Relevant installed skills: `nestjs-best-practices`, `nextjs`, `prisma-*`, `neon:*`,
@@ -556,9 +556,10 @@ show an officer's sign-in address.
 - **Signing in has a time limit** (`lib/sign-in.ts`), and says so when it runs out. Nothing
   retries by itself. `api.post` takes `timeoutMs` for an act a person is waiting on; do not
   give every request one, or a slow upload would be cut off.
-- **The live API goes to sleep, and the sign-in pages are built for that.** On 7 October
-  2026 its host (Render, by its own response headers; this file's stack table says
-  DigitalOcean) took over two minutes to answer after a quiet spell. So:
+- **The live API used to go to sleep, and the sign-in pages are built for that.** On
+  7 October 2026 its host then (Render) took over two minutes to answer after a quiet
+  spell. DigitalOcean, its host since 19 October, does not sleep, but a deploy or an
+  outage still leaves a gap, so all of this stays:
   - `useApiWake` (`components/api-wake.tsx`) asks the public health check for a sign of
     life as soon as a sign-in page opens. That request is what starts the API.
   - After four seconds without an answer the page says the System is starting up.
@@ -566,7 +567,7 @@ show an officer's sign-in address.
   - A gateway's 502 or 504 reads as "still starting up" (`wasNotThere`), never as a wrong
     password. 503 keeps its own meaning (the second factor's key is missing).
 
-  This explains the wait. It does not shorten it: that is the hosting, and the owner's.
+  This explains a wait. It does not shorten one: that is the hosting, and the owner's.
 - **The order of the two forms is the Union's**, and no longer the paper form's: name,
   address, telephone first (MEM-15); plate, chassis, the other details, route, then branch
   (VEH-33). Do not move a field back to match the printed form.

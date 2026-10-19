@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.25
-**Last revised:** 18 October 2026
+**Document version:** 1.26
+**Last revised:** 19 October 2026
 
 ---
 
@@ -2480,7 +2480,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 | ID | Question | Answer | Recorded at |
 |---|---|---|---|
 | GOV-01 | What limits, quotas, and thresholds apply? | Proposal §14.2 rate limits adopted as launch configuration, adjustable at runtime. Token expiry **90 days** with advance rotation reminders. Aggregate totals below **25** suppressed. | PRD §23.12 |
-| GOV-02 | Where is the System hosted? | API on DigitalOcean (containerised, cloud-agnostic), web on Vercel, database on Neon. **As found on 7 October 2026, the live API runs on Render**, on a plan that puts it to sleep when idle; DigitalOcean remains the stated target. The project owner had this recorded as it is the same day; no hosting was changed. | `CLAUDE.md` stack |
+| GOV-02 | Where is the System hosted? | API on DigitalOcean (containerised, cloud-agnostic), web on Vercel, database on Neon. **As found on 7 October 2026, the live API runs on Render**, on a plan that puts it to sleep when idle; DigitalOcean remains the stated target. The project owner had this recorded as it is the same day; no hosting was changed then. **On 19 October 2026 the owner moved the API to DigitalOcean App Platform** (Frankfurt), which does not sleep, and deleted the Render service. | `CLAUDE.md` stack |
 | GOV-03 | Where does production data reside? | An **EU region** — London or Frankfurt. See GOV-04 for the outstanding lawful-basis question this raises. | Decision 10.4 |
 | GOV-15 | Can totals be fetched without filters? | **Yes** — a distinct permission returns the unfiltered grand total and **rejects any filter parameter outright**, separate from the filtered endpoint subject to the suppression floor. | PRD §13.2 |
 
@@ -2490,6 +2490,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 19 October 2026 (hosting) | **GOV-02**: the project owner moved the live API from Render to DigitalOcean App Platform (Frankfurt) and deleted the Render service. The web stays on Vercel and the database on Neon. The keep-warm job is retired. |
 | 18 October 2026 (evening) | The project owner answered **ORG-08**: a park is a unit, and may have several collectors. Item 46 no longer waits on it. |
 | 18 October 2026 (item 45) | Built: an SMS confirmation for every payment credited to a member, through Termii, off until switched on (PRD revision 1.18, Requirement 27.14). **GOV-22** records it. It waits on the sender name "NURTW" being approved and on Termii's DND route. |
 | 18 October 2026 (for onboarding) | Onboarding begins on 19 October. The project owner answered **ORG-06** (the eight designations are the Union's list, Driver and Conductor first; the `DEMO_` prefix is gone), **GOV-11** (go-live is 19 October 2026, set before every gate was met), and **VEH-37** (new: both sticker fees are ₦0 for now, and a free sticker needs no payment). PRD revision 1.17. Totals: 113 answered, 36 awaiting, 3 deferred. |

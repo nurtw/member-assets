@@ -5,7 +5,7 @@
 ## Cold start
 
 Read `CLAUDE.md`, `PRD.md` (1.18), `ARCHITECTURE.md` (1.12), `DESIGN.md` (1.3),
-`ROADMAP.md` (1.21), and `QUESTIONS.md` (1.25).
+`ROADMAP.md` (1.21), and `QUESTIONS.md` (1.26).
 
 Three rules outrank every default:
 
@@ -16,18 +16,22 @@ Three rules outrank every default:
 ## Status
 
 - **Onboarding began 19 October 2026.** Items 44, 53, 45, and 54 are live. SMS
-  stays off until Termii is set up (`OPERATIONS.md`, "Text messages to members").
-- **The API also runs on DigitalOcean**: App Platform app `member-assets`
-  (doctl context `nurtw`, region `fra`), healthy at
-  `https://member-assets-aa8oq.ondigitalocean.app`. Render still serves the web.
+  stays off until Termii is set up.
+- **The API runs on DigitalOcean only** (GOV-02; `OPERATIONS.md` §2 and §7). The
+  owner deleted Render on 19 October; the keep-warm job is gone.
+- The sticker key is now `k2`. The 9 unattached signed stickers from September
+  (`k1`) no longer verify.
 
 Tests: domain 540, contracts 155, api 199, web 100; e2e 554 of 554.
 
 ## Conflicts
 
 - **Go-live was set before its gates** (PRD §23.27): item 15, CARD-05, CARD-07,
-  GOV-18, and GOV-08 are open. The owner's call, recorded.
-- **Two APIs share Neon** until Render is suspended; both run the background jobs.
+  GOV-18, and GOV-08 are open. The owner's call.
+- **The API sees a Cloudflare address for every caller** on DigitalOcean
+  (`trust proxy` 1, `apps/api/src/main.ts`). Per-address limits (pay page,
+  portal form) are shared by everyone, and audit addresses are wrong. No API
+  client exists, so address ranges refuse nobody yet. Awaiting the owner.
 - Items 46 to 52 change the PRD; MEM-19, CARD-09, and CARD-10 block some.
 
 ## Known issues — don't re-attempt these fixes
@@ -38,15 +42,10 @@ Tests: domain 540, contracts 155, api 199, web 100; e2e 554 of 554.
 
 ## Next steps
 
-1. Owner: copy `MFA_ENCRYPTION_KEY`, `MEDIA_URL_SIGNING_SECRET`, and the sticker
-   signing pair from Render; check `IDENTITY_ENCRYPTION_KEY` matches; encrypt
-   the variables.
-2. Owner, to cut over: Vercel's `NEXT_PUBLIC_API_BASE_URL` to the new address
-   with `/api/v1`, then redeploy the web; Paystack's webhook to
-   `/api/v1/payments/webhook`; suspend Render. Then update `OPERATIONS.md` §2 and
-   `CLAUDE.md`'s stack table.
-3. Owner: open `/docs` signed out, then as the super administrator.
-4. Termii's keys go on DigitalOcean. Item 46 needs a go-ahead and a PRD revision.
+1. Owner: decide the caller-address fix. Meanwhile, raise the pay-page limits.
+2. Owner: Paystack's webhook to the DigitalOcean address; encrypt its variables.
+3. Termii: keys on DigitalOcean, then a test.
+4. Item 46 needs a go-ahead and a PRD revision.
 
 ## Do NOT
 
@@ -56,5 +55,4 @@ Tests: domain 540, contracts 155, api 199, web 100; e2e 554 of 554.
 - Treat stickers as free in code: a ₦0 fee is the only switch (VEH-37).
 - Return a NIN whole, or change `IDENTITY_ENCRYPTION_KEY` once NINs exist.
 - Add an SMS placeholder for anything sensitive, or store a whole number.
-- Let App Platform add a Functions component for `packages/`, or set `NODE_ENV`
-  at build time.
+- Set `NODE_ENV` at build time on DigitalOcean.

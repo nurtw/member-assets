@@ -21,7 +21,7 @@ later roadmap item. They are listed rather than omitted so that the gap is visib
 
 | Component | Runs on | Notes |
 |---|---|---|
-| API (NestJS) | **Render today**; DigitalOcean is the stated target. Containerised | Listens on `PORT`, default 3001. The plan it is on puts it to sleep when idle: see "If signing in is slow" |
+| API (NestJS) | **DigitalOcean App Platform** since 19 October 2026 (Render before). Containerised | Listens on `PORT`, 3001, which the app's HTTP port matches. Does not sleep. App `member-assets`, region `fra`: see §7 |
 | Web (Next.js) | Vercel | Officer dashboard and verification portal |
 | Database | Neon PostgreSQL, EU region | Branch-per-preview |
 
@@ -205,6 +205,16 @@ appear in a log line, an error message, a URL, a QR payload, or a support ticket
 **NOT YET IMPLEMENTED — roadmap item 15.** Provisioning, the release pipeline, and rollback
 are established at go-live hardening. What is fixed already:
 
+- **The API runs on DigitalOcean App Platform** (app `member-assets`, Frankfurt), built
+  from `main` on every push by its Node buildpack: `pnpm install --frozen-lockfile &&
+  pnpm --filter api db:generate && pnpm --filter api... build`, then `pnpm --filter api
+  start:prod`. **The build runs no migration**: apply one with `db:deploy` before the push
+  that needs it.
+- **`NODE_ENV=production` is set for run time only.** At build time it strips the Nest
+  CLI and the build fails (`ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`). Editing the
+  variables in the dashboard reset its scope once: check it after every edit.
+- **The app holds no Functions component.** App Platform offers one on seeing
+  `packages/`; it broke the first deploy.
 - Migrations run with `db:deploy`, never `db:migrate`, against production.
 - Migrations are applied **before** the new image serves traffic.
 - **A release that adds a permission needs `db:seed` run once after `db:deploy`.** The seed
@@ -351,20 +361,14 @@ recorded.** Every one would become unreadable, and none could be matched again.
 
 ### If signing in is slow
 
-**The cause is the API's host putting it to sleep.** On 7 October 2026 the live API, after
-a quiet spell, gave no answer in 90 seconds and then one in 37.6; awake, it answers in
-about a second. Its response headers name Render as the host. The repository has a job
-meant to prevent this (`.github/workflows/keep-api-warm.yml`), which pings the health check
-every ten minutes if the repository variable `API_HEALTH_URL` is set. It was not keeping
-the API awake that day.
+**On Render, the cause was the host putting the API to sleep.** On 7 October 2026 the live
+API, after a quiet spell, gave no answer in 90 seconds and then one in 37.6; awake, it
+answers in about a second. On 19 October 2026 the API moved to DigitalOcean App Platform,
+which does not sleep, and the keep-warm job was removed.
 
-**What ends it** is one of:
-
-- an instance that does not sleep (a paid plan on the host);
-- the keep-warm job working: set `API_HEALTH_URL` to the deployed health check, and
-  confirm in the Actions tab that it runs. GitHub runs scheduled jobs late, and skips them
-  on a quiet repository, so this is the weaker of the two;
-- an outside uptime monitor that requests the health check every five minutes.
+**A slow sign-in now** means a deploy in progress, or the hosting or the connection. Look
+at the app's deployments and its run log (`doctl apps list-deployments`, `doctl apps
+logs <app> member-assets --type run`).
 
 **What an officer sees meanwhile:**
 
