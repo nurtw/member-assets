@@ -15,6 +15,8 @@ describe('loadEnvironment', () => {
     delete process.env.NODE_ENV;
     delete process.env.PORT;
     delete process.env.CORS_ORIGINS;
+    delete process.env.EDGE_PROXY;
+    delete process.env.WEB_FORWARDING_SECRET;
     process.env.DATABASE_URL = VALID_URL;
   });
 
@@ -52,6 +54,29 @@ describe('loadEnvironment', () => {
       expect(() => loadEnvironment()).toThrow(/PORT must be an integer/);
     },
   );
+
+  it('trusts no edge proxy and accepts no forwarded visitor by default', () => {
+    const env = loadEnvironment();
+
+    expect(env.edgeProxy).toBe('none');
+    expect(env.webForwardingSecret).toBeUndefined();
+  });
+
+  it('reads the edge proxy, and refuses one it does not know', () => {
+    process.env.EDGE_PROXY = 'cloudflare';
+    expect(loadEnvironment().edgeProxy).toBe('cloudflare');
+
+    process.env.EDGE_PROXY = 'fastly';
+    expect(() => loadEnvironment()).toThrow(/EDGE_PROXY must be one of/);
+  });
+
+  it('refuses a forwarding secret short enough to guess', () => {
+    process.env.WEB_FORWARDING_SECRET = 'too-short';
+    expect(() => loadEnvironment()).toThrow(/at least 32 characters/);
+
+    process.env.WEB_FORWARDING_SECRET = 'x'.repeat(32);
+    expect(loadEnvironment().webForwardingSecret).toBe('x'.repeat(32));
+  });
 
   it('rejects an unrecognised NODE_ENV', () => {
     process.env.NODE_ENV = 'staging';

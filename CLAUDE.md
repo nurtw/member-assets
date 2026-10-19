@@ -931,6 +931,28 @@ sensitive information when superadmin is signed in". `/docs` on the web, for any
   when the session cookie is present, as the front page reads it.
 - The page's reading of a document is `lib/api-docs.ts`, with tests.
 
+### The caller's address (item 55)
+
+After the move to DigitalOcean every caller looked like a Cloudflare address, so the
+per-address limits were shared by everyone (19 October 2026).
+
+- **`request.ip` is the address, set in one place**: `applyClientAddress`
+  (`common/client-address.ts`), from `main.ts` before the access log. Never read
+  `X-Forwarded-For`, `x-real-ip`, or a forwarding header anywhere else.
+- **A direct caller.** The host's router is trusted, and with `EDGE_PROXY=cloudflare`
+  one hop more, only if it is a Cloudflare address. Never trust a count of hops, or a
+  second edge hop: anything earlier in `X-Forwarded-For` is the caller's own writing.
+  The ranges are Cloudflare's published list, dated in the file.
+- **A browser comes through the website.** `apps/web/src/proxy.ts` removes both
+  forwarding headers from every `/api/v1` request and, with `WEB_FORWARDING_SECRET`,
+  names the visitor from `x-vercel-forwarded-for` or `x-real-ip`, which Vercel sets.
+  The API believes it only with the secret, compared as digests. Never read
+  `x-forwarded-for` on the website: a browser can write it.
+- **The secret is server-only on both sides**: never `NEXT_PUBLIC_`, never logged,
+  never in a response. The API removes both headers before anything reads the request.
+- An e2e suite that needs a real address calls `applyClientAddress`, as
+  `client-address.e2e-spec.ts` does.
+
 ### The vehicle letter (item 18)
 
 - **Issued inside the attachment's transaction** (`VehicleLetterService.issueInTransaction`,

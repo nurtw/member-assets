@@ -22,6 +22,7 @@ import type { Request, Response } from 'express';
 
 import { AppModule } from './app.module.js';
 import { AllExceptionsFilter } from './common/all-exceptions.filter.js';
+import { applyClientAddress } from './common/client-address.js';
 import {
   buildErrorResponse,
   resolveRequestId,
@@ -46,16 +47,15 @@ async function bootstrap(): Promise<void> {
   });
 
   /**
-   * Render terminates TLS at its own edge and forwards to this container over
-   * a loopback connection, carrying the real client address only in
-   * `X-Forwarded-For`. Without this, Express's `request.ip` reports that
-   * loopback address for every request — the access log, the login-failure
-   * log, and `AuditService.ipAddress` all showed `::1` regardless of who
-   * actually connected. `1` trusts exactly one hop (Render's edge), not an
-   * arbitrary chain a client could forge by sending its own
-   * `X-Forwarded-For`.
+   * Who is calling (item 55): which proxies are trusted, and a visitor the
+   * website names. See `common/client-address.ts`. Before the access log, so
+   * the log records the same address as everything else.
    */
-  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  applyClientAddress(app.getHttpAdapter().getInstance(), env);
+  logger.log(
+    `Caller address: the router${env.edgeProxy === 'none' ? '' : ` and one ${env.edgeProxy} hop`}; ` +
+      `visitors named by the website: ${env.webForwardingSecret ? 'accepted' : 'not configured'}`,
+  );
 
   /**
    * Access log. Added before anything else in the chain — including

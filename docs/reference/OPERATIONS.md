@@ -191,11 +191,14 @@ start.
 | `CLOUDINARY_URL` | No | Selects `CloudinaryStorage` over the local-filesystem adapter for uploaded media (`media.module.ts`). Unset in development stores under `MEDIA_STORAGE_DIR` on disk instead — set this in production, since a container's filesystem does not survive a redeploy. |
 | `MEDIA_STORAGE_DIR` | No | Local-filesystem adapter only; ignored once `CLOUDINARY_URL` is set. Default `var/media` |
 | `MEDIA_URL_SIGNING_SECRET` | No | Falls back to a value generated at startup, which invalidates outstanding signed media links on restart |
+| `EDGE_PROXY` | On DigitalOcean | `cloudflare`: the API trusts one Cloudflare hop beyond the host's router when it works out who is calling (item 55). Unset (`none`) trusts the router alone. Any other value stops startup |
+| `WEB_FORWARDING_SECRET` | On the API and the web | Shared by the API and the website's server, never as `NEXT_PUBLIC_`. With it, the website names each visitor's address to the API; without it, every browser is recorded at the website host's address. At least 32 characters. The same value on both |
 
 ### Secrets that must never be logged or exported
 
 API tokens, passport images, signatures, guarantor details, chassis and VIN numbers, NINs,
-internal notes, the sticker signing secret, the Termii keys, and password hashes. Nothing in this list may
+internal notes, the sticker signing secret, the Termii keys, the web forwarding secret, and
+password hashes. Nothing in this list may
 appear in a log line, an error message, a URL, a QR payload, or a support ticket.
 
 ---
@@ -215,6 +218,10 @@ are established at go-live hardening. What is fixed already:
   variables in the dashboard reset its scope once: check it after every edit.
 - **The app holds no Functions component.** App Platform offers one on seeing
   `packages/`; it broke the first deploy.
+- **Who is calling** (item 55): `EDGE_PROXY=cloudflare` on the API, and the same
+  `WEB_FORWARDING_SECRET` on the API and on Vercel. The API's startup log says which
+  it has: `Caller address: the router and one cloudflare hop; visitors named by the
+  website: accepted`.
 - Migrations run with `db:deploy`, never `db:migrate`, against production.
 - Migrations are applied **before** the new image serves traffic.
 - **A release that adds a permission needs `db:seed` run once after `db:deploy`.** The seed

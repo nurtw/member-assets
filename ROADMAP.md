@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.21
-**Last revised:** 18 October 2026
+**Document version:** 1.22
+**Last revised:** 19 October 2026
 
 ---
 
@@ -82,6 +82,7 @@ Each item is independently completable and independently testable. Status values
 | 52 | year-colour-renewal | §8, §23.5 (PAY-22, CARD-10) | planned | [plan](plans/52-year-colour-renewal.md) |
 | 53 | onboarding-day | Req. 9A.4, 27.2, §23.4, §23.27 (rev. 1.17); VEH-37, ORG-06, GOV-11 | done (18 Oct, for onboarding on 19 Oct) | [plan](plans/53-onboarding-day.md) |
 | 54 | public-api-docs | §12, §13, Req. 14.3; the owner's direction of 19 Oct | done (19 Oct; needs `db:seed` on Neon after the deploy) | [plan](plans/54-public-api-docs.md) |
+| 55 | caller-address | Req. 14, 12.8; GOV-02; the owner's direction of 19 Oct | done (19 Oct; live once pushed, with `EDGE_PROXY` and `WEB_FORWARDING_SECRET` set) | [plan](plans/55-caller-address.md) |
 
 ### Item summaries
 

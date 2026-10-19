@@ -12,6 +12,12 @@
 
 export type NodeEnvironment = 'development' | 'test' | 'production';
 
+/** The proxy in front of the host's own router, if any (item 55). */
+export type EdgeProxy = 'none' | 'cloudflare';
+
+/** Shorter than this, a forwarding secret could be guessed. */
+const MIN_FORWARDING_SECRET_LENGTH = 32;
+
 export interface Environment {
   readonly nodeEnv: NodeEnvironment;
   readonly port: number;
@@ -74,6 +80,20 @@ export interface Environment {
   readonly termiiApiKey: string | undefined;
   readonly termiiBaseUrl: string | undefined;
   readonly termiiSecretKey: string | undefined;
+  /**
+   * The proxy every request passes through before the host's router (item
+   * 55). `cloudflare` on DigitalOcean App Platform: the API then trusts one
+   * Cloudflare hop beyond the router when it works out who is calling. `none`
+   * trusts the router alone, for a host with nothing in front of it.
+   */
+  readonly edgeProxy: EdgeProxy;
+  /**
+   * Shared with the website's server (item 55). A request that carries it
+   * names the visitor whose browser sent it. Held only by the API and the
+   * website, and never logged. `undefined`: no request may name a visitor,
+   * and a browser's address is the website host's.
+   */
+  readonly webForwardingSecret: string | undefined;
 }
 
 class EnvironmentError extends Error {
@@ -147,7 +167,24 @@ export function loadEnvironment(): Environment {
     termiiBaseUrl:
       process.env.TERMII_BASE_URL?.trim().replace(/\/+$/, '') || undefined,
     termiiSecretKey: process.env.TERMII_SECRET_KEY?.trim() || undefined,
+    edgeProxy: readEnum(
+      'EDGE_PROXY',
+      ['none', 'cloudflare'],
+      'none',
+    ) as EdgeProxy,
+    webForwardingSecret: readForwardingSecret('WEB_FORWARDING_SECRET'),
   };
+}
+
+function readForwardingSecret(key: string): string | undefined {
+  const raw = process.env[key]?.trim();
+  if (!raw) return undefined;
+  if (raw.length < MIN_FORWARDING_SECRET_LENGTH) {
+    throw new EnvironmentError(
+      `${key} must be at least ${MIN_FORWARDING_SECRET_LENGTH} characters, or unset.`,
+    );
+  }
+  return raw;
 }
 
 function readRequired(key: string): string {

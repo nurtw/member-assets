@@ -38,7 +38,7 @@ const nextConfig: NextConfig = {
   /**
    * Proxies every API call through this application's own origin.
    *
-   * The API is a separate deployment (Render) from the web application
+   * The API is a separate deployment (DigitalOcean) from the web application
    * (Vercel) — genuinely different domains. The session cookie used to be
    * set `SameSite=None` to survive that, which worked until a browser
    * blocking third-party cookies by default (Chrome's ongoing rollout,

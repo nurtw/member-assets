@@ -50,7 +50,7 @@ export class AuthController {
    * against a stolen session via XSS. `secure` outside development, since a
    * cookie without it also travels over plain HTTP.
    *
-   * `sameSite: 'lax'`, not `'none'`. This API (Render) and the web application
+   * `sameSite: 'lax'`, not `'none'`. This API (DigitalOcean) and the web application
    * (Vercel) are genuinely different domains, but the browser never talks to
    * this one directly: `apps/web/next.config.ts` rewrites `/api/v1/*` to here
    * server-side, so every browser request targets the web app's own origin and

@@ -413,3 +413,5 @@ export {
   type UpdateSmsSettingsInput,
   type UpdateSmsTemplateInput,
 } from './notifications.js';
+
+export { FORWARDING_KEY_HEADER, VISITOR_ADDRESS_HEADER } from './forwarding.js';
