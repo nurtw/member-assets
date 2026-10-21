@@ -521,6 +521,140 @@ describe('Officer accounts (e2e)', () => {
     });
   });
 
+  describe('giving access without a reason, and several at once (item 56)', () => {
+    const grantsOf = async () =>
+      (
+        (await call('get', `/users/${ids.new}`)).body.user.grants as {
+          permission: string;
+        }[]
+      ).map((grant) => grant.permission);
+
+    it('gives a role with no reason, and the audit event keeps none', async () => {
+      const since = new Date();
+      const given = await call('post', `/users/${ids.new}/roles`, {
+        roleCode: 'FIELD_ENUMERATOR',
+        organisationId: ids.branchB,
+      });
+      expect(given.status).toBe(201);
+      const assignment = (
+        given.body.user.roles as {
+          id: string;
+          organisation: { id: string };
+        }[]
+      ).find((role) => role.organisation.id === ids.branchB)!;
+      const event = await prisma.auditEvent.findFirstOrThrow({
+        where: {
+          action: 'user.role_assign',
+          subjectId: ids.new,
+          createdAt: { gte: since },
+        },
+        select: { reason: true },
+      });
+      expect(event.reason).toBeNull();
+
+      expect(
+        (
+          await call(
+            'post',
+            `/users/${ids.new}/roles/${assignment.id}/remove`,
+            { reason: 'Only for the test' },
+          )
+        ).status,
+      ).toBe(200);
+    });
+
+    it('grants several permissions in one act, one audit event each', async () => {
+      const since = new Date();
+      const granted = await call('post', `/users/${ids.new}/grants`, {
+        permissions: ['member.read', 'vehicle.read'],
+        organisationId: ids.branchA,
+      });
+      expect(granted.status).toBe(201);
+      expect(granted.body.user.grants).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ permission: 'member.read', reason: null }),
+          expect.objectContaining({ permission: 'vehicle.read', reason: null }),
+        ]),
+      );
+      const events = await prisma.auditEvent.findMany({
+        where: {
+          action: 'user.permission_grant',
+          subjectId: ids.new,
+          createdAt: { gte: since },
+        },
+        select: { reason: true, afterValue: true },
+      });
+      expect(
+        events
+          .map(
+            (event) => (event.afterValue as { permission: string }).permission,
+          )
+          .sort(),
+      ).toEqual(['member.read', 'vehicle.read']);
+      expect(events.every((event) => event.reason === null)).toBe(true);
+    });
+
+    it('grants none when one is already granted there', async () => {
+      const response = await call('post', `/users/${ids.new}/grants`, {
+        permissions: ['application.read', 'vehicle.read'],
+        organisationId: ids.branchA,
+      });
+      expect(response.status).toBe(409);
+      expect(await grantsOf()).not.toContain('application.read');
+    });
+
+    it('grants none when the giver does not hold one of them', async () => {
+      const response = await call('post', `/users/${ids.new}/grants`, {
+        permissions: ['application.read', 'payment.refund'],
+        organisationId: ids.branchA,
+      });
+      expect(response.status).toBe(403);
+      expect(await grantsOf()).not.toContain('application.read');
+    });
+
+    it('revokes several in one act, and they are lifted and withdrawn after', async () => {
+      const revoked = await call('post', `/users/${ids.new}/revocations`, {
+        permissions: ['member.read', 'vehicle.read'],
+        organisationId: ids.branchA,
+      });
+      expect(revoked.status).toBe(201);
+      const revocations = revoked.body.user.revocations as {
+        id: string;
+        reason: string | null;
+      }[];
+      expect(revocations).toHaveLength(2);
+      expect(revocations.every((entry) => entry.reason === null)).toBe(true);
+
+      for (const revocation of revocations) {
+        expect(
+          (
+            await call(
+              'post',
+              `/users/${ids.new}/revocations/${revocation.id}/lift`,
+              { reason: 'Only for the test' },
+            )
+          ).status,
+        ).toBe(200);
+      }
+      const grants = (await call('get', `/users/${ids.new}`)).body.user
+        .grants as { id: string }[];
+      for (const grant of grants) {
+        expect(
+          (
+            await call(
+              'post',
+              `/users/${ids.new}/grants/${grant.id}/withdraw`,
+              {
+                reason: 'Only for the test',
+              },
+            )
+          ).status,
+        ).toBe(200);
+      }
+      expect(await grantsOf()).toEqual([]);
+    });
+  });
+
   describe('composed roles (Decision 9.5)', () => {
     it('list the roles of PRD §16 as system roles', async () => {
       const response = await call('get', '/roles');

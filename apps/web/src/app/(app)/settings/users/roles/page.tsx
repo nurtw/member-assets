@@ -1,11 +1,12 @@
 "use client";
 
 import { PERMISSIONS, type RoleSummary } from "@nurtw/contracts";
-import { isGrantOnly, needsSecondFactor } from "@nurtw/domain";
+import { isGrantOnly } from "@nurtw/domain";
 import { useState } from "react";
 import useSWR from "swr";
 
 import { explained } from "@/components/api-access";
+import { PermissionChecklist } from "@/components/officers";
 import {
   Button,
   ErrorNotice,
@@ -47,55 +48,16 @@ function PermissionPicker({
   onChange: (next: string[]) => void;
 }) {
   return (
-    <fieldset className="grid gap-2">
-      <legend className="text-sm font-medium">
-        Permissions
-        <span className="ml-1 text-verdict-deny" aria-hidden>
-          *
-        </span>
-      </legend>
-      <p className="text-xs text-faint-foreground">
-        What a holder of the role may do. Give only what the work needs.
-        Declaring a vehicle and changing the settlement account are not offered:
-        each is granted to a named officer, never through a role.
-      </p>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {COMPOSABLE.map((entry) => {
-          const id = `${idPrefix}-${entry.code.replace(/\W/g, "-")}`;
-          const checked = value.includes(entry.code);
-          return (
-            <label
-              key={entry.code}
-              htmlFor={id}
-              className="flex cursor-pointer items-start gap-2.5 rounded-md border border-line px-3 py-2"
-            >
-              <input
-                id={id}
-                type="checkbox"
-                className="mt-1"
-                checked={checked}
-                onChange={() =>
-                  onChange(
-                    checked
-                      ? value.filter((held) => held !== entry.code)
-                      : [...value, entry.code],
-                  )
-                }
-              />
-              <span>
-                <span className="block text-sm">{entry.description}</span>
-                <span className="block font-mono text-xs text-faint-foreground">
-                  {entry.code}
-                  {needsSecondFactor(entry.code)
-                    ? " · needs a second factor"
-                    : ""}
-                </span>
-              </span>
-            </label>
-          );
-        })}
-      </div>
-    </fieldset>
+    <PermissionChecklist
+      idPrefix={idPrefix}
+      entries={COMPOSABLE}
+      value={value}
+      onChange={onChange}
+      legend="Permissions"
+      required
+      filterable
+      hint="What a holder of the role may do. Give only what the work needs. Declaring a vehicle and changing the settlement account are not offered: each is granted to a named officer, never through a role."
+    />
   );
 }
 

@@ -25,6 +25,18 @@ const reason = z
   .min(4, 'A reason is required for this change.')
   .max(1000);
 
+/**
+ * Giving access needs no reason (the owner's direction of 20 October 2026,
+ * item 56). One given is kept with the change and its audit event; a blank
+ * one is none at all, never an empty string.
+ */
+const optionalReason = z
+  .string()
+  .trim()
+  .max(1000)
+  .optional()
+  .transform((value) => (value ? value : undefined));
+
 const email = z
   .string()
   .trim()
@@ -70,20 +82,41 @@ export type ReasonInput = z.infer<typeof reasonSchema>;
 export const assignRoleSchema = z.object({
   roleCode: z.string().trim().min(1).max(60),
   organisationId: uuid,
-  reason,
+  reason: optionalReason,
 });
 export type AssignRoleInput = z.infer<typeof assignRoleSchema>;
 
 /**
- * `POST /users/:id/grants` and `POST /users/:id/revocations` — one permission,
- * within one part of the Union. A revocation takes it away there even where a
- * role gives it (Decision 9.3: revocation always wins).
+ * `POST /users/:id/grants` and `POST /users/:id/revocations` — one or more
+ * permissions, within one part of the Union. A revocation takes each away
+ * there even where a role gives it (Decision 9.3: revocation always wins).
+ *
+ * `permissions` names several at once (item 56); `permission`, one, as before.
+ * Either way the service receives one list, without repeats.
  */
-export const scopedPermissionSchema = z.object({
-  permission: permissionCode,
-  organisationId: uuid,
-  reason,
-});
+export const scopedPermissionSchema = z
+  .object({
+    permission: permissionCode.optional(),
+    permissions: z
+      .array(permissionCode)
+      .min(1, 'Choose at least one permission.')
+      .max(PERMISSION_CODES.length)
+      .optional(),
+    organisationId: uuid,
+    reason: optionalReason,
+  })
+  .refine(
+    (value) =>
+      value.permission !== undefined || value.permissions !== undefined,
+    { message: 'Choose at least one permission.', path: ['permissions'] },
+  )
+  .transform(({ permission, permissions, organisationId, reason }) => ({
+    permissions: [
+      ...new Set([...(permissions ?? []), ...(permission ? [permission] : [])]),
+    ],
+    organisationId,
+    reason,
+  }));
 export type ScopedPermissionInput = z.infer<typeof scopedPermissionSchema>;
 
 /**
@@ -172,7 +205,8 @@ export interface UserScopedPermission {
   id: string;
   permission: string;
   organisation: OrganisationRef;
-  reason: string;
+  /** `null` where none was given (item 56). */
+  reason: string | null;
   by: { id: string; fullName: string } | null;
   createdAt: string;
 }

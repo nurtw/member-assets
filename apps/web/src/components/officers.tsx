@@ -1,15 +1,17 @@
 "use client";
 
 import type { OrganisationTreeNode } from "@nurtw/contracts";
+import { needsSecondFactor } from "@nurtw/domain";
 import { useState } from "react";
 import useSWR from "swr";
 
-import { Button, Field, Select } from "@/components/ui";
+import { Button, Field, Select, TextInput } from "@/components/ui";
 import { fetcher } from "@/lib/api";
+import { matchesPermission } from "@/lib/officer-access";
 
 /**
  * Pieces shared by the officer screens (item 28): the one-time password
- * panel, and the organisation picker. The sidebar names each screen (item
+ * panel, the organisation picker, and the permission checklist (item 56). The sidebar names each screen (item
  * 32), so they carry no tabs of their own.
  */
 
@@ -153,5 +155,107 @@ export function OrganisationPicker({
         ))}
       </Select>
     </Field>
+  );
+}
+
+/**
+ * Permissions to tick, several at once (item 56). Used to give an officer
+ * permissions and to compose a role, so the two lists read the same. A ticked
+ * permission stays ticked while the filter hides it.
+ */
+export function PermissionChecklist({
+  idPrefix,
+  entries,
+  value,
+  onChange,
+  legend,
+  hint,
+  required = false,
+  filterable = false,
+  note,
+}: {
+  idPrefix: string;
+  entries: readonly { code: string; description: string }[];
+  value: readonly string[];
+  onChange: (next: string[]) => void;
+  legend: string;
+  hint?: string;
+  required?: boolean;
+  filterable?: boolean;
+  /** A word beside an entry, such as where it is already in place. */
+  note?: (code: string) => string | null;
+}) {
+  const [query, setQuery] = useState("");
+  const shown = entries.filter((entry) => matchesPermission(entry, query));
+
+  return (
+    <fieldset className="grid gap-2">
+      <legend className="text-sm font-medium">
+        {legend}
+        {required ? (
+          <span className="ml-1 text-verdict-deny" aria-hidden>
+            *
+          </span>
+        ) : null}
+        {value.length > 0 ? (
+          <span className="ml-2 font-normal text-muted-foreground">
+            {value.length} chosen
+          </span>
+        ) : null}
+      </legend>
+      {hint ? <p className="text-xs text-faint-foreground">{hint}</p> : null}
+      {filterable ? (
+        <TextInput
+          id={`${idPrefix}-filter`}
+          aria-label="Find a permission"
+          placeholder="Find a permission"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      ) : null}
+      <div className="grid max-h-96 gap-2 overflow-y-auto sm:grid-cols-2">
+        {shown.map((entry) => {
+          const id = `${idPrefix}-${entry.code.replace(/\W/g, "-")}`;
+          const checked = value.includes(entry.code);
+          const extra = note?.(entry.code);
+          return (
+            <label
+              key={entry.code}
+              htmlFor={id}
+              className="flex cursor-pointer items-start gap-2.5 rounded-md border border-line px-3 py-2"
+            >
+              <input
+                id={id}
+                type="checkbox"
+                className="mt-1"
+                checked={checked}
+                onChange={() =>
+                  onChange(
+                    checked
+                      ? value.filter((held) => held !== entry.code)
+                      : [...value, entry.code],
+                  )
+                }
+              />
+              <span>
+                <span className="block text-sm">{entry.description}</span>
+                <span className="block font-mono text-xs text-faint-foreground">
+                  {entry.code}
+                  {needsSecondFactor(entry.code)
+                    ? " · needs a second factor"
+                    : ""}
+                  {extra ? ` · ${extra}` : ""}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+        {shown.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No permission matches that.
+          </p>
+        ) : null}
+      </div>
+    </fieldset>
   );
 }

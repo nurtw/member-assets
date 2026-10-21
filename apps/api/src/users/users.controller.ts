@@ -206,7 +206,7 @@ export class UsersController {
       'PRD §16, Decision 9.4. The role applies to the organisation named and everything ' +
       'beneath it. The administrator must hold `user.manage` over that organisation, and ' +
       'every permission in the role there: nobody gives what they do not hold (403). A ' +
-      `reason is mandatory. ${NOT_SELF}`,
+      `reason is optional (item 56), and kept with the change. ${NOT_SELF}`,
     body: assignRoleSchema,
     responses: {
       404: 'No such account, role, or organisation within the administrator’s scope.',
@@ -251,15 +251,18 @@ export class UsersController {
   @RequirePermission('permission.grant')
   @Post(':id/grants')
   @Documented({
-    summary: 'Grant an officer one permission within part of the Union.',
+    summary:
+      'Grant an officer one or more permissions within part of the Union.',
     description:
       'Decision 9.3, layer 2. How `vehicle.declare` reaches anyone but the super ' +
-      'administrator (PRD §9.5). The administrator must hold `permission.grant` and the ' +
-      `permission itself over the organisation named (403). A reason is mandatory. ${NOT_SELF}`,
+      'administrator (PRD §9.5). The administrator must hold `permission.grant` and each ' +
+      'permission over the organisation named (403). `permissions` names several at once ' +
+      '(item 56): every one is checked before any is granted, so one refused refuses all. ' +
+      `A reason is optional. ${NOT_SELF}`,
     body: scopedPermissionSchema,
     responses: {
       404: 'No such account, or no such organisation within the administrator’s scope.',
-      409: 'That permission is already granted there.',
+      409: 'One of the permissions is already granted there.',
     },
   })
   async grant(
@@ -299,14 +302,16 @@ export class UsersController {
   @RequirePermission('permission.revoke')
   @Post(':id/revocations')
   @Documented({
-    summary: 'Revoke one permission from an officer within part of the Union.',
+    summary:
+      'Revoke one or more permissions from an officer within part of the Union.',
     description:
-      'Decision 9.3, layer 3. Switches the permission off for this officer there, whatever ' +
-      `their roles or grants give: revocation always wins. A reason is mandatory. ${NOT_SELF}`,
+      'Decision 9.3, layer 3. Switches each permission off for this officer there, whatever ' +
+      'their roles or grants give: revocation always wins. All or none, as with grants ' +
+      `(item 56). A reason is optional. ${NOT_SELF}`,
     body: scopedPermissionSchema,
     responses: {
       404: 'No such account, or no such organisation within the administrator’s scope.',
-      409: 'That permission is already revoked there.',
+      409: 'One of the permissions is already revoked there.',
     },
   })
   async revoke(

@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.12
-**Last revised:** 18 October 2026
+**Document version:** 1.13
+**Last revised:** 20 October 2026
 **Authority:** Subordinate to `PRD.md`. Where this document and the PRD conflict, the PRD prevails.
 
 ---
@@ -403,8 +403,11 @@ additional roles from the permission catalogue.
 
 **Decision 9.6 — permission changes are audited as first-class events.** Granting,
 revoking, assigning a role, and altering a scope each emit an audit event recording actor,
-subject, permission, before-and-after state, and stated reason. Privilege escalation must
-be as legible in the audit trail as record modification.
+subject, permission, before-and-after state, and the reason where one is stated. Privilege
+escalation must be as legible in the audit trail as record modification. *Since 20 October
+2026 (item 56, the owner's direction), giving a role, granting, and revoking need no reason;
+one given is kept, and none is recorded as none. Removals still ask for one. Several
+permissions may be granted or revoked in one act, each its own event.*
 
 **Decision 9.7 — `vehicle.declare` is held by the super administrator alone, and by those
 to whom the super administrator expressly grants it.** Determined 9 September 2026,

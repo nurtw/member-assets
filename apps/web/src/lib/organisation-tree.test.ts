@@ -12,6 +12,7 @@ import {
   moveDestinations,
   parentIds,
   parentIsInactive,
+  widestScope,
 } from "./organisation-tree";
 
 function node(
@@ -196,5 +197,19 @@ describe("what stops a change of status", () => {
   it("takes a parent it cannot see to be active", () => {
     expect(parentIsInactive([upper], upper)).toBe(false);
     expect(parentIsInactive(forest, council)).toBe(false);
+  });
+});
+
+describe("widestScope (item 56)", () => {
+  it("starts at the head of the officer's tree, the council for the whole Union", () => {
+    expect(widestScope(forest)).toBe(council.id);
+    expect(widestScope([upper])).toBe(upper.id);
+  });
+
+  it("skips an inactive head, and has nothing before the tree arrives", () => {
+    expect(widestScope([{ ...upper, isActive: false }, council])).toBe(
+      council.id,
+    );
+    expect(widestScope([])).toBeUndefined();
   });
 });

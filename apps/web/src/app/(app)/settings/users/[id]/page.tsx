@@ -3,6 +3,7 @@
 import {
   PERMISSIONS,
   type IssuedTemporaryPassword,
+  type OrganisationTreeNode,
   type RoleSummary,
   type UserDetail,
   type UserScopedPermission,
@@ -16,6 +17,7 @@ import useSWR from "swr";
 import { explained, shortDay } from "@/components/api-access";
 import {
   OrganisationPicker,
+  PermissionChecklist,
   TemporaryPassword,
   levelLabel,
 } from "@/components/officers";
@@ -39,6 +41,8 @@ import {
 } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiError, api, fetcher } from "@/lib/api";
+import { notInPlace, placeNote } from "@/lib/officer-access";
+import { widestScope } from "@/lib/organisation-tree";
 import { useSession } from "@/lib/session";
 import { useTabParam } from "@/lib/use-tab-param";
 
@@ -76,6 +80,16 @@ function describe(code: string): string {
   );
 }
 
+/** The reason to send: the words typed, or nothing at all (item 56). */
+function givenReason(typed: string): { reason?: string } {
+  const reason = typed.trim();
+  return reason ? { reason } : {};
+}
+
+/**
+ * Why the access is given. Optional (item 56): one typed is kept with the
+ * change and its audit event, and a blank one is sent as none.
+ */
 function Reason({
   id,
   value,
@@ -86,7 +100,11 @@ function Reason({
   onChange: (next: string) => void;
 }) {
   return (
-    <Field label="Reason" htmlFor={id} required>
+    <Field
+      label="Reason"
+      htmlFor={id}
+      hint="Optional. Kept with the change in the audit trail."
+    >
       <TextInput
         id={id}
         value={value}
@@ -135,7 +153,11 @@ function ScopedEntry({
           {shortDay(entry.createdAt)}
           {entry.by ? ` · by ${entry.by.fullName}` : ""}
         </p>
-        <p className="text-xs text-muted-foreground">Reason: {entry.reason}</p>
+        {entry.reason ? (
+          <p className="text-xs text-muted-foreground">
+            Reason: {entry.reason}
+          </p>
+        ) : null}
       </div>
       {onRemove ? (
         <Button
@@ -178,8 +200,18 @@ export default function OfficerPage() {
   const [roleCode, setRoleCode] = useState("");
   const [roleScope, setRoleScope] = useState("");
   const [roleReason, setRoleReason] = useState("");
-  const [permission, setPermission] = useState("");
+  const [chosenPermissions, setChosenPermissions] = useState<string[]>([]);
   const [permissionScope, setPermissionScope] = useState("");
+
+  // "Applies to" starts at the widest part of the Union this administrator
+  // may give access in (item 56): the State Council for the super
+  // administrator. Still shown, and changed like any other choice.
+  const { data: organisationList } = useSWR<{
+    organisations: OrganisationTreeNode[];
+  }>(canManage || canGrant || canRevoke ? "/organisations" : null, fetcher);
+  const widest = widestScope(organisationList?.organisations ?? []) ?? "";
+  const roleScopeChosen = roleScope || widest;
+  const permissionScopeChosen = permissionScope || widest;
   const [permissionReason, setPermissionReason] = useState("");
 
   const tabs: { value: TabName }[] = [
@@ -479,7 +511,7 @@ export default function OfficerPage() {
                 ) : null}
                 <OrganisationPicker
                   id="roleScope"
-                  value={roleScope}
+                  value={roleScopeChosen}
                   onChange={setRoleScope}
                 />
                 <Reason
@@ -490,19 +522,14 @@ export default function OfficerPage() {
                 <div>
                   <Button
                     type="button"
-                    disabled={
-                      busy ||
-                      !roleCode ||
-                      !roleScope ||
-                      roleReason.trim().length < 4
-                    }
+                    disabled={busy || !roleCode || !roleScopeChosen}
                     onClick={async () => {
                       const done = await act(
                         () =>
                           api.post(`${base}/roles`, {
                             roleCode,
-                            organisationId: roleScope,
-                            reason: roleReason.trim(),
+                            organisationId: roleScopeChosen,
+                            ...givenReason(roleReason),
                           }),
                         "The officer already holds that role there.",
                       );
@@ -578,23 +605,27 @@ export default function OfficerPage() {
 
             {(canGrant || canRevoke) && !isSelf ? (
               <div className="grid gap-4 border-t border-line pt-4">
-                <Field label="Permission" htmlFor="permission" required>
-                  <Select
-                    id="permission"
-                    value={permission}
-                    onChange={(event) => setPermission(event.target.value)}
-                  >
-                    <option value="">Select a permission</option>
-                    {PERMISSIONS.map((entry) => (
-                      <option key={entry.code} value={entry.code}>
-                        {entry.description} ({entry.code})
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
+                <PermissionChecklist
+                  idPrefix="permission"
+                  entries={PERMISSIONS}
+                  value={chosenPermissions}
+                  onChange={setChosenPermissions}
+                  legend="Permissions"
+                  required
+                  filterable
+                  hint="Tick as many as are needed. Each is granted, or revoked, in the part of the Union below."
+                  note={(code) =>
+                    placeNote(
+                      code,
+                      officer.grants,
+                      officer.revocations,
+                      permissionScopeChosen,
+                    )
+                  }
+                />
                 <OrganisationPicker
                   id="permissionScope"
-                  value={permissionScope}
+                  value={permissionScopeChosen}
                   onChange={setPermissionScope}
                 />
                 <Reason
@@ -605,41 +636,54 @@ export default function OfficerPage() {
                 <div className="flex flex-wrap gap-3">
                   {(
                     [
-                      ["grants", "Grant", canGrant, "primary"],
-                      ["revocations", "Revoke", canRevoke, "danger"],
+                      ["grants", "Grant", canGrant, "primary", officer.grants],
+                      [
+                        "revocations",
+                        "Revoke",
+                        canRevoke,
+                        "danger",
+                        officer.revocations,
+                      ],
                     ] as const
-                  ).map(([path, label, allowed, variant]) =>
-                    allowed ? (
+                  ).map(([path, label, allowed, variant, inPlace]) => {
+                    if (!allowed) return null;
+                    // Only what is not already in place there is sent, so
+                    // one already granted (or revoked) does not refuse all.
+                    const sending = notInPlace(
+                      chosenPermissions,
+                      inPlace,
+                      permissionScopeChosen,
+                    );
+                    return (
                       <Button
                         key={path}
                         type="button"
                         variant={variant}
                         disabled={
-                          busy ||
-                          !permission ||
-                          !permissionScope ||
-                          permissionReason.trim().length < 4
+                          busy || sending.length === 0 || !permissionScopeChosen
                         }
                         onClick={async () => {
                           const done = await act(
                             () =>
                               api.post(`${base}/${path}`, {
-                                permission,
-                                organisationId: permissionScope,
-                                reason: permissionReason.trim(),
+                                permissions: sending,
+                                organisationId: permissionScopeChosen,
+                                ...givenReason(permissionReason),
                               }),
                             "That is already in place there.",
                           );
                           if (done) {
-                            setPermission("");
+                            setChosenPermissions([]);
                             setPermissionReason("");
                           }
                         }}
                       >
-                        {label}
+                        {sending.length > 1
+                          ? `${label} ${sending.length}`
+                          : label}
                       </Button>
-                    ) : null,
-                  )}
+                    );
+                  })}
                 </div>
               </div>
             ) : null}

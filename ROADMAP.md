@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.22
-**Last revised:** 19 October 2026
+**Document version:** 1.23
+**Last revised:** 20 October 2026
 
 ---
 
@@ -83,6 +83,7 @@ Each item is independently completable and independently testable. Status values
 | 53 | onboarding-day | Req. 9A.4, 27.2, §23.4, §23.27 (rev. 1.17); VEH-37, ORG-06, GOV-11 | done (18 Oct, for onboarding on 19 Oct) | [plan](plans/53-onboarding-day.md) |
 | 54 | public-api-docs | §12, §13, Req. 14.3; the owner's direction of 19 Oct | done (19 Oct; needs `db:seed` on Neon after the deploy) | [plan](plans/54-public-api-docs.md) |
 | 55 | caller-address | Req. 14, 12.8; GOV-02; the owner's direction of 19 Oct | done (19 Oct; live, checked in the live log) | [plan](plans/55-caller-address.md) |
+| 56 | officer-access-forms | §16, Req. 17; Decisions 9.4, 9.6; the owner's direction of 20 Oct | done (21 Oct; needs `db:deploy` on Neon before the push) | [plan](plans/56-officer-access-forms.md) |
 
 ### Item summaries
 

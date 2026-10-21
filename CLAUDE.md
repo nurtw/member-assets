@@ -1163,6 +1163,17 @@ Item 03 built the tables and the guard. Everything that writes to them is item 2
 - **Tests:** `auth.mfa_enforced` is one row for the whole database, so a suite switches it
   by spying on `SettingsService.isEnabled` for its own app, as `users.e2e-spec.ts` does.
   Fixture emails must be lower case.
+- **Giving access needs no reason** (item 56, the owner's direction of 20 October 2026;
+  Decision 9.6). Giving a role, granting, and revoking take an optional reason. A blank
+  one is stored as none (`NULL`), never as an empty string, and the audit event records
+  none. Removing a role, withdrawing a grant, and lifting a revocation still ask for one.
+- **Several permissions in one act.** `POST /users/:id/grants` and `/revocations` take
+  `permissions` (or `permission`). Every one is checked before any is written, so one
+  refused refuses all; each gets its own audit event. The screen sends only what is not
+  already in place there (`notInPlace`, `lib/officer-access.ts`).
+- **"Applies to" starts at the widest node** of the officer's tree (`widestScope`): the
+  State Council for the super administrator. It is shown and can be changed, and the API
+  still requires an `organisationId`. Never default it on the server.
 
 ### Pay now and pay links (item 31)
 

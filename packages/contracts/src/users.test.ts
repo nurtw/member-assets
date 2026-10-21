@@ -100,6 +100,59 @@ describe('giving access', () => {
       expect(scoped(invented), invented).toBe(false);
     }
   });
+
+  it('needs no reason, and keeps a blank one as none (item 56)', () => {
+    expect(
+      assignRoleSchema.parse({
+        roleCode: 'FIELD_ENUMERATOR',
+        organisationId: ORGANISATION,
+      }).reason,
+    ).toBeUndefined();
+    expect(
+      assignRoleSchema.parse({
+        roleCode: 'FIELD_ENUMERATOR',
+        organisationId: ORGANISATION,
+        reason: '   ',
+      }).reason,
+    ).toBeUndefined();
+    expect(
+      scopedPermissionSchema.parse({
+        permission: 'member.read',
+        organisationId: ORGANISATION,
+        reason: ' Covering the branch ',
+      }).reason,
+    ).toBe('Covering the branch');
+  });
+
+  it('takes several permissions at once, each once (item 56)', () => {
+    expect(
+      scopedPermissionSchema.parse({
+        permissions: ['member.read', 'vehicle.read', 'member.read'],
+        permission: 'vehicle.read',
+        organisationId: ORGANISATION,
+      }).permissions,
+    ).toEqual(['member.read', 'vehicle.read']);
+    expect(
+      scopedPermissionSchema.parse({
+        permission: 'member.read',
+        organisationId: ORGANISATION,
+      }).permissions,
+    ).toEqual(['member.read']);
+  });
+
+  it('refuses none, an empty list, or one outside the catalogue among them', () => {
+    const scoped = (body: Record<string, unknown>) =>
+      scopedPermissionSchema.safeParse({
+        organisationId: ORGANISATION,
+        ...body,
+      }).success;
+
+    expect(scoped({})).toBe(false);
+    expect(scoped({ permissions: [] })).toBe(false);
+    expect(scoped({ permissions: ['member.read', 'database.read'] })).toBe(
+      false,
+    );
+  });
 });
 
 describe('a composed role (Decision 9.5)', () => {

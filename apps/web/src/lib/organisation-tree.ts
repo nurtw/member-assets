@@ -147,3 +147,15 @@ export function parentIsInactive(
   const parent = allNodes(forest).find((entry) => entry.id === node.parentId);
   return parent ? !parent.isActive : false;
 }
+
+/**
+ * Where "Applies to" starts (item 56): the widest active node the officer's
+ * tree holds. The State Council for the super administrator; a branch
+ * administrator's own branch, whose parent is not in their tree. `undefined`
+ * until the tree has arrived.
+ */
+export function widestScope(
+  forest: readonly OrganisationTreeNode[],
+): string | undefined {
+  return forest.find((node) => node.isActive)?.id;
+}

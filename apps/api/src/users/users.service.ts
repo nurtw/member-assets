@@ -440,7 +440,7 @@ export class UsersService {
           roleId: role.id,
           organisationId: organisation.id,
           assignedByUserId: actor.userId,
-          reason: input.reason,
+          reason: input.reason ?? null,
         },
       });
       await this.audit.record(
@@ -451,7 +451,7 @@ export class UsersService {
           organisationId: organisation.id,
           actorUserId: actor.userId,
           after: { role: role.code, organisationId: organisation.id },
-          reason: input.reason,
+          reason: input.reason ?? null,
           requestId: actor.requestId,
           ipAddress: actor.ipAddress,
         },
@@ -523,52 +523,53 @@ export class UsersService {
       'permission.grant',
       input.organisationId,
     );
-    await this.assertNoEscalation(actor, [input.permission], organisation.path);
-    const permission = await this.requirePermission(input.permission);
+    await this.assertNoEscalation(actor, input.permissions, organisation.path);
+    const permissions = await this.requirePermissions(input.permissions);
 
+    // Several at once (item 56): every one is checked before any is written,
+    // so a refusal leaves the officer's access as it was.
     await this.prisma.$transaction(async (tx) => {
       await this.requireUser(tx, id);
-      const held = await tx.userPermissionGrant.findUnique({
+      const held = await tx.userPermissionGrant.count({
         where: {
-          userId_permissionId_organisationId: {
-            userId: id,
-            permissionId: permission.id,
-            organisationId: organisation.id,
-          },
+          userId: id,
+          organisationId: organisation.id,
+          permissionId: { in: permissions.map((permission) => permission.id) },
         },
-        select: { id: true },
       });
-      if (held) {
+      if (held > 0) {
         throw new ConflictException(
           'That permission is already granted there.',
         );
       }
-      await tx.userPermissionGrant.create({
-        data: {
-          userId: id,
-          permissionId: permission.id,
-          organisationId: organisation.id,
-          grantedByUserId: actor.userId,
-          reason: input.reason,
-        },
-      });
-      await this.audit.record(
-        {
-          action: 'user.permission_grant',
-          subjectType: 'user',
-          subjectId: id,
-          organisationId: organisation.id,
-          actorUserId: actor.userId,
-          after: {
-            permission: input.permission,
+      for (const permission of permissions) {
+        await tx.userPermissionGrant.create({
+          data: {
+            userId: id,
+            permissionId: permission.id,
             organisationId: organisation.id,
+            grantedByUserId: actor.userId,
+            reason: input.reason ?? null,
           },
-          reason: input.reason,
-          requestId: actor.requestId,
-          ipAddress: actor.ipAddress,
-        },
-        tx,
-      );
+        });
+        await this.audit.record(
+          {
+            action: 'user.permission_grant',
+            subjectType: 'user',
+            subjectId: id,
+            organisationId: organisation.id,
+            actorUserId: actor.userId,
+            after: {
+              permission: permission.code,
+              organisationId: organisation.id,
+            },
+            reason: input.reason ?? null,
+            requestId: actor.requestId,
+            ipAddress: actor.ipAddress,
+          },
+          tx,
+        );
+      }
     });
     return this.get(id);
   }
@@ -636,51 +637,51 @@ export class UsersService {
       'permission.revoke',
       input.organisationId,
     );
-    const permission = await this.requirePermission(input.permission);
+    const permissions = await this.requirePermissions(input.permissions);
 
+    // As with grants: all or none (item 56).
     await this.prisma.$transaction(async (tx) => {
       await this.requireUser(tx, id);
-      const held = await tx.userPermissionRevocation.findUnique({
+      const held = await tx.userPermissionRevocation.count({
         where: {
-          userId_permissionId_organisationId: {
-            userId: id,
-            permissionId: permission.id,
-            organisationId: organisation.id,
-          },
+          userId: id,
+          organisationId: organisation.id,
+          permissionId: { in: permissions.map((permission) => permission.id) },
         },
-        select: { id: true },
       });
-      if (held) {
+      if (held > 0) {
         throw new ConflictException(
           'That permission is already revoked there.',
         );
       }
-      await tx.userPermissionRevocation.create({
-        data: {
-          userId: id,
-          permissionId: permission.id,
-          organisationId: organisation.id,
-          revokedByUserId: actor.userId,
-          reason: input.reason,
-        },
-      });
-      await this.audit.record(
-        {
-          action: 'user.permission_revoke',
-          subjectType: 'user',
-          subjectId: id,
-          organisationId: organisation.id,
-          actorUserId: actor.userId,
-          after: {
-            permission: input.permission,
+      for (const permission of permissions) {
+        await tx.userPermissionRevocation.create({
+          data: {
+            userId: id,
+            permissionId: permission.id,
             organisationId: organisation.id,
+            revokedByUserId: actor.userId,
+            reason: input.reason ?? null,
           },
-          reason: input.reason,
-          requestId: actor.requestId,
-          ipAddress: actor.ipAddress,
-        },
-        tx,
-      );
+        });
+        await this.audit.record(
+          {
+            action: 'user.permission_revoke',
+            subjectType: 'user',
+            subjectId: id,
+            organisationId: organisation.id,
+            actorUserId: actor.userId,
+            after: {
+              permission: permission.code,
+              organisationId: organisation.id,
+            },
+            reason: input.reason ?? null,
+            requestId: actor.requestId,
+            ipAddress: actor.ipAddress,
+          },
+          tx,
+        );
+      }
     });
     return this.get(id);
   }
@@ -764,15 +765,19 @@ export class UsersService {
     }
   }
 
-  private async requirePermission(code: string): Promise<{ id: string }> {
-    const row = await this.prisma.permission.findUnique({
-      where: { code },
-      select: { id: true },
+  /** Each permission named, in the order named; 404 if any is not in the catalogue. */
+  private async requirePermissions(
+    codes: readonly string[],
+  ): Promise<{ id: string; code: string }[]> {
+    const rows = await this.prisma.permission.findMany({
+      where: { code: { in: [...codes] } },
+      select: { id: true, code: true },
     });
-    if (!row) {
+    const found = codes.map((code) => rows.find((row) => row.code === code));
+    if (found.some((row) => row === undefined)) {
       throw new NotFoundException();
     }
-    return row;
+    return found as { id: string; code: string }[];
   }
 
   /**
