@@ -36,53 +36,61 @@ function sticker(
 }
 
 describe('decideVerification — by plate', () => {
-  it('matches a declared, onboarded vehicle', () => {
-    expect(
-      decideVerification({ criteria: 'PLATE', vehicle: vehicle() }),
-    ).toEqual({
+  const plate = (
+    vehicleFacts: VerificationVehicle | null,
+    stickerFacts: VerificationSticker | null = sticker(),
+  ) =>
+    decideVerification({
+      criteria: 'PLATE',
+      vehicle: vehicleFacts,
+      sticker: stickerFacts,
+    });
+
+  it('matches a vehicle carrying an active sticker, declared or not (item 57)', () => {
+    expect(plate(vehicle())).toEqual({ matched: true, reasons: [] });
+    expect(plate(vehicle({ declarationStatus: 'ON_RECORD' }))).toEqual({
       matched: true,
       reasons: [],
     });
   });
 
   it('reports no record when nothing is on record for the plate', () => {
-    expect(decideVerification({ criteria: 'PLATE', vehicle: null })).toEqual({
+    expect(plate(null, null)).toEqual({
       matched: false,
       reasons: ['NO_RECORD'],
     });
   });
 
-  it('gives both reasons for a legacy vehicle on record only (VEH-22)', () => {
-    expect(
-      decideVerification({
-        criteria: 'PLATE',
-        vehicle: vehicle({ declarationStatus: 'ON_RECORD', onboarded: false }),
-      }),
-    ).toEqual({ matched: false, reasons: ['NOT_DECLARED', 'NOT_ONBOARDED'] });
+  it('refuses a vehicle that has never had a sticker, declared or not', () => {
+    for (const declarationStatus of ['ON_RECORD', 'ACTIVE'] as const) {
+      expect(
+        plate(vehicle({ declarationStatus, onboarded: false }), null).reasons,
+      ).toEqual(['NOT_ONBOARDED']);
+    }
   });
 
-  it('refuses a vehicle that is onboarded but not declared, and the reverse', () => {
+  it('refuses a vehicle whose sticker is no longer active', () => {
     expect(
-      decideVerification({
-        criteria: 'PLATE',
-        vehicle: vehicle({ declarationStatus: 'ON_RECORD' }),
-      }).reasons,
-    ).toEqual(['NOT_DECLARED']);
-    expect(
-      decideVerification({
-        criteria: 'PLATE',
-        vehicle: vehicle({ onboarded: false }),
-      }).reasons,
-    ).toEqual(['NOT_ONBOARDED']);
+      plate(
+        vehicle({ declarationStatus: 'ON_RECORD' }),
+        sticker({ status: 'LOST' }),
+      ).reasons,
+    ).toEqual(['STICKER_NOT_ACTIVE']);
   });
 
-  it('matches only an ACTIVE declaration, whatever else the status is', () => {
+  it('withholds a suspended, retired, disputed, or archived vehicle, whatever its sticker', () => {
     for (const declarationStatus of DECLARATION_STATUSES) {
-      const result = decideVerification({
-        criteria: 'PLATE',
-        vehicle: vehicle({ declarationStatus }),
-      });
-      expect(result.matched).toBe(declarationStatus === 'ACTIVE');
+      const result = plate(vehicle({ declarationStatus }));
+      const withheld = [
+        'SUSPENDED',
+        'RETIRED',
+        'DISPUTED',
+        'ARCHIVED',
+      ].includes(declarationStatus);
+      expect(result.matched, declarationStatus).toBe(!withheld);
+      if (withheld) {
+        expect(result.reasons).toEqual(['VEHICLE_WITHHELD']);
+      }
     }
   });
 });
@@ -154,15 +162,26 @@ describe('decideVerification — by sticker', () => {
     }
   });
 
-  it('refuses an ACTIVE sticker on a vehicle that is not declared', () => {
+  it('matches an ACTIVE sticker on a vehicle not yet declared (item 57)', () => {
+    expect(
+      decideVerification({
+        criteria: 'STICKER',
+        codeValid: true,
+        sticker: sticker(),
+        vehicle: vehicle({ declarationStatus: 'ON_RECORD' }),
+      }),
+    ).toEqual({ matched: true, reasons: [] });
+  });
+
+  it('refuses any sticker on a withheld vehicle', () => {
     expect(
       decideVerification({
         criteria: 'STICKER',
         codeValid: true,
         sticker: sticker({ status: 'SUSPENDED' }),
-        vehicle: vehicle({ declarationStatus: 'ON_RECORD' }),
+        vehicle: vehicle({ declarationStatus: 'SUSPENDED' }),
       }).reasons,
-    ).toEqual(['STICKER_NOT_ACTIVE', 'NOT_DECLARED']);
+    ).toEqual(['STICKER_NOT_ACTIVE', 'VEHICLE_WITHHELD']);
   });
 });
 
@@ -202,7 +221,7 @@ describe('decideVerification — plate and sticker together', () => {
         sticker: sticker({ status: 'LOST' }),
         vehicle: vehicle({ declarationStatus: 'SUSPENDED' }),
       }).reasons,
-    ).toEqual(['PLATE_MISMATCH', 'STICKER_NOT_ACTIVE', 'NOT_DECLARED']);
+    ).toEqual(['PLATE_MISMATCH', 'STICKER_NOT_ACTIVE', 'VEHICLE_WITHHELD']);
   });
 
   it('catches a legacy barcode presented for a plate other than its registered one', () => {
@@ -285,13 +304,17 @@ describe('verdict copy (PRD Requirement 11.1, §22)', () => {
 });
 
 describe('discloseReasons (QUESTIONS.md VEH-28)', () => {
-  const reasons = ['PLATE_MISMATCH', 'NOT_DECLARED', 'NOT_ONBOARDED'] as const;
+  const reasons = [
+    'PLATE_MISMATCH',
+    'VEHICLE_WITHHELD',
+    'NOT_ONBOARDED',
+  ] as const;
 
   it('states every reason to a holder of vehicle.declare', () => {
     expect(discloseReasons(reasons, true)).toEqual(reasons);
   });
 
-  it('never says "not declared" to anyone else, keeping the order', () => {
+  it('never names a vehicle’s status to anyone else, keeping the order', () => {
     expect(discloseReasons(reasons, false)).toEqual([
       'PLATE_MISMATCH',
       'RECORD_INCOMPLETE',

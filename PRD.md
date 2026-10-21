@@ -4,9 +4,9 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.18 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.18
-**Last revised:** 18 October 2026
+1.2 to 1.19 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.19
+**Last revised:** 21 October 2026
 
 ---
 
@@ -92,6 +92,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. Payment is offered wherever a vehicle is checked, and through a personal pay link that never says what is owed. See §23.10, §23.22–§23.27, Requirements 12.11, 27.7 and 27.8. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20, PAY-21), 5 October 2026. |
 | 1.10 | 5 October 2026 | The API administrator may invite a named organisation by a personal link that opens the application form addressed to it. A link is used once, expires, and may be withdrawn; the application it produces is confirmed and decided as any other. See §23.23 and Requirement 12.11. | The project owner (`QUESTIONS.md` EXT-21), 5 October 2026. |
 | 1.11 | 5 October 2026 | A vehicle without a sticker says so on its page each time it is opened, and adding a vehicle ends on a prompt to buy and attach its sticker, which may be closed. While new NURTW stickers are not issued, a vehicle the register holds no barcode for is told so, and nothing is charged. See Requirement 9A.7. | The project owner (`QUESTIONS.md` VEH-30), 5 October 2026. |
+| 1.19 | 21 October 2026 | A vehicle with an active sticker verifies on every channel, declared or not: declaring counts a vehicle in the external total and changes nothing else. A suspended, retired, disputed, or archived vehicle does not verify, and a vehicle need not be declared to be suspended or retired. A vehicle may therefore verify before it is counted. Reverses VEH-22. See Requirement 9A.1 and §23.19. | The project owner (`QUESTIONS.md` VEH-22), 21 October 2026. |
 | 1.18 | 18 October 2026 | Each payment credited to a member is confirmed to them by SMS, through Termii under the sender name "NURTW", once messages are switched on: the amount paid and what is still owed. The words are the Union's, versioned, and changed in settings. No message carries a NIN, an address, a whole telephone number, or a link. See Requirements 27.8 and 27.14. | The project owner's direction of 18 October 2026 (`QUESTIONS.md` PAY-22, GOV-22), for roadmap item 45. |
 | 1.17 | 18 October 2026 | A sticker whose fee is set to nothing is attached without a payment, since none can be taken; every other attachment control still holds. A fee amount may be nothing, and is changed back in settings. Both sticker fees are set to nothing for now. The eight placeholder designations are the Union's list, Driver and Conductor first. The go-live date is 19 October 2026. See Requirements 9A.4 and 27.2, §23.4, and §23.27. | The project owner's directions of 18 October 2026, for onboarding on 19 October (`QUESTIONS.md` VEH-37, ORG-06, GOV-11). |
 | 1.16 | 18 October 2026 | A member's National Identification Number may be recorded, at registration or on the member's record. It is optional until the Union says otherwise, kept sealed, never shown whole, printed, or disclosed, and held by one member's record at a time. A member's photograph may be added or replaced on their record after approval, a migrated member included. See Requirements 7.1, 7.3, and 7.4. | The project owner's direction of 18 October 2026 on collecting dues at the parks (`QUESTIONS.md` PAY-22), for roadmap item 44. |
@@ -386,8 +387,11 @@ Determined 22 September 2026; see §23.19 and `QUESTIONS.md` VEH-13 to VEH-22.
 **Requirement 9A.1 — three separate facts.** Whether a vehicle is **on record**,
 **onboarded**, and **declared** are recorded independently, each with its actor and time.
 None implies another. The external vehicle total counts only vehicles that are both
-onboarded and declared (Requirement 13.5). Likewise, **the external API and the public page
-return a positive verification only for a vehicle that is both** (`QUESTIONS.md` VEH-22).
+onboarded and declared (Requirement 13.5). *Revision 1.19* (`QUESTIONS.md` VEH-22, reversed): **a vehicle
+with an active sticker verifies on every channel, declared or not.** Declaring counts it in the
+external total and changes nothing else. A vehicle suspended, retired, disputed, or archived
+does not verify, whatever its sticker, and a vehicle need not be declared to be suspended or
+retired.
 The internal channels show every state, with one exception (*revision 1.4*, VEH-28): **a
 vehicle's declaration status is shown only to holders of `vehicle.declare`**. Anyone else is
 told, at most, that the vehicle's record is not complete.
@@ -1001,8 +1005,9 @@ value would be indistinguishable from a recorded one.
 
 Determined 22 September 2026 (`QUESTIONS.md` VEH-13 to VEH-17).
 
-- **Legacy vehicles are not declared.** They migrate on record only, and count toward
-  nothing external until they are onboarded and declared.
+- **Legacy vehicles are not declared.** They migrate on record only, count in no external
+  total until they are onboarded and declared, and verify once a sticker is attached to
+  them (revision 1.19).
 - **Legacy stickers are unattached.** They are reattached through the System, after payment,
   subject to Requirement 9A.4.
 - **The previous operator has stopped issuing.** The register stays at the export's 2,408
@@ -1016,8 +1021,10 @@ Determined 22 September 2026 (`QUESTIONS.md` VEH-13 to VEH-17).
 - **A barcode presented against another plate is refused**, with no override.
 - **No grace period** at go-live. Internally, an unattached registered barcode reads as
   recognised but not attached (Requirement 11.2).
-- **An external match requires both onboarded and declared** (VEH-22). Onboarding and
-  declaration may happen in either order; attaching needs `sticker.attach` (VEH-18).
+- **A match needs an active sticker, not a declaration** (VEH-22, reversed by the owner
+  on 21 October 2026, revision 1.19). A suspended, retired, disputed, or archived vehicle
+  does not match. Onboarding and declaration may happen in either order; attaching needs
+  `sticker.attach` (VEH-18).
 - **The vehicle letter** is produced on onboarding and carries no QR code (VEH-19).
 
 ### 23.20 Payments *(revision 1.2)*

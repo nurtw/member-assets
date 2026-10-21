@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.26
-**Last revised:** 19 October 2026
+**Document version:** 1.27
+**Last revised:** 21 October 2026
 
 ---
 
@@ -853,6 +853,12 @@ that is both onboarded and declared. The internal channels show every state.
 
 **Amended.** 3 October 2026 by VEH-28: the internal channels show a vehicle's declaration
 status only to holders of `vehicle.declare`.
+
+**Reversed.** 21 October 2026, by the project owner: **a vehicle with an active sticker verifies on
+every channel, declared or not.** Declaring only counts a vehicle in the external total. A
+suspended, retired, disputed, or archived vehicle still does not verify, and a vehicle need not
+be declared to be suspended or retired. The owner accepts that a vehicle may verify before it
+is counted. Recorded at PRD revision 1.19 (Requirement 9A.1, §23.19); built as item 57.
 
 ### VEH-23 · How enumerators add vehicles in the field ✅
 
@@ -2490,6 +2496,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 21 October 2026 | The project owner reversed **VEH-22**: an active sticker verifies on every channel, declared or not; declaring only counts a vehicle in the external total; a suspended, retired, disputed, or archived vehicle still does not verify; an undeclared vehicle may be suspended or retired. PRD revision 1.19, item 57. |
 | 19 October 2026 (hosting) | **GOV-02**: the project owner moved the live API from Render to DigitalOcean App Platform (Frankfurt) and deleted the Render service. The web stays on Vercel and the database on Neon. The keep-warm job is retired. |
 | 18 October 2026 (evening) | The project owner answered **ORG-08**: a park is a unit, and may have several collectors. Item 46 no longer waits on it. |
 | 18 October 2026 (item 45) | Built: an SMS confirmation for every payment credited to a member, through Termii, off until switched on (PRD revision 1.18, Requirement 27.14). **GOV-22** records it. It waits on the sender name "NURTW" being approved and on Termii's DND route. |

@@ -61,10 +61,15 @@ const DECLARATION_TRANSITIONS: Readonly<
   // migrated record has no prior ACTIVE declaration to compete with by
   // definition, so a plate match here is always a promotion, never a
   // conflict.
-  ON_RECORD: ['ACTIVE'],
+  //
+  // Item 57 (the owner's direction of 21 October 2026): a vehicle need not
+  // be declared to be suspended or retired, now that an active sticker is
+  // what makes it verify. Lifting a suspension returns it to what it was
+  // (`statusOnLifting`): declaring stays the one way to ACTIVE.
+  ON_RECORD: ['ACTIVE', 'SUSPENDED', 'RETIRED'],
   PENDING: ['ACTIVE', 'DISPUTED', 'ARCHIVED'],
   ACTIVE: ['SUSPENDED', 'RETIRED'],
-  SUSPENDED: ['ACTIVE', 'RETIRED'],
+  SUSPENDED: ['ACTIVE', 'ON_RECORD', 'RETIRED'],
   RETIRED: [],
   DISPUTED: ['ARCHIVED'],
   ARCHIVED: [],
@@ -106,6 +111,58 @@ export function isDeclarationFinal(status: DeclarationStatus): boolean {
  */
 export function isDeclarationLive(status: DeclarationStatus): boolean {
   return status === 'ACTIVE';
+}
+
+/**
+ * Item 57 — a vehicle in one of these does not verify, whatever its sticker:
+ * an officer suspended it, it is retired, its claim is disputed, or it is
+ * archived. Not being declared yet (`ON_RECORD`, `PENDING`) withholds
+ * nothing: declaring only counts a vehicle in the external total.
+ */
+export const WITHHELD_STATUSES: readonly DeclarationStatus[] = [
+  'SUSPENDED',
+  'RETIRED',
+  'DISPUTED',
+  'ARCHIVED',
+];
+
+export function isWithheld(status: DeclarationStatus): boolean {
+  return WITHHELD_STATUSES.includes(status);
+}
+
+/**
+ * Where a suspended vehicle goes when its suspension is lifted (item 57):
+ * back to `ACTIVE` if it was ever declared, otherwise back to `ON_RECORD`.
+ * Lifting a suspension never declares a vehicle, so never counts it.
+ */
+export function statusOnLifting(
+  declared: boolean,
+): Extract<DeclarationStatus, 'ACTIVE' | 'ON_RECORD'> {
+  return declared ? 'ACTIVE' : 'ON_RECORD';
+}
+
+/**
+ * What an officer's status change lands on (item 57). Declaring is its own
+ * act, with what it requires (`vehicle.declare`'s promotion), so a status
+ * change never takes a vehicle from `ON_RECORD` to `ACTIVE`. Asking for
+ * `ACTIVE` on a suspended vehicle lifts the suspension, back to what the
+ * vehicle was (`statusOnLifting`). The transition table still decides the
+ * rest.
+ */
+export function statusChangeTarget(
+  from: DeclarationStatus,
+  requested: Extract<DeclarationStatus, 'ACTIVE' | 'SUSPENDED' | 'RETIRED'>,
+  declared: boolean,
+): DeclarationStatus {
+  if (requested === 'ACTIVE' && from === 'SUSPENDED') {
+    return statusOnLifting(declared);
+  }
+  if (requested === 'ACTIVE' && from === 'ON_RECORD') {
+    throw new InvalidDeclarationTransitionError(
+      'A vehicle on record becomes ACTIVE only by being declared.',
+    );
+  }
+  return requested;
 }
 
 /**

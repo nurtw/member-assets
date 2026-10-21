@@ -8,6 +8,9 @@ import {
   canTransitionDeclaration,
   isDeclarationFinal,
   isDeclarationLive,
+  isWithheld,
+  statusChangeTarget,
+  statusOnLifting,
 } from './status.js';
 
 /**
@@ -18,12 +21,16 @@ import {
  */
 const LEGAL: readonly [string, string][] = [
   ['ON_RECORD', 'ACTIVE'],
+  // Item 57: an undeclared vehicle may be suspended or retired.
+  ['ON_RECORD', 'SUSPENDED'],
+  ['ON_RECORD', 'RETIRED'],
   ['PENDING', 'ACTIVE'],
   ['PENDING', 'DISPUTED'],
   ['PENDING', 'ARCHIVED'],
   ['ACTIVE', 'SUSPENDED'],
   ['ACTIVE', 'RETIRED'],
   ['SUSPENDED', 'ACTIVE'],
+  ['SUSPENDED', 'ON_RECORD'],
   ['SUSPENDED', 'RETIRED'],
   ['DISPUTED', 'ARCHIVED'],
 ];
@@ -54,7 +61,7 @@ describe('vehicle declaration lifecycle', () => {
     expect(isDeclarationFinal('DISPUTED')).toBe(false);
   });
 
-  it('promotes ON_RECORD only to ACTIVE, never to DISPUTED', () => {
+  it('promotes ON_RECORD to ACTIVE, never to DISPUTED', () => {
     // ARCHITECTURE.md Decision 6.5 — a migrated vehicle has no prior ACTIVE
     // declaration to compete with, so declaring it is always a promotion of
     // the same row, never a dispute.
@@ -119,5 +126,42 @@ describe('vehicle declaration lifecycle', () => {
     )) {
       expect(blocksNewRecord(status)).toBe(true);
     }
+  });
+});
+
+describe('withheld vehicles, and lifting a suspension (item 57)', () => {
+  it('withholds only what an officer or the record has stopped', () => {
+    expect(DECLARATION_STATUSES.filter(isWithheld)).toEqual([
+      'SUSPENDED',
+      'RETIRED',
+      'DISPUTED',
+      'ARCHIVED',
+    ]);
+  });
+
+  it('lifts a suspension back to what the vehicle was, never declaring it', () => {
+    expect(statusOnLifting(true)).toBe('ACTIVE');
+    expect(statusOnLifting(false)).toBe('ON_RECORD');
+  });
+});
+
+describe('statusChangeTarget (item 57)', () => {
+  it('lifts a suspension to declared or on record, by whether it was declared', () => {
+    expect(statusChangeTarget('SUSPENDED', 'ACTIVE', true)).toBe('ACTIVE');
+    expect(statusChangeTarget('SUSPENDED', 'ACTIVE', false)).toBe('ON_RECORD');
+  });
+
+  it('never declares a vehicle on record by a status change', () => {
+    expect(() => statusChangeTarget('ON_RECORD', 'ACTIVE', false)).toThrow(
+      InvalidDeclarationTransitionError,
+    );
+  });
+
+  it('suspends and retires as asked, the table deciding whether it may', () => {
+    expect(statusChangeTarget('ON_RECORD', 'SUSPENDED', false)).toBe(
+      'SUSPENDED',
+    );
+    expect(statusChangeTarget('ON_RECORD', 'RETIRED', false)).toBe('RETIRED');
+    expect(statusChangeTarget('ACTIVE', 'RETIRED', true)).toBe('RETIRED');
   });
 });

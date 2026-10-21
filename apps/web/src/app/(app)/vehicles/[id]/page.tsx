@@ -74,22 +74,23 @@ const CONFIRM: Record<
   SUSPEND: {
     title: "Suspend this vehicle?",
     description:
-      "Its declaration is suspended until an officer reactivates it. While suspended it does not verify outside the Union.",
+      "It stops verifying, here and for outside organisations, whatever its sticker, until an officer lifts the suspension.",
     confirmLabel: "Suspend",
     tone: "primary",
     done: "Vehicle suspended",
   },
   REACTIVATE: {
-    title: "Reactivate this vehicle?",
-    description: "Its declaration becomes active again.",
-    confirmLabel: "Reactivate",
+    title: "Lift the suspension?",
+    description:
+      "The vehicle verifies again while its sticker is active. It returns to what it was: declared if it had been declared, on record if not. Lifting never declares a vehicle.",
+    confirmLabel: "Lift the suspension",
     tone: "primary",
-    done: "Vehicle reactivated",
+    done: "Suspension lifted",
   },
   RETIRE: {
     title: "Retire this vehicle?",
     description:
-      "Retiring ends this declaration for good. The record is kept, and the monthly levy stops after this month.",
+      "Retiring ends this vehicle's record for good. The record is kept, it no longer verifies, and the monthly levy stops after this month.",
     confirmLabel: "Retire the vehicle",
     tone: "danger",
     done: "Vehicle retired",
@@ -153,7 +154,9 @@ export default function VehicleDetailPage() {
   const isSuspended = vehicle?.status === "SUSPENDED";
   const isDisputed = vehicle?.status === "DISPUTED";
   const canDeclare = isOnRecord && holds("vehicle.declare");
-  const canChangeStatus = holds("vehicle.suspend") && (isActive || isSuspended);
+  // Item 57: a vehicle need not be declared to be suspended or retired.
+  const canChangeStatus =
+    holds("vehicle.suspend") && (isActive || isSuspended || isOnRecord);
   const canDismiss = isDisputed && holds("vehicle.resolve_dispute");
 
   // A tab is offered only where it has something for this officer.
@@ -365,8 +368,8 @@ export default function VehicleDetailPage() {
       {isOnRecord ? (
         <Notice tone="info" title="On record, not declared">
           This vehicle is recorded with the Union but has not been declared. It
-          counts for nothing outside the Union until it is declared and a
-          sticker is attached.
+          verifies once an active sticker is attached. Declaring it adds it to
+          the vehicle total given to outside organisations.
         </Notice>
       ) : null}
 
@@ -718,7 +721,7 @@ export default function VehicleDetailPage() {
                       type="button"
                       onClick={() => setConfirming("REACTIVATE")}
                     >
-                      Reactivate
+                      Lift the suspension
                     </Button>
                   ) : (
                     <Button

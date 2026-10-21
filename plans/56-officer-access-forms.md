@@ -43,5 +43,5 @@ Several roles at once. Giving access in the Add an officer dialog. Reasons on re
 - [x] Applies to opens on the State Council for the super administrator.
 - [x] Every suite passes; clicked through as the super administrator, in both themes and
       on a phone (21 October).
-- [ ] Release: `db:deploy` on Neon (migration `20261020090000_optional_access_reasons`)
-      before the push.
+- [x] Release: `db:deploy` on Neon (migration `20261020090000_optional_access_reasons`)
+      before the push; live 21 October.

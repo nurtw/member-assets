@@ -106,6 +106,9 @@ These come from PRD §4 and are not negotiable design preferences — they are t
    enquiry — matched or unmatched, internal or external — must never create, complete, or
    reactivate a declaration. The verification path holds no write capability to
    declaration, sticker, card, member, or payment tables. See PRD §9.5–9.6.
+   **An active sticker is what verifies** (item 57, PRD revision 1.19, reversing VEH-22): a
+   vehicle need not be declared to verify, and declaring only counts it in the external
+   total. A suspended, retired, disputed, or archived vehicle never verifies.
    **On record, onboarded, and declared are three separate facts** (PRD §9A). Legacy
    vehicles are on record only. The external total counts vehicles both onboarded and
    declared, and no external response mentions declaration at all (Requirements 12.7,
@@ -1023,8 +1026,12 @@ per-address limits were shared by everyone (19 October 2026).
 ### Internal verification (item 10)
 
 - **One verdict rule, in `decideVerification`** (`packages/domain/src/verification/`).
-  - A plate matches a vehicle that is declared and onboarded.
-  - A sticker matches when it is attached and `ACTIVE` and its vehicle is declared.
+  - A plate matches a vehicle whose latest attached sticker is `ACTIVE` (item 57).
+  - A sticker matches when it is attached and `ACTIVE`.
+  - Either way, a vehicle suspended, retired, disputed, or archived is withheld
+    (`isWithheld`, `VEHICLE_WITHHELD`), whatever its sticker. Declaring decides nothing.
+  - A vehicle on record may be suspended or retired. Lifting a suspension returns it to
+    what it was (`statusChangeTarget`): a status change never declares a vehicle.
   - A combined check also needs the sticker's own vehicle to carry the presented plate.
 
   Item 12 must reuse this rule and map every non-match to the generic negative. Only the
@@ -1058,8 +1065,8 @@ per-address limits were shared by everyone (19 October 2026).
 
 - `VehicleSummary.status` and `declaredAt` are optional. `VehicleService.toSummary` takes
   `showDeclaration` and leaves both out otherwise. Never return them any other way.
-- On a verification, `declaration_status` is permitted only then, and `NOT_DECLARED` reads
-  `RECORD_INCOMPLETE` for everyone else. The audit trail keeps the true reasons.
+- On a verification, `declaration_status` is permitted only then, and `VEHICLE_WITHHELD`
+  reads `RECORD_INCOMPLETE` for everyone else. The audit trail keeps the true reasons.
 - Nothing may give the status away indirectly:
   - A `?status=` filter matches only vehicles whose status the caller may see.
   - The vehicle list is ordered by last change, never by declaration date.

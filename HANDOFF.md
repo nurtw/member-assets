@@ -18,9 +18,10 @@ Three rules outrank every default:
 - **Onboarding began 19 October 2026.** SMS is off until Termii is set up.
 - **The API runs on DigitalOcean only** (GOV-02; `OPERATIONS.md` §2 and §7). Item 55
   is live.
-- **Item 56, the officer access forms** (`plans/56-officer-access-forms.md`), is done
-  and committed, not released: migration `20261020090000_optional_access_reasons`
-  must reach Neon (`db:deploy`) before the push.
+- **Item 56, the officer access forms** (`plans/56-officer-access-forms.md`), is live
+  (21 October); its migration is on Neon.
+- **Item 57** (`plans/57-sticker-verifies.md`, PRD 1.19) is pushed, at the owner's word,
+  before the full e2e run and the click-through finished.
 - The sticker key is `k2`. The 9 unattached signed stickers from September (`k1`) no
   longer verify.
 
@@ -30,7 +31,6 @@ Tests: domain 540, contracts 158, api 208, web 112; e2e 564 of 564.
 
 - **Go-live was set before its gates** (PRD §23.27): item 15, CARD-05, CARD-07,
   GOV-18, and GOV-08 are open. The owner's call.
-- **Item 57 reverses VEH-22** (PRD 9A.1, §4.2); the PRD is not yet revised.
 - Items 46 to 52 change the PRD; MEM-19, CARD-09, and CARD-10 block some.
 
 ## Known issues — don't re-attempt these fixes
@@ -40,11 +40,10 @@ Tests: domain 540, contracts 158, api 208, web 112; e2e 564 of 564.
 
 ## Next steps
 
-1. Owner: approve releasing item 56: `db:deploy` on Neon, then the push.
-2. **Item 57, not yet planned** (the owner, 21 October): a vehicle with an active
-   sticker verifies on every channel; declaring only counts it in the external total;
-   a suspended, retired, or disputed vehicle still does not verify; an undeclared
-   vehicle may be suspended or retired. Revise the PRD and `QUESTIONS.md` VEH-22.
+1. Item 57: read the full e2e result; run `ct/32-sticker-verifies.mjs` (fixture
+   `ct_fixtures57.mjs`) on the local stack; tick the plan's last box.
+2. A plate now verifies on the sticker its vehicle carries now: one reported lost
+   stops it verifying until replaced. The owner may want otherwise.
 3. Owner: encrypt DigitalOcean's variables; Termii's keys there, then a test.
 4. Item 46 needs a go-ahead and a PRD revision.
 

@@ -822,6 +822,56 @@ describe('Vehicle declaration (e2e)', () => {
         .expect(409);
     });
 
+    it('suspends a vehicle on record, and lifts it back to on record, never declaring it (item 57)', async () => {
+      const recorded = await record({ plateNumberDisplay: plate('UR1') }).expect(
+        201,
+      );
+      const id = recorded.body.vehicle.id;
+      const status = (next: string, reason: string) =>
+        request(server)
+          .patch(`/api/v1/vehicles/${id}/status`)
+          .set('Cookie', cookies.declarer!)
+          .send({ status: next, reason });
+
+      await status('SUSPENDED', 'e2e: sticker under review')
+        .expect(200)
+        .expect((res) => expect(res.body.vehicle.status).toBe('SUSPENDED'));
+      await status('ACTIVE', 'e2e: review closed')
+        .expect(200)
+        .expect((res) => expect(res.body.vehicle.status).toBe('ON_RECORD'));
+
+      const stored = await prisma.vehicle.findUniqueOrThrow({ where: { id } });
+      expect(stored.declaredAt).toBeNull();
+    });
+
+    it('never declares a vehicle on record by a status change (item 57)', async () => {
+      const recorded = await record({ plateNumberDisplay: plate('UR2') }).expect(
+        201,
+      );
+      await request(server)
+        .patch(`/api/v1/vehicles/${recorded.body.vehicle.id}/status`)
+        .set('Cookie', cookies.declarer!)
+        .send({ status: 'ACTIVE', reason: 'e2e: a back door' })
+        .expect(409);
+    });
+
+    it('retires a vehicle on record, dated so its levy stops (item 57)', async () => {
+      const recorded = await record({ plateNumberDisplay: plate('UR3') }).expect(
+        201,
+      );
+      const id = recorded.body.vehicle.id;
+      await request(server)
+        .patch(`/api/v1/vehicles/${id}/status`)
+        .set('Cookie', cookies.declarer!)
+        .send({ status: 'RETIRED', reason: 'e2e: off the road' })
+        .expect(200)
+        .expect((res) => expect(res.body.vehicle.status).toBe('RETIRED'));
+
+      const stored = await prisma.vehicle.findUniqueOrThrow({ where: { id } });
+      expect(stored.retiredAt).not.toBeNull();
+      expect(stored.declaredAt).toBeNull();
+    });
+
     it('requires a reason', async () => {
       const created = await declare({ plateNumberDisplay: plate('KK11') }).expect(
         201,

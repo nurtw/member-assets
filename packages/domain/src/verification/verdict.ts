@@ -1,20 +1,19 @@
 /**
  * The verification verdict (PRD §11, §26.3, Requirement 9A.1 — item 10).
  *
- * One rule for every channel. `QUESTIONS.md` VEH-22 settled that the external
- * API and the public page match only a vehicle that is both onboarded and
- * declared; the internal channels apply the same rule to their headline, so an
- * officer never sees VERIFIED for a vehicle an outside organisation would be
- * told is not found. What the internal channels add is the *reasons*: every
- * state behind a negative verdict. An external caller receives the generic
- * negative whatever the reasons are (ARCHITECTURE.md Decision 5.4).
+ * One rule for every channel. **An active sticker is what verifies** (item 57,
+ * the owner's direction of 21 October 2026, reversing `QUESTIONS.md` VEH-22):
+ * a vehicle need not be declared, because declaring only counts it in the
+ * external total. A vehicle an officer suspended, or one retired, disputed, or
+ * archived, is withheld whatever its sticker. The internal channels apply the
+ * same rule to their headline, so an officer never sees VERIFIED for a vehicle
+ * an outside organisation would be told is not found. What they add is the
+ * *reasons*. An external caller receives the generic negative whatever the
+ * reasons are (ARCHITECTURE.md Decision 5.4).
  */
 
 import { isStickerVerifiable, type StickerStatus } from '../sticker/status.js';
-import {
-  isDeclarationLive,
-  type DeclarationStatus,
-} from '../vehicle/status.js';
+import { isWithheld, type DeclarationStatus } from '../vehicle/status.js';
 
 /** What was presented: a plate, a sticker code, or both together. */
 export const VERIFICATION_CRITERIA = ['PLATE', 'STICKER', 'COMBINED'] as const;
@@ -35,8 +34,8 @@ export const NOT_VERIFIED_REASONS = [
   'STICKER_NOT_ATTACHED',
   /** Attached, but suspended, lost, replaced, damaged, expired, or cancelled. */
   'STICKER_NOT_ACTIVE',
-  /** The vehicle has no ACTIVE declaration: on record only, suspended, … */
-  'NOT_DECLARED',
+  /** The vehicle is suspended, retired, disputed, or archived (item 57). */
+  'VEHICLE_WITHHELD',
   /** No sticker has ever been attached to the vehicle (Decision 6.5). */
   'NOT_ONBOARDED',
 ] as const;
@@ -70,7 +69,12 @@ export interface VerificationSticker {
  * compared with it, never looked up separately.
  */
 export type VerificationFacts =
-  | { criteria: 'PLATE'; vehicle: VerificationVehicle | null }
+  | {
+      criteria: 'PLATE';
+      vehicle: VerificationVehicle | null;
+      /** The vehicle's latest attached sticker, if it has ever had one. */
+      sticker: VerificationSticker | null;
+    }
   | {
       criteria: 'STICKER';
       /** False when a signed code failed its signature. */
@@ -97,14 +101,19 @@ export function decideVerification(
   const reasons = new Set<NotVerifiedReason>();
 
   if (facts.criteria === 'PLATE') {
-    if (!facts.vehicle) {
+    const { vehicle, sticker } = facts;
+    if (!vehicle) {
       reasons.add('NO_RECORD');
     } else {
-      if (!isDeclarationLive(facts.vehicle.declarationStatus)) {
-        reasons.add('NOT_DECLARED');
+      if (isWithheld(vehicle.declarationStatus)) {
+        reasons.add('VEHICLE_WITHHELD');
       }
-      if (!facts.vehicle.onboarded) {
+      if (!vehicle.onboarded || !sticker) {
         reasons.add('NOT_ONBOARDED');
+      } else if (!isStickerVerifiable(sticker.status)) {
+        // Onboarded once, but the sticker on it now is lost, suspended,
+        // replaced, or otherwise not active: the plate no longer verifies.
+        reasons.add('STICKER_NOT_ACTIVE');
       }
     }
     return verdict(reasons);
@@ -144,8 +153,8 @@ export function decideVerification(
   if (!isStickerVerifiable(sticker.status)) {
     reasons.add('STICKER_NOT_ACTIVE');
   }
-  if (!isDeclarationLive(vehicle.declarationStatus)) {
-    reasons.add('NOT_DECLARED');
+  if (isWithheld(vehicle.declarationStatus)) {
+    reasons.add('VEHICLE_WITHHELD');
   }
   return verdict(reasons);
 }
@@ -162,16 +171,16 @@ function verdict(reasons: ReadonlySet<NotVerifiedReason>): VerificationVerdict {
 
 /**
  * A reason as an internal channel may state it. `RECORD_INCOMPLETE` stands in
- * for `NOT_DECLARED` before anyone who may not see declaration status.
+ * for `VEHICLE_WITHHELD` before anyone who may not see declaration status.
  */
 export type DisclosedReason = NotVerifiedReason | 'RECORD_INCOMPLETE';
 
 /**
  * `QUESTIONS.md` VEH-28 — a vehicle's declaration status is shown only to
- * holders of `vehicle.declare`. For anyone else, `NOT_DECLARED` becomes
- * `RECORD_INCOMPLETE`, in the same place in the order. The officer learns the
- * record is not complete, never that the vehicle is undeclared. The verdict
- * itself is unchanged, and the audit trail keeps the true reasons.
+ * holders of `vehicle.declare`. Suspended, retired, disputed, and archived are
+ * values of that status, so for anyone else `VEHICLE_WITHHELD` becomes
+ * `RECORD_INCOMPLETE`, in the same place in the order. The verdict itself is
+ * unchanged, and the audit trail keeps the true reasons.
  */
 export function discloseReasons(
   reasons: readonly NotVerifiedReason[],
@@ -180,7 +189,7 @@ export function discloseReasons(
   return declarationVisible
     ? [...reasons]
     : reasons.map((reason) =>
-        reason === 'NOT_DECLARED' ? 'RECORD_INCOMPLETE' : reason,
+        reason === 'VEHICLE_WITHHELD' ? 'RECORD_INCOMPLETE' : reason,
       );
 }
 

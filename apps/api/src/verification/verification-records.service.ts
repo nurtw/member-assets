@@ -306,9 +306,23 @@ export class VerificationRecordsService {
           registeredPlateNormalized: sticker.registeredPlateNormalized,
         }
       : null;
+    // Item 57 — a plate verifies on the sticker its vehicle carries now: the
+    // latest attached one, active or not.
+    const currentStickerFacts =
+      criteria === 'PLATE' && currentSticker
+        ? {
+            status: currentSticker.status,
+            attached: currentSticker.attachedAt !== null,
+            registeredPlateNormalized: currentSticker.registeredPlateNormalized,
+          }
+        : null;
     const verdict =
       criteria === 'PLATE'
-        ? decideVerification({ criteria, vehicle: vehicleFacts })
+        ? decideVerification({
+            criteria,
+            vehicle: vehicleFacts,
+            sticker: currentStickerFacts,
+          })
         : criteria === 'STICKER'
           ? decideVerification({
               criteria,

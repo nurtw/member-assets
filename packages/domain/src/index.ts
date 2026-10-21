@@ -131,11 +131,15 @@ export {
   DECLARATION_STATUSES,
   InvalidDeclarationTransitionError,
   RECORD_BLOCKING_STATUSES,
+  WITHHELD_STATUSES,
   assertDeclarationTransition,
   blocksNewRecord,
   canTransitionDeclaration,
   isDeclarationFinal,
   isDeclarationLive,
+  isWithheld,
+  statusChangeTarget,
+  statusOnLifting,
   type DeclarationStatus,
 } from './vehicle/status.js';
 

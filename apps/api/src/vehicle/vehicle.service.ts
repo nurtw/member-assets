@@ -24,6 +24,7 @@ import {
   listEffectivePermissions,
   normalizePlateNumber,
   outermostScopes,
+  statusChangeTarget,
   type DeclarationStatus,
   type PermissionAssignments,
 } from '@nurtw/domain';
@@ -888,9 +889,21 @@ export class VehicleService {
     await this.require(actor.userId, SUSPEND, vehicle.path);
     await this.require(actor.userId, DECLARE, vehicle.path);
 
-    this.assertTransition(vehicle.status as DeclarationStatus, input.status);
+    // Item 57 — an undeclared vehicle may be suspended or retired, lifting a
+    // suspension returns it to what it was, and only declaring makes it ACTIVE.
+    const from = vehicle.status as DeclarationStatus;
+    let to: DeclarationStatus;
+    try {
+      to = statusChangeTarget(from, input.status, vehicle.declaredAt !== null);
+    } catch (error) {
+      if (error instanceof InvalidDeclarationTransitionError) {
+        throw new ConflictException(error.message);
+      }
+      throw error;
+    }
+    this.assertTransition(from, to);
 
-    return this.applyStatus(actor, vehicle, input.status, input.reason);
+    return this.applyStatus(actor, vehicle, to, input.reason);
   }
 
   /**

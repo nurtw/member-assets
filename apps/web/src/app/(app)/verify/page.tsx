@@ -48,11 +48,10 @@ const STICKER_STATUS_WORDS: Record<string, string> = {
   CANCELLED: "cancelled",
 };
 
-const DECLARATION_SENTENCES: Record<string, string> = {
-  ON_RECORD: "The vehicle is on record only. It has not been declared.",
-  PENDING: "The vehicle's declaration is pending.",
-  SUSPENDED: "The vehicle's declaration is suspended.",
-  DISPUTED: "The vehicle's declaration is disputed.",
+/** Why a vehicle is withheld (item 57): only these statuses stop it verifying. */
+const WITHHELD_SENTENCES: Record<string, string> = {
+  SUSPENDED: "An officer has suspended this vehicle.",
+  DISPUTED: "Another claim to this plate is in dispute.",
   RETIRED: "The vehicle's record is retired.",
   ARCHIVED: "The vehicle's record is archived.",
 };
@@ -103,15 +102,16 @@ function explain(reason: DisclosedReason, fields: Fields): string {
       return `The sticker is ${
         STICKER_STATUS_WORDS[fields.sticker_status ?? ""] ?? "not active"
       }.`;
-    case "NOT_DECLARED":
+    case "VEHICLE_WITHHELD":
       return (
-        DECLARATION_SENTENCES[fields.declaration_status ?? ""] ??
-        "The vehicle is not declared."
+        WITHHELD_SENTENCES[fields.declaration_status ?? ""] ??
+        "The vehicle is withheld from verification."
       );
     case "RECORD_INCOMPLETE":
       // VEH-28 — what an officer without vehicle.declare is told in place of
-      // the declaration status. It never says "declared".
-      return "This vehicle's record is not complete. Refer the member to their unit or branch office.";
+      // a suspended, retired, disputed, or archived vehicle (item 57). It
+      // names no status.
+      return "This vehicle cannot be verified at present. Refer the member to their unit or branch office.";
     case "NOT_ONBOARDED":
       return "The vehicle has not been onboarded: no sticker has been attached to it.";
   }

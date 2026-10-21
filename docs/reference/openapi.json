@@ -30050,8 +30050,8 @@
     },
     "/api/v1/vehicles/{id}/status": {
       "patch": {
-        "summary": "Move a declaration between ACTIVE, SUSPENDED, and RETIRED.",
-        "description": "A reason is always required. Cannot reach or leave `DISPUTED` or `ARCHIVED` through this route — those are `declare`’s and the dispute-dismissal route’s concern respectively, each held to a different permission because a route decorator names one permission and the guard refuses before the service is reached.\n\n**Permission required:** `vehicle.suspend`.",
+        "summary": "Suspend, lift, or retire a vehicle, declared or on record.",
+        "description": "Item 57: a vehicle on record may be suspended or retired without being declared. Asking for `ACTIVE` lifts a suspension, back to `ACTIVE` if the vehicle was declared and to `ON_RECORD` if not; it never declares a vehicle on record (409), which only declaring does. A reason is always required. Cannot reach or leave `DISPUTED` or `ARCHIVED` through this route — those are `declare`’s and the dispute-dismissal route’s concern respectively, each held to a different permission because a route decorator names one permission and the guard refuses before the service is reached.\n\n**Permission required:** `vehicle.suspend`.",
         "operationId": "VehicleController_setStatus",
         "tags": [
           "Vehicle"

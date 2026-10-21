@@ -96,8 +96,8 @@ export interface InternalVerification {
   matched: boolean;
   /**
    * Empty when matched; otherwise every reason, the headline first. Before a
-   * caller without `vehicle.declare` over the vehicle, `NOT_DECLARED` reads
-   * `RECORD_INCOMPLETE` (VEH-28).
+   * caller without `vehicle.declare` over the vehicle, `VEHICLE_WITHHELD` reads
+   * `RECORD_INCOMPLETE` (VEH-28, item 57).
    */
   reasons: readonly DisclosedReason[];
   /** Requirement 11.1 — the exact matter verified. */

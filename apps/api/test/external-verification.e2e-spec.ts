@@ -207,14 +207,17 @@ describe('External verification API (e2e)', () => {
 
     // --- Vehicles ---------------------------------------------------------------
 
-    async function vehicle(key: string, status: 'ACTIVE' | 'ON_RECORD') {
+    async function vehicle(
+      key: string,
+      status: 'ACTIVE' | 'ON_RECORD' | 'SUSPENDED',
+    ) {
       const row = await prisma.vehicle.create({
         data: {
           plateNumberDisplay: `E2EEXT-${key}`,
           plateNumberNormalized: `E2EEXT${key}`,
           branchId: branch.id,
           status,
-          declaredAt: status === 'ACTIVE' ? new Date() : null,
+          declaredAt: status === 'ON_RECORD' ? null : new Date(),
           isLegacyImport: status === 'ON_RECORD',
           routeTypeId: routeType.id,
           vehicleCategoryId: category.id,
@@ -242,6 +245,9 @@ describe('External verification API (e2e)', () => {
     const lost = await vehicle('LOST', 'ACTIVE');
     const other = await vehicle('OTHER', 'ACTIVE');
     const legacyVehicle = await vehicle('LEGACYV', 'ACTIVE');
+    // Item 57: never declared but with an active sticker; and suspended.
+    const undeclared = await vehicle('UNDECL', 'ON_RECORD');
+    const suspended = await vehicle('SUSP', 'SUSPENDED');
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -276,6 +282,8 @@ describe('External verification API (e2e)', () => {
     await signedSticker('ISSUED', 'ISSUED', null);
     await signedSticker('LOST', 'LOST', lost);
     await signedSticker('OTHER', 'ACTIVE', other);
+    await signedSticker('UNDECL', 'ACTIVE', undeclared);
+    await signedSticker('SUSP', 'ACTIVE', suspended);
     const last = codes.MATCH!.at(-1);
     codes.FORGED = `${codes.MATCH!.slice(0, -1)}${last === 'a' ? 'b' : 'a'}`;
 
@@ -513,12 +521,12 @@ describe('External verification API (e2e)', () => {
       expect(response.body).not.toHaveProperty('plate_matches_sticker');
     });
 
-    it('matches a plate whose sticker was since lost: onboarded is what the rule needs', async () => {
-      const response = await plate('E2EEXT-LOST');
-      expect(response.body).toMatchObject({
-        result: 'MATCH_FOUND',
-        sticker_status: 'LOST',
-      });
+    it('matches a vehicle never declared that carries an active sticker (item 57)', async () => {
+      expect((await plate('E2EEXT-UNDECL')).body.result).toBe('MATCH_FOUND');
+      expect((await sticker(codes.UNDECL!)).body.result).toBe('MATCH_FOUND');
+      expect((await combined('E2EEXT-UNDECL', codes.UNDECL!)).body.result).toBe(
+        'MATCH_FOUND',
+      );
     });
 
     it('never tells a sticker check the plate, even where the profile permits it', async () => {
@@ -559,8 +567,11 @@ describe('External verification API (e2e)', () => {
     it('whatever the reason, on every vehicle route', async () => {
       const negatives = [
         await plate('E2EEXT-NONE'), // no record
-        await plate('E2EEXT-REC'), // on record only (VEH-22)
+        await plate('E2EEXT-REC'), // on record, never had a sticker
         await plate('E2EEXT-BARE'), // declared, never onboarded
+        await plate('E2EEXT-LOST'), // its sticker is reported lost (item 57)
+        await plate('E2EEXT-SUSP'), // suspended, active sticker (item 57)
+        await sticker(codes.SUSP!), // the suspended vehicle's own sticker
         await sticker(`${TAG}-1700000000000`), // not on the register
         await sticker(codes.REG!), // on the register, never attached (11.2)
         await sticker(codes.ISSUED!), // printed, never attached
@@ -618,7 +629,7 @@ describe('External verification API (e2e)', () => {
         clientId: clients.wide!.id,
         tokenId: clients.wide!.tokenId,
         outcome: 'NOT_VERIFIED',
-        reasons: ['NOT_DECLARED', 'NOT_ONBOARDED'],
+        reasons: ['NOT_ONBOARDED'],
         disclosed: [],
         presentedPlate: 'E2EEXTREC',
       });

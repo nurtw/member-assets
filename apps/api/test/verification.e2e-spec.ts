@@ -175,7 +175,7 @@ describe('Internal verification (e2e)', () => {
 
     async function vehicle(
       key: string,
-      status: 'ACTIVE' | 'ON_RECORD',
+      status: 'ACTIVE' | 'ON_RECORD' | 'SUSPENDED',
       extra: { branchId?: string; memberId?: string } = {},
     ) {
       const row = await prisma.vehicle.create({
@@ -184,7 +184,7 @@ describe('Internal verification (e2e)', () => {
           plateNumberNormalized: `E2EVFY${key}`,
           branchId: extra.branchId ?? branchId,
           status,
-          declaredAt: status === 'ACTIVE' ? new Date() : null,
+          declaredAt: status === 'ON_RECORD' ? null : new Date(),
           isLegacyImport: status === 'ON_RECORD',
           routeTypeId: routeType.id,
           vehicleCategoryId: category.id,
@@ -211,6 +211,10 @@ describe('Internal verification (e2e)', () => {
     await vehicle('REC', 'ON_RECORD');
     await vehicle('BARE', 'ACTIVE');
     const lost = await vehicle('LOST', 'ACTIVE');
+    // Item 57: never declared, but carrying an active sticker; and declared,
+    // carrying an active sticker, but suspended by an officer.
+    const undeclared = await vehicle('UNDECL', 'ON_RECORD');
+    const suspended = await vehicle('SUSP', 'SUSPENDED');
     const other = await vehicle('OTHER', 'ACTIVE', {
       branchId: otherBranchId,
       memberId: otherMember.id,
@@ -249,6 +253,8 @@ describe('Internal verification (e2e)', () => {
     await signedSticker('ISSUED', 'ISSUED', null);
     await signedSticker('LOST', 'LOST', lost);
     await signedSticker('OTHER', 'ACTIVE', other);
+    await signedSticker('UNDECL', 'ACTIVE', undeclared);
+    await signedSticker('SUSP', 'ACTIVE', suspended);
 
     // A legacy register row, shaped as the legacy import writes it.
     const legacy = await prisma.sticker.create({
@@ -419,10 +425,34 @@ describe('Internal verification (e2e)', () => {
       });
     });
 
-    it('gives both reasons for a legacy vehicle on record only (VEH-22)', async () => {
+    it('verifies a vehicle never declared that carries an active sticker (item 57)', async () => {
+      for (const who of ['officer', 'declarer']) {
+        const byPlate = await verify({ plateNumber: 'E2EVFY-UNDECL' }, who);
+        expect(byPlate, who).toMatchObject({ matched: true, reasons: [] });
+      }
+      const bySticker = await verify({ stickerCode: codes.UNDECL! });
+      expect(bySticker).toMatchObject({ matched: true, reasons: [] });
+      const together = await verify({
+        plateNumber: 'E2EVFY-UNDECL',
+        stickerCode: codes.UNDECL!,
+      });
+      expect(together).toMatchObject({ matched: true, reasons: [] });
+    });
+
+    it('withholds a suspended vehicle, whatever its sticker (item 57)', async () => {
+      const result = await verify({ plateNumber: 'E2EVFY-SUSP' }, 'declarer');
+      expect(result.matched).toBe(false);
+      expect(result.reasons).toEqual(['VEHICLE_WITHHELD']);
+      expect(result.fields).toMatchObject({ declaration_status: 'SUSPENDED' });
+      expect((await verify({ stickerCode: codes.SUSP! })).reasons).toEqual([
+        'RECORD_INCOMPLETE',
+      ]);
+    });
+
+    it('refuses a vehicle on record only that has never had a sticker', async () => {
       const result = await verify({ plateNumber: 'E2EVFY-REC' }, 'declarer');
       expect(result.matched).toBe(false);
-      expect(result.reasons).toEqual(['NOT_DECLARED', 'NOT_ONBOARDED']);
+      expect(result.reasons).toEqual(['NOT_ONBOARDED']);
       expect(result.statement).toBe(
         'No matching NURTW record was found under the requested verification criteria.',
       );
@@ -434,16 +464,16 @@ describe('Internal verification (e2e)', () => {
     });
 
     it('tells an officer without vehicle.declare only that the record is incomplete (VEH-28)', async () => {
-      const result = await verify({ plateNumber: 'E2EVFY-REC' });
+      const result = await verify({ plateNumber: 'E2EVFY-SUSP' });
       expect(result.matched).toBe(false);
-      expect(result.reasons).toEqual(['RECORD_INCOMPLETE', 'NOT_ONBOARDED']);
+      expect(result.reasons).toEqual(['RECORD_INCOMPLETE']);
       expect(result.fields).not.toHaveProperty('declaration_status');
-      expect(JSON.stringify(result)).not.toMatch(/DECLARED|ON_RECORD/);
+      expect(JSON.stringify(result)).not.toMatch(/SUSPENDED|WITHHELD/);
 
       // The audit trail keeps the true reasons.
       const audit = await auditFor(result.reference);
       expect(audit.afterValue).toMatchObject({
-        reasons: ['NOT_DECLARED', 'NOT_ONBOARDED'],
+        reasons: ['VEHICLE_WITHHELD'],
       });
     });
 
