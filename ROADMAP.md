@@ -84,7 +84,7 @@ Each item is independently completable and independently testable. Status values
 | 54 | public-api-docs | §12, §13, Req. 14.3; the owner's direction of 19 Oct | done (19 Oct; needs `db:seed` on Neon after the deploy) | [plan](plans/54-public-api-docs.md) |
 | 55 | caller-address | Req. 14, 12.8; GOV-02; the owner's direction of 19 Oct | done (19 Oct; live, checked in the live log) | [plan](plans/55-caller-address.md) |
 | 56 | officer-access-forms | §16, Req. 17; Decisions 9.4, 9.6; the owner's direction of 20 Oct | done (21 Oct; live) | [plan](plans/56-officer-access-forms.md) |
-| 57 | sticker-verifies | §4, Req. 9A.1, §23.19; reverses VEH-22; the owner's direction of 21 Oct | pushed (21 Oct, before the full e2e run and the click-through) | [plan](plans/57-sticker-verifies.md) |
+| 57 | sticker-verifies | §4, Req. 9A.1, §23.19; reverses VEH-22; the owner's direction of 21 Oct | done (21 Oct; live) | [plan](plans/57-sticker-verifies.md) |
 
 ### Item summaries
 

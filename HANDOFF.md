@@ -20,8 +20,8 @@ Three rules outrank every default:
   is live.
 - **Item 56, the officer access forms** (`plans/56-officer-access-forms.md`), is live
   (21 October); its migration is on Neon.
-- **Item 57** (`plans/57-sticker-verifies.md`, PRD 1.19) is pushed, at the owner's word,
-  before the full e2e run and the click-through finished.
+- **Item 57** (`plans/57-sticker-verifies.md`, PRD 1.19) is live (21 October): an active
+  sticker verifies; declaring only counts a vehicle.
 - The sticker key is `k2`. The 9 unattached signed stickers from September (`k1`) no
   longer verify.
 
@@ -40,12 +40,10 @@ Tests: domain 540, contracts 158, api 208, web 112; e2e 564 of 564.
 
 ## Next steps
 
-1. Item 57: read the full e2e result; run `ct/32-sticker-verifies.mjs` (fixture
-   `ct_fixtures57.mjs`) on the local stack; tick the plan's last box.
-2. A plate now verifies on the sticker its vehicle carries now: one reported lost
+1. A plate now verifies on the sticker its vehicle carries now: one reported lost
    stops it verifying until replaced. The owner may want otherwise.
-3. Owner: encrypt DigitalOcean's variables; Termii's keys there, then a test.
-4. Item 46 needs a go-ahead and a PRD revision.
+2. Owner: encrypt DigitalOcean's variables; Termii's keys there, then a test.
+3. Item 46 needs a go-ahead and a PRD revision.
 
 ## Do NOT
 

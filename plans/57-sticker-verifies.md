@@ -45,6 +45,6 @@ The external total, the public sticker page (GOV-08), and declaring itself.
 - [x] A suspended, retired, or disputed vehicle does not, whatever its sticker.
 - [x] An undeclared vehicle is suspended, lifted back to on record, and retired.
 - [x] The external total is unchanged (its code is untouched).
-- [ ] Every suite passes; clicked through. Unit suites, typecheck, lint, and the
-      verification and vehicle e2e suites passed; the owner had it pushed (21 October)
-      before the full e2e run and the click-through finished.
+- [x] Every suite passes; clicked through. Pushed at the owner's word before both
+      finished (21 October); both passed afterwards. Two e2e files failed in a run the
+      machine paused for 75 minutes, and passed when rerun.
