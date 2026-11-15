@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { SwrDefaults } from "@/components/swr-defaults";
 import { Toaster } from "@/components/ui/toaster";
 import { THEME_SCRIPT } from "@/lib/theme";
 
@@ -62,7 +63,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col">
-        {children}
+        <SwrDefaults>{children}</SwrDefaults>
         <Toaster />
       </body>
     </html>

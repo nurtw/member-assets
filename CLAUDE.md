@@ -1320,6 +1320,11 @@ dialogs, menus, and the sheet from their own files). See `DESIGN.md` §8–§9 a
   for the reason there. Never put a reason box beside a danger button, and never share
   one reason box between several acts. `reason={{ optional: true }}` is for an approval's
   note.
+- **Reads refetch on tab focus at most every five minutes** (`SwrDefaults`,
+  `lib/swr-defaults.ts`, mounted in the root layout). SWR's own default is five seconds,
+  which sent every mounted screen's reads to the API on each switch of tab. Do not
+  shorten it without a reason: each read is database time, and the database bills for the
+  time it is awake. A screen that must be current says so on its own `useSWR`.
 - **The command menu reaches screens and actions only.** Never make it search records.
 - **The theme script** in `app/layout.tsx` runs before the first paint. If item 15 adds a
   content security policy, allow it by its hash.
