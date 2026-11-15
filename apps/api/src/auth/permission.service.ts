@@ -27,77 +27,56 @@ import { PrismaService } from '../prisma/prisma.service.js';
 export class PermissionService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * One round trip, not eleven. Prisma loads each nested relation with a query
+   * of its own, so reading a user's roles, their permissions, their grants,
+   * their revocations, and the organisations those sit at took about eleven
+   * queries, on every request that asked who may do what. The three sources
+   * are joined here in one statement; the decision itself is still made by
+   * `@nurtw/domain`.
+   *
+   * Nothing is remembered between calls, and nothing within a request: a
+   * revoked permission, a moved organisation, or an edited role applies to
+   * the very next check.
+   */
   async loadAssignments(userId: string): Promise<PermissionAssignments> {
-    const [roleAssignments, grants, revocations] = await Promise.all([
-      this.prisma.userRoleAssignment.findMany({
-        where: { userId },
-        select: {
-          organisation: { select: { path: true } },
-          role: {
-            select: {
-              permissions: {
-                select: { permission: { select: { code: true } } },
-              },
-            },
-          },
-        },
-      }),
-      this.prisma.userPermissionGrant.findMany({
-        where: { userId },
-        select: {
-          permission: { select: { code: true } },
-          organisation: { select: { path: true } },
-        },
-      }),
-      this.prisma.userPermissionRevocation.findMany({
-        where: { userId },
-        select: {
-          permission: { select: { code: true } },
-          organisationId: true,
-        },
-      }),
-    ]);
+    const rows = await this.prisma.$queryRaw<
+      { kind: 'ROLE' | 'GRANT' | 'REVOCATION'; permission: string; scopePath: string }[]
+    >`
+      SELECT 'ROLE' AS kind, p.code AS permission, o.path AS "scopePath"
+      FROM user_role_assignment a
+      JOIN organisation o ON o.id = a.organisation_id
+      JOIN role_permission rp ON rp.role_id = a.role_id
+      JOIN permission p ON p.id = rp.permission_id
+      WHERE a.user_id = ${userId}::uuid
+      UNION ALL
+      SELECT 'GRANT' AS kind, p.code AS permission, o.path AS "scopePath"
+      FROM user_permission_grant g
+      JOIN organisation o ON o.id = g.organisation_id
+      JOIN permission p ON p.id = g.permission_id
+      WHERE g.user_id = ${userId}::uuid
+      UNION ALL
+      SELECT 'REVOCATION' AS kind, p.code AS permission, o.path AS "scopePath"
+      FROM user_permission_revocation r
+      JOIN organisation o ON o.id = r.organisation_id
+      JOIN permission p ON p.id = r.permission_id
+      WHERE r.user_id = ${userId}::uuid`;
 
-    // A role confers each of its permissions at the scope the role was assigned
-    // in — the cross product, flattened.
-    const fromRoles: ScopedPermission[] = roleAssignments.flatMap(
-      (assignment) =>
-        assignment.role.permissions.map((rolePermission) => ({
-          permission: rolePermission.permission.code,
-          scopePath: assignment.organisation.path,
-        })),
-    );
+    const pick = (kind: 'ROLE' | 'GRANT' | 'REVOCATION'): ScopedPermission[] =>
+      rows
+        .filter((row) => row.kind === kind)
+        .map((row) => ({
+          permission: row.permission,
+          scopePath: row.scopePath,
+        }));
 
-    // Revocations store an organisation id; resolve to paths in one query rather
-    // than joining per row.
-    const revocationPaths = await this.resolvePaths(
-      revocations.map((revocation) => revocation.organisationId),
-    );
-
+    // A role confers each of its permissions at the scope the role was
+    // assigned in, which is what the join above yields row by row.
     return {
-      fromRoles,
-      grants: grants.map((grant) => ({
-        permission: grant.permission.code,
-        scopePath: grant.organisation.path,
-      })),
-      revocations: revocations.map((revocation) => ({
-        permission: revocation.permission.code,
-        scopePath: revocationPaths.get(revocation.organisationId) ?? '/',
-      })),
+      fromRoles: pick('ROLE'),
+      grants: pick('GRANT'),
+      revocations: pick('REVOCATION'),
     };
-  }
-
-  private async resolvePaths(
-    ids: readonly string[],
-  ): Promise<Map<string, string>> {
-    if (ids.length === 0) {
-      return new Map();
-    }
-    const rows = await this.prisma.organisation.findMany({
-      where: { id: { in: [...new Set(ids)] } },
-      select: { id: true, path: true },
-    });
-    return new Map(rows.map((row) => [row.id, row.path]));
   }
 
   async decide(
@@ -219,9 +198,20 @@ export class PermissionService {
 
     // Subtract revocations by re-deciding each candidate through the domain
     // logic, so this listing can never disagree with what the guard enforces.
+    // A user's assignments are loaded once, however many rows name them.
+    const assignmentsByUser = new Map<string, PermissionAssignments>();
+    for (const userId of new Set(candidates.map((c) => c.userId))) {
+      assignmentsByUser.set(userId, await this.loadAssignments(userId));
+    }
     const results: typeof candidates = [];
     for (const candidate of candidates) {
-      if (await this.can(candidate.userId, permission, candidate.scopePath)) {
+      const assignments = assignmentsByUser.get(candidate.userId)!;
+      if (
+        decidePermission(assignments, {
+          permission,
+          subjectPath: candidate.scopePath,
+        }).allowed
+      ) {
         results.push(candidate);
       }
     }
