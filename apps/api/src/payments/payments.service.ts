@@ -8,7 +8,10 @@ import { calculateFees, DEFAULT_FEE_SCHEDULES } from '@nurtw/domain';
 import { randomUUID } from 'node:crypto';
 
 import { AuditService } from '../audit/audit.service.js';
-import { queuePaymentNotice } from '../notifications/sms-outbox.js';
+import {
+  notifySmsQueued,
+  queuePaymentNotice,
+} from '../notifications/sms-outbox.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { FeeTypeService } from './fee-type.service.js';
 import { PaystackClient } from './paystack/paystack.client.js';
@@ -356,6 +359,9 @@ export class PaymentsService {
         }
       }
     });
+    if (DUES_FEE_TYPES.has(payment.feeType.code)) {
+      notifySmsQueued();
+    }
     return true;
   }
 }

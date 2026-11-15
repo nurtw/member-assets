@@ -42,14 +42,27 @@ import {
   SMS_SENDER_ID,
   SettingsService,
 } from '../settings/settings.service.js';
+import { onSmsQueued } from './sms-outbox.js';
 import {
   SmsProviderUnavailableError,
   SmsRefusedError,
   TermiiClient,
 } from './termii.client.js';
 
-/** How often the outbox is drained. A confirmation should arrive while the payer is still there. */
-const DRAIN_INTERVAL_MS = 15_000;
+/**
+ * The outbox is drained when a payment queues a message, once at start-up, and
+ * when a retry falls due. It is not polled: a query every few seconds keeps the
+ * database's compute running all day for an outbox that is nearly always empty.
+ * This hourly drain is only the safety net, for a message queued by a process
+ * that stopped before it could drain, and for one stuck `SENDING`.
+ */
+const FALLBACK_DRAIN_INTERVAL_MS = 60 * 60 * 1000;
+
+/** Start-up drain: after the connection is up, and not in the way of the first requests. */
+const START_UP_DRAIN_DELAY_MS = 5_000;
+
+/** A retry is never scheduled sooner than this, so a clock skew cannot make a tight loop. */
+const MIN_RETRY_DELAY_MS = 1_000;
 
 /** How many messages one drain sends. */
 const DRAIN_BATCH = 20;
@@ -85,8 +98,13 @@ const TEST_TEXT =
 @Injectable()
 export class SmsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SmsService.name);
-  private drainTimer: NodeJS.Timeout | undefined;
+  private fallbackTimer: NodeJS.Timeout | undefined;
+  private startUpTimer: NodeJS.Timeout | undefined;
+  private retryTimer: NodeJS.Timeout | undefined;
+  private retryAt = 0;
+  private unsubscribe: (() => void) | undefined;
   private draining = false;
+  private drainAgain = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -102,26 +120,75 @@ export class SmsService implements OnModuleInit, OnModuleDestroy {
     if (loadEnvironment().nodeEnv === 'test') {
       return;
     }
-    this.drainTimer = setInterval(() => {
-      if (this.draining) {
-        return;
-      }
-      this.draining = true;
-      void this.drain()
-        .catch((error: unknown) =>
-          this.logger.error(`SMS drain failed: ${String(error)}`),
-        )
-        .finally(() => {
-          this.draining = false;
-        });
-    }, DRAIN_INTERVAL_MS);
-    this.drainTimer.unref();
+    this.unsubscribe = onSmsQueued(() => this.kick());
+    this.startUpTimer = setTimeout(() => this.kick(), START_UP_DRAIN_DELAY_MS);
+    this.startUpTimer.unref();
+    this.fallbackTimer = setInterval(
+      () => this.kick(),
+      FALLBACK_DRAIN_INTERVAL_MS,
+    );
+    this.fallbackTimer.unref();
   }
 
   onModuleDestroy(): void {
-    if (this.drainTimer) {
-      clearInterval(this.drainTimer);
+    this.unsubscribe?.();
+    clearTimeout(this.startUpTimer);
+    clearInterval(this.fallbackTimer);
+    clearTimeout(this.retryTimer);
+  }
+
+  /**
+   * Drains now, in the background. A request that arrives while a drain is
+   * running asks for one more pass afterwards, so a message queued after the
+   * running drain looked is never left until the next hour.
+   */
+  private kick(): void {
+    // Under test a suite drains the outbox itself, when it chooses.
+    if (loadEnvironment().nodeEnv === 'test') {
+      return;
     }
+    if (this.draining) {
+      this.drainAgain = true;
+      return;
+    }
+    this.draining = true;
+    void this.drain()
+      .catch((error: unknown) =>
+        this.logger.error(`SMS drain failed: ${String(error)}`),
+      )
+      .finally(() => {
+        this.draining = false;
+        if (this.drainAgain) {
+          this.drainAgain = false;
+          this.kick();
+        }
+      });
+  }
+
+  /**
+   * Drains again when a message's retry falls due. One timer, for the soonest
+   * retry: a drain sends every message that is due, so later ones need no
+   * timer of their own.
+   */
+  private scheduleRetry(at: Date): void {
+    if (loadEnvironment().nodeEnv === 'test') {
+      return;
+    }
+    const when = at.getTime();
+    if (this.retryTimer && this.retryAt <= when) {
+      return;
+    }
+    clearTimeout(this.retryTimer);
+    this.retryAt = when;
+    this.retryTimer = setTimeout(
+      () => {
+        this.retryTimer = undefined;
+        this.retryAt = 0;
+        this.kick();
+      },
+      Math.max(MIN_RETRY_DELAY_MS, when - Date.now()),
+    );
+    this.retryTimer.unref();
   }
 
   // --- Settings ---------------------------------------------------------------
@@ -405,14 +472,16 @@ export class SmsService implements OnModuleInit, OnModuleDestroy {
       );
       return created;
     });
+    this.kick();
     return this.toSummary(message);
   }
 
   // --- Sending -----------------------------------------------------------------
 
   /**
-   * Sends what is due in the outbox. Runs every 15 seconds; safe to run
-   * twice at once, because each message is claimed before it is sent.
+   * Sends what is due in the outbox. Runs when a message is queued, at
+   * start-up, when a retry falls due, and hourly; safe to run twice at once,
+   * because each message is claimed before it is sent.
    * Returns how many messages it handed to the provider.
    */
   async drain(now = new Date()): Promise<number> {
@@ -545,6 +614,9 @@ export class SmsService implements OnModuleInit, OnModuleDestroy {
             ? { status: 'QUEUED', nextAttemptAt: next, failure: 'UNAVAILABLE' }
             : { status: 'FAILED', failure: 'UNAVAILABLE' }),
         });
+        if (next) {
+          this.scheduleRetry(next);
+        }
         return false;
       }
       if (error instanceof SmsRefusedError) {

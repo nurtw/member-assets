@@ -889,9 +889,14 @@ English first (GOV-22). Off until an administrator switches it on (`sms.enabled`
 - **One message per source**, by the partial unique index `sms_message_one_per_source`
   (`WHERE resend_of_id IS NULL AND source_id IS NOT NULL`). Preserve it. A resend names
   the message it repeats and is not counted.
-- **The text is made up when the message goes** (`SmsService.drain`, every 15 seconds, not
-  under `NODE_ENV=test`; suites call `drain()`): the amount the member paid (a link's total,
+- **The text is made up when the message goes** (`SmsService.drain`, not under
+  `NODE_ENV=test`; suites call `drain()`): the amount the member paid (a link's total,
   a transfer's amount), and what they still owe from `DuesService.memberOutstanding`.
+- **The outbox is never polled.** A drain runs when a payment queues a message
+  (`notifySmsQueued`, called after the transaction commits), at start-up, when a retry
+  falls due, and hourly as a safety net. A timer every few seconds keeps Neon's compute
+  running all day. Any new way of queueing a message must call `notifySmsQueued` after
+  its commit.
 - **While switched off, a queued message becomes `NOT_SENT`**, and nothing is sent for it
   later. A message older than a day is `EXPIRED`. Retries follow `SMS_RETRY_DELAYS_MS`; a
   provider refusal is final.

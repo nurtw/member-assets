@@ -5,6 +5,38 @@ export type PaymentNoticeSource =
   | { type: 'payment'; id: string }
   | { type: 'dedicated_account_transfer'; id: string };
 
+type QueuedListener = () => void;
+
+const queuedListeners = new Set<QueuedListener>();
+
+/**
+ * Subscribes to "a message was queued". The SMS service listens, so it drains
+ * the outbox when there is something in it, and the database is not asked on a
+ * timer whether there is. Returns the function that unsubscribes.
+ */
+export function onSmsQueued(listener: QueuedListener): () => void {
+  queuedListeners.add(listener);
+  return () => {
+    queuedListeners.delete(listener);
+  };
+}
+
+/**
+ * Says that a message was queued. Call it **after** the transaction that called
+ * `queuePaymentNotice` has committed: a drain started earlier would not see the
+ * row. It queries nothing and never throws, and it does nothing when nobody
+ * listens (a suite, which drains the outbox itself).
+ */
+export function notifySmsQueued(): void {
+  for (const listener of queuedListeners) {
+    try {
+      listener();
+    } catch {
+      // A listener's failure must not fail the payment that announced it.
+    }
+  }
+}
+
 /**
  * Queues a member's payment confirmation (item 45, "no message, not paid").
  * Call it inside the transaction that records the credit: a credit that rolls

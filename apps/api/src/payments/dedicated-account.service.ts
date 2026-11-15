@@ -23,7 +23,10 @@ import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service.js';
 import { PermissionService } from '../auth/permission.service.js';
 import { loadEnvironment } from '../config/environment.js';
-import { queuePaymentNotice } from '../notifications/sms-outbox.js';
+import {
+  notifySmsQueued,
+  queuePaymentNotice,
+} from '../notifications/sms-outbox.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   DEDICATED_ALLOCATION_ORDER,
@@ -430,6 +433,7 @@ export class DedicatedAccountService implements OnModuleInit, OnModuleDestroy {
       }
       throw error;
     }
+    notifySmsQueued();
   }
 
   /**
