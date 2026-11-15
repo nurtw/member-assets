@@ -59,6 +59,7 @@ describe('SecuritySettingsService', () => {
       isEnabled: vi.fn((key: string) =>
         Promise.resolve(key === AUTH_MFA_ENFORCED ? enforced : false),
       ),
+      invalidate: vi.fn(),
     };
 
     service = new SecuritySettingsService(

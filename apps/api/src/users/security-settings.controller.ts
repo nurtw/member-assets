@@ -111,6 +111,7 @@ export class SecuritySettingsService {
         tx,
       );
     });
+    this.settings.invalidate(AUTH_MFA_ENFORCED);
     return this.get();
   }
 }

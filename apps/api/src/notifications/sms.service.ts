@@ -272,6 +272,9 @@ export class SmsService implements OnModuleInit, OnModuleDestroy {
         tx,
       );
     });
+    for (const [key] of changes) {
+      this.settings.invalidate(key);
+    }
     return this.state();
   }
 

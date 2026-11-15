@@ -1,6 +1,15 @@
 import { Injectable } from '@nestjs/common';
 
+import { loadEnvironment } from '../config/environment.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+
+/**
+ * How long a setting is remembered in this process. Short, because a switch an
+ * administrator turns must apply within moments, and the writes made through
+ * this process drop what they change at once (`invalidate`). Zero under test,
+ * where suites write setting rows directly and expect the next read to see them.
+ */
+const SETTING_TTL_MS = 5_000;
 
 /**
  * Runtime configuration (PRD Requirement 14.1, `ARCHITECTURE.md` Decision 8.3).
@@ -9,16 +18,60 @@ import { PrismaService } from '../prisma/prisma.service.js';
  * constants, so the Union can change them without a deployment. The seed writes
  * initial values and never overwrites them: once set, the Union owns them.
  *
- * **Read on every call, deliberately.** A cache here would mean an administrator
- * turning a control on and it taking effect at some unpredictable later moment —
- * and the first control to use this service decides whether one officer may
- * approve their own work, which is exactly the kind of switch that must take
- * effect on the next request. The volume does not justify the risk: one indexed
- * primary-key lookup on a table with a handful of rows.
+ * **Remembered for five seconds, and dropped when written.** One request reads
+ * several settings, and each read is a round trip to a database that bills for
+ * the time it is awake. But a cache that outlived a change would mean an
+ * administrator turning a control on and it taking effect at some unpredictable
+ * later moment: the first control to use this service decides whether one
+ * officer may approve their own work, which is exactly the kind of switch that
+ * must take effect promptly. So a change made through this process applies at
+ * once, and one made by another process (a second instance, a hand edit) within
+ * five seconds. Anything that writes `system_setting` must call `invalidate`.
  */
 @Injectable()
 export class SettingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly cache = new Map<
+    string,
+    { value: string | null; expiresAt: number }
+  >();
+  private generation = 0;
+  private readonly ttlMs: number;
+
+  constructor(private readonly prisma: PrismaService) {
+    this.ttlMs = loadEnvironment().nodeEnv === 'test' ? 0 : SETTING_TTL_MS;
+  }
+
+  /** Forgets what is remembered about `key`, or everything. Call it after writing a setting. */
+  invalidate(key?: string): void {
+    this.generation += 1;
+    if (key === undefined) {
+      this.cache.clear();
+    } else {
+      this.cache.delete(key);
+    }
+  }
+
+  /** A setting's stored text, or `null` when there is no row. */
+  private async read(key: string): Promise<string | null> {
+    const ttl = this.ttlMs;
+    const now = Date.now();
+    const hit = this.cache.get(key);
+    if (ttl > 0 && hit && hit.expiresAt > now) {
+      return hit.value;
+    }
+    const generation = this.generation;
+    const row = await this.prisma.systemSetting.findUnique({
+      where: { key },
+      select: { value: true },
+    });
+    const value = row?.value ?? null;
+    // A write that landed while this read was in flight is not overwritten by
+    // what the read saw before it.
+    if (ttl > 0 && generation === this.generation) {
+      this.cache.set(key, { value, expiresAt: now + ttl });
+    }
+    return value;
+  }
 
   /**
    * A boolean setting, or `fallback` when the row is absent or unreadable.
@@ -29,14 +82,11 @@ export class SettingsService {
    * the value shipped, which is the conservative one.
    */
   async isEnabled(key: string, fallback = false): Promise<boolean> {
-    const row = await this.prisma.systemSetting.findUnique({
-      where: { key },
-      select: { value: true },
-    });
-    if (!row) {
+    const stored = await this.read(key);
+    if (stored === null) {
       return fallback;
     }
-    const value = row.value.trim().toLowerCase();
+    const value = stored.trim().toLowerCase();
     if (value === 'true') {
       return true;
     }
@@ -55,11 +105,7 @@ export class SettingsService {
    * that nothing is charged from a day nobody chose.
    */
   async getDate(key: string): Promise<Date | null> {
-    const row = await this.prisma.systemSetting.findUnique({
-      where: { key },
-      select: { value: true },
-    });
-    const value = row?.value.trim() ?? '';
+    const value = (await this.read(key))?.trim() ?? '';
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
       return null;
     }
@@ -69,11 +115,7 @@ export class SettingsService {
 
   /** A text setting, trimmed, or `null` when absent or blank. */
   async getString(key: string): Promise<string | null> {
-    const row = await this.prisma.systemSetting.findUnique({
-      where: { key },
-      select: { value: true },
-    });
-    const value = row?.value.trim() ?? '';
+    const value = (await this.read(key))?.trim() ?? '';
     return value === '' ? null : value;
   }
 
@@ -115,6 +157,7 @@ export class SettingsService {
       create: { key, value, updatedByUserId: actorUserId },
       update: { value, updatedByUserId: actorUserId },
     });
+    this.invalidate(key);
   }
 }
 
