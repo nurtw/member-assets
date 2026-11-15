@@ -259,6 +259,14 @@ incident and who notifies the Union.
 ### Health
 
 `GET /api/v1/health` is unauthenticated and answers `200` when healthy, `503` when degraded.
+A healthy answer is remembered for 60 seconds, so a frequent caller queries the database
+once a minute at most. A failure is never remembered.
+
+`GET /api/v1/health/live` answers `200` while the process runs, and queries nothing. **Point
+the host's health check (DigitalOcean's `health_check.http_path`) at `/api/v1/health/live`.**
+A probe on `/health` still reaches the database once a minute, and Neon scales its compute to
+zero only after five minutes with no query: a probe that reaches the database every minute
+keeps it running all day.
 
 It reports **only** `status` and `timestamp`. It carries no version, hostname, dependency
 name, uptime, or build identifier, because anything disclosed there is disclosed to

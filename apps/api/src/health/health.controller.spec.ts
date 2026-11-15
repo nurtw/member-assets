@@ -3,7 +3,7 @@ import type { Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PrismaService } from '../prisma/prisma.service.js';
-import { HealthController } from './health.controller.js';
+import { HEALTH_CACHE_MS, HealthController } from './health.controller.js';
 
 /**
  * PRD §12.3 — health must report status without revealing internal
@@ -70,6 +70,53 @@ describe('HealthController', () => {
     expect(serialised).not.toContain('5432');
     expect(serialised).not.toMatch(/database|postgres|prisma|connection/i);
     expect(Object.keys(result).sort()).toEqual(['status', 'timestamp']);
+  });
+
+  it('remembers a healthy answer, so a frequent probe does not query', async () => {
+    queryRaw.mockResolvedValue([]);
+
+    await controller.check(response);
+    await controller.check(response);
+    await controller.check(response);
+
+    expect(queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it('looks again once the remembered answer is old', async () => {
+    queryRaw.mockResolvedValue([]);
+    const now = vi.spyOn(Date, 'now');
+    now.mockReturnValue(1_000_000);
+    await controller.check(response);
+
+    now.mockReturnValue(1_000_000 + HEALTH_CACHE_MS + 1);
+    await controller.check(response);
+    now.mockRestore();
+
+    expect(queryRaw).toHaveBeenCalledTimes(2);
+  });
+
+  it('never remembers a failure', async () => {
+    queryRaw.mockResolvedValueOnce([]);
+    await controller.check(response);
+    const now = vi.spyOn(Date, 'now');
+    now.mockReturnValue(Date.now() + HEALTH_CACHE_MS + 1);
+    queryRaw.mockRejectedValueOnce(new Error('down'));
+    await controller.check(response);
+    now.mockRestore();
+
+    queryRaw.mockRejectedValueOnce(new Error('still down'));
+    const result = await controller.check(response);
+
+    expect(result.status).toBe('degraded');
+    expect(queryRaw).toHaveBeenCalledTimes(3);
+  });
+
+  it('answers the liveness probe without querying the database', () => {
+    const result = controller.live();
+
+    expect(result.status).toBe('ok');
+    expect(Object.keys(result).sort()).toEqual(['status', 'timestamp']);
+    expect(queryRaw).not.toHaveBeenCalled();
   });
 
   it('returns an ISO-8601 timestamp', async () => {

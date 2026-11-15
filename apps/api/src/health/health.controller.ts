@@ -27,9 +27,38 @@ export interface HealthResponse {
   readonly timestamp: string;
 }
 
+/**
+ * How long a healthy answer is remembered. A probe every few seconds would
+ * otherwise query the database every few seconds, and keep Neon's compute
+ * running all day. A failure is never remembered: the next call looks again.
+ */
+export const HEALTH_CACHE_MS = 60_000;
+
 @Controller('health')
 export class HealthController {
+  private healthyAt = 0;
+
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Whether the process is up, and nothing more. It queries nothing, so a
+   * host's probe can call it as often as it likes without waking the
+   * database. Point the host's health check here, and keep `GET /health`
+   * for the one who wants to know the database answers.
+   */
+  @Public()
+  @Get('live')
+  @HttpCode(HttpStatus.OK)
+  @Documented({
+    summary: 'Report that the service is running.',
+    description:
+      'Reachable without authentication, and answers without touching the database, so a ' +
+      'host can probe it as often as it likes. It says nothing about any dependency: use ' +
+      '`GET /health` for that.',
+  })
+  live(): HealthResponse {
+    return { status: 'ok', timestamp: new Date().toISOString() };
+  }
 
   /**
    * PRD §12.3 — reachable without authentication, deliberately. The global
@@ -52,12 +81,18 @@ export class HealthController {
   ): Promise<HealthResponse> {
     const timestamp = new Date().toISOString();
 
+    if (Date.now() - this.healthyAt < HEALTH_CACHE_MS) {
+      return { status: 'ok', timestamp };
+    }
+
     try {
       // A trivial round trip. Enough to prove the connection is live without
       // touching a domain table or holding a lock.
       await this.prisma.$queryRaw`SELECT 1`;
+      this.healthyAt = Date.now();
       return { status: 'ok', timestamp };
     } catch {
+      this.healthyAt = 0;
       // Deliberately swallowed. The reason is logged by the exception filter's
       // logger elsewhere; it is never returned to an unauthenticated caller.
       response.status(HttpStatus.SERVICE_UNAVAILABLE);

@@ -11171,6 +11171,22 @@
         "security": []
       }
     },
+    "/api/v1/health/live": {
+      "get": {
+        "summary": "Report that the service is running.",
+        "description": "Reachable without authentication, and answers without touching the database, so a host can probe it as often as it likes. It says nothing about any dependency: use `GET /health` for that.\n\n**Authentication:** none. This route is deliberately public.",
+        "operationId": "HealthController_live",
+        "tags": [
+          "Health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          }
+        },
+        "security": []
+      }
+    },
     "/api/v1/master-data/{collection}": {
       "get": {
         "summary": "List a master-data collection.",

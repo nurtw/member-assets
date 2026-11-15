@@ -146,6 +146,7 @@ describe('API reference (e2e)', () => {
     expect(publicRoutes).toEqual([
       'GET /api/v1/docs/integration.json',
       'GET /api/v1/health',
+      'GET /api/v1/health/live',
       'GET /api/v1/media/:id/content',
       'GET /api/v1/pay/:code',
       'GET /api/v1/portal/invitations/:code',
