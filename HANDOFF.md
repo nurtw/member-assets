@@ -1,6 +1,6 @@
 # Session Handoff
 
-**Last revised:** 21 October 2026
+**Last revised:** 16 November 2026
 
 ## Cold start
 
@@ -16,40 +16,50 @@ Three rules outrank every default:
 ## Status
 
 - **Onboarding began 19 October 2026.** SMS is off until Termii is set up.
-- **The API runs on DigitalOcean only** (GOV-02; `OPERATIONS.md` §2 and §7). Item 55
-  is live.
-- **Item 56, the officer access forms** (`plans/56-officer-access-forms.md`), is live
-  (21 October); its migration is on Neon.
-- **Item 57** (`plans/57-sticker-verifies.md`, PRD 1.19) is live (21 October): an active
-  sticker verifies; declaring only counts a vehicle.
-- The sticker key is `k2`. The 9 unattached signed stickers from September (`k1`) no
-  longer verify.
+- **Items 56 and 57 are live.** The API runs on DigitalOcean only.
+- **Database usage pass (16 November 2026)**, to cut Neon compute hours. Seven local
+  commits on `main`, none pushed, none applied to Neon: SMS outbox on demand, `/health/live`,
+  one-query permissions, 5-minute focus refetch, 5-second settings cache, batched dues, one
+  six-hourly `HousekeepingService`. Rules are in `CLAUDE.md` ("Retention runs from
+  housekeeping", "One timer runs every periodic job").
+- **Last step, not yet committed:** retention purges, migration
+  `20261116090000_database_usage` (applied to the **local** database only), the Prisma
+  index declarations, `housekeeping.e2e-spec.ts`, `QUESTIONS.md` GOV-24. Typecheck passed.
+  Its e2e run (housekeeping, users, portal, api-client, external-verification,
+  membership) was blocked by a tooling fault, so **run it before committing.**
 
-Tests: domain 540, contracts 158, api 208, web 112; e2e 564 of 564.
+Tests at last full counts: domain 540, contracts 158, api 208+, web 113.
 
 ## Conflicts
 
-- **Go-live was set before its gates** (PRD §23.27): item 15, CARD-05, CARD-07,
-  GOV-18, and GOV-08 are open. The owner's call.
+- **Go-live was set before its gates** (PRD §23.27): item 15, CARD-05, CARD-07, GOV-18,
+  and GOV-08 are open. The owner's call.
+- **PRD §23.15 says purging is "an administrative process outside the application write
+  path".** The access-log purge runs from housekeeping instead, at the PRD's 12 months.
+  Flag to the owner; the period is the setting `retention.api_request_log_months`.
 - Items 46 to 52 change the PRD; MEM-19, CARD-09, and CARD-10 block some.
 
 ## Known issues — don't re-attempt these fixes
 
 - Under load, e2e and the PDF and password tests time out: rerun.
-- Run e2e with the local `DATABASE_URL` exported: `.env` points at Neon.
+- Run e2e with the local `DATABASE_URL` exported (`postgresql://…@localhost:5433/nurtw`):
+  `.env` points at Neon. The config is `vitest.config.e2e.ts`.
+- `relationLoadStrategy: 'join'` is rejected by this Prisma setup. Do not use it.
 
 ## Next steps
 
-1. A plate now verifies on the sticker its vehicle carries now: one reported lost
-   stops it verifying until replaced. The owner may want otherwise.
-2. Owner: encrypt DigitalOcean's variables; Termii's keys there, then a test.
-3. Item 46 needs a go-ahead and a PRD revision.
+1. Run the e2e set above, then commit the retention step.
+2. **Owner:** point DigitalOcean's `health_check.http_path` at `/api/v1/health/live`
+   (unverified: the `doctl` read hung), then run `db:deploy` on Neon for the migration.
+3. Owner: encrypt DigitalOcean's variables; Termii's keys there, then a test.
+4. Not done, by choice: the external-request write fan-out (three rows each) is the PRD's
+   audit and access log. Item 46 needs a go-ahead and a PRD revision.
 
 ## Do NOT
 
 - Edit `apps/api/.env`, write Neon rows, or push without a go-ahead.
+- Start a `setInterval` that touches the database. Register with `HousekeepingService`.
 - Write anything internal into the docs page's code (`CLAUDE.md`, item 54).
-- Put pattern or motion behind a verdict, a list, or a form (`DESIGN.md` §13).
 - Treat stickers as free in code: a ₦0 fee is the only switch (VEH-37).
 - Return a NIN whole, or change `IDENTITY_ENCRYPTION_KEY` once NINs exist.
 - Set `NODE_ENV` at build time on DigitalOcean.
