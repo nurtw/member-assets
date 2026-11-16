@@ -12,7 +12,7 @@ Item 58 is built and tested; its irreversible delete waits for the owner's go-ah
 
 ## Active roadmap item
 
-#58 — remove-imported-members — in-progress (`plans/58-remove-imported-members.md`)
+Item 58 — remove-imported-members — in-progress (`plans/58-remove-imported-members.md`)
 
 ## Done this session
 
