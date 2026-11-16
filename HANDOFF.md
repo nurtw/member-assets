@@ -20,13 +20,10 @@ Three rules outrank every default:
 - **Database usage pass (16 November 2026)**, to cut Neon compute hours. Seven local
   commits on `main`, none pushed, none applied to Neon: SMS outbox on demand, `/health/live`,
   one-query permissions, 5-minute focus refetch, 5-second settings cache, batched dues, one
-  six-hourly `HousekeepingService`. Rules are in `CLAUDE.md` ("Retention runs from
-  housekeeping", "One timer runs every periodic job").
-- **Last step, not yet committed:** retention purges, migration
-  `20261116090000_database_usage` (applied to the **local** database only), the Prisma
-  index declarations, `housekeeping.e2e-spec.ts`, `QUESTIONS.md` GOV-24. Typecheck passed.
-  Its e2e run (housekeeping, users, portal, api-client, external-verification,
-  membership) was blocked by a tooling fault, so **run it before committing.**
+  six-hourly `HousekeepingService`; then retention purges and the indexes. Rules are in
+  `CLAUDE.md` ("Retention runs from housekeeping", "One timer runs every periodic job").
+  Migration `20261116090000_database_usage` is applied to the **local** database only.
+  All of it passed typecheck, lint, and its e2e suites.
 
 Tests at last full counts: domain 540, contracts 158, api 208+, web 113.
 
@@ -48,11 +45,10 @@ Tests at last full counts: domain 540, contracts 158, api 208+, web 113.
 
 ## Next steps
 
-1. Run the e2e set above, then commit the retention step.
-2. **Owner:** point DigitalOcean's `health_check.http_path` at `/api/v1/health/live`
+1. **Owner:** point DigitalOcean's `health_check.http_path` at `/api/v1/health/live`
    (unverified: the `doctl` read hung), then run `db:deploy` on Neon for the migration.
-3. Owner: encrypt DigitalOcean's variables; Termii's keys there, then a test.
-4. Not done, by choice: the external-request write fan-out (three rows each) is the PRD's
+2. Owner: encrypt DigitalOcean's variables; Termii's keys there, then a test.
+3. Not done, by choice: the external-request write fan-out (three rows each) is the PRD's
    audit and access log. Item 46 needs a go-ahead and a PRD revision.
 
 ## Do NOT
