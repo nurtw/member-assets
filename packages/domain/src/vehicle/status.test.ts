@@ -7,9 +7,11 @@ import {
   blocksNewRecord,
   canTransitionDeclaration,
   isDeclarationFinal,
+  isDeclarable,
   isDeclarationLive,
   isWithheld,
   statusChangeTarget,
+  statusOnDeclaring,
   statusOnLifting,
 } from './status.js';
 
@@ -165,3 +167,22 @@ describe('statusChangeTarget (item 57)', () => {
     expect(statusChangeTarget('ACTIVE', 'RETIRED', true)).toBe('RETIRED');
   });
 });
+
+describe('declaring a vehicle (item 59, VEH-38)', () => {
+  it('is allowed from any status but retired and archived', () => {
+    for (const status of ['ON_RECORD', 'PENDING', 'SUSPENDED', 'DISPUTED'] as const) {
+      expect(isDeclarable(status), status).toBe(true);
+    }
+    for (const status of ['ACTIVE', 'RETIRED', 'ARCHIVED'] as const) {
+      expect(isDeclarable(status), status).toBe(false);
+    }
+  });
+
+  it('makes a vehicle on record active, and leaves a suspended or disputed one as it is', () => {
+    expect(statusOnDeclaring('ON_RECORD')).toBe('ACTIVE');
+    expect(statusOnDeclaring('PENDING')).toBe('ACTIVE');
+    expect(statusOnDeclaring('SUSPENDED')).toBe('SUSPENDED');
+    expect(statusOnDeclaring('DISPUTED')).toBe('DISPUTED');
+  });
+});
+

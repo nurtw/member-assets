@@ -266,6 +266,21 @@ describe('Dues (e2e)', () => {
       expect(dues.outstandingKobo).toBe(3 * fixture.levyKobo);
     });
 
+    it('prices a vehicle with no route type at the default levy (VEH-38)', async () => {
+      const bare = await vehicle(3);
+      await prisma.vehicle.update({
+        where: { id: bare.id },
+        data: { routeTypeId: null },
+      });
+      const defaultLevy = (
+        await prisma.feeType.findUniqueOrThrow({ where: { id: fixture.levyId } })
+      ).amountKobo;
+
+      const dues = await vehicleDues(bare.id);
+      expect(dues.monthsDue).toBe(3);
+      expect(dues.outstandingKobo).toBe(3 * defaultLevy);
+    });
+
     it('pays the oldest months first from the ledger, then holds the rest as credit', async () => {
       const onboarded = await vehicle(3);
       const subject = { type: 'vehicle' as const, id: onboarded.id };

@@ -60,6 +60,18 @@ export function isGrantOnly(permission: string): boolean {
 }
 
 /**
+ * Permissions that cannot be granted to anyone: the super administrator's role
+ * holds them and nobody else may (item 59, `QUESTIONS.md` VEH-43). Declared
+ * status is the super administrator's alone to see, so only the super
+ * administrator declares, undeclares, or declares in bulk.
+ */
+export const NEVER_GRANTED_PERMISSIONS: readonly string[] = ['vehicle.declare'];
+
+export function isNeverGranted(permission: string): boolean {
+  return NEVER_GRANTED_PERMISSIONS.includes(permission);
+}
+
+/**
  * The permissions the giver lacks, of those they are trying to give. Empty
  * means they may give them all. `held` is what the giver holds **in the scope
  * being given**, with revocations applied.

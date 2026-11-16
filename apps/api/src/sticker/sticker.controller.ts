@@ -80,7 +80,7 @@ export class StickerController {
     body: attachStickerSchema,
     responses: {
       409:
-        'Attachment refused: the vehicle has no route type or already carries a sticker; the ' +
+        'Attachment refused: the vehicle already carries a sticker; the ' +
         'barcode is not held, bound to another plate, already attached, or withdrawn; or the ' +
         'payment is unconfirmed, already used, for another fee type, or for another vehicle.',
     },

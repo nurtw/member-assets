@@ -8,43 +8,41 @@ control, docs, plans, commits, and fixtures; the previous operator is never name
 
 ## Status
 
-Item 58 is done: the 81 imported members were deleted on Neon on 16 November.
+Item 59 is built and committed locally, not pushed or deployed.
 
 ## Active roadmap item
 
-Item 58 — remove-imported-members — done (`plans/58-remove-imported-members.md`)
+Item 59 — declare-by-plate — done (`plans/59-declare-by-plate.md`)
 
 ## Done this session
 
-- **Database usage pass** (compute hours): live on DigitalOcean, migration applied to Neon,
-  health check now `/api/v1/health/live`. Rules: `CLAUDE.md` ("One timer runs every
-  periodic job", "Retention runs from housekeeping").
-- **Owner's directions of 16 November** recorded: roadmap items 58 to 67, PRD 1.20,
-  `QUESTIONS.md` MIG-08, VEH-38 to VEH-42, MEM-20, GOV-25.
-- **Item 58 done**: `apps/api/scripts/remove-imported-members/`, 5 e2e tests passing,
-  runbook in `OPERATIONS.md` §10. **Run on Neon with the owner's go-ahead: 81 members
-  deleted, 13 kept, 80 vehicles unlinked (kept), one audit event.** Verified by a second dry
-  run (0 left). Restore point: `data/restore-points/imported-members-2026-11-16T10-40-58-211Z.json`.
+- **Plate-only:** recording and declaring need the plate alone. Route type, owner (each
+  part), chassis, category, and branch or unit are optional (`packages/contracts/src/vehicle.ts`).
+  No branch means the officer's own (`organisationOrOwn`; 400 if none or several).
+- **Declaring** works from any status but retired or archived, once (`declaredAt`):
+  `statusOnDeclaring` makes ON_RECORD active, and keeps SUSPENDED and DISPUTED as they are.
+- **`vehicle.declare` cannot be granted** (`isNeverGranted`; `POST /users/:id/grants`
+  answers 409; the officer screen hides it). The super administrator alone holds it.
+- **Sticker attach** no longer needs a route type or a declaration; a vehicle with no route
+  type owes the default levy (tested). Web: vehicle form fields optional, declare panel is
+  one button, onboarding panel's route-type gate removed.
+- PRD 9.4, 9.8, 9.9, 9A.1, 9A.2, 9.5 amended; CLAUDE.md updated.
 
 ## Current state
 
-- Files touched: `apps/api/scripts/remove-imported-members/{removal,index}.ts`,
-  `apps/api/test/remove-imported-members.e2e-spec.ts`, `apps/api/package.json`,
-  `docs/reference/OPERATIONS.md`, the plan, this file.
-- Conflicts with PRD: the hard delete departs from `CLAUDE.md` domain rule 5, by the
-  owner's choice (MIG-08). PRD §23.15 says purging is "outside the application write path";
-  the access-log purge runs from housekeeping (flagged, owner's call).
-- Known issues: object-storage photo files are not removed by the delete (the restore point
-  lists their keys). Under load, e2e times out: rerun. Run e2e with the local
-  `DATABASE_URL` (`localhost:5433`); `.env` is Neon.
+- Files: `packages/domain` (status, accounts), `packages/contracts/src/vehicle.ts`,
+  `apps/api/src/{vehicle,users,sticker}`, e2e specs (vehicle, users, sticker, dues),
+  web `vehicle-form`, `vehicles/[id]/page`, `onboarding-section`, `sticker-prompt`,
+  `settings/users/[id]/page`, `docs/reference/openapi.json`.
+- Conflicts with PRD: none left; PRD amended to revision 1.20 text.
+- Known issues: a DISPUTED row is created with `declaredAt` set, so it already counts as
+  declared and declaring it answers 409. `OnboardingState.hasRouteType` is still sent;
+  nothing uses it now. Run e2e with the local `DATABASE_URL` (`localhost:5433`).
 
 ## Next steps
 
-- Keep the restore point safe (real personal data, gitignored); delete it when the owner
-  says so.
-- Item 59 is planned (`plans/59-declare-by-plate.md`): run /execute for it. Owner decisions
-  of 16 November are in `QUESTIONS.md` VEH-38 to VEH-43 and GOV-06. **MEM-20** and
-  **GOV-25** are still open (items 61, 66, 67).
+- Run /plan for item 60 (undeclare), then /execute. Push and deploy only with a go-ahead.
+- **MEM-20** and **GOV-25** still open (items 61, 66, 67).
 
 ## Do NOT
 

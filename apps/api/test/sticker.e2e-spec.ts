@@ -572,9 +572,13 @@ describe('Sticker issuance and attachment (e2e)', () => {
       expect(JSON.stringify(response.body)).not.toContain('ZZ9ZZ');
     });
 
-    it('refuses onboarding a vehicle with no route type (Requirement 9A.2, revision 1.3)', async () => {
-      // Shaped like a legacy vehicle not yet given a route type.
+    it('onboards a vehicle with no route type, and with no declaration (VEH-38)', async () => {
+      // Shaped like a legacy vehicle never given a route type, and on record only.
       const vehicle = await declareVehicle('HH0', { withRouteType: false });
+      await prisma.vehicle.update({
+        where: { id: vehicle.id },
+        data: { status: 'ON_RECORD', declaredAt: null },
+      });
       const sticker = await registerBarcode('no-route', vehicle.plateNumberNormalized);
       const payment = await confirmedPayment(vehicle.id, 'STICKER_REATTACHMENT');
 
@@ -586,12 +590,18 @@ describe('Sticker issuance and attachment (e2e)', () => {
           vehicleId: vehicle.id,
           paymentId: payment.id,
         })
-        .expect(409);
+        .expect(201);
 
       const after = await prisma.sticker.findUniqueOrThrow({
         where: { id: sticker.id },
       });
-      expect(after.attachedAt).toBeNull();
+      expect(after.attachedAt).not.toBeNull();
+      const stored = await prisma.vehicle.findUniqueOrThrow({
+        where: { id: vehicle.id },
+      });
+      // Attaching never declares.
+      expect(stored.status).toBe('ON_RECORD');
+      expect(stored.declaredAt).toBeNull();
     });
   });
 

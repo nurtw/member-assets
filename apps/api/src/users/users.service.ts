@@ -16,7 +16,7 @@ import type {
   UserDetail,
   UserSummary,
 } from '@nurtw/contracts';
-import { escalations } from '@nurtw/domain';
+import { escalations, isNeverGranted } from '@nurtw/domain';
 import type { Prisma } from '@prisma/client';
 
 import { AuditService } from '../audit/audit.service.js';
@@ -523,6 +523,13 @@ export class UsersService {
       'permission.grant',
       input.organisationId,
     );
+    // Item 59 (VEH-43): declared status is the super administrator's alone, so
+    // only that role holds `vehicle.declare`. Nobody is granted it.
+    if (input.permissions.some(isNeverGranted)) {
+      throw new ConflictException(
+        'That permission belongs to the super administrator alone and is never granted.',
+      );
+    }
     await this.assertNoEscalation(actor, input.permissions, organisation.path);
     const permissions = await this.requirePermissions(input.permissions);
 

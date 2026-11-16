@@ -36,35 +36,43 @@ const phone = z
   .transform(normalizeNigerianPhone);
 
 /**
- * The chassis number, or VIN (PRD Requirement 9.4 as revised, 1.15;
- * `QUESTIONS.md` VEH-34). **Required when a vehicle is added**: the Union names
- * the plate and the chassis number as the two a vehicle cannot be taken on
- * without. No format is checked, because the Union gave none.
+ * The chassis number, or VIN (PRD Requirement 9.4; `QUESTIONS.md` VEH-34, which
+ * revision 1.20 supersedes: VEH-38). **Optional**: only the plate is required to
+ * take a vehicle on. When one is given, it is not blank. No format is checked,
+ * because the Union gave none, and an amendment sets a chassis number and
+ * never blanks one.
  *
- * It is still restricted. Requiring it changes who must supply it, not who
- * may read it: it is in no list, no verification, no log, and no audit event.
+ * It is still restricted: it is in no list, no verification, no log, and no
+ * audit event.
  */
 const chassisNumber = z
   .string()
   .trim()
-  .min(1, 'A chassis number is required.')
+  .min(1, 'A chassis number may not be blank.')
   .max(120, 'A chassis number may not exceed 120 characters.');
 
 /**
- * The vehicle's owner (PRD Requirement 9.8, revision 1.3, `QUESTIONS.md`
- * VEH-25). Not necessarily a member — the driver is the member. Name and
- * phone are required; the address is optional. Sensitive under Requirement
+ * The vehicle's owner (PRD Requirement 9.8, `QUESTIONS.md` VEH-25, relaxed by
+ * VEH-38). Not necessarily a member — the driver is the member. **Every part is
+ * optional**, and an owner left out is simply not recorded; what is given
+ * is stored, and what is not is left as it was. Sensitive under Requirement
  * 7.1: stored apart from the vehicle and never reachable through verification.
  */
-export const vehicleOwnerSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "The owner's name is required.")
-    .max(120, "The owner's name may not exceed 120 characters."),
-  phone,
-  address: z.string().trim().max(400).optional(),
-});
+export const vehicleOwnerSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .max(120, "The owner's name may not exceed 120 characters.")
+      .optional(),
+    phone: phone.optional(),
+    address: z.string().trim().max(400).optional(),
+  })
+  .transform((owner) => ({
+    ...(owner.name ? { name: owner.name } : {}),
+    ...(owner.phone ? { phone: owner.phone } : {}),
+    ...(owner.address ? { address: owner.address } : {}),
+  }));
 
 export type VehicleOwnerInput = z.infer<typeof vehicleOwnerSchema>;
 
@@ -78,24 +86,21 @@ export type VehicleOwnerInput = z.infer<typeof vehicleOwnerSchema>;
  * resolves a single `organisationId` into the record it actually needs
  * (`membership.ts`).
  *
- * `routeTypeId` and `owner` are required from revision 1.3 (Requirements
- * 9.8–9.9). They are required HERE, at the API boundary, not by the column,
- * because legacy rows lawfully lack them (Decision 6.6).
+ * **Only the plate is required** (PRD revision 1.20, `QUESTIONS.md` VEH-38, which
+ * supersedes the route type, owner, and chassis requirements of revisions 1.3 and
+ * 1.15). With no `organisationId`, the vehicle goes to the recording officer's
+ * own branch or unit, which the service finds, and refuses when it cannot.
  */
 const vehicleFields = {
   plateNumberDisplay,
-  organisationId: uuid,
-  routeTypeId: uuid,
+  organisationId: uuid.optional(),
+  routeTypeId: uuid.optional(),
   vehicleCategoryId: uuid.optional(),
   make: optionalShortText,
   model: optionalShortText,
   color: optionalShortText,
-  /**
-   * PRD Requirement 9.4 — restricted, and required since revision 1.15. As
-   * with the route type, it is required here and not by the column, because a
-   * legacy row may lack one.
-   */
-  chassisVinRestricted: chassisNumber,
+  /** PRD Requirement 9.4 — restricted, and optional since revision 1.20. */
+  chassisVinRestricted: chassisNumber.optional(),
   /**
    * PRD §23.8 — a member may hold any number of vehicles, without limit.
    * Optional: PRD §9 associates a vehicle with "a member or transport
@@ -103,7 +108,7 @@ const vehicleFields = {
    * an applicant whose application is still pending.
    */
   declaredByMemberId: uuid.optional(),
-  owner: vehicleOwnerSchema,
+  owner: vehicleOwnerSchema.optional(),
   /** Internal operational note — PRD §9.1, never exposed through verification. */
   notes: z.string().trim().max(1000).optional(),
 };
@@ -132,12 +137,9 @@ export type RecordVehicleInput = z.infer<typeof recordVehicleSchema>;
  * Declares a vehicle already on record, from its own page
  * (`POST /vehicles/:id/declare`, Decision 6.6).
  *
- * Everything is optional because the record may already carry it. Whatever the
- * record lacks must be supplied here — a legacy row has no route type, and may
- * have no owner phone or no chassis number — and the service refuses the
- * declaration until the result satisfies Requirements 9.4, 9.8, and 9.9.
- * `organisationId`, when given, moves the record as it is declared, checked at
- * both ends.
+ * Everything is optional (VEH-38): a vehicle is declared on its plate alone, and
+ * what is given here only fills in the record. `organisationId`, when given,
+ * moves the record as it is declared, checked at both ends.
  */
 export const declareRecordedVehicleSchema = z.object({
   organisationId: uuid.optional(),
@@ -178,9 +180,9 @@ export const updateVehicleSchema = z
      */
     declaredByMemberId: uuid.nullable().optional(),
     /**
-     * Replaces the owner details as a whole. Name and phone stay required, so
-     * a correction cannot leave a record short of Requirement 9.8; this is
-     * also how a legacy record's gaps are filled in.
+     * Sets the owner details that are given and leaves the others as they were,
+     * so a correction never blanks a field. This is also how a legacy record's
+     * gaps are filled in.
      */
     owner: vehicleOwnerSchema.optional(),
     notes: z.string().trim().max(1000).optional(),

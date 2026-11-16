@@ -21,10 +21,12 @@ import {
   RECORD_BLOCKING_STATUSES,
   assertDeclarationTransition,
   decidePermission,
+  isDeclarable,
   listEffectivePermissions,
   normalizePlateNumber,
   outermostScopes,
   statusChangeTarget,
+  statusOnDeclaring,
   type DeclarationStatus,
   type PermissionAssignments,
 } from '@nurtw/domain';
@@ -109,8 +111,6 @@ interface RecordedVehicle {
   routeTypeId: string | null;
   declaredByMemberId: string | null;
   notes: string | null;
-  chassisVinRestricted: string | null;
-  owner: { ownerName: string | null; ownerPhone: string | null } | null;
 }
 
 /** The descriptive fields a declaration may update on the row it promotes. */
@@ -328,8 +328,10 @@ export class VehicleService {
     actor: ActorContext,
     input: RecordVehicleInput,
   ): Promise<VehicleSummary> {
-    const organisation = await this.resolveDeclaringOrganisation(
+    const organisation = await this.organisationOrOwn(
+      actor.userId,
       input.organisationId,
+      RECORD,
     );
     await this.require(actor.userId, RECORD, organisation.path);
 
@@ -365,7 +367,7 @@ export class VehicleService {
             ...this.descriptiveFields(input),
             plateNumberNormalized,
             plateNumberDisplay: input.plateNumberDisplay,
-            routeTypeId: input.routeTypeId,
+            routeTypeId: input.routeTypeId ?? null,
             declaredByMemberId: input.declaredByMemberId ?? null,
             branchId: organisation.branchId,
             unitId: organisation.unitId,
@@ -373,7 +375,9 @@ export class VehicleService {
             // Decision 6.5 — explicitly null, overriding the column's now()
             // default. Recording is not declaring.
             declaredAt: null,
-            owner: { create: this.ownerColumns(input.owner) },
+            ...(input.owner
+              ? { owner: { create: this.ownerColumns(input.owner) } }
+              : {}),
           },
           select: summarySelect(),
         });
@@ -391,8 +395,8 @@ export class VehicleService {
             after: {
               plateNumberNormalized,
               status: 'ON_RECORD',
-              routeTypeId: input.routeTypeId,
-              ownerRecorded: true,
+              routeTypeId: input.routeTypeId ?? null,
+              ownerRecorded: input.owner !== undefined,
             },
             requestId: actor.requestId,
             ipAddress: actor.ipAddress,
@@ -440,8 +444,10 @@ export class VehicleService {
     actor: ActorContext,
     input: DeclareVehicleInput,
   ): Promise<VehicleSummary> {
-    const organisation = await this.resolveDeclaringOrganisation(
+    const organisation = await this.organisationOrOwn(
+      actor.userId,
       input.organisationId,
+      DECLARE,
     );
     await this.require(actor.userId, DECLARE, organisation.path);
 
@@ -518,9 +524,14 @@ export class VehicleService {
     // Scope before status: answering 409 first would tell a declarer from
     // another area whether this vehicle is on record (VEH-28).
     await this.require(actor.userId, DECLARE, vehicle.path);
-    if (vehicle.status !== 'ON_RECORD') {
+    // Item 59 (VEH-38): any vehicle not retired or archived may be declared,
+    // once. A declared vehicle is one with `declaredAt`.
+    if (
+      !isDeclarable(vehicle.status as DeclarationStatus) ||
+      vehicle.declaredAt !== null
+    ) {
       throw new ConflictException(
-        'Only a vehicle on record can be declared this way. This one is already declared, or has left the register.',
+        'This vehicle is already declared, or has left the register.',
       );
     }
 
@@ -550,13 +561,18 @@ export class VehicleService {
       await this.requireMemberExists(input.declaredByMemberId);
     }
 
-    const existingActive = await this.prisma.vehicle.findFirst({
-      where: {
-        plateNumberNormalized: vehicle.plateNumberNormalized,
-        status: 'ACTIVE',
-      },
-      select: { id: true },
-    });
+    // A suspended or disputed vehicle keeps its status, so only one that becomes
+    // ACTIVE can collide with another active declaration of the plate.
+    const existingActive =
+      statusOnDeclaring(vehicle.status as DeclarationStatus) === 'ACTIVE'
+        ? await this.prisma.vehicle.findFirst({
+            where: {
+              plateNumberNormalized: vehicle.plateNumberNormalized,
+              status: 'ACTIVE',
+            },
+            select: { id: true },
+          })
+        : null;
     if (existingActive) {
       throw new ConflictException(
         'This plate number already has an active declaration. A competing claim is made as a new declaration, and is recorded as disputed.',
@@ -572,8 +588,6 @@ export class VehicleService {
         routeTypeId: vehicle.routeTypeId,
         declaredByMemberId: vehicle.declaredByMemberId,
         notes: vehicle.notes,
-        chassisVinRestricted: vehicle.chassisVinRestricted,
-        owner: vehicle.owner,
       },
       destination,
       {
@@ -587,11 +601,12 @@ export class VehicleService {
   }
 
   /**
-   * `ON_RECORD -> ACTIVE` on the same row (Decision 6.5). Stamps `declaredAt`,
-   * moves the row to the declaring organisation, and applies whatever
-   * descriptive fields the declaration supplied. Refuses unless the result has
-   * a route type, an owner name and phone, and a chassis number (Requirements
-   * 9.4, 9.8, and 9.9).
+   * Declares the same row (Decision 6.5). Stamps `declaredAt`, moves the row to
+   * the declaring organisation, and applies whatever descriptive fields the
+   * declaration supplied. Nothing is required but the vehicle: a route type, an
+   * owner, and a chassis number are optional (VEH-38). A vehicle on record
+   * becomes ACTIVE; a suspended or disputed one keeps its status
+   * (`statusOnDeclaring`), so declaring never lifts a suspension.
    */
   private async promote(
     actor: ActorContext,
@@ -599,30 +614,10 @@ export class VehicleService {
     destination: DeclaringOrganisation,
     fields: PromotionFields,
   ): Promise<SummaryRow> {
-    this.assertTransition(recorded.status as DeclarationStatus, 'ACTIVE');
-
-    if (!(fields.routeTypeId ?? recorded.routeTypeId)) {
-      throw new BadRequestException(
-        'A route type is required to declare this vehicle.',
-      );
-    }
-    const ownerName = fields.owner?.name ?? recorded.owner?.ownerName;
-    const ownerPhone = fields.owner?.phone ?? recorded.owner?.ownerPhone;
-    if (!ownerName || !ownerPhone) {
-      throw new BadRequestException(
-        "The owner's name and phone number are required to declare this vehicle.",
-      );
-    }
-    // Requirement 9.4, revision 1.15. A legacy record may lack one; it is
-    // given here, or the vehicle stays on record.
-    if (
-      !hasChassisNumber(
-        fields.chassisVinRestricted ?? recorded.chassisVinRestricted,
-      )
-    ) {
-      throw new BadRequestException(
-        'A chassis number is required to declare this vehicle.',
-      );
+    const from = recorded.status as DeclarationStatus;
+    const to = statusOnDeclaring(from);
+    if (to !== from) {
+      this.assertTransition(from, to);
     }
 
     try {
@@ -647,7 +642,7 @@ export class VehicleService {
               : {}),
             branchId: destination.branchId,
             unitId: destination.unitId,
-            status: 'ACTIVE',
+            status: to,
             declaredAt: new Date(),
             ...(fields.owner
               ? {
@@ -681,9 +676,9 @@ export class VehicleService {
               organisationId: recorded.organisationId,
             },
             after: {
-              status: 'ACTIVE',
+              status: to,
               organisationId: destination.id,
-              promotedFromOnRecord: true,
+              promotedFromOnRecord: from === 'ON_RECORD',
               fieldsAmended: Object.keys(fields).filter(
                 (key) => fields[key as keyof PromotionFields] !== undefined,
               ),
@@ -725,12 +720,14 @@ export class VehicleService {
             ...this.descriptiveFields(input),
             plateNumberNormalized,
             plateNumberDisplay: input.plateNumberDisplay,
-            routeTypeId: input.routeTypeId,
+            routeTypeId: input.routeTypeId ?? null,
             declaredByMemberId: input.declaredByMemberId ?? null,
             branchId: organisation.branchId,
             unitId: organisation.unitId,
             status,
-            owner: { create: this.ownerColumns(input.owner) },
+            ...(input.owner
+              ? { owner: { create: this.ownerColumns(input.owner) } }
+              : {}),
           },
           select: summarySelect(),
         });
@@ -1077,18 +1074,21 @@ export class VehicleService {
     plateNumberNormalized: string;
   }): Promise<(RecordedVehicle & { path: string }) | null> {
     const row = await this.prisma.vehicle.findFirst({
-      where: { ...where, status: 'ON_RECORD' },
+      // Not yet declared, and not retired or archived: on record, or suspended
+      // before it was declared (item 59).
+      where: {
+        ...where,
+        status: { in: ['ON_RECORD', 'SUSPENDED'] },
+        declaredAt: null,
+      },
       select: {
         id: true,
         status: true,
         routeTypeId: true,
         declaredByMemberId: true,
         notes: true,
-        // Read to know whether there is one, never returned from here.
-        chassisVinRestricted: true,
         branch: { select: { id: true, path: true } },
         unit: { select: { id: true, path: true } },
-        owner: { select: { ownerName: true, ownerPhone: true } },
       },
     });
     if (!row) {
@@ -1106,9 +1106,50 @@ export class VehicleService {
       routeTypeId: row.routeTypeId,
       declaredByMemberId: row.declaredByMemberId,
       notes: row.notes,
-      chassisVinRestricted: row.chassisVinRestricted,
-      owner: row.owner,
     };
+  }
+
+  /**
+   * The branch or unit a vehicle goes to: the one named, or else the officer's
+   * own (item 59, VEH-38) — the one branch or unit at which a role of theirs
+   * holds `permission`. An officer with none, or with several, is asked to
+   * choose; it is never guessed.
+   */
+  private async organisationOrOwn(
+    userId: string,
+    organisationId: string | undefined,
+    permission: string,
+  ): Promise<DeclaringOrganisation> {
+    if (organisationId) {
+      return this.resolveDeclaringOrganisation(organisationId);
+    }
+    const where = {
+      userId,
+      organisation: { level: { in: ['BRANCH', 'UNIT'] }, isActive: true },
+    } satisfies Prisma.UserRoleAssignmentWhereInput;
+    const select = {
+      organisation: { select: { id: true, path: true } },
+    } as const;
+    const [roles, grants, assignments] = await Promise.all([
+      this.prisma.userRoleAssignment.findMany({ where, select }),
+      this.prisma.userPermissionGrant.findMany({ where, select }),
+      this.permissions.loadAssignments(userId),
+    ]);
+    const own = new Set(
+      [...roles, ...grants]
+        .filter(
+          (row) =>
+            decidePermission(assignments, {
+              permission,
+              subjectPath: row.organisation.path,
+            }).allowed,
+        )
+        .map((row) => row.organisation.id),
+    );
+    if (own.size !== 1) {
+      throw new BadRequestException('Choose the branch or unit for this vehicle.');
+    }
+    return this.resolveDeclaringOrganisation([...own][0]!);
   }
 
   /**
@@ -1170,7 +1211,10 @@ export class VehicleService {
   }
 
   /** A route type must exist and be offered for new records (master data, §23.4). */
-  private async requireRouteType(routeTypeId: string): Promise<void> {
+  private async requireRouteType(routeTypeId: string | undefined): Promise<void> {
+    if (!routeTypeId) {
+      return;
+    }
     const routeType = await this.prisma.routeType.findUnique({
       where: { id: routeTypeId },
       select: { isActive: true },
@@ -1203,11 +1247,12 @@ export class VehicleService {
     };
   }
 
+  /** Only what was given: an amendment never blanks an owner detail (VEH-38). */
   private ownerColumns(owner: VehicleOwnerInput) {
     return {
-      ownerName: owner.name,
-      ownerPhone: owner.phone,
-      ownerAddress: owner.address && owner.address.length > 0 ? owner.address : null,
+      ...(owner.name ? { ownerName: owner.name } : {}),
+      ...(owner.phone ? { ownerPhone: owner.phone } : {}),
+      ...(owner.address ? { ownerAddress: owner.address } : {}),
     };
   }
 

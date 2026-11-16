@@ -2,7 +2,6 @@
 
 import type {
   CheckPaymentsResult,
-  MasterDataEntry,
   OnboardingState,
   StickerReading,
   VehicleDetail,
@@ -33,7 +32,6 @@ import {
   Loading,
   Notice,
   Section,
-  Select,
   TextInput,
 } from "@/components/ui";
 import { ApiError, api, fetcher } from "@/lib/api";
@@ -213,7 +211,6 @@ export function OnboardingSection({
   const [waiting, setWaiting] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [read, setRead] = useState<Read | null>(null);
-  const [routeTypeId, setRouteTypeId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
 
@@ -222,14 +219,6 @@ export function OnboardingSection({
     fetcher,
   );
   const state = data?.onboarding ?? null;
-
-  const needsRouteType = state !== null && !state.hasRouteType;
-  const { data: routeTypeList } = useSWR<{ entries: MasterDataEntry[] }>(
-    needsRouteType && holds("vehicle.update")
-      ? "/master-data/route-types"
-      : null,
-    fetcher,
-  );
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
@@ -326,60 +315,6 @@ export function OnboardingSection({
             value={attachment.stickerStatus.replace(/_/g, " ")}
           />
         </DetailList>
-      </Section>
-    );
-  }
-
-  if (needsRouteType) {
-    return (
-      <Section
-        title="Assign a sticker"
-        description="The vehicle needs a route type first."
-      >
-        {error ? (
-          <ErrorNotice message={error.message} requestId={error.requestId} />
-        ) : null}
-        <p className="text-sm">
-          The monthly levy starts after a sticker is assigned and is priced by
-          route type, so a vehicle without one cannot be given a sticker.
-        </p>
-        {holds("vehicle.update") ? (
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-0 flex-1">
-              <Field label="Route type" htmlFor="onboardRouteType" required>
-                <Select
-                  id="onboardRouteType"
-                  value={routeTypeId}
-                  onChange={(event) => setRouteTypeId(event.target.value)}
-                >
-                  <option value="">Select a route type</option>
-                  {(routeTypeList?.entries ?? []).map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={busy || !routeTypeId}
-              onClick={() =>
-                void run(async () => {
-                  await api.patch(`/vehicles/${vehicle.id}`, { routeTypeId });
-                  await Promise.all([mutate(), onChanged()]);
-                })
-              }
-            >
-              Save route type
-            </Button>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Ask an officer who can amend vehicles to set one.
-          </p>
-        )}
       </Section>
     );
   }

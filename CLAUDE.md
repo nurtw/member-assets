@@ -100,9 +100,10 @@ These come from PRD §4 and are not negotiable design preferences — they are t
    declaration or sticker record. Never synthesise a match.
    **Verification is read-only, without exception.** A declaration is created solely by a
    user holding the `vehicle.declare` permission, acting deliberately. That permission
-   belongs to the super administrator alone and to those the super administrator expressly
-   grants it to — it is in **no other role bundle**, including vehicle-record officer and
-   branch or unit administrator. A verification
+   belongs to the super administrator alone and **can no longer be granted to anyone**
+   (VEH-43, item 59; `isNeverGranted`, and `POST /users/:id/grants` answers 409) — it is
+   in **no other role bundle**, including vehicle-record officer and branch or unit
+   administrator. A verification
    enquiry — matched or unmatched, internal or external — must never create, complete, or
    reactivate a declaration. The verification path holds no write capability to
    declaration, sticker, card, member, or payment tables. See PRD §9.5–9.6.
@@ -763,18 +764,18 @@ transfer, so a replayed webhook texts nobody twice. Preserve it too.
 
 - **Owner details live in `vehicle_owner`, never on `vehicle`** (Decision 10.1.1). Phone and
   address are sensitive: no list, verification, or aggregate path selects them.
-- **Required at the API, nullable in the column.** Route type and owner name/phone are
-  required by the zod contracts for recording and declaring; the columns stay nullable
-  because legacy rows lawfully lack them. Never make them NOT NULL — the migration would
-  have to invent values.
-- **The chassis number is required the same way** (VEH-34, PRD revision 1.15, item 43).
-  - `chassisVinRestricted` is required to record or declare, and an amendment sets it
-    and never blanks it.
-  - A legacy row may have none. `promote` refuses to declare it until one is given, as
-    it does for a missing route type or owner.
-  - **Requiring it did not widen who reads it.** The value still goes only to a holder of
-    `vehicle.read_restricted`. `VehicleDetail.chassisRecorded` says whether there is one,
-    to everybody who may open the vehicle, and never what it is.
+- **Only the plate is required** (VEH-38, PRD revision 1.20, item 59). Route type,
+  owner (name, phone, address, each), chassis number, category, and branch or unit are all
+  optional at the API. With no `organisationId`, `organisationOrOwn` uses the one branch or
+  unit at which the officer holds the permission, and answers 400 when there is none or
+  several: it never guesses. The columns stay nullable, and a vehicle with no route type
+  owes the levy's default. An amendment sets what is given and never blanks an owner
+  detail or the chassis number.
+- **The chassis number stays restricted.**
+  - `chassisVinRestricted` is optional; an amendment sets it and never blanks it.
+  - **It is read only by a holder of `vehicle.read_restricted`.**
+    `VehicleDetail.chassisRecorded` says whether there is one, to everybody who may open
+    the vehicle, and never what it is.
   - It stays out of every list, verification, aggregate, log, and audit event. The
     declare audit names the fields amended, not their values.
   - No format is checked. The Union gave none; do not invent one.
@@ -1079,10 +1080,13 @@ per-address limits were shared by everyone (19 October 2026).
   shown to every officer who may run the check, because comparing it with the card is the
   check. Item 12's membership endpoint must reuse the rule.
 
-### Who sees a declaration status (VEH-28)
+### Who sees a declaration status (VEH-28, VEH-43)
 
 **Only a holder of `vehicle.declare` over the vehicle**, by the owner's direction of
-3 October 2026. This holds on every route and screen, not only the Verify page.
+3 October 2026. Since VEH-43 (16 November 2026) that is the super administrator alone.
+Declaring (`vehicle.declare`) needs no field and any status but retired or archived:
+`statusOnDeclaring` makes a vehicle on record ACTIVE and leaves a suspended or disputed one
+as it is. A declared vehicle is one with `declaredAt`. This holds on every route and screen, not only the Verify page.
 
 - `VehicleSummary.status` and `declaredAt` are optional. `VehicleService.toSummary` takes
   `showDeclaration` and leaves both out otherwise. Never return them any other way.

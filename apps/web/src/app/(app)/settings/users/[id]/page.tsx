@@ -8,6 +8,7 @@ import {
   type UserDetail,
   type UserScopedPermission,
 } from "@nurtw/contracts";
+import { isNeverGranted } from "@nurtw/domain";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -45,6 +46,9 @@ import { notInPlace, placeNote } from "@/lib/officer-access";
 import { widestScope } from "@/lib/organisation-tree";
 import { useSession } from "@/lib/session";
 import { useTabParam } from "@/lib/use-tab-param";
+
+/** `vehicle.declare` is the super administrator's alone and is never offered (VEH-43). */
+const GRANTABLE = PERMISSIONS.filter((entry) => !isNeverGranted(entry.code));
 
 /**
  * One officer: their account, and what they may do (PRD §16, item 28).
@@ -607,7 +611,7 @@ export default function OfficerPage() {
               <div className="grid gap-4 border-t border-line pt-4">
                 <PermissionChecklist
                   idPrefix="permission"
-                  entries={PERMISSIONS}
+                  entries={GRANTABLE}
                   value={chosenPermissions}
                   onChange={setChosenPermissions}
                   legend="Permissions"

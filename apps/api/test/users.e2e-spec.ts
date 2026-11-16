@@ -438,23 +438,37 @@ describe('Officer accounts (e2e)', () => {
   });
 
   describe('single permissions', () => {
-    it('grant `vehicle.declare` to a named officer, with a reason', async () => {
-      const granted = await call('post', `/users/${ids.new}/grants`, {
+    it('refuses to grant `vehicle.declare` to anybody: it is the super administrator’s alone (VEH-43)', async () => {
+      const response = await call('post', `/users/${ids.new}/grants`, {
         permission: 'vehicle.declare',
         organisationId: ids.branchA,
-        reason: 'Authorised to declare for this branch',
+        reason: 'Not to be given',
+      });
+      expect(response.status).toBe(409);
+      expect(
+        await prisma.userPermissionGrant.count({
+          where: { userId: ids.new, permission: { code: 'vehicle.declare' } },
+        }),
+      ).toBe(0);
+    });
+
+    it('grant `vehicle.record` to a named officer, with a reason', async () => {
+      const granted = await call('post', `/users/${ids.new}/grants`, {
+        permission: 'vehicle.record',
+        organisationId: ids.branchA,
+        reason: 'Authorised to record for this branch',
       });
       expect(granted.status).toBe(201);
       expect(granted.body.user.grants).toEqual([
         expect.objectContaining({
-          permission: 'vehicle.declare',
-          reason: 'Authorised to declare for this branch',
+          permission: 'vehicle.record',
+          reason: 'Authorised to record for this branch',
           by: expect.objectContaining({ id: ids.admin }),
         }),
       ]);
       const holders = await call(
         'get',
-        '/auth/holders?permission=vehicle.declare',
+        '/auth/holders?permission=vehicle.record',
       );
       expect(
         (holders.body.holders as { userId: string }[]).map((row) => row.userId),
@@ -492,11 +506,11 @@ describe('Officer accounts (e2e)', () => {
         (
           (await call('get', '/auth/me', undefined, 'new')).body
             .permissions as { permission: string }[]
-        ).some((entry) => entry.permission === 'vehicle.declare');
+        ).some((entry) => entry.permission === 'vehicle.record');
       expect(await held()).toBe(true);
 
       const revoked = await call('post', `/users/${ids.new}/revocations`, {
-        permission: 'vehicle.declare',
+        permission: 'vehicle.record',
         organisationId: ids.branchA,
         reason: 'Under review',
       });
@@ -514,7 +528,7 @@ describe('Officer accounts (e2e)', () => {
       const withdrawn = await call(
         'post',
         `/users/${ids.new}/grants/${lifted.body.user.grants[0].id}/withdraw`,
-        { reason: 'No longer declaring' },
+        { reason: 'No longer recording' },
       );
       expect(withdrawn.status).toBe(200);
       expect(await held()).toBe(false);

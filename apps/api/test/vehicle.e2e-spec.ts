@@ -68,6 +68,7 @@ describe('Vehicle declaration (e2e)', () => {
       'enumerator',
       'suspender',
       'crossdeclarer',
+      'twobranch',
     ]) {
       cookies[who] = await login(`${who}.${TAG}@nurtw.test`);
     }
@@ -177,15 +178,48 @@ describe('Vehicle declaration (e2e)', () => {
         .expect(403);
     });
 
-    it('refuses a declaration with no route type or no owner phone (revision 1.3)', async () => {
-      await declare({
-        plateNumberDisplay: plate('DR1'),
-        routeTypeId: undefined,
-      }).expect(400);
-      await declare({
-        plateNumberDisplay: plate('DR2'),
-        owner: { name: 'No Phone' },
-      }).expect(400);
+    it('declares on the plate alone: no route type, owner, chassis, branch, or category (VEH-38)', async () => {
+      const response = await request(server)
+        .post('/api/v1/vehicles')
+        .set('Cookie', cookies.declarer!)
+        .send({ plateNumberDisplay: plate('DR1') })
+        .expect(201);
+
+      expect(response.body.vehicle.status).toBe('ACTIVE');
+      expect(response.body.vehicle.routeType).toBeNull();
+      // No branch was named: it went to the declarer's own branch.
+      const stored = await prisma.vehicle.findUniqueOrThrow({
+        where: { id: response.body.vehicle.id },
+        include: { owner: true },
+      });
+      expect(stored.branchId).toBe(fixture.branchAId);
+      expect(stored.owner).toBeNull();
+    });
+
+    it('asks which branch when the officer has no single one of their own', async () => {
+      // This officer holds the permission in two branches.
+      await request(server)
+        .post('/api/v1/vehicles')
+        .set('Cookie', cookies.twobranch!)
+        .send({ plateNumberDisplay: plate('DR2') })
+        .expect(400);
+    });
+
+    it('stores a partly given owner and never blanks a detail on amendment', async () => {
+      const created = await declare({
+        plateNumberDisplay: plate('DR3'),
+        owner: { name: 'Only A Name' },
+      }).expect(201);
+      await request(server)
+        .patch(`/api/v1/vehicles/${created.body.vehicle.id}`)
+        .set('Cookie', cookies.declarer!)
+        .send({ owner: { phone: OWNER.phone } })
+        .expect(200);
+      const stored = await prisma.vehicleOwner.findFirstOrThrow({
+        where: { vehicleId: created.body.vehicle.id },
+      });
+      expect(stored.ownerName).toBe('Only A Name');
+      expect(stored.ownerPhone).toBe('+2348031234567');
     });
   });
 
@@ -214,15 +248,26 @@ describe('Vehicle declaration (e2e)', () => {
       expect(JSON.stringify(audit?.afterValue)).not.toContain(OWNER.name);
     });
 
-    it('refuses recording without a route type or without an owner name', async () => {
-      await record({
-        plateNumberDisplay: plate('RC2'),
-        routeTypeId: undefined,
-      }).expect(400);
-      await record({
-        plateNumberDisplay: plate('RC3'),
-        owner: { phone: OWNER.phone },
-      }).expect(400);
+    it('records on the plate alone, into the recorder’s own branch (VEH-38)', async () => {
+      const response = await request(server)
+        .post('/api/v1/vehicles/record')
+        .set('Cookie', cookies.enumerator!)
+        .send({ plateNumberDisplay: plate('RC2') })
+        .expect(201);
+      const stored = await prisma.vehicle.findUniqueOrThrow({
+        where: { id: response.body.vehicle.id },
+      });
+      expect(stored.status).toBe('ON_RECORD');
+      expect(stored.branchId).toBe(fixture.branchAId);
+      expect(stored.routeTypeId).toBeNull();
+    });
+
+    it('still refuses a blank plate', async () => {
+      await request(server)
+        .post('/api/v1/vehicles/record')
+        .set('Cookie', cookies.enumerator!)
+        .send({ plateNumberDisplay: '   ' })
+        .expect(400);
     });
 
     it('refuses recording a plate that already has a standing record', async () => {
@@ -273,27 +318,21 @@ describe('Vehicle declaration (e2e)', () => {
     });
   });
 
-  describe('the chassis number is compulsory (VEH-34, PRD revision 1.15)', () => {
-    it('refuses to declare a vehicle without one, and names the field', async () => {
-      const response = await declare({
+  describe('the chassis number is optional (VEH-38, superseding VEH-34)', () => {
+    it('declares and records a vehicle without one', async () => {
+      await declare({
         plateNumberDisplay: plate('CH1'),
         chassisVinRestricted: undefined,
-      }).expect(400);
-      expect(
-        response.body.error.details.map((d: { field: string }) => d.field),
-      ).toContain('chassisVinRestricted');
-      expect(
-        await prisma.vehicle.count({ where: { plateNumberNormalized: 'E2EVCH1' } }),
-      ).toBe(0);
-    });
-
-    it('refuses to record one without it too, and a blank is not a chassis number', async () => {
+      }).expect(201);
       await record({
         plateNumberDisplay: plate('CH2'),
         chassisVinRestricted: undefined,
-      }).expect(400);
+      }).expect(201);
+    });
+
+    it('refuses a blank one when one is sent', async () => {
       await record({
-        plateNumberDisplay: plate('CH2'),
+        plateNumberDisplay: plate('CH7'),
         chassisVinRestricted: '   ',
       }).expect(400);
     });
@@ -394,8 +433,8 @@ describe('Vehicle declaration (e2e)', () => {
       expect(declared.body.vehicle.status).toBe('ACTIVE');
     });
 
-    it('requires a legacy record’s missing route type and owner before declaring it', async () => {
-      // Shaped like a migrated row: ON_RECORD, no route type, no owner.
+    it('declares a legacy record with nothing supplied, keeping its notes (VEH-38)', async () => {
+      // Shaped like a migrated row: ON_RECORD, no route type, no owner, no chassis.
       const legacy = await prisma.vehicle.create({
         data: {
           plateNumberNormalized: 'E2EVPR3',
@@ -408,33 +447,10 @@ describe('Vehicle declaration (e2e)', () => {
         },
       });
 
-      await request(server)
-        .post(`/api/v1/vehicles/${legacy.id}/declare`)
-        .set('Cookie', cookies.declarer!)
-        .send({ owner: OWNER })
-        .expect(400);
-
-      await request(server)
-        .post(`/api/v1/vehicles/${legacy.id}/declare`)
-        .set('Cookie', cookies.declarer!)
-        .send({ routeTypeId: fixture.interstateId })
-        .expect(400);
-
-      // And, since revision 1.15, its chassis number (VEH-34).
-      await request(server)
-        .post(`/api/v1/vehicles/${legacy.id}/declare`)
-        .set('Cookie', cookies.declarer!)
-        .send({ routeTypeId: fixture.interstateId, owner: OWNER })
-        .expect(400);
-
       const declared = await request(server)
         .post(`/api/v1/vehicles/${legacy.id}/declare`)
         .set('Cookie', cookies.declarer!)
-        .send({
-          routeTypeId: fixture.interstateId,
-          owner: OWNER,
-          chassisVinRestricted: 'E2E-CHASSIS-PR3',
-        })
+        .send({})
         .expect(201);
       expect(declared.body.vehicle.status).toBe('ACTIVE');
 
@@ -443,27 +459,61 @@ describe('Vehicle declaration (e2e)', () => {
       });
       // The legacy note survives the declaration — MIG-06 still needs it.
       expect(after.notes).toContain('Legacy status: ACTIVE');
-      expect(after.chassisVinRestricted).toBe('E2E-CHASSIS-PR3');
+      expect(after.declaredAt).not.toBeNull();
+      expect(after.routeTypeId).toBeNull();
     });
 
-    it('declares a legacy record that already holds a chassis number without asking again', async () => {
-      const legacy = await prisma.vehicle.create({
+    it('declares a suspended vehicle without lifting the suspension (VEH-38)', async () => {
+      const suspended = await prisma.vehicle.create({
         data: {
           plateNumberNormalized: 'E2EVPR6',
           plateNumberDisplay: plate('PR6'),
           branchId: fixture.branchAId,
-          status: 'ON_RECORD',
+          status: 'SUSPENDED',
           declaredAt: null,
-          isLegacyImport: true,
-          chassisVinRestricted: 'E2E-CHASSIS-PR6',
         },
       });
 
-      await request(server)
-        .post(`/api/v1/vehicles/${legacy.id}/declare`)
+      const declared = await request(server)
+        .post(`/api/v1/vehicles/${suspended.id}/declare`)
         .set('Cookie', cookies.declarer!)
-        .send({ routeTypeId: fixture.interstateId, owner: OWNER })
+        .send({})
         .expect(201);
+      expect(declared.body.vehicle.status).toBe('SUSPENDED');
+      expect(declared.body.vehicle.declaredAt).not.toBeNull();
+
+      // Lifting the suspension now returns it to ACTIVE: it was declared.
+      await request(server)
+        .patch(`/api/v1/vehicles/${suspended.id}/status`)
+        .set('Cookie', cookies.declarer!)
+        .send({ status: 'ACTIVE', reason: 'e2e: lifted' })
+        .expect(200);
+      const after = await prisma.vehicle.findUniqueOrThrow({
+        where: { id: suspended.id },
+      });
+      expect(after.status).toBe('ACTIVE');
+    });
+
+    it('refuses to declare a retired or archived vehicle', async () => {
+      for (const [suffix, status] of [
+        ['PR7', 'RETIRED'],
+        ['PR8', 'ARCHIVED'],
+      ] as const) {
+        const row = await prisma.vehicle.create({
+          data: {
+            plateNumberNormalized: `E2EV${suffix}`,
+            plateNumberDisplay: plate(suffix),
+            branchId: fixture.branchAId,
+            status,
+            declaredAt: null,
+          },
+        });
+        await request(server)
+          .post(`/api/v1/vehicles/${row.id}/declare`)
+          .set('Cookie', cookies.declarer!)
+          .send({})
+          .expect(409);
+      }
     });
 
     it('refuses, rather than duplicates, a record outside the declarer’s scope', async () => {
@@ -965,6 +1015,9 @@ describe('Vehicle declaration (e2e)', () => {
     // Reads branch A, declares only in branch B.
     await buildUser('crossdeclarer', branchA.id, ['vehicle.read']);
     await grant('crossdeclarer', branchB.id, ['vehicle.declare']);
+    // Holds the permission in two branches, so has no single branch of their own.
+    await buildUser('twobranch', branchA.id, ['vehicle.declare']);
+    await grant('twobranch', branchB.id, ['vehicle.declare']);
 
     const member = await prisma.member.create({
       data: {

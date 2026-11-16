@@ -26,9 +26,10 @@ import { ApiError, api, fetcher } from "@/lib/api";
  * - `record` posts to `/vehicles/record` — the vehicle goes ON RECORD only,
  *   for field enumerators. Nothing about it is a declaration.
  *
- * Route type and the owner's name and phone are required in both
- * (Requirements 9.8–9.9, revision 1.3). The owner need not be a member: the
- * driver is the member, chosen separately — or fixed, in the registration flow.
+ * Only the plate number is required, in both (PRD revision 1.20, VEH-38). The
+ * chassis number, route type, branch or unit, vehicle type, and owner are all
+ * optional, and can be added later. The owner need not be a member: the driver
+ * is the member, chosen separately — or fixed, in the registration flow.
  */
 
 export interface SavedVehicle {
@@ -157,21 +158,24 @@ export function VehicleForm({
         mode === "declare" ? "/vehicles" : "/vehicles/record",
         {
           plateNumberDisplay,
-          organisationId,
-          routeTypeId,
+          // Blank means the officer's own branch or unit, which the API finds.
+          organisationId: organisationId || undefined,
+          routeTypeId: routeTypeId || undefined,
           vehicleCategoryId: vehicleCategoryId || undefined,
           make: make.trim() || undefined,
           model: model.trim() || undefined,
           color: color.trim() || undefined,
-          // Compulsory since PRD revision 1.15 (VEH-34). Sent as typed: the
-          // API refuses a blank, and says so against the field.
-          chassisVinRestricted: chassisVinRestricted.trim(),
+          chassisVinRestricted: chassisVinRestricted.trim() || undefined,
           declaredByMemberId,
-          owner: {
-            name: ownerName,
-            phone: ownerPhone,
-            address: ownerAddress.trim() || undefined,
-          },
+          // Only what was typed: a blank is not sent, so nothing is blanked.
+          owner:
+            ownerName.trim() || ownerPhone.trim() || ownerAddress.trim()
+              ? {
+                  name: ownerName.trim() || undefined,
+                  phone: ownerPhone.trim() || undefined,
+                  address: ownerAddress.trim() || undefined,
+                }
+              : undefined,
           notes: notes.trim() || undefined,
         },
       );
@@ -210,20 +214,17 @@ export function VehicleForm({
 
         {/*
           VEH-33, the order the Union asked for: plate, chassis, the other
-          vehicle details, the route, then the branch. The plate and the
-          chassis number are the two a vehicle cannot be added without
-          (VEH-34, PRD revision 1.15).
+          vehicle details, the route, then the branch. Only the plate is
+          required (VEH-38, PRD revision 1.20).
         */}
         <Field
           label="Chassis / VIN"
           htmlFor="chassisVinRestricted"
-          required
           hint="As stamped on the vehicle. Restricted: shown only to officers permitted to see it, and never through verification."
           error={error?.fieldError("chassisVinRestricted")}
         >
           <TextInput
             id="chassisVinRestricted"
-            required
             value={chassisVinRestricted}
             onChange={(event) => setChassisVinRestricted(event.target.value)}
             autoCapitalize="characters"
@@ -270,14 +271,17 @@ export function VehicleForm({
           </Field>
         </div>
 
-        <Field label="Route type" htmlFor="routeTypeId" required>
+        <Field
+          label="Route type"
+          htmlFor="routeTypeId"
+          hint="Until one is set, the default levy applies."
+        >
           <Select
             id="routeTypeId"
-            required
             value={routeTypeId}
             onChange={(event) => setRouteTypeId(event.target.value)}
           >
-            <option value="">Select a route type</option>
+            <option value="">Not stated</option>
             {routeTypes.map((routeType) => (
               <option key={routeType.id} value={routeType.id}>
                 {routeType.label}
@@ -286,14 +290,17 @@ export function VehicleForm({
           </Select>
         </Field>
 
-        <Field label="Branch or unit" htmlFor="organisationId" required>
+        <Field
+          label="Branch or unit"
+          htmlFor="organisationId"
+          hint="Left blank, the vehicle goes to your own branch or unit. Choose one if you work in more than one."
+        >
           <Select
             id="organisationId"
-            required
             value={organisationId}
             onChange={(event) => setOrganisationId(event.target.value)}
           >
-            <option value="">Select a branch or unit</option>
+            <option value="">My own branch or unit</option>
             {organisations.map((org) => (
               <option key={org.id} value={org.id}>
                 {org.name} ({org.level === "UNIT" ? "Unit" : "Branch"})
@@ -308,18 +315,16 @@ export function VehicleForm({
         description="Whoever owns the vehicle. They need not be a member of the Union — the driver is the member. Kept private: never shown on a scan or to an outside organisation."
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Owner's name" htmlFor="ownerName" required>
+          <Field label="Owner's name" htmlFor="ownerName">
             <TextInput
               id="ownerName"
-              required
               value={ownerName}
               onChange={(event) => setOwnerName(event.target.value)}
             />
           </Field>
-          <Field label="Owner's phone" htmlFor="ownerPhone" required>
+          <Field label="Owner's phone" htmlFor="ownerPhone">
             <TextInput
               id="ownerPhone"
-              required
               inputMode="tel"
               autoComplete="off"
               value={ownerPhone}

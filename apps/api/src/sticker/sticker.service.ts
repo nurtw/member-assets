@@ -190,15 +190,9 @@ export class StickerService {
     if (!(await this.permissions.can(actorUserId, ATTACH, path))) {
       throw new ForbiddenException();
     }
-    // PRD Requirement 9A.2 (revision 1.3, VEH-26) — no route type, no
-    // onboarding: the levy starts the month after onboarding and is priced by
-    // route type, so it could not be charged. A legacy vehicle is given one
-    // first, from its page.
-    if (!vehicle.routeTypeId) {
-      throw new ConflictException(
-        'Give this vehicle a route type before attaching a sticker.',
-      );
-    }
+    // Item 59 (VEH-38): a vehicle needs no route type to be onboarded. Until
+    // it has one, its fees and levy are the default amounts, and it is repriced
+    // from the 1st of the month after one is set (PAY-19).
 
     const refuse = async (
       reason: AttachmentRefusalReason,

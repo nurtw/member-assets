@@ -1,6 +1,6 @@
 "use client";
 
-import type { MasterDataEntry, VehicleDetail } from "@nurtw/contracts";
+import type { VehicleDetail } from "@nurtw/contracts";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -19,18 +19,15 @@ import {
   Detail,
   DetailList,
   ErrorNotice,
-  Field,
   Loading,
   Notice,
   PageHeader,
   Section,
-  Select,
   StatusChip,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  TextInput,
 } from "@/components/ui";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiError, api, fetcher } from "@/lib/api";
@@ -127,11 +124,6 @@ export default function VehicleDetailPage() {
   const [driverLabel, setDriverLabel] = useState<string | null>(null);
   const [syncedFor, setSyncedFor] = useState<string | undefined>(undefined);
   // Declaring a vehicle on record — only what the record lacks is asked for.
-  const [declareRouteTypeId, setDeclareRouteTypeId] = useState("");
-  const [declareOwnerName, setDeclareOwnerName] = useState("");
-  const [declareOwnerPhone, setDeclareOwnerPhone] = useState("");
-  const [declareOwnerAddress, setDeclareOwnerAddress] = useState("");
-  const [declareChassis, setDeclareChassis] = useState("");
   // Item 35 (VEH-30). Adding a vehicle arrives here with ?added=1 and a
   // prompt to assign its sticker. ?assign=1 opens the Sticker tab: from the
   // registration flow, from Home, and on the way back from paying. Either is
@@ -153,7 +145,14 @@ export default function VehicleDetailPage() {
   const isActive = vehicle?.status === "ACTIVE";
   const isSuspended = vehicle?.status === "SUSPENDED";
   const isDisputed = vehicle?.status === "DISPUTED";
-  const canDeclare = isOnRecord && holds("vehicle.declare");
+  // Item 59 (VEH-38): any vehicle not retired or archived, once. Only a holder
+  // of `vehicle.declare` (the super administrator) sees the status at all.
+  const canDeclare =
+    vehicle?.status !== undefined &&
+    vehicle.declaredAt === null &&
+    vehicle.status !== "RETIRED" &&
+    vehicle.status !== "ARCHIVED" &&
+    holds("vehicle.declare");
   // Item 57: a vehicle need not be declared to be suspended or retired.
   const canChangeStatus =
     holds("vehicle.suspend") && (isActive || isSuspended || isOnRecord);
@@ -213,11 +212,6 @@ export default function VehicleDetailPage() {
     }
   }, [sentToAssign, vehicleLoaded, offersSticker, router, params.id]);
 
-  const { data: routeTypeList } = useSWR<{ entries: MasterDataEntry[] }>(
-    canDeclare ? "/master-data/route-types" : null,
-    fetcher,
-  );
-
   // The driver picker's state tracks the loaded record, not the other way
   // around — reset whenever a different (or freshly reloaded) vehicle
   // arrives, the same "adjust state during render" pattern the app shell
@@ -231,10 +225,6 @@ export default function VehicleDetailPage() {
         ? `${vehicle.declaredByMember.surname}, ${vehicle.declaredByMember.firstName}`
         : null,
     );
-    setDeclareRouteTypeId(vehicle.routeType?.id ?? "");
-    setDeclareOwnerName(vehicle.owner?.name ?? "");
-    setDeclareOwnerPhone(vehicle.owner?.phone ?? "");
-    setDeclareOwnerAddress(vehicle.owner?.address ?? "");
   }
 
   async function act(action: () => Promise<unknown>, done?: string) {
@@ -277,8 +267,6 @@ export default function VehicleDetailPage() {
     );
   }
 
-  const ownerIncomplete = !vehicle.owner?.name || !vehicle.owner?.phone;
-  const routeTypes = routeTypeList?.entries ?? [];
 
   /** Does a confirmed act. A failure is thrown, and shown in its dialog. */
   async function confirmed(which: Confirming, reason: string) {
@@ -398,7 +386,11 @@ export default function VehicleDetailPage() {
         <TabsContent value="details" className="grid gap-6 outline-none">
           <Section title="Vehicle">
             <DetailList>
-              <Detail label="Route type" value={vehicle.routeType?.label} />
+              <Detail
+                label="Route type"
+                value={vehicle.routeType?.label}
+                missing="Not set. The default levy applies until one is."
+              />
               <Detail
                 label="Vehicle type"
                 value={vehicle.vehicleCategory?.label}
@@ -435,7 +427,7 @@ export default function VehicleDetailPage() {
               {/*
                 The number itself only for an officer who may read it. Whether
                 there is one, for everybody: a legacy vehicle may have none,
-                and it is required before the vehicle can be declared (VEH-34).
+                and none is needed to declare it (VEH-38).
               */}
               {"chassisVinRestricted" in vehicle ? (
                 <Detail
@@ -476,114 +468,15 @@ export default function VehicleDetailPage() {
           {canDeclare ? (
             <Section
               title="Declare this vehicle"
-              description="Declares this same record — no second record is created. A route type, the owner's name and phone, and the chassis number are required."
+              description="Declares this same record. Nothing is required: the plate is enough. A route type, an owner, and a chassis number can be added at any time."
             >
-              <Field label="Route type" htmlFor="declareRouteTypeId" required>
-                <Select
-                  id="declareRouteTypeId"
-                  value={declareRouteTypeId}
-                  onChange={(event) =>
-                    setDeclareRouteTypeId(event.target.value)
-                  }
-                >
-                  <option value="">Select a route type</option>
-                  {routeTypes.map((routeType) => (
-                    <option key={routeType.id} value={routeType.id}>
-                      {routeType.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              {ownerIncomplete ? (
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <Field
-                    label="Owner's name"
-                    htmlFor="declareOwnerName"
-                    required
-                  >
-                    <TextInput
-                      id="declareOwnerName"
-                      value={declareOwnerName}
-                      onChange={(event) =>
-                        setDeclareOwnerName(event.target.value)
-                      }
-                    />
-                  </Field>
-                  <Field
-                    label="Owner's phone"
-                    htmlFor="declareOwnerPhone"
-                    required
-                  >
-                    <TextInput
-                      id="declareOwnerPhone"
-                      inputMode="tel"
-                      autoComplete="off"
-                      value={declareOwnerPhone}
-                      onChange={(event) =>
-                        setDeclareOwnerPhone(event.target.value)
-                      }
-                    />
-                  </Field>
-                  <Field label="Owner's address" htmlFor="declareOwnerAddress">
-                    <TextInput
-                      id="declareOwnerAddress"
-                      value={declareOwnerAddress}
-                      onChange={(event) =>
-                        setDeclareOwnerAddress(event.target.value)
-                      }
-                    />
-                  </Field>
-                </div>
-              ) : null}
-              {/* Asked for only where the record has none (VEH-34). */}
-              {vehicle.chassisRecorded ? null : (
-                <Field
-                  label="Chassis / VIN"
-                  htmlFor="declareChassis"
-                  required
-                  hint="This record has none. As stamped on the vehicle."
-                >
-                  <TextInput
-                    id="declareChassis"
-                    value={declareChassis}
-                    onChange={(event) => setDeclareChassis(event.target.value)}
-                    autoCapitalize="characters"
-                    spellCheck={false}
-                  />
-                </Field>
-              )}
               <div>
                 <Button
                   type="button"
-                  disabled={
-                    busy ||
-                    !declareRouteTypeId ||
-                    (ownerIncomplete &&
-                      (!declareOwnerName || !declareOwnerPhone)) ||
-                    (!vehicle.chassisRecorded && !declareChassis.trim())
-                  }
+                  disabled={busy}
                   onClick={() =>
                     void act(
-                      () =>
-                        api.post(`/vehicles/${vehicle.id}/declare`, {
-                          ...(declareRouteTypeId !==
-                          (vehicle.routeType?.id ?? "")
-                            ? { routeTypeId: declareRouteTypeId }
-                            : {}),
-                          ...(ownerIncomplete
-                            ? {
-                                owner: {
-                                  name: declareOwnerName,
-                                  phone: declareOwnerPhone,
-                                  address:
-                                    declareOwnerAddress.trim() || undefined,
-                                },
-                              }
-                            : {}),
-                          ...(vehicle.chassisRecorded
-                            ? {}
-                            : { chassisVinRestricted: declareChassis.trim() }),
-                        }),
+                      () => api.post(`/vehicles/${vehicle.id}/declare`, {}),
                       "Vehicle declared",
                     )
                   }

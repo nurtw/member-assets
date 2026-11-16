@@ -5,6 +5,7 @@ import {
   SECOND_FACTOR_PERMISSIONS,
   escalations,
   isGrantOnly,
+  isNeverGranted,
   needsSecondFactor,
   passwordProblems,
 } from './accounts.js';
@@ -56,6 +57,14 @@ describe('permissions that may never sit in a role', () => {
     expect(isGrantOnly('sticker.attach')).toBe(false);
     expect(isGrantOnly('vehicle.record')).toBe(false);
     expect(isGrantOnly('user.manage')).toBe(false);
+  });
+});
+
+describe('permissions that are never granted (VEH-43)', () => {
+  it('is vehicle.declare alone: the super administrator holds it, nobody else may', () => {
+    expect(isNeverGranted('vehicle.declare')).toBe(true);
+    expect(isNeverGranted('payment.manage_settlement')).toBe(false);
+    expect(isNeverGranted('vehicle.record')).toBe(false);
   });
 });
 

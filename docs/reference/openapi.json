@@ -23846,7 +23846,7 @@
             }
           },
           "409": {
-            "description": "Attachment refused: the vehicle has no route type or already carries a sticker; the barcode is not held, bound to another plate, already attached, or withdrawn; or the payment is unconfirmed, already used, for another fee type, or for another vehicle.",
+            "description": "Attachment refused: the vehicle already carries a sticker; the barcode is not held, bound to another plate, already attached, or withdrawn; or the payment is unconfirmed, already used, for another fee type, or for another vehicle.",
             "content": {
               "application/json": {
                 "schema": {
@@ -28035,7 +28035,6 @@
                     "properties": {
                       "name": {
                         "type": "string",
-                        "minLength": 1,
                         "maxLength": 120
                       },
                       "phone": {
@@ -28045,11 +28044,7 @@
                         "type": "string",
                         "maxLength": 400
                       }
-                    },
-                    "required": [
-                      "name",
-                      "phone"
-                    ]
+                    }
                   },
                   "notes": {
                     "type": "string",
@@ -28057,11 +28052,7 @@
                   }
                 },
                 "required": [
-                  "plateNumberDisplay",
-                  "organisationId",
-                  "routeTypeId",
-                  "chassisVinRestricted",
-                  "owner"
+                  "plateNumberDisplay"
                 ]
               }
             }
@@ -28618,7 +28609,6 @@
                     "properties": {
                       "name": {
                         "type": "string",
-                        "minLength": 1,
                         "maxLength": 120
                       },
                       "phone": {
@@ -28628,11 +28618,7 @@
                         "type": "string",
                         "maxLength": 400
                       }
-                    },
-                    "required": [
-                      "name",
-                      "phone"
-                    ]
+                    }
                   },
                   "notes": {
                     "type": "string",
@@ -28859,7 +28845,6 @@
                     "properties": {
                       "name": {
                         "type": "string",
-                        "minLength": 1,
                         "maxLength": 120
                       },
                       "phone": {
@@ -28869,11 +28854,7 @@
                         "type": "string",
                         "maxLength": 400
                       }
-                    },
-                    "required": [
-                      "name",
-                      "phone"
-                    ]
+                    }
                   },
                   "chassisVinRestricted": {
                     "type": "string",
@@ -30399,7 +30380,6 @@
                     "properties": {
                       "name": {
                         "type": "string",
-                        "minLength": 1,
                         "maxLength": 120
                       },
                       "phone": {
@@ -30409,11 +30389,7 @@
                         "type": "string",
                         "maxLength": 400
                       }
-                    },
-                    "required": [
-                      "name",
-                      "phone"
-                    ]
+                    }
                   },
                   "notes": {
                     "type": "string",
@@ -30421,11 +30397,7 @@
                   }
                 },
                 "required": [
-                  "plateNumberDisplay",
-                  "organisationId",
-                  "routeTypeId",
-                  "chassisVinRestricted",
-                  "owner"
+                  "plateNumberDisplay"
                 ]
               }
             }

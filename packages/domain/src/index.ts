@@ -43,9 +43,11 @@ export {
   GRANT_ONLY_PERMISSIONS,
   MAX_PASSWORD_LENGTH,
   MIN_PASSWORD_LENGTH,
+  NEVER_GRANTED_PERMISSIONS,
   SECOND_FACTOR_PERMISSIONS,
   escalations,
   isGrantOnly,
+  isNeverGranted,
   needsSecondFactor,
   passwordProblems,
 } from './permissions/accounts.js';
@@ -128,6 +130,7 @@ export {
 } from './card/display-address.js';
 
 export {
+  DECLARABLE_STATUSES,
   DECLARATION_STATUSES,
   InvalidDeclarationTransitionError,
   RECORD_BLOCKING_STATUSES,
@@ -136,9 +139,11 @@ export {
   blocksNewRecord,
   canTransitionDeclaration,
   isDeclarationFinal,
+  isDeclarable,
   isDeclarationLive,
   isWithheld,
   statusChangeTarget,
+  statusOnDeclaring,
   statusOnLifting,
   type DeclarationStatus,
 } from './vehicle/status.js';

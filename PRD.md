@@ -311,17 +311,18 @@ smallest permitted response.
 **Requirement 9.4.** Chassis and VIN data, where captured, is restricted and is never
 exposed through an external API by default.
 
-*Revision 1.15.* **A chassis number is required whenever a vehicle is added**, whether it is
-recorded or declared: the Union names the plate number and the chassis number as the two a
-vehicle cannot be taken on without. A vehicle already on record without one, as a migrated
-vehicle may be, keeps its record, and must be given one before it is declared. Requiring it
-does not widen who may read it: it remains restricted, in no list, no verification, no
-aggregate, no log, and no audit event. No format is prescribed.
+*Revision 1.15, superseded by revision 1.20.* The chassis number was required whenever a
+vehicle was added, and before a migrated vehicle could be declared. **From revision 1.20
+(VEH-38) it is optional**: only the plate number is required to take a vehicle on, record
+it, or declare it. It is still restricted, in no list, no verification, no aggregate, no
+log, and no audit event; an amendment sets a chassis number and never blanks one; no format
+is prescribed.
 
 **Requirement 9.5 — declaration is a manual, permissioned act.** A vehicle declaration is
 created only by a user holding the `vehicle.declare` permission — which belongs to the
-super administrator alone, and to those the super administrator expressly grants it to,
-per `ARCHITECTURE.md` Decision 9.7 — acting deliberately
+super administrator alone (*revision 1.20, VEH-43: it can no longer be granted to anyone*;
+formerly also to those the super administrator expressly granted it to, per
+`ARCHITECTURE.md` Decision 9.7) — acting deliberately
 through the declaration interface. No other route may create a declaration. In particular:
 
 - A verification enquiry must never create, complete, or reactivate a declaration, whether
@@ -358,19 +359,21 @@ and counts for nothing externally until both have happened (Requirement 9A.1).
 **Requirement 9.8 — vehicle owner details** *(revision 1.3, VEH-25)*. Every vehicle records
 its owner, who need not be a member. The driver is the member (MIG-04).
 
-- The owner's **name and phone are required** on every vehicle recorded or declared from
-  revision 1.3 onwards. The **address is optional**.
+- *Revision 1.20 (VEH-38):* **every part of the owner is optional**: name, phone, and
+  address. Revision 1.3 required the name and phone. What is given is stored, and an
+  amendment never blanks a detail that was not sent.
 - Owner details are sensitive data under Requirement 7.1. They are stored apart from the
   vehicle record, never appear in a list, and are never reachable through any verification
   path or disclosure profile.
 - Legacy vehicles carry the owner details the export holds, exactly as recorded, gaps
   included (Requirement 25.4).
 
-**Requirement 9.9 — route type** *(revision 1.3, VEH-26)*. Every vehicle recorded or
-declared from revision 1.3 onwards has a route type: **interstate, intercity, or town
-service**. The list is master data the Union administers (§23.4), because the levy is priced
-by it (Requirement 27.1). Legacy vehicles carry none, and none is inferred from their legacy
-category. The vehicle category (bus, keke, truck, and so on) remains a separate,
+**Requirement 9.9 — route type** *(revision 1.3, VEH-26)*. A vehicle's route type is
+**interstate, intercity, or town service**. The list is master data the Union administers
+(§23.4), because the levy is priced by it (Requirement 27.1). *Revision 1.20 (VEH-38):* a
+route type is **optional**; a vehicle with none owes the levy's default amount, and is
+repriced from the 1st of the month after one is set (PAY-19). Legacy vehicles carry none,
+and none is inferred from their legacy category. The vehicle category (bus, keke, truck, and so on) remains a separate,
 administrable list.
 
 **Requirement 9.10 — registration flows from member to vehicle** *(revision 1.3, VEH-24)*.
@@ -393,9 +396,14 @@ with an active sticker verifies on every channel, declared or not.** Declaring c
 external total and changes nothing else. A vehicle suspended, retired, disputed, or archived
 does not verify, whatever its sticker, and a vehicle need not be declared to be suspended or
 retired.
-The internal channels show every state, with one exception (*revision 1.4*, VEH-28): **a
-vehicle's declaration status is shown only to holders of `vehicle.declare`**. Anyone else is
-told, at most, that the vehicle's record is not complete.
+The internal channels show every state, with one exception (*revision 1.4*, VEH-28):
+**a vehicle's declaration status is shown only to holders of `vehicle.declare`**. Anyone
+else is told, at most, that the vehicle's record is not complete. *Revision 1.20
+(VEH-43):* **only the super administrator holds `vehicle.declare`; it can no longer be
+granted.** Only the super administrator therefore sees, makes, or undoes a declaration.
+*Revision 1.20 (VEH-38):* **declaring needs nothing but the vehicle**, from any status but
+retired or archived. A vehicle on record becomes active; a suspended or disputed one keeps
+its status. Assigning a driver and attaching a sticker need no declaration.
 
 **Requirement 9A.2 — onboarding.** A vehicle is onboarded when a sticker is attached to it
 following a payment of the onboarding fee that Paystack has confirmed (§27). For a vehicle
@@ -406,9 +414,9 @@ types: the reattachment fee for the vehicle's own sticker, the new-sticker fee f
 Onboarding
 and declaration may happen in either order, and by different users. Attaching a sticker
 requires `sticker.attach`, a permission field officers can hold. `vehicle.declare` keeps the
-restrictions of Requirement 9.5 (VEH-18). *Revision 1.3:* a vehicle with no route type
-cannot be onboarded, because its levy starts the month after onboarding and is priced by
-route type (VEH-26). A legacy vehicle is given one at onboarding.
+restrictions of Requirement 9.5 (VEH-18). *Revision 1.20 (VEH-38):* a vehicle needs
+neither a route type nor a declaration to be onboarded. Until it has a route type it
+owes the default amount (Requirement 9.9).
 
 **Requirement 9A.3 — legacy records.** Migrated vehicles are on record only: neither
 onboarded nor declared. Every legacy barcode is imported **unattached**, onto a register that

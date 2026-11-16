@@ -166,6 +166,29 @@ export function statusChangeTarget(
 }
 
 /**
+ * Item 59 (VEH-38) — the statuses a vehicle may be declared from: any that is
+ * not retired or archived. Declaring stamps `declaredAt`, and that is the whole
+ * of what makes a vehicle declared. A vehicle on record becomes `ACTIVE`; a
+ * suspended or disputed one **keeps its status** (`statusOnDeclaring`), so
+ * declaring can never lift a suspension or settle a dispute.
+ */
+export const DECLARABLE_STATUSES: readonly DeclarationStatus[] = [
+  'ON_RECORD',
+  'PENDING',
+  'SUSPENDED',
+  'DISPUTED',
+];
+
+export function isDeclarable(status: DeclarationStatus): boolean {
+  return DECLARABLE_STATUSES.includes(status);
+}
+
+/** The status a vehicle holds once declared. Only `ON_RECORD` and `PENDING` move. */
+export function statusOnDeclaring(from: DeclarationStatus): DeclarationStatus {
+  return from === 'ON_RECORD' || from === 'PENDING' ? 'ACTIVE' : from;
+}
+
+/**
  * Statuses in which a row still stands for the physical vehicle, so that
  * recording the same plate again would create a second record for one vehicle
  * (PRD Requirement 9.7, ARCHITECTURE.md Decision 6.6).

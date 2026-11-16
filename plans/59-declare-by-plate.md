@@ -38,9 +38,9 @@ page, e2e tests, `PRD.md`, `CLAUDE.md`.
 Undeclare (60), the edit window (62), bulk declaration (63), registration (61).
 
 ## Definition of done
-- [ ] A vehicle is recorded and declared with a plate alone; tests prove it.
-- [ ] A suspended or disputed vehicle is declared and keeps its status; retired and archived refuse.
-- [ ] Driver link and sticker attach work on an undeclared vehicle.
-- [ ] `vehicle.declare` cannot be granted; nobody but the super administrator sees status.
-- [ ] No-route-type vehicle prices at the default and shows it.
-- [ ] PRD and `CLAUDE.md` amended; typecheck, lint, and e2e pass.
+- [x] A vehicle is recorded and declared with a plate alone; tests prove it.
+- [x] A suspended or disputed vehicle is declared and keeps its status; retired and archived refuse.
+- [x] Driver link and sticker attach work on an undeclared vehicle.
+- [x] `vehicle.declare` cannot be granted; nobody but the super administrator sees status.
+- [x] No-route-type vehicle prices at the default and shows it.
+- [x] PRD and `CLAUDE.md` amended; typecheck, lint, and e2e pass.

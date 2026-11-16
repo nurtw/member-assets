@@ -49,7 +49,6 @@ export function useStickerOffer(
   /** `null` while it is not yet known, or not this officer's to know. */
   offer: StickerOffer | null;
   canAttach: boolean;
-  needsRouteType: boolean;
   /** Whether the sticker on offer costs nothing at present. */
   free: boolean;
 } {
@@ -60,11 +59,11 @@ export function useStickerOffer(
     fetcher,
   );
   if (attached) {
-    return { offer: "ATTACHED", canAttach, needsRouteType: false, free: false };
+    return { offer: "ATTACHED", canAttach, free: false };
   }
   const state = data?.onboarding;
   if (!state) {
-    return { offer: null, canAttach, needsRouteType: false, free: false };
+    return { offer: null, canAttach, free: false };
   }
   const offer = stickerOffer({
     attached: state.attachment !== null,
@@ -81,7 +80,6 @@ export function useStickerOffer(
   return {
     offer,
     canAttach,
-    needsRouteType: !state.hasRouteType,
     free: fees[feeCode] === 0,
   };
 }
@@ -91,19 +89,16 @@ const NOTHING_YET =
 
 function whatToDo(
   offer: StickerOffer,
-  needsRouteType: boolean,
   free: boolean,
 ): string {
   if (free) {
-    const scan = needsRouteType ? "Set its route type, then scan" : "Scan";
     return offer === "REATTACH"
-      ? `A sticker is recorded for this plate. ${scan} the sticker the vehicle carries. It is free at present.`
-      : `${scan} a sticker from stock. It is free at present.`;
+      ? "A sticker is recorded for this plate. Scan the sticker the vehicle carries. It is free at present."
+      : "Scan a sticker from stock. It is free at present.";
   }
-  const first = needsRouteType ? "Set its route type, then take" : "Take";
   return offer === "REATTACH"
-    ? `A sticker is recorded for this plate. ${first} the reattachment fee, then scan the sticker the vehicle carries.`
-    : `${first} the sticker fee, then scan a sticker from stock.`;
+    ? "A sticker is recorded for this plate. Take the reattachment fee, then scan the sticker the vehicle carries."
+    : "Take the sticker fee, then scan a sticker from stock.";
 }
 
 /** At the top of a vehicle's page, on every view, until a sticker is attached. */
@@ -117,7 +112,7 @@ export function StickerBanner({
   /** Takes the officer to the onboarding panel. */
   onAssign: () => void;
 }) {
-  const { offer, canAttach, needsRouteType, free } = useStickerOffer(
+  const { offer, canAttach, free } = useStickerOffer(
     vehicleId,
     attached,
   );
@@ -153,7 +148,7 @@ export function StickerBanner({
         </Button>
       }
     >
-      {whatToDo(offer, needsRouteType, free)}
+      {whatToDo(offer, free)}
     </Notice>
   );
 }
@@ -175,7 +170,7 @@ export function StickerPromptDialog({
   onAssign: () => void;
   onLater: () => void;
 }) {
-  const { offer, needsRouteType, free } = useStickerOffer(vehicleId, false);
+  const { offer, free } = useStickerOffer(vehicleId, false);
   const canBeGiven = offer !== null && stickerCanBeGiven(offer);
   return (
     <Dialog
@@ -193,7 +188,7 @@ export function StickerPromptDialog({
             {offer === null
               ? "Checking whether a sticker can be assigned…"
               : canBeGiven
-                ? `It has no sticker yet. ${whatToDo(offer, needsRouteType, free)}`
+                ? `It has no sticker yet. ${whatToDo(offer, free)}`
                 : `It has no sticker yet. ${NOTHING_YET}`}
           </DialogDescription>
         </DialogHeader>
