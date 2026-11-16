@@ -499,7 +499,9 @@ history, and may be declared again. A reason is asked, and it is never a delete.
 once.* There is no draft and no application to review. Saving the registration form
 creates an active member with a membership number at once, by the officer who holds
 `member.create`. Supersedes the approval flow of item 05 and the question of a second
-officer (MEM-04). What becomes of applications already open is MEM-20.
+officer (MEM-04). The applications already open are made active by a one-off command on
+the owner's go-ahead, administrators amend a registration at any time and the registering
+officer once, and `application.decide` is removed (MEM-20, answered 16 November).
 
 **62 — imported-vehicle-edit.** *VEH-40.* An enumerator may edit an imported vehicle's
 details once; senior roles may edit at any time. Which roles are senior, and what counts

@@ -47,14 +47,14 @@ thing a year later.
 | Group | Answered | Awaiting | Deferred | Total |
 |---|---|---|---|---|
 | Structure and master data (ORG) | 6 | 2 | — | 8 |
-| Membership and registration (MEM) | 11 | 9 | — | 20 |
+| Membership and registration (MEM) | 12 | 8 | — | 20 |
 | Cards (CARD) | 5 | 5 | — | 10 |
 | Vehicles and stickers (VEH) | 34 | 8 | 1 | 43 |
 | Legacy migration (MIG) | 6 | 2 | — | 8 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 27 | 0 | — | 27 |
 | Governance and go-live (GOV) | 13 | 10 | 2 | 25 |
-| **Total** | **121** | **38** | **3** | **162** |
+| **Total** | **122** | **37** | **3** | **162** |
 
 ### Blocking production use right now
 
@@ -436,7 +436,7 @@ NIMC. PRD Requirement 7.4 (revision 1.16).
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
-### MEM-20 · Registering a member at once ⏳ (partly answered)
+### MEM-20 · Registering a member at once ✅
 
 **Question.** (The project owner's direction of 16 November 2026, after the first working
 day of onboarding.) "No need for draft, onboarding should be straightforward. Submitted
@@ -457,9 +457,21 @@ only on approval.
 3. With no second officer, nothing but the audit trail shows who registered a member. Is that
    the Union's wish? (`approval.require_separate_officer` ships off and has no use here.)
 
-**Answer.** _Partly answered on 16 November 2026._
+**Answer.** **The member is active at once, and the three open points are settled
+(16 November 2026).**
+
+1. **Applications already open** (8 drafts and 2 submitted on Neon): **made active members**,
+   by a one-off command run only on the owner's go-ahead, with a dry run first.
+2. **Corrections after saving:** **administrators amend at any time; the officer who
+   registered the member gets one correction.** The same shape as VEH-40.
+3. **`application.decide`:** **removed entirely**, with the submit, withdraw, and decision
+   routes and screens. A refused applicant is never registered; a member registered by
+   mistake is cancelled with a reason.
+4. **No second officer:** accepted. The audit trail and the "recorded by" field are the
+   record of who registered a member. MEM-04 is closed for registration; the separate-officer
+   setting stays for cards.
 **Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD
-revision 1.20; roadmap item 61.
+revision 1.20; roadmap item 61; `plans/61-immediate-registration.md`.
 
 ---
 
@@ -2714,6 +2726,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 16 November 2026 (item 61 planned) | The project owner settled **MEM-20**: the 10 open applications (8 drafts, 2 submitted) are made active members by a one-off command run on a go-ahead; administrators amend a registration at any time and the officer who registered gets one correction; `application.decide` and the submit, withdraw, and decision routes are removed; and no second officer is needed, so **MEM-04** is closed for registration. Totals: 122 answered, 37 awaiting, 3 deferred. |
 | 16 November 2026 (declared status) | The project owner directed that **declared status is visible to the super administrator only** (**VEH-43**, new, supersedes VEH-28). `vehicle.declare` can no longer be granted, so declaring, undeclaring, and bulk declaration are the super administrator's alone. This answers **GOV-06**. Nobody else held it on Neon, so no access is withdrawn. Totals: 121 answered, 38 awaiting, 3 deferred. |
 | 16 November 2026 (item 59 planned) | The project owner answered **VEH-39** (undeclaring uncounts a vehicle and changes nothing else), **VEH-40** (administrators edit at any time; others once), **VEH-41** (the dashboard counts imported and new stickers; a sticker's page still says only "sticker"), and **VEH-42** (the new-vehicles list's columns), and settled what item 59 needs under **VEH-38**: the plate alone is required, driver and sticker need no declaration, any vehicle not retired or archived may be declared, and a vehicle with no route type owes the default levy. **MEM-20** (the open applications) and **GOV-25** (the dashboards) remain open. Totals: 119 answered, 39 awaiting, 3 deferred. |
 | 16 November 2026 | The project owner gave directions after the first working day of onboarding (14 November): the imported members are deleted (**MIG-08**, answered), a vehicle is declared on its plate alone and in bulk (**VEH-38**, answered), a registration makes an active member at once (**MEM-20**, partly answered); and **VEH-39** to **VEH-42** and **GOV-25** were opened. PRD revision 1.20; roadmap items 58 to 67. Totals: 115 answered, 43 awaiting, 3 deferred. |

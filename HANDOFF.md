@@ -8,12 +8,11 @@ control, docs, plans, commits, and fixtures; the previous operator is never name
 
 ## Status
 
-Item 60 is built and committed locally, not pushed or deployed. Items 58 and 59 are live,
-and the disputed-date migration is applied on Neon.
+Items 58 to 60 are pushed. Item 61 is planned (`plans/61-immediate-registration.md`).
 
 ## Active roadmap item
 
-Item 60 — undeclare — done (`plans/60-undeclare.md`)
+Item 61 — immediate-registration — planned; item 60 done
 
 ## Done this session
 
@@ -39,9 +38,10 @@ Item 60 — undeclare — done (`plans/60-undeclare.md`)
 
 ## Next steps
 
-- Run /plan for item 61 (immediate registration). **MEM-20** (open applications) and
-  **GOV-25** (dashboards) are still open and shape items 61, 66, 67: ask first.
-- Push and deploy only with a go-ahead.
+- Run /execute for item 61. MEM-20 is answered (`QUESTIONS.md`). **GOV-25** (dashboards)
+  is still open and shapes items 66 and 67.
+- The command that activates the 10 open applications runs on Neon only with the owner's
+  go-ahead, after a dry run. Push and deploy only with a go-ahead.
 
 ## Do NOT
 
