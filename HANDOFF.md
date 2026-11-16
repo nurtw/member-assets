@@ -18,12 +18,13 @@ Three rules outrank every default:
 - **Onboarding began 19 October 2026.** SMS is off until Termii is set up.
 - **Items 56 and 57 are live.** The API runs on DigitalOcean only.
 - **Database usage pass (16 November 2026)**, to cut Neon compute hours. Seven local
-  commits on `main`, none pushed, none applied to Neon: SMS outbox on demand, `/health/live`,
+  commits, **pushed and live on DigitalOcean (16 November), migration applied to Neon**:
+  SMS outbox on demand, `/health/live`,
   one-query permissions, 5-minute focus refetch, 5-second settings cache, batched dues, one
   six-hourly `HousekeepingService`; then retention purges and the indexes. Rules are in
   `CLAUDE.md` ("Retention runs from housekeeping", "One timer runs every periodic job").
-  Migration `20261116090000_database_usage` is applied to the **local** database only.
-  All of it passed typecheck, lint, and its e2e suites.
+  All 17 expected indexes were checked present on Neon after the migration. All of it
+  passed typecheck, lint, and its e2e suites. Whether Vercel rebuilt the web app is unchecked.
 
 Tests at last full counts: domain 540, contracts 158, api 208+, web 113.
 
@@ -45,8 +46,8 @@ Tests at last full counts: domain 540, contracts 158, api 208+, web 113.
 
 ## Next steps
 
-1. **Owner:** point DigitalOcean's `health_check.http_path` at `/api/v1/health/live`
-   (unverified: the `doctl` read hung), then run `db:deploy` on Neon for the migration.
+1. **Owner:** point DigitalOcean's `health_check.http_path` at `/api/v1/health/live`. It is
+   still `/api/v1/health` (read 16 November), which keeps Neon awake. The route is live now.
 2. Owner: encrypt DigitalOcean's variables; Termii's keys there, then a test.
 3. Not done, by choice: the external-request write fan-out (three rows each) is the PRD's
    audit and access log. Item 46 needs a go-ahead and a PRD revision.
