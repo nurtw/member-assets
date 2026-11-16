@@ -43,7 +43,7 @@ Item 59 — declare-by-plate — done (`plans/59-declare-by-plate.md`)
 
 ## Next steps
 
-- Run /plan for item 60 (undeclare), then /execute. Push and deploy only with a go-ahead.
+- Item 60 (undeclare) is planned (`plans/60-undeclare.md`): run /execute. Push and deploy only with a go-ahead.
 - **MEM-20** and **GOV-25** still open (items 61, 66, 67).
 
 ## Do NOT

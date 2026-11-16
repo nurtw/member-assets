@@ -1248,6 +1248,10 @@ returns to being on record. It is never a delete. Declaring an undeclared vehicl
 allowed at any time.
 
 **Answer.** **Undeclaring uncounts a vehicle and changes nothing else.** It stops counting in the external total and returns to being on record; it still verifies on its sticker, and its history is kept. It needs the same permission as declaring (`vehicle.declare`), a reason, and can be declared again at any time. It is never a delete.
+**Settled when item 60 was planned (16 November 2026).** Declaring again stamps a new
+declared date, so a vehicle counts in past periods only from then; no first-declared date is
+kept (the audit trail holds the original). A suspended or disputed vehicle may be
+undeclared and keeps its status; undeclaring never lifts a suspension.
 **Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD revision 1.20; roadmap item 60.
 
 ### VEH-40 · Who may edit an imported vehicle, and how often ✅
