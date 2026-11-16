@@ -228,7 +228,8 @@ are established at go-live hardening. What is fixed already:
   is what puts a new permission in the catalogue and in the super administrator's role; it
   is safe to run again. Without it nobody holds the permission, and its screens stay
   hidden. `sticker.stock_intake` (item 27) is one such, and `docs.read_internal` (item 54)
-  another.
+  another, and `vehicle.update_imported` (item 62) a third: it is what lets the branch and unit
+  administrators amend an imported vehicle more than once.
 - The container reads configuration from the environment; no configuration is baked in.
 - Production data resides in an **EU region** (London or Frankfurt), per Decision 10.4.
 
@@ -858,6 +859,15 @@ are paused for now (`QUESTIONS.md` VEH-20), so the secret is not yet needed.
 **A sticker's QR code may be sent as a camera reads it.** A legacy sticker's code holds a
 web address ending in its number. The System takes the number from it, on the Verify
 screen and on the external API alike, so an address is never recorded as a forged code.
+
+### Amending an imported vehicle
+
+A vehicle that came with the legacy register can be corrected from its page, under **Correct
+the details**. An administrator (`vehicle.update_imported`) can do it as often as needed. A
+field enumerator or a vehicle-record officer has **one** edit of each such vehicle, shared:
+once anyone not an administrator has saved it, it is locked to them and an administrator
+must change it. One edit cannot change the plate number, the branch or unit, or the driver.
+Each save is in the audit trail with the fields it changed.
 
 ### Reissuing a vehicle letter
 

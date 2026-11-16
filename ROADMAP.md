@@ -89,7 +89,7 @@ Each item is independently completable and independently testable. Status values
 | 59 | declare-by-plate | §9, Req. 9.4, 9A.1 (rev. 1.20); VEH-38; supersedes VEH-34 and the route and owner requirements of rev. 1.3 | done (16 Nov; not yet deployed) | [plan](plans/59-declare-by-plate.md) |
 | 60 | undeclare | §9, §23.19 (rev. 1.20); VEH-39; the owner's direction of 16 Nov | done (16 Nov; not yet deployed) | [plan](plans/60-undeclare.md) |
 | 61 | immediate-registration | §7 (rev. 1.20); MEM-20; supersedes MEM-04 and the approval flow of item 05 | done (16 Nov; not pushed; the command runs on Neon on the owner's go-ahead) | [plan](plans/61-immediate-registration.md) |
-| 62 | imported-vehicle-edit | §9, §16 (rev. 1.20); VEH-40 | planned | [plan](plans/62-imported-vehicle-edit.md) |
+| 62 | imported-vehicle-edit | §9, §16 (rev. 1.20); VEH-40 | done (16 Nov; not pushed; `db:deploy` then `db:seed` on Neon on a go-ahead) | [plan](plans/62-imported-vehicle-edit.md) |
 | 63 | bulk-declaration | §9, §16 (rev. 1.20); VEH-38 | planned | [plan](plans/63-bulk-declaration.md) |
 | 64 | sticker-origin | §9A (rev. 1.20); VEH-41; amends GOV-21 | planned | [plan](plans/64-sticker-origin.md) |
 | 65 | new-vehicles-list | §9, §22 (rev. 1.20); VEH-42 | planned | [plan](plans/65-new-vehicles-list.md) |
@@ -503,9 +503,10 @@ officer (MEM-04). The applications already open are made active by a one-off com
 the owner's go-ahead, administrators amend a registration at any time and the registering
 officer once, and `application.decide` is removed (MEM-20, answered 16 November).
 
-**62 — imported-vehicle-edit.** *VEH-40.* An enumerator may edit an imported vehicle's
-details once; senior roles may edit at any time. Which roles are senior, and what counts
-as the enumerator's one edit, are open (VEH-40).
+**62 — imported-vehicle-edit.** *VEH-40, answered 16 November.* Administrators edit an
+imported vehicle at any time; an enumerator or a vehicle-record officer gets one edit per
+vehicle. Planned: senior is the new permission `vehicle.update_imported`; one edit may not
+change the plate, branch or unit, or linked member. See the plan.
 
 **63 — bulk-declaration.** *VEH-38, answered 16 November: tick vehicles in the list.* The
 super administrator filters the vehicle list, selects some or all, and declares them in one act,

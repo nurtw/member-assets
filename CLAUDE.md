@@ -1088,6 +1088,27 @@ per-address limits were shared by everyone (19 October 2026).
   shown to every officer who may run the check, because comparing it with the card is the
   check. Item 12's membership endpoint must reuse the rule.
 
+### Amending an imported vehicle (item 62, VEH-40)
+
+- **Senior is a permission: `vehicle.update_imported`** (branch and unit administrators, and
+  the super administrator). Never test a role. Anyone else who may amend vehicles gets
+  **one edit** of an imported vehicle (`isLegacyImport`), **shared by the vehicle**: the
+  first save claims `vehicle.importedEditedAt` by a conditional `updateMany`, so two saves
+  at once cannot both have it, and everyone not senior is then locked out (409).
+- **`importedEditRight`** (`packages/domain/src/vehicle/imported-edit.ts`) decides
+  `ANYTIME`, `ONCE`, or `NONE`; `VehicleDetail.edit` carries it with `via` (`UPDATE` or
+  `RECORD`) so the screen picks the route. A vehicle recorded through the System is not
+  limited.
+- **Two routes, because a route names one permission:** `PATCH /vehicles/:id`
+  (`vehicle.update`) and `PATCH /vehicles/:id/imported` (`vehicle.record`, the field
+  enumerator; 409 on a vehicle that is not imported). Both go through `VehicleService.amend`.
+- **One edit may not change the plate, the branch or unit, or the linked member**
+  (`FIELDS_LOCKED_TO_ONE_EDIT`): 403, before the edit is claimed, so a refused save spends
+  nothing. An empty save is a 400 and spends nothing. The audit event records the fields
+  and `editRight`, never a value.
+- **A release adding `vehicle.update_imported` needs `db:seed` after `db:deploy`** to put it
+  in the branch and unit administrator role.
+
 ### Who sees a declaration status (VEH-28, VEH-43)
 
 **Only a holder of `vehicle.declare` over the vehicle**, by the owner's direction of

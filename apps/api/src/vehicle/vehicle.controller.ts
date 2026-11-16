@@ -230,7 +230,9 @@ export class VehicleController {
       'Moving a declaration to a different branch or unit requires `vehicle.update` at both the ' +
       'current and destination organisation’s path. `declaredByMemberId` attaches, changes, or ' +
       '(sent as `null`) clears the member the vehicle is associated with — the route a migrated ' +
-      'or previously unit-only declaration is reconciled to an operator through.',
+      'or previously unit-only declaration is reconciled to an operator through. On an imported ' +
+      'vehicle (item 62), a holder of `vehicle.update_imported` amends at any time and anyone else once: ' +
+      'the next save answers 409, and one edit may not change the plate, branch or unit, or linked member (403).',
     body: updateVehicleSchema,
     responses: {
       403: 'The caller may not amend this declaration, or may not move it to that organisation.',
@@ -244,6 +246,32 @@ export class VehicleController {
   ) {
     const actor = this.actor(request);
     return { vehicle: await this.vehicles.update(actor, id, body) };
+  }
+
+  @RequirePermission('vehicle.record')
+  @Patch(':id/imported')
+  @Documented({
+    summary: 'A field enumerator’s one edit of an imported vehicle.',
+    description:
+      'Item 62 (VEH-40). The same amendment as `PATCH /vehicles/:id`, for an officer who holds ' +
+      '`vehicle.record` and not `vehicle.update`. It applies to a vehicle that came with the ' +
+      'legacy register only. The edit is used once for the vehicle, whoever makes it: the next ' +
+      'save answers 409 unless the caller holds `vehicle.update_imported`. One edit may not ' +
+      'change the plate, the branch or unit, or the linked member (403).',
+    body: updateVehicleSchema,
+    responses: {
+      403: 'The caller may not record at this vehicle, or the edit names a field one edit may not change.',
+      404: 'No such vehicle, or it is outside the caller’s area.',
+      409: 'The vehicle is not imported, or its one edit is already used.',
+    },
+  })
+  async amendImported(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(updateVehicleSchema)) body: UpdateVehicleInput,
+  ) {
+    const actor = this.actor(request);
+    return { vehicle: await this.vehicles.amendImported(actor, id, body) };
   }
 
   @RequirePermission('vehicle.suspend')

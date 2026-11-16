@@ -307,6 +307,13 @@ export interface VehicleDetail extends VehicleSummary {
    * that a legacy vehicle lacks one, and must be given it to be declared.
    */
   chassisRecorded: boolean;
+  /**
+   * What the caller may do about amending this vehicle (item 62, VEH-40):
+   * `ANYTIME`, `ONCE` (one edit of an imported vehicle, not yet used), or `NONE`.
+   * `via` is the route that takes it: `UPDATE` for a holder of `vehicle.update`,
+   * `RECORD` for a field enumerator.
+   */
+  edit: { right: 'ANYTIME' | 'ONCE' | 'NONE'; via: 'UPDATE' | 'RECORD' };
   /** `null` when no owner has been recorded (possible only on a legacy record). */
   owner: VehicleOwnerDetail | null;
   /**

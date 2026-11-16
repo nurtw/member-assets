@@ -389,6 +389,19 @@ vehicle, or skips the step for a member with no vehicle. The vehicle may be link
 applicant whose application is still pending. If the application is refused, the vehicle
 stays on record and the link still names the applicant.
 
+**Requirement 9.11 — amending an imported vehicle** *(revision 1.20, VEH-40, roadmap item
+62)*. A vehicle that came with the legacy register is amended by an **administrator at any
+time**, and by **anyone else who may amend vehicles once**. An administrator is a holder of
+`vehicle.update_imported` (the branch and unit administrators and the super administrator);
+the permission, never a role, decides. Anyone else is a holder of `vehicle.update` (the
+vehicle-record officer) or of `vehicle.record` (the field enumerator, through
+`PATCH /vehicles/:id/imported`). The one edit belongs to the **vehicle**, not the officer:
+whoever saves first locks it to the rest, and the audit event records the save. One edit may
+change the route type, vehicle type, make, model, colour, chassis number, notes, and the
+owner's details, and never blanks one; it **may not change the plate number, the branch or
+unit, or the linked member**. An administrator may change all of them. The limit applies to
+imported vehicles only: a vehicle recorded through the System is amended as before.
+
 ---
 
 ## 9A. Vehicle onboarding *(revision 1.2)*

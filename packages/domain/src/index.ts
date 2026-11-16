@@ -149,6 +149,12 @@ export {
 } from './vehicle/status.js';
 
 export {
+  FIELDS_LOCKED_TO_ONE_EDIT,
+  importedEditRight,
+  type ImportedEditRight,
+} from './vehicle/imported-edit.js';
+
+export {
   DEFAULT_FEE_SCHEDULES,
   calculateContractorFee,
   calculateFees,

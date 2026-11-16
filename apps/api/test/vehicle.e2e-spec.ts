@@ -69,6 +69,9 @@ describe('Vehicle declaration (e2e)', () => {
       'suspender',
       'crossdeclarer',
       'twobranch',
+      'editor',
+      'senior',
+      'outsider',
     ]) {
       cookies[who] = await login(`${who}.${TAG}@nurtw.test`);
     }
@@ -1120,6 +1123,223 @@ describe('Vehicle declaration (e2e)', () => {
     });
   });
 
+  describe('amending an imported vehicle (item 62, VEH-40)', () => {
+    /** A vehicle that came with the legacy register, in branch A. */
+    async function imported(suffix: string) {
+      return prisma.vehicle.create({
+        data: {
+          plateNumberNormalized: `E2EV${suffix}`,
+          plateNumberDisplay: plate(suffix),
+          branchId: fixture.branchAId,
+          status: 'ON_RECORD',
+          declaredAt: null,
+          isLegacyImport: true,
+        },
+      });
+    }
+
+    const amend = (who: string, id: string, data: Record<string, unknown>) =>
+      request(server)
+        .patch(`/api/v1/vehicles/${id}`)
+        .set('Cookie', cookies[who]!)
+        .send(data);
+
+    const amendAsEnumerator = (id: string, data: Record<string, unknown>) =>
+      request(server)
+        .patch(`/api/v1/vehicles/${id}/imported`)
+        .set('Cookie', cookies.enumerator!)
+        .send(data);
+
+    const editOf = async (who: string, id: string) =>
+      (
+        await request(server)
+          .get(`/api/v1/vehicles/${id}`)
+          .set('Cookie', cookies[who]!)
+          .expect(200)
+      ).body.vehicle.edit;
+
+    it('lets an administrator amend it as often as they need', async () => {
+      const vehicle = await imported('IE1');
+
+      await amend('senior', vehicle.id, { make: 'First' }).expect(200);
+      await amend('senior', vehicle.id, { make: 'Second' }).expect(200);
+      await amend('senior', vehicle.id, { color: 'Green' }).expect(200);
+
+      const row = await prisma.vehicle.findUniqueOrThrow({
+        where: { id: vehicle.id },
+      });
+      expect(row.make).toBe('Second');
+      expect(row.importedEditedAt).toBeNull();
+      expect(await editOf('senior', vehicle.id)).toEqual({
+        right: 'ANYTIME',
+        via: 'UPDATE',
+      });
+    });
+
+    it('gives a vehicle-record officer one edit, then locks it to them', async () => {
+      const vehicle = await imported('IE2');
+      expect(await editOf('editor', vehicle.id)).toEqual({
+        right: 'ONCE',
+        via: 'UPDATE',
+      });
+
+      await amend('editor', vehicle.id, {
+        make: 'Toyota',
+        routeTypeId: fixture.interstateId,
+        owner: { name: 'Fixture Owner' },
+      }).expect(200);
+      await amend('editor', vehicle.id, { make: 'Honda' }).expect(409);
+
+      const row = await prisma.vehicle.findUniqueOrThrow({
+        where: { id: vehicle.id },
+      });
+      expect(row.make).toBe('Toyota');
+      expect(row.routeTypeId).toBe(fixture.interstateId);
+      expect(row.importedEditedAt).not.toBeNull();
+      expect((await editOf('editor', vehicle.id)).right).toBe('NONE');
+
+      // An administrator still can.
+      await amend('senior', vehicle.id, { make: 'Honda' }).expect(200);
+    });
+
+    it('gives a field enumerator one edit through its own route', async () => {
+      const vehicle = await imported('IE3');
+      expect(await editOf('enumerator', vehicle.id)).toEqual({
+        right: 'ONCE',
+        via: 'RECORD',
+      });
+
+      await amendAsEnumerator(vehicle.id, {
+        make: 'Hiace',
+        vehicleCategoryId: null,
+      }).expect(200);
+      await amendAsEnumerator(vehicle.id, { make: 'Again' }).expect(409);
+
+      expect((await editOf('enumerator', vehicle.id)).right).toBe('NONE');
+    });
+
+    it('shares the one edit: whoever uses it first locks the vehicle to the rest', async () => {
+      const vehicle = await imported('IE4');
+
+      await amendAsEnumerator(vehicle.id, { make: 'Hiace' }).expect(200);
+
+      await amend('editor', vehicle.id, { make: 'Other' }).expect(409);
+      expect(
+        (await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicle.id } }))
+          .make,
+      ).toBe('Hiace');
+    });
+
+    it('lets only one of two saves made at once through', async () => {
+      const vehicle = await imported('IE5');
+
+      const [first, second] = await Promise.all([
+        amend('editor', vehicle.id, { make: 'Alpha' }),
+        amendAsEnumerator(vehicle.id, { make: 'Beta' }),
+      ]);
+
+      expect([first.status, second.status].sort()).toEqual([200, 409]);
+    });
+
+    it('refuses the plate, the placement, and the driver to one edit, and keeps the edit', async () => {
+      const vehicle = await imported('IE6');
+
+      await amend('editor', vehicle.id, {
+        plateNumberDisplay: plate('IE6X'),
+      }).expect(403);
+      await amend('editor', vehicle.id, {
+        organisationId: fixture.unitAId,
+      }).expect(403);
+      await amend('editor', vehicle.id, {
+        declaredByMemberId: fixture.memberId,
+      }).expect(403);
+      await amendAsEnumerator(vehicle.id, {
+        plateNumberDisplay: plate('IE6X'),
+      }).expect(403);
+
+      // Nothing was spent by the refusals.
+      expect(
+        (await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicle.id } }))
+          .importedEditedAt,
+      ).toBeNull();
+      await amend('editor', vehicle.id, { make: 'Fine' }).expect(200);
+
+      // An administrator may change all three.
+      await amend('senior', vehicle.id, {
+        declaredByMemberId: fixture.memberId,
+      }).expect(200);
+    });
+
+    it('does not spend the edit on an empty save', async () => {
+      const vehicle = await imported('IE7');
+
+      await amend('editor', vehicle.id, {}).expect(400);
+
+      expect(
+        (await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicle.id } }))
+          .importedEditedAt,
+      ).toBeNull();
+    });
+
+    it('leaves a vehicle recorded through the System amendable as before', async () => {
+      const created = await record({ plateNumberDisplay: plate('IE8') }).expect(
+        201,
+      );
+      const id = created.body.vehicle.id;
+
+      await amend('editor', id, { make: 'One' }).expect(200);
+      await amend('editor', id, { make: 'Two' }).expect(200);
+      expect(await editOf('editor', id)).toEqual({
+        right: 'ANYTIME',
+        via: 'UPDATE',
+      });
+      // The enumerator's route is for imported vehicles only.
+      await amendAsEnumerator(id, { make: 'Three' }).expect(409);
+      expect(await editOf('enumerator', id)).toEqual({
+        right: 'NONE',
+        via: 'RECORD',
+      });
+    });
+
+    it('gives a reader nothing, and an enumerator no way through the general route', async () => {
+      const vehicle = await imported('IE9');
+
+      expect((await editOf('reader', vehicle.id)).right).toBe('NONE');
+      await amend('enumerator', vehicle.id, { make: 'No' }).expect(403);
+      await amend('reader', vehicle.id, { make: 'No' }).expect(403);
+    });
+
+    it('answers 404 for a vehicle outside the officer’s area', async () => {
+      const vehicle = await imported('IE10');
+
+      await amend('outsider', vehicle.id, { make: 'No' }).expect(404);
+      expect(
+        (await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicle.id } }))
+          .make,
+      ).toBeNull();
+    });
+
+    it('audits the edit with the fields and the right, never the values', async () => {
+      const vehicle = await imported('IE11');
+
+      await amend('editor', vehicle.id, {
+        make: 'Secret-Make-Value',
+        chassisVinRestricted: 'E2E-CHASSIS-IE11',
+      }).expect(200);
+
+      const events = await prisma.auditEvent.findMany({
+        where: { subjectId: vehicle.id, action: 'vehicle.update' },
+      });
+      expect(events).toHaveLength(1);
+      expect(events[0]!.afterValue).toMatchObject({
+        fieldsAmended: ['make', 'chassisVinRestricted'],
+        editRight: 'ONCE',
+      });
+      expect(JSON.stringify(events)).not.toContain('Secret-Make-Value');
+      expect(JSON.stringify(events)).not.toContain('E2E-CHASSIS-IE11');
+    });
+  });
+
   async function buildFixture(): Promise<Fixture> {
     const make = async (
       name: string,
@@ -1168,6 +1388,16 @@ describe('Vehicle declaration (e2e)', () => {
     // Reads branch A, declares only in branch B.
     await buildUser('crossdeclarer', branchA.id, ['vehicle.read']);
     await grant('crossdeclarer', branchB.id, ['vehicle.declare']);
+    // Item 62 (VEH-40). A record officer: one edit of an imported vehicle.
+    await buildUser('editor', branchA.id, ['vehicle.read', 'vehicle.update']);
+    // An administrator: amends an imported vehicle at any time.
+    await buildUser('senior', branchA.id, [
+      'vehicle.read',
+      'vehicle.update',
+      'vehicle.update_imported',
+    ]);
+    // May amend vehicles in branch B only.
+    await buildUser('outsider', branchB.id, ['vehicle.read', 'vehicle.update']);
     // Holds the permission in two branches, so has no single branch of their own.
     await buildUser('twobranch', branchA.id, ['vehicle.declare']);
     await grant('twobranch', branchB.id, ['vehicle.declare']);

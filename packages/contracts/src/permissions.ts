@@ -96,6 +96,16 @@ export const PERMISSIONS = [
     description: 'Add a vehicle on record (not a declaration)',
   },
   { code: 'vehicle.update', description: 'Amend a vehicle declaration' },
+  /**
+   * Roadmap item 62 (`QUESTIONS.md` VEH-40) — what marks a senior officer. An
+   * imported vehicle is amended at any time by a holder of this, and once only by
+   * anyone else who may amend vehicles. Held by the branch and unit administrators
+   * and the super administrator.
+   */
+  {
+    code: 'vehicle.update_imported',
+    description: 'Amend an imported vehicle at any time',
+  },
   {
     code: 'vehicle.suspend',
     description: 'Suspend or retire a vehicle declaration',
@@ -338,6 +348,7 @@ export const SYSTEM_ROLES = [
       'card.read',
       'vehicle.read',
       'vehicle.update',
+      'vehicle.update_imported',
       'sticker.read',
       'report.read',
     ],

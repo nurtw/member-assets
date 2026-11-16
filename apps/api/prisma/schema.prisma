@@ -738,6 +738,11 @@ model Vehicle {
   /// audit trail from an operator declaration.
   isLegacyImport Boolean @default(false) @map("is_legacy_import")
 
+  /// Item 62 — when an officer who is not an administrator used the one edit of this
+  /// imported vehicle. Null until then. An administrator edits at any time and does
+  /// not set it.
+  importedEditedAt DateTime? @map("imported_edited_at")
+
   /// The legacy `vehicles_full.csv` row id this declaration was migrated
   /// from — the migration script's idempotency key, same reasoning as
   /// `Member.legacyId`. Null for every declaration made through the API.

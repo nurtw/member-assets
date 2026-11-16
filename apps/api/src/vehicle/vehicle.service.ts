@@ -30,7 +30,10 @@ import {
   statusChangeTarget,
   statusOnDeclaring,
   statusOnUndeclaring,
+  FIELDS_LOCKED_TO_ONE_EDIT,
+  importedEditRight,
   type DeclarationStatus,
+  type ImportedEditRight,
   type PermissionAssignments,
 } from '@nurtw/domain';
 import { Prisma } from '@prisma/client';
@@ -45,6 +48,7 @@ const READ_RESTRICTED = 'vehicle.read_restricted';
 const DECLARE = 'vehicle.declare';
 const RECORD = 'vehicle.record';
 const UPDATE = 'vehicle.update';
+const UPDATE_IMPORTED = 'vehicle.update_imported';
 const SUSPEND = 'vehicle.suspend';
 const RESOLVE_DISPUTE = 'vehicle.resolve_dispute';
 
@@ -256,9 +260,10 @@ export class VehicleService {
 
   async findOne(userId: string, id: string): Promise<VehicleDetail> {
     const vehicle = await this.loadVisible(userId, id);
-    const [canReadRestricted, showDeclaration] = await Promise.all([
+    const [canReadRestricted, showDeclaration, edit] = await Promise.all([
       this.permissions.can(userId, READ_RESTRICTED, vehicle.path),
       this.permissions.can(userId, DECLARE, vehicle.path),
+      this.editRight(userId, vehicle),
     ]);
 
     // Requirement 9A.1 / Decision 6.5 — onboarded is read from the attached
@@ -294,6 +299,7 @@ export class VehicleService {
       // Whether there is one, for everybody who may open the vehicle: a legacy
       // record without one cannot be declared until it is given (VEH-34).
       chassisRecorded: hasChassisNumber(vehicle.chassisVinRestricted),
+      edit,
       owner: vehicle.owner
         ? {
             name: vehicle.owner.ownerName,
@@ -778,13 +784,83 @@ export class VehicleService {
     }
   }
 
+  /**
+   * What the caller may do about amending a vehicle (item 62, VEH-40). An
+   * imported vehicle is amended at any time by a holder of
+   * `vehicle.update_imported`, and once only by anyone else.
+   */
+  private async editRight(
+    userId: string,
+    vehicle: {
+      path: string;
+      isLegacyImport: boolean;
+      importedEditedAt: Date | null;
+    },
+  ): Promise<{ right: ImportedEditRight; via: 'UPDATE' | 'RECORD' }> {
+    const [senior, canUpdate, canRecord] = await Promise.all([
+      this.permissions.can(userId, UPDATE_IMPORTED, vehicle.path),
+      this.permissions.can(userId, UPDATE, vehicle.path),
+      this.permissions.can(userId, RECORD, vehicle.path),
+    ]);
+    return {
+      right: importedEditRight({
+        imported: vehicle.isLegacyImport,
+        senior,
+        canUpdate,
+        canRecord,
+        editUsed: vehicle.importedEditedAt !== null,
+      }),
+      via: canUpdate ? 'UPDATE' : 'RECORD',
+    };
+  }
+
   async update(
     actor: ActorContext,
     id: string,
     input: UpdateVehicleInput,
   ): Promise<VehicleSummary> {
+    return this.amend(actor, id, input, 'UPDATE');
+  }
+
+  /**
+   * The field enumerator's one edit of an imported vehicle (item 62): the same
+   * amendment as `update`, reached by `vehicle.record`, and only for a vehicle
+   * that came with the legacy register.
+   */
+  async amendImported(
+    actor: ActorContext,
+    id: string,
+    input: UpdateVehicleInput,
+  ): Promise<VehicleSummary> {
+    return this.amend(actor, id, input, 'RECORD');
+  }
+
+  private async amend(
+    actor: ActorContext,
+    id: string,
+    input: UpdateVehicleInput,
+    via: 'UPDATE' | 'RECORD',
+  ): Promise<VehicleSummary> {
     const vehicle = await this.loadVisible(actor.userId, id);
-    await this.require(actor.userId, UPDATE, vehicle.path);
+    await this.require(
+      actor.userId,
+      via === 'UPDATE' ? UPDATE : RECORD,
+      vehicle.path,
+    );
+    if (via === 'RECORD' && !vehicle.isLegacyImport) {
+      throw new ConflictException();
+    }
+    const { right } = await this.editRight(actor.userId, vehicle);
+    if (right === 'NONE') {
+      // The one edit of an imported vehicle is used.
+      throw new ConflictException();
+    }
+    if (
+      right === 'ONCE' &&
+      FIELDS_LOCKED_TO_ONE_EDIT.some((field) => input[field] !== undefined)
+    ) {
+      throw new ForbiddenException();
+    }
 
     let destination: DeclaringOrganisation | null = null;
     if (input.organisationId) {
@@ -809,6 +885,17 @@ export class VehicleService {
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      if (right === 'ONCE') {
+        // One statement claims the edit, so two officers saving at once cannot
+        // both have it. A loser rolls back with nothing written.
+        const claimed = await tx.vehicle.updateMany({
+          where: { id, importedEditedAt: null },
+          data: { importedEditedAt: new Date() },
+        });
+        if (claimed.count === 0) {
+          throw new ConflictException();
+        }
+      }
       const result = await tx.vehicle.update({
         where: { id },
         data: {
@@ -864,7 +951,10 @@ export class VehicleService {
           subjectId: id,
           organisationId: destination?.id ?? vehicle.organisationId,
           actorUserId: actor.userId,
-          after: { fieldsAmended: Object.keys(input) },
+          after: {
+            fieldsAmended: Object.keys(input),
+            ...(vehicle.isLegacyImport ? { editRight: right } : {}),
+          },
           requestId: actor.requestId,
           ipAddress: actor.ipAddress,
         },

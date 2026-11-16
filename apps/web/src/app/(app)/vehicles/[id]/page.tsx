@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
 
+import { CorrectVehicle } from "@/components/correct-vehicle";
 import { VehicleDuesPanel } from "@/components/dues-panel";
 import { MemberPicker } from "@/components/member-picker";
 import { OnboardingSection } from "@/components/onboarding-section";
@@ -134,6 +135,7 @@ export default function VehicleDetailPage() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiError | null>(null);
   const [confirming, setConfirming] = useState<Confirming | null>(null);
+  const [correcting, setCorrecting] = useState(false);
   const [driverId, setDriverId] = useState<string | null>(null);
   const [driverLabel, setDriverLabel] = useState<string | null>(null);
   const [syncedFor, setSyncedFor] = useState<string | undefined>(undefined);
@@ -179,13 +181,23 @@ export default function VehicleDetailPage() {
     (isActive || isSuspended || isDisputed) &&
     holds("vehicle.declare");
 
+  // Item 62 (VEH-40): an imported vehicle is corrected by an administrator at any
+  // time, and once by anyone else who may amend vehicles. The API says which.
+  const canCorrect =
+    vehicle !== null && vehicle.isLegacyImport && vehicle.edit.right !== "NONE";
+  // The driver is not changed by one edit of an imported vehicle.
+  const canChangeDriver =
+    vehicle !== null &&
+    holds("vehicle.update") &&
+    (!vehicle.isLegacyImport || vehicle.edit.right === "ANYTIME");
+
   // A tab is offered only where it has something for this officer.
   const offersSticker =
     vehicle !== null &&
     (holds("sticker.attach") || Boolean(vehicle.onboarding?.letterReference));
   const offersManage =
     vehicle !== null &&
-    (holds("vehicle.update") || canDismiss || canChangeStatus || canUndeclare);
+    (canChangeDriver || canDismiss || canChangeStatus || canUndeclare);
   const tabs: { value: TabName }[] = [
     { value: "details" },
     ...(offersSticker ? [{ value: "sticker" as const }] : []),
@@ -488,6 +500,28 @@ export default function VehicleDetailPage() {
             </DetailList>
           </Section>
 
+          {canCorrect ? (
+            <Section
+              title="Correct the details"
+              description={
+                vehicle.edit.right === "ONCE"
+                  ? "This vehicle came with the legacy register. You have one edit of it: after you save, only an administrator can change it."
+                  : "This vehicle came with the legacy register. As an administrator you can correct it at any time. Every correction is recorded."
+              }
+            >
+              <div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => setCorrecting(true)}
+                >
+                  Correct the details
+                </Button>
+              </div>
+            </Section>
+          ) : null}
+
           {canDeclare ? (
             <Section
               title="Declare this vehicle"
@@ -566,7 +600,7 @@ export default function VehicleDetailPage() {
 
         {offersManage ? (
           <TabsContent value="manage" className="grid gap-6 outline-none">
-            {holds("vehicle.update") ? (
+            {canChangeDriver ? (
               <Section
                 title="Driver"
                 description="The member who drives this vehicle. May be left unset and changed here at any time, independent of a status change."
@@ -693,6 +727,22 @@ export default function VehicleDetailPage() {
           tone={CONFIRM[confirming].tone}
           reason={{}}
           onConfirm={(reason) => confirmed(confirming, reason)}
+        />
+      ) : null}
+
+      {correcting && canCorrect ? (
+        <CorrectVehicle
+          vehicle={vehicle}
+          onOpenChange={(open) => {
+            if (!open) {
+              setCorrecting(false);
+            }
+          }}
+          onSaved={async () => {
+            await mutate();
+            toast.success("Vehicle corrected");
+            setCorrecting(false);
+          }}
         />
       ) : null}
     </div>

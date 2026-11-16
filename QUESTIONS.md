@@ -1288,6 +1288,8 @@ change nothing on that vehicle. The plate is never edited, since it is how every
 finds the vehicle.
 
 **Answer.** **Administrators may edit at any time; everyone else who may update vehicles gets one edit.** Senior means the branch and unit administrators and the super administrator. A field enumerator, and the vehicle-record officer, have one edit of an imported vehicle, after which it is locked to them. Which permission marks a senior role, and which details one edit may change, are settled when item 62 is planned.
+
+**Settled at planning, 16 November 2026 (item 62; the owner may change any of it):** senior is the new permission `vehicle.update_imported` (the branch and unit administrators and the super administrator); one edit means one save per vehicle, shared by whoever is not senior, so the first save locks the vehicle to the rest; one edit may change route type, vehicle type, make, model, colour, chassis number, notes, and owner details, and may not change the plate, the branch or unit, or the linked member; the limit applies to imported vehicles only. PRD Requirement 9.11.
 **Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD revision 1.20; roadmap item 62.
 
 ### VEH-41 · Showing an imported sticker apart from a new one ✅ (partly)

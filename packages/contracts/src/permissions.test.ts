@@ -128,6 +128,25 @@ describe('vehicle.declare containment', () => {
   });
 });
 
+describe('vehicle.update_imported', () => {
+  it('marks the senior roles: the administrators and the super administrator', () => {
+    const holders = SYSTEM_ROLES.filter((role) =>
+      (role.permissions as readonly string[]).includes('vehicle.update_imported'),
+    ).map((role) => role.code);
+
+    expect(holders).toEqual(['SUPER_ADMINISTRATOR', 'BRANCH_UNIT_ADMINISTRATOR']);
+  });
+
+  it('is absent from the field enumerator and the vehicle-record officer', () => {
+    for (const code of ['FIELD_ENUMERATOR', 'VEHICLE_RECORD_OFFICER']) {
+      const role = SYSTEM_ROLES.find((r) => r.code === code);
+      expect(role?.permissions as readonly string[]).not.toContain(
+        'vehicle.update_imported',
+      );
+    }
+  });
+});
+
 describe('sticker.stock_intake containment', () => {
   /**
    * PRD Requirement 9A.8 (VEH-29) — a legacy barcode proves nothing by itself,
