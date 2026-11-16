@@ -279,6 +279,34 @@ endpoint rather than enriching this one.
 
 ## 10. Routine procedures
 
+### Removing the imported members (one time, item 58)
+
+The owner directed on 16 November 2026 that the members imported from the previous system
+be deleted (`QUESTIONS.md` MIG-08). This is a **hard delete and cannot be undone from the
+System**, so it is a command, never a screen or a route.
+
+```bash
+pnpm --filter api remove:imported-members                     # dry run: counts only
+pnpm --filter api remove:imported-members --execute --confirm <N>   # N = the members counted
+```
+
+- It prints the database's **host name** first. Check that it is the database you mean:
+  the command reads `DATABASE_URL` from `apps/api/.env`, which is Neon.
+- An imported member is one with a `legacy_id`. A member registered through the System has
+  none and is never touched; the transaction rolls back if one changed.
+- It **refuses**, changing nothing, if an imported member holds a card, a dedicated account
+  or transfer, a payment, or an application. Those are money or credentials: the owner
+  decides them separately.
+- Before deleting it writes a **restore point** to `data/restore-points/`: every row
+  deleted, as JSON, with the photograph and signature storage keys. It holds real personal
+  data and `data/` is ignored by version control. Keep it safe, and delete it when the
+  owner says so.
+- It deletes the members (their contact, next of kin, guarantor, identity, and text
+  messages go with them), clears the driver on their vehicles (the vehicles stay), deletes
+  their photograph and signature rows, and records one audit event with counts only.
+- The photograph and signature **files** in object storage are not removed. Remove them by
+  the keys in the restore point.
+
 ### Adding an officer, and giving them access
 
 Officers → **Add an officer** (needs `user.manage`). The System shows a temporary password

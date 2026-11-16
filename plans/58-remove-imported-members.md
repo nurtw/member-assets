@@ -39,10 +39,10 @@ Archiving or a delete route. Removing the imported vehicles. Removing storage fi
 (the export lists their keys). Item 61.
 
 ## Definition of done
-- [ ] The dry run changes nothing; a test proves it.
-- [ ] A test proves the refusal on a card, a dedicated account, or a payment.
-- [ ] A test proves a member added through the System survives, and a linked vehicle loses
+- [x] The dry run changes nothing; a test proves it.
+- [x] A test proves the refusal on a card, a dedicated account, or a payment.
+- [x] A test proves a member added through the System survives, and a linked vehicle loses
       only the driver link.
-- [ ] The restore point is written first and holds no file under version control.
-- [ ] One audit event carries the counts and no name.
-- [ ] The Neon dry run is shown to the owner; the delete runs only after their go-ahead.
+- [x] The restore point is written first and holds no file under version control.
+- [x] One audit event carries the counts and no name.
+- [ ] The Neon dry run is shown to the owner (done 16 November: 81 imported, 13 kept, not blocked); the delete runs only after their go-ahead.
