@@ -403,7 +403,8 @@ else is told, at most, that the vehicle's record is not complete. *Revision 1.20
 granted.** Only the super administrator therefore sees, makes, or undoes a declaration.
 *Revision 1.20 (VEH-38):* **declaring needs nothing but the vehicle**, from any status but
 retired or archived. A vehicle on record becomes active; a suspended or disputed one keeps
-its status. Assigning a driver and attaching a sticker need no declaration.
+its status. A disputed claim carries no declared date until it is declared. Assigning a
+driver and attaching a sticker need no declaration.
 
 **Requirement 9A.2 — onboarding.** A vehicle is onboarded when a sticker is attached to it
 following a payment of the onboarding fee that Paystack has confirmed (§27). For a vehicle

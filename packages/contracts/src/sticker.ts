@@ -223,7 +223,6 @@ export interface EligibleOnboardingPayment {
  */
 export interface OnboardingState {
   vehicleId: string;
-  hasRouteType: boolean;
   attachment:
     | (VehicleOnboarding & { stickerNumber: string })
     | null;

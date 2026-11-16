@@ -622,7 +622,6 @@ describe('Sticker issuance and attachment (e2e)', () => {
 
       expect(before.body.onboarding).toMatchObject({
         vehicleId: vehicle.id,
-        hasRouteType: true,
         attachment: null,
         registerHoldsBarcodeForPlate: true,
       });

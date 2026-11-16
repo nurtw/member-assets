@@ -725,6 +725,10 @@ export class VehicleService {
             branchId: organisation.branchId,
             unitId: organisation.unitId,
             status,
+            // A disputed claim is not a declaration: it is kept, and settled by
+            // dismissal. The column's now() default would stamp one, so a
+            // disputed row says so explicitly (item 59 follow-up).
+            ...(status === 'DISPUTED' ? { declaredAt: null } : {}),
             ...(input.owner
               ? { owner: { create: this.ownerColumns(input.owner) } }
               : {}),

@@ -150,11 +150,36 @@ describe('Vehicle declaration (e2e)', () => {
 
       expect(first.body.vehicle.status).toBe('ACTIVE');
       expect(second.body.vehicle.status).toBe('DISPUTED');
+      // A disputed claim is kept, but it is not a declaration.
+      expect(second.body.vehicle.declaredAt).toBeNull();
 
       const rows = await prisma.vehicle.findMany({
         where: { plateNumberNormalized: 'E2EVBB2' },
       });
       expect(rows).toHaveLength(2);
+    });
+
+    it('declares a disputed vehicle without settling the dispute', async () => {
+      await declare({ plateNumberDisplay: plate('BB3') }).expect(201);
+      const second = await declare({
+        plateNumberDisplay: plate('BB3'),
+      }).expect(201);
+      expect(second.body.vehicle.status).toBe('DISPUTED');
+
+      const declared = await request(server)
+        .post(`/api/v1/vehicles/${second.body.vehicle.id}/declare`)
+        .set('Cookie', cookies.declarer!)
+        .send({})
+        .expect(201);
+      expect(declared.body.vehicle.status).toBe('DISPUTED');
+      expect(declared.body.vehicle.declaredAt).not.toBeNull();
+
+      // Only one active declaration per plate still holds.
+      expect(
+        await prisma.vehicle.count({
+          where: { plateNumberNormalized: 'E2EVBB3', status: 'ACTIVE' },
+        }),
+      ).toBe(1);
     });
 
     it('refuses a caller without vehicle.declare', async () => {

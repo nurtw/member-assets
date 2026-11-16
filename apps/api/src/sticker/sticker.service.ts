@@ -451,7 +451,6 @@ export class StickerService {
 
     return {
       vehicleId: vehicle.id,
-      hasRouteType: vehicle.routeTypeId !== null,
       attachment:
         attached && attached.attachedAt
           ? {

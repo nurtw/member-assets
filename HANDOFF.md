@@ -8,7 +8,7 @@ control, docs, plans, commits, and fixtures; the previous operator is never name
 
 ## Status
 
-Item 59 is built and committed locally, not pushed or deployed.
+Item 59 is built and pushed (800ea90). A follow-up (disputed rows carry no declared date; `hasRouteType` removed) is committed locally, not pushed.
 
 ## Active roadmap item
 
@@ -35,9 +35,11 @@ Item 59 — declare-by-plate — done (`plans/59-declare-by-plate.md`)
   web `vehicle-form`, `vehicles/[id]/page`, `onboarding-section`, `sticker-prompt`,
   `settings/users/[id]/page`, `docs/reference/openapi.json`.
 - Conflicts with PRD: none left; PRD amended to revision 1.20 text.
-- Known issues: a DISPUTED row is created with `declaredAt` set, so it already counts as
-  declared and declaring it answers 409. `OnboardingState.hasRouteType` is still sent;
-  nothing uses it now. Run e2e with the local `DATABASE_URL` (`localhost:5433`).
+- Follow-up: a DISPUTED row is now created with no `declaredAt`; migration
+  `20261116130000_disputed_not_declared` clears existing ones. **Applied locally only. It
+  is data-only and runs on Neon at the next `db:deploy`: needs the owner's go-ahead.**
+  `OnboardingState.hasRouteType` is removed. Owner edits stay set-only (no clearing).
+- Run e2e with the local `DATABASE_URL` (`localhost:5433`).
 
 ## Next steps
 

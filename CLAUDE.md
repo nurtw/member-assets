@@ -1086,7 +1086,8 @@ per-address limits were shared by everyone (19 October 2026).
 3 October 2026. Since VEH-43 (16 November 2026) that is the super administrator alone.
 Declaring (`vehicle.declare`) needs no field and any status but retired or archived:
 `statusOnDeclaring` makes a vehicle on record ACTIVE and leaves a suspended or disputed one
-as it is. A declared vehicle is one with `declaredAt`. This holds on every route and screen, not only the Verify page.
+as it is. A declared vehicle is one with `declaredAt`; a disputed row is created with none
+(migration `20261116130000_disputed_not_declared` cleared the existing ones). This holds on every route and screen, not only the Verify page.
 
 - `VehicleSummary.status` and `declaredAt` are optional. `VehicleService.toSummary` takes
   `showDeclaration` and leaves both out otherwise. Never return them any other way.
