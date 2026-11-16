@@ -903,6 +903,15 @@ English first (GOV-22). Off until an administrator switches it on (`sms.enabled`
   to zero after five minutes with no query, and each separate timer is a separate wake.
   Nothing in the System polls the database. A job that must react to an event is called by
   the event. A job is idempotent and tolerates running up to six hours after it was due.
+- **Retention runs from housekeeping, in batches** (`housekeeping/purge.ts`). The external
+  access log is purged at 12 months (PRD §23.15; the setting
+  `retention.api_request_log_months`), and an expired sign-in session a month after it
+  expires. `audit_event` is never purged. Text messages and pauses are kept until the Union
+  answers `QUESTIONS.md` **GOV-24**: do not invent a period for them.
+- **Migration `20261116090000_database_usage` holds indexes Prisma cannot express**: the
+  trigram indexes on `member` and `vehicle` (the `ILIKE '%q%'` searches) and
+  `organisation_path_pattern_idx` (`path LIKE 'prefix%'`). Preserve them, like the partial
+  unique indexes below: `prisma migrate dev` will offer to drop them, and must be told no.
 - **While switched off, a queued message becomes `NOT_SENT`**, and nothing is sent for it
   later. A message older than a day is `EXPIRED`. Retries follow `SMS_RETRY_DELAYS_MS`; a
   provider refusal is final.

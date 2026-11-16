@@ -780,6 +780,9 @@ model Vehicle {
   @@index([status])
   @@index([declaredByMemberId])
   @@index([routeTypeId])
+  @@index([branchId])
+  @@index([unitId])
+  @@index([vehicleCategoryId])
   @@map("vehicle")
 }
 
@@ -1406,6 +1409,7 @@ model PortalSession {
   account PortalAccount @relation(fields: [portalAccountId], references: [id], onDelete: Cascade)
 
   @@index([portalAccountId])
+  @@index([expiresAt])
   @@map("portal_session")
 }
 
@@ -1580,6 +1584,7 @@ model ApiRequestLog {
 
   @@index([clientId, createdAt])
   @@index([requestId])
+  @@index([createdAt])
   @@map("api_request_log")
 }
 
