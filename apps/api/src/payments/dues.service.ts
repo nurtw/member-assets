@@ -93,10 +93,35 @@ export class DuesService {
    * established that the user may see this vehicle.
    */
   async vehicleDues(vehicleId: string, now = new Date()): Promise<VehicleDues> {
-    const [vehicle, feeType, firstAttachment, creditKobo] = await Promise.all([
-      this.prisma.vehicle.findUnique({
-        where: { id: vehicleId },
+    const dues = (await this.vehiclesDues([vehicleId], now)).get(vehicleId);
+    if (!dues) {
+      throw new NotFoundException();
+    }
+    return dues;
+  }
+
+  /**
+   * The levy on several vehicles, in a fixed number of queries however many
+   * there are. A member's outstanding dues, and the sweep that runs over every
+   * member holding credit, used to ask four questions per vehicle. A vehicle
+   * that does not exist is left out of the answer. **Not authorised here**, as
+   * above.
+   */
+  async vehiclesDues(
+    vehicleIds: readonly string[],
+    now = new Date(),
+  ): Promise<Map<string, VehicleDues>> {
+    const ids = [...new Set(vehicleIds)];
+    const result = new Map<string, VehicleDues>();
+    if (ids.length === 0) {
+      return result;
+    }
+
+    const [vehicles, feeType, attachments, credits] = await Promise.all([
+      this.prisma.vehicle.findMany({
+        where: { id: { in: ids } },
         select: {
+          id: true,
           routeTypeId: true,
           retiredAt: true,
           routeTypeChanges: {
@@ -111,59 +136,65 @@ export class DuesService {
       this.feeType(LEVY),
       // Onboarded when a sticker was first attached (Decision 6.5). A later
       // replacement does not restart the levy.
-      this.prisma.sticker.findFirst({
-        where: { vehicleId, attachedAt: { not: null } },
-        orderBy: { attachedAt: 'asc' },
-        select: { attachedAt: true },
+      this.prisma.sticker.groupBy({
+        by: ['vehicleId'],
+        where: { vehicleId: { in: ids }, attachedAt: { not: null } },
+        _min: { attachedAt: true },
       }),
-      this.ledgerCreditKobo(LEVY, 'vehicle', vehicleId),
+      this.ledgerCreditsKobo(LEVY, 'vehicle', ids),
     ]);
-    if (!vehicle) {
-      throw new NotFoundException();
-    }
+    const firstAttachment = new Map(
+      attachments.map((row) => [row.vehicleId, row._min.attachedAt]),
+    );
 
-    // PAY-19 — each month is priced at the route type the vehicle had on its
-    // 1st, at the amount in force for that route type then.
-    const amountOn = (at: Date) =>
-      resolveFeeAmountAtKobo({
-        at,
-        routeTypeId: routeTypeInForce(
+    for (const vehicle of vehicles) {
+      // PAY-19 — each month is priced at the route type the vehicle had on its
+      // 1st, at the amount in force for that route type then.
+      const amountOn = (at: Date) =>
+        resolveFeeAmountAtKobo({
           at,
-          vehicle.routeTypeChanges,
-          vehicle.routeTypeId,
-        ),
-        current: { defaultAmountKobo: feeType.amountKobo, prices: feeType.prices },
-        history: feeType.amountHistory,
+          routeTypeId: routeTypeInForce(
+            at,
+            vehicle.routeTypeChanges,
+            vehicle.routeTypeId,
+          ),
+          current: {
+            defaultAmountKobo: feeType.amountKobo,
+            prices: feeType.prices,
+          },
+          history: feeType.amountHistory,
+        });
+
+      const schedule = levySchedule({
+        onboardedAt: firstAttachment.get(vehicle.id) ?? null,
+        now,
+        creditKobo: credits.get(vehicle.id) ?? 0,
+        amountForMonth: amountOn,
+        // PAY-19 — nothing falls due after the month of retirement.
+        retiredAt: vehicle.retiredAt,
       });
 
-    const schedule = levySchedule({
-      onboardedAt: firstAttachment?.attachedAt ?? null,
-      now,
-      creditKobo,
-      amountForMonth: amountOn,
-      // PAY-19 — nothing falls due after the month of retirement.
-      retiredAt: vehicle.retiredAt,
-    });
-
-    return {
-      vehicleId,
-      status: schedule.status,
-      firstDueOn: schedule.firstDueOn?.toISOString() ?? null,
-      monthsDue: schedule.months.length,
-      unpaidMonths: schedule.months
-        .filter((month) => month.outstandingKobo > 0)
-        .map((month) => ({
-          month: month.month,
-          dueOn: month.dueOn.toISOString(),
-          amountKobo: month.amountKobo,
-          paidKobo: month.paidKobo,
-          outstandingKobo: month.outstandingKobo,
-        })),
-      outstandingKobo: schedule.outstandingKobo,
-      creditKobo: schedule.creditKobo,
-      nextDueOn: schedule.nextDueOn?.toISOString() ?? null,
-      currentAmountKobo: amountOn(now),
-    };
+      result.set(vehicle.id, {
+        vehicleId: vehicle.id,
+        status: schedule.status,
+        firstDueOn: schedule.firstDueOn?.toISOString() ?? null,
+        monthsDue: schedule.months.length,
+        unpaidMonths: schedule.months
+          .filter((month) => month.outstandingKobo > 0)
+          .map((month) => ({
+            month: month.month,
+            dueOn: month.dueOn.toISOString(),
+            amountKobo: month.amountKobo,
+            paidKobo: month.paidKobo,
+            outstandingKobo: month.outstandingKobo,
+          })),
+        outstandingKobo: schedule.outstandingKobo,
+        creditKobo: schedule.creditKobo,
+        nextDueOn: schedule.nextDueOn?.toISOString() ?? null,
+        currentAmountKobo: amountOn(now),
+      });
+    }
+    return result;
   }
 
   /**
@@ -270,13 +301,15 @@ export class DuesService {
         orderBy: { id: 'asc' },
       }),
     ]);
-    const vehicles = await Promise.all(
-      linked.map(async (vehicle) => ({
-        vehicleId: vehicle.id,
-        plate: vehicle.plateNumberDisplay,
-        dues: await this.vehicleDues(vehicle.id, now),
-      })),
+    const levies = await this.vehiclesDues(
+      linked.map((vehicle) => vehicle.id),
+      now,
     );
+    const vehicles = linked.map((vehicle) => ({
+      vehicleId: vehicle.id,
+      plate: vehicle.plateNumberDisplay,
+      dues: levies.get(vehicle.id)!,
+    }));
 
     const dues: OutstandingDue[] = [];
     if (membership.status === 'OWED' && membership.owedSince && membership.outstandingKobo > 0) {
@@ -325,23 +358,36 @@ export class DuesService {
   }
 
   /**
-   * What the ledger holds for one subject and fee: credits less reversing
-   * debits. Only a confirmed payment has entries at all.
+   * What the ledger holds for each of several subjects and one fee: credits
+   * less reversing debits, in one statement. Only a confirmed payment has
+   * entries at all. A subject with none is absent from the map.
    */
-  private async ledgerCreditKobo(
+  private async ledgerCreditsKobo(
     feeTypeCode: string,
     subjectType: 'member' | 'vehicle',
-    subjectId: string,
-  ): Promise<number> {
-    const totals = await this.prisma.ledgerEntry.groupBy({
-      by: ['direction'],
-      where: {
-        payment: { subjectType, subjectId, feeType: { code: feeTypeCode } },
-      },
-      _sum: { amountKobo: true },
-    });
-    const sum = (direction: 'CREDIT' | 'DEBIT') =>
-      totals.find((row) => row.direction === direction)?._sum.amountKobo ?? 0;
-    return sum('CREDIT') - sum('DEBIT');
+    subjectIds: readonly string[],
+  ): Promise<Map<string, number>> {
+    const rows = await this.prisma.$queryRaw<
+      { subjectId: string; direction: 'CREDIT' | 'DEBIT'; total: number }[]
+    >`
+      SELECT p.subject_id::text AS "subjectId",
+             le.direction::text AS direction,
+             COALESCE(SUM(le.amount_kobo), 0)::int AS total
+      FROM ledger_entry le
+      JOIN payment p ON p.id = le.payment_id
+      JOIN fee_type ft ON ft.id = p.fee_type_id
+      WHERE p.subject_type = ${subjectType}
+        AND ft.code = ${feeTypeCode}
+        AND p.subject_id = ANY(${[...subjectIds]}::uuid[])
+      GROUP BY p.subject_id, le.direction`;
+    const net = new Map<string, number>();
+    for (const row of rows) {
+      net.set(
+        row.subjectId,
+        (net.get(row.subjectId) ?? 0) +
+          (row.direction === 'CREDIT' ? row.total : -row.total),
+      );
+    }
+    return net;
   }
 }
