@@ -42,9 +42,9 @@ Item 58 — remove-imported-members — done (`plans/58-remove-imported-members.
 
 - Keep the restore point safe (real personal data, gitignored); delete it when the owner
   says so.
-- Owner: answer VEH-39 to VEH-42, MEM-20, GOV-25 so items 59 to 67 can be planned. VEH-41
-  amends GOV-21 and gates item 64.
-- Then: run /plan for item 59, then /execute.
+- Item 59 is planned (`plans/59-declare-by-plate.md`): run /execute for it. Owner decisions
+  of 16 November are in `QUESTIONS.md` VEH-38 to VEH-43 and GOV-06. **MEM-20** and
+  **GOV-25** are still open (items 61, 66, 67).
 
 ## Do NOT
 

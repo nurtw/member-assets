@@ -49,12 +49,12 @@ thing a year later.
 | Structure and master data (ORG) | 6 | 2 | — | 8 |
 | Membership and registration (MEM) | 11 | 9 | — | 20 |
 | Cards (CARD) | 5 | 5 | — | 10 |
-| Vehicles and stickers (VEH) | 29 | 12 | 1 | 42 |
+| Vehicles and stickers (VEH) | 34 | 8 | 1 | 43 |
 | Legacy migration (MIG) | 6 | 2 | — | 8 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 27 | 0 | — | 27 |
-| Governance and go-live (GOV) | 12 | 11 | 2 | 25 |
-| **Total** | **115** | **43** | **3** | **161** |
+| Governance and go-live (GOV) | 13 | 10 | 2 | 25 |
+| **Total** | **121** | **38** | **3** | **162** |
 
 ### Blocking production use right now
 
@@ -1216,8 +1216,21 @@ vehicles at once by ticking them in the filtered vehicle list**, with one audit 
 each vehicle. (The owner chose the list over a pasted list of plates.)
 **Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD
 revision 1.20; roadmap items 59 and 63.
+**Settled when item 59 was planned (16 November 2026).**
 
-### VEH-39 · Undeclaring a vehicle ⏳
+- **Assigning** a vehicle means the driver link and the sticker: neither needs the vehicle
+  to be declared.
+- **Which vehicles may be declared:** any that is not retired or archived. A suspended or
+  disputed vehicle may be declared, and keeps its status. The rule of one active
+  declaration per plate stays.
+- **To record a vehicle, the plate alone is required.** Its branch or unit, its category,
+  its route type, its owner, and its chassis number are all optional. A vehicle recorded
+  without a branch or unit goes to the recording officer's own unit.
+- **A vehicle with no route type owes the levy's default amount** once dues start, and is
+  repriced from the 1st of the month after its route type is set. It is shown as missing
+  one.
+
+### VEH-39 · Undeclaring a vehicle ✅
 
 **Question.** (The project owner, 16 November 2026.) "We should be able to declare and
 undeclare vehicles."
@@ -1234,10 +1247,10 @@ undeclare vehicles."
 returns to being on record. It is never a delete. Declaring an undeclared vehicle again is
 allowed at any time.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **Undeclaring uncounts a vehicle and changes nothing else.** It stops counting in the external total and returns to being on record; it still verifies on its sticker, and its history is kept. It needs the same permission as declaring (`vehicle.declare`), a reason, and can be declared again at any time. It is never a delete.
+**Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD revision 1.20; roadmap item 60.
 
-### VEH-40 · Who may edit an imported vehicle, and how often ⏳
+### VEH-40 · Who may edit an imported vehicle, and how often ✅
 
 **Question.** (The project owner, 16 November 2026.) "Add room to edit legacy vehicle info.
 One time for enumerator only, senior roles can edit anytime."
@@ -1254,10 +1267,10 @@ One time for enumerator only, senior roles can edit anytime."
 change nothing on that vehicle. The plate is never edited, since it is how every check
 finds the vehicle.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **Administrators may edit at any time; everyone else who may update vehicles gets one edit.** Senior means the branch and unit administrators and the super administrator. A field enumerator, and the vehicle-record officer, have one edit of an imported vehicle, after which it is locked to them. Which permission marks a senior role, and which details one edit may change, are settled when item 62 is planned.
+**Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD revision 1.20; roadmap item 62.
 
-### VEH-41 · Showing an imported sticker apart from a new one ⏳
+### VEH-41 · Showing an imported sticker apart from a new one ✅ (partly)
 
 **Question.** (The project owner, 16 November 2026.) "Dashboard to differentiate legacy
 sticker from new sticker. We need to know also on the dashboard which stickers were added
@@ -1275,10 +1288,10 @@ This **amends GOV-21**, the owner's direction of 5 October 2026 that a screen sa
 **Recommended.** The dashboard and the sticker lists say "imported register" or "added
 through the System", never a name, and only to officers who may read stickers.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **The dashboard counts the two kinds; a sticker's own page still says only "sticker".** This amends GOV-21 for the dashboard alone: its counts may say "imported register" and "added through the System", never the previous operator's name, and only to officers who may read stickers. Everywhere else GOV-21 stands.
+**Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD revision 1.20; roadmap item 64.
 
-### VEH-42 · What the new-vehicles list shows ⏳
+### VEH-42 · What the new-vehicles list shows ✅
 
 **Question.** (The project owner, 16 November 2026.) "List of new vehicles well detailed."
 
@@ -1292,8 +1305,26 @@ through the System", never a name, and only to officers who may read stickers.
 chassis number only to a holder of `vehicle.read_restricted`; the telephone and address
 never, in a list.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **Plate, category, branch, who recorded it, when, its sticker, and whether it is declared**, to anyone who may read vehicles. The owner's name and the chassis number only to a holder of `vehicle.read_restricted`; the telephone and address never appear in a list.
+**Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD revision 1.20; roadmap item 65.
+
+### VEH-43 · Declared status is the super administrator's alone ✅
+
+**Question.** (The project owner, 16 November 2026.) "Declared status is only visible to the
+super administrator." VEH-28 (3 October 2026) let anyone holding `vehicle.declare` see it:
+the super administrator and any officer they expressly granted it to.
+
+**Answer.** **Only the super administrator sees whether a vehicle is declared**, on every
+screen and route. `vehicle.declare` stays a permission and is never asked for by role, but it
+is held by the super administrator's role alone and **can no longer be granted to anyone**.
+Declaring, undeclaring, and bulk declaration are therefore the super administrator's too:
+nobody else could see the result of the act. The rest of VEH-28 stands: the status is
+absent from every response for everyone else, never shown as "not declared", and nothing
+gives it away indirectly (a filter, an ordering, a count, or the reason a vehicle is
+withheld). On Neon on 16 November nobody but the super administrator held it, so no access
+is withdrawn. Supersedes VEH-28 and answers **GOV-06**: nobody else.
+**Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD
+revision 1.20; roadmap items 59, 60, and 63.
 
 ---
 
@@ -1665,7 +1696,7 @@ account scoped to their own part of the Union.
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
-### GOV-06 · Who may hold `vehicle.declare` ⏳
+### GOV-06 · Who may hold `vehicle.declare` ✅
 
 **Question.** Beyond the super administrator, which named officers should be granted the
 authority to declare a vehicle?
@@ -1674,8 +1705,10 @@ authority to declare a vehicle?
 administrator and to those the super administrator expressly grants it to. It is in no role
 bundle. This asks who those people are — the answer may legitimately be "nobody else".
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **Nobody else.** The permission is held by the super administrator alone and can no
+longer be granted (VEH-43).
+**Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** VEH-43;
+PRD revision 1.20.
 
 ### GOV-07 · NDPC registration and Data Protection Officer ⏳
 
@@ -2677,6 +2710,8 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 16 November 2026 (declared status) | The project owner directed that **declared status is visible to the super administrator only** (**VEH-43**, new, supersedes VEH-28). `vehicle.declare` can no longer be granted, so declaring, undeclaring, and bulk declaration are the super administrator's alone. This answers **GOV-06**. Nobody else held it on Neon, so no access is withdrawn. Totals: 121 answered, 38 awaiting, 3 deferred. |
+| 16 November 2026 (item 59 planned) | The project owner answered **VEH-39** (undeclaring uncounts a vehicle and changes nothing else), **VEH-40** (administrators edit at any time; others once), **VEH-41** (the dashboard counts imported and new stickers; a sticker's page still says only "sticker"), and **VEH-42** (the new-vehicles list's columns), and settled what item 59 needs under **VEH-38**: the plate alone is required, driver and sticker need no declaration, any vehicle not retired or archived may be declared, and a vehicle with no route type owes the default levy. **MEM-20** (the open applications) and **GOV-25** (the dashboards) remain open. Totals: 119 answered, 39 awaiting, 3 deferred. |
 | 16 November 2026 | The project owner gave directions after the first working day of onboarding (14 November): the imported members are deleted (**MIG-08**, answered), a vehicle is declared on its plate alone and in bulk (**VEH-38**, answered), a registration makes an active member at once (**MEM-20**, partly answered); and **VEH-39** to **VEH-42** and **GOV-25** were opened. PRD revision 1.20; roadmap items 58 to 67. Totals: 115 answered, 43 awaiting, 3 deferred. |
 | 21 October 2026 | The project owner reversed **VEH-22**: an active sticker verifies on every channel, declared or not; declaring only counts a vehicle in the external total; a suspended, retired, disputed, or archived vehicle still does not verify; an undeclared vehicle may be suspended or retired. PRD revision 1.19, item 57. |
 | 19 October 2026 (hosting) | **GOV-02**: the project owner moved the live API from Render to DigitalOcean App Platform (Frankfurt) and deleted the Render service. The web stays on Vercel and the database on Neon. The keep-warm job is retired. |

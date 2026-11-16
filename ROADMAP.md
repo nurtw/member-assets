@@ -483,16 +483,17 @@ by default, writes a restore-point export outside version control first, and rec
 audit event. It is never a route in the API. Vehicles linked to a removed member lose the
 driver link and keep everything else.
 
-**59 — declare-by-plate.** *VEH-38, answered 16 November: the plate only.* A vehicle is
-declared on its plate alone. Route type, owner, and chassis number become optional
+**59 — declare-by-plate.** *VEH-38, answered 16 November: the plate only; VEH-43: the
+super administrator alone declares, and alone sees whether a vehicle is declared.* A vehicle
+is declared on its plate alone. Route type, owner, and chassis number become optional
 everywhere, and no screen or route that edits, assigns, or updates a vehicle needs the
 vehicle to be declared. Extends item 57, and supersedes VEH-34 (the chassis number
 required) and the requirement for a route type and an owner (revision 1.3).
 
-**60 — undeclare.** *VEH-39; the owner's direction of 16 November.* A declared vehicle can
-be undeclared as well as declared. History is kept: undeclaring is a recorded change of
-status, with a reason, and never a delete. What it does to the external total, who holds
-the permission, and whether it can be undone are open (VEH-39).
+**60 — undeclare.** *VEH-39, answered 16 November.* A declared vehicle can be undeclared as well as
+declared, by the super administrator alone (VEH-43). It uncounts the vehicle and changes
+nothing else: it returns to being on record, still verifies on its sticker, keeps its
+history, and may be declared again. A reason is asked, and it is never a delete.
 
 **61 — immediate-registration.** *MEM-20, answered 16 November: the member is active at
 once.* There is no draft and no application to review. Saving the registration form
@@ -504,8 +505,8 @@ officer (MEM-04). What becomes of applications already open is MEM-20.
 details once; senior roles may edit at any time. Which roles are senior, and what counts
 as the enumerator's one edit, are open (VEH-40).
 
-**63 — bulk-declaration.** *VEH-38, answered 16 November: tick vehicles in the list.* An
-administrator filters the vehicle list, selects some or all, and declares them in one act,
+**63 — bulk-declaration.** *VEH-38, answered 16 November: tick vehicles in the list.* The
+super administrator filters the vehicle list, selects some or all, and declares them in one act,
 with one audit event for each vehicle. Needs item 59.
 
 **64 — sticker-origin.** *VEH-41.* The dashboard and the sticker lists tell a sticker from
@@ -543,12 +544,9 @@ clean, and 59 before the vehicle items that follow it.
 ## Open questions
 
 **Items 58 to 67 (16 November 2026)** rest on the owner's directions and not on the
-proposal. Their open questions are in `QUESTIONS.md`: **VEH-39** (what undeclaring does),
-**VEH-40** (which roles are senior, and what the enumerator's one edit is), **VEH-41**
-(whether a screen may say a sticker is from the imported register, which amends GOV-21),
-**VEH-42** (what the new-vehicles list shows), **MEM-20** (the applications already open),
-and **GOV-25** (what each role's dashboard holds). **MIG-08**, **VEH-38**, and the
-immediate registration of **MEM-20** are answered.
+proposal. Their open questions are in `QUESTIONS.md`: **MEM-20** (the applications already open) and **GOV-25** (what each role's dashboard
+holds) are still open. **MIG-08**, **VEH-38** to **VEH-43**, **GOV-06**, and the immediate
+registration of **MEM-20** are answered.
 
 The full register, answered and unanswered, is [QUESTIONS.md](QUESTIONS.md). Two questions
 now gate delivery: **ORG-05** (the Union's zones, branches, and units) and **ORG-06** (the
