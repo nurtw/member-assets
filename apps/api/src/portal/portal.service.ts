@@ -3,7 +3,6 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  OnModuleDestroy,
   OnModuleInit,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -48,8 +47,8 @@ import {
   PublicRateLimitService,
 } from '../common/public-rate-limit.service.js';
 import { ValidationException } from '../common/zod-validation.pipe.js';
-import { loadEnvironment } from '../config/environment.js';
 import type { ActorContext } from '../organisation/organisation.service.js';
+import { HousekeepingService } from '../housekeeping/housekeeping.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RateLimitService } from '../rate-limit/rate-limit.service.js';
 import {
@@ -117,9 +116,8 @@ function isUniqueViolation(error: unknown): boolean {
  *   password in an audit event. A token is shown once, to the organisation.
  */
 @Injectable()
-export class PortalService implements OnModuleInit, OnModuleDestroy {
+export class PortalService implements OnModuleInit {
   private readonly logger = new Logger(PortalService.name);
-  private sweepTimer: NodeJS.Timeout | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -131,25 +129,12 @@ export class PortalService implements OnModuleInit, OnModuleDestroy {
     private readonly tokens: ApiTokenService,
     private readonly rateLimits: RateLimitService,
     private readonly invitations: InvitationService,
+    private readonly housekeeping: HousekeepingService,
   ) {}
 
   onModuleInit(): void {
-    // Suites call `sweep()` themselves, as they do for the other timers.
-    if (loadEnvironment().nodeEnv === 'test') {
-      return;
-    }
-    this.sweepTimer = setInterval(() => {
-      void this.sweep().catch((error: unknown) =>
-        this.logger.error(`Portal application sweep failed: ${String(error)}`),
-      );
-    }, HOUR_MS);
-    this.sweepTimer.unref();
-  }
-
-  onModuleDestroy(): void {
-    if (this.sweepTimer) {
-      clearInterval(this.sweepTimer);
-    }
+    // Swept with the other housekeeping. Suites call `sweep()` themselves.
+    this.housekeeping.register('portal.sweep', () => this.sweep());
   }
 
   // --- Applying (public) --------------------------------------------------------

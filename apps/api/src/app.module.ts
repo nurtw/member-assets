@@ -9,6 +9,7 @@ import { PublicRateLimitModule } from './common/public-rate-limit.service.js';
 import { DisclosureModule } from './disclosure/disclosure.module.js';
 import { DocsModule } from './docs/docs.module.js';
 import { HealthModule } from './health/health.module.js';
+import { HousekeepingModule } from './housekeeping/housekeeping.service.js';
 import { MasterDataModule } from './master-data/master-data.module.js';
 import { MediaModule } from './media/media.module.js';
 import { MembershipModule } from './membership/membership.module.js';
@@ -39,6 +40,7 @@ import { VerificationModule } from './verification/verification.module.js';
   imports: [
     PrismaModule,
     SettingsModule,
+    HousekeepingModule,
     PublicRateLimitModule,
     AuditModule,
     AuthModule,

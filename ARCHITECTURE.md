@@ -114,7 +114,7 @@ payment confirmation is a row in `sms_message`, written in the same transaction 
 credit it announces, by a plain function the payments module calls
 (`queuePaymentNotice`), so payments does not depend on notifications. The notifications
 module drains the outbox when a message is queued, at start-up, when a retry falls due, and
-hourly, never on a short timer, so an idle System lets the database sleep: it makes the text up when the message goes,
+in the six-hourly housekeeping run, never on a short timer, so an idle System lets the database sleep: it makes the text up when the message goes,
 from what is then true (reading dues through `DuesService`), sends it through
 `TermiiClient`, the only code that knows the provider, retries while the provider is
 unavailable, and records signed delivery reports. One message per source, by a partial

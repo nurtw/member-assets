@@ -3,7 +3,6 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  type OnModuleDestroy,
   type OnModuleInit,
 } from '@nestjs/common';
 import type {
@@ -39,8 +38,8 @@ import {
 import { Prisma } from '@prisma/client';
 
 import { AuditService } from '../audit/audit.service.js';
-import { loadEnvironment } from '../config/environment.js';
 import type { ActorContext } from '../organisation/organisation.service.js';
+import { HousekeepingService } from '../housekeeping/housekeeping.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 /** What the guard knows of the organisation a token resolved to. */
@@ -101,8 +100,6 @@ const PAUSE_SELECT = {
   liftedAt: true,
 } as const;
 
-/** Counters and detection state are pruned this often, outside tests. */
-const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function values(row: ProfileRow): RateLimitProfileValues {
@@ -144,32 +141,19 @@ function values(row: ProfileRow): RateLimitProfileValues {
  * request, so a change applies to the next one (Decision 8.3).
  */
 @Injectable()
-export class RateLimitService implements OnModuleInit, OnModuleDestroy {
+export class RateLimitService implements OnModuleInit {
   private readonly logger = new Logger(RateLimitService.name);
-  private pruneTimer: NodeJS.Timeout | undefined;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly housekeeping: HousekeepingService,
   ) {}
 
   onModuleInit(): void {
-    // Suites call `prune()` themselves, as they call the held-credit sweep.
-    if (loadEnvironment().nodeEnv === 'test') {
-      return;
-    }
-    this.pruneTimer = setInterval(() => {
-      void this.prune().catch((error: unknown) =>
-        this.logger.error(`Rate-limit prune failed: ${String(error)}`),
-      );
-    }, PRUNE_INTERVAL_MS);
-    this.pruneTimer.unref();
-  }
-
-  onModuleDestroy(): void {
-    if (this.pruneTimer) {
-      clearInterval(this.pruneTimer);
-    }
+    // Pruned with the other housekeeping, not on a timer of its own. Suites
+    // call `prune()` themselves.
+    this.housekeeping.register('rate-limit.prune', () => this.prune());
   }
 
   // --- The quota layer ---------------------------------------------------------

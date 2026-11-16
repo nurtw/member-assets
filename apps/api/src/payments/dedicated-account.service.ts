@@ -5,7 +5,6 @@ import {
   Logger,
   NotFoundException,
   ServiceUnavailableException,
-  type OnModuleDestroy,
   type OnModuleInit,
 } from '@nestjs/common';
 import type {
@@ -27,6 +26,7 @@ import {
   notifySmsQueued,
   queuePaymentNotice,
 } from '../notifications/sms-outbox.js';
+import { HousekeepingService } from '../housekeeping/housekeeping.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   DEDICATED_ALLOCATION_ORDER,
@@ -41,7 +41,6 @@ import { SettlementService } from './settlement.service.js';
 const DEDICATED_CHANNEL = 'dedicated_nuban';
 
 /** How often held credit is checked against dues that have since fallen. */
-const SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 
 /** How many transfers the member screen lists. */
 const RECENT_TRANSFERS = 20;
@@ -68,9 +67,8 @@ const RECENT_TRANSFERS = 20;
  * account, so two transfers arriving together cannot both pay the same month.
  */
 @Injectable()
-export class DedicatedAccountService implements OnModuleInit, OnModuleDestroy {
+export class DedicatedAccountService implements OnModuleInit {
   private readonly logger = new Logger(DedicatedAccountService.name);
-  private sweepTimer: NodeJS.Timeout | undefined;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -80,25 +78,15 @@ export class DedicatedAccountService implements OnModuleInit, OnModuleDestroy {
     private readonly settings: SettingsService,
     private readonly dues: DuesService,
     private readonly audit: AuditService,
+    private readonly housekeeping: HousekeepingService,
   ) {}
 
   onModuleInit(): void {
-    // Not under test: a suite drives the sweep itself, at the time it chooses.
-    if (loadEnvironment().nodeEnv === 'test') {
-      return;
-    }
-    this.sweepTimer = setInterval(() => {
-      void this.sweep().catch((error: unknown) =>
-        this.logger.error(`Held-credit sweep failed: ${String(error)}`),
-      );
-    }, SWEEP_INTERVAL_MS);
-    this.sweepTimer.unref();
-  }
-
-  onModuleDestroy(): void {
-    if (this.sweepTimer) {
-      clearInterval(this.sweepTimer);
-    }
+    // Swept with the other housekeeping. Suites drive the sweep themselves, at
+    // the time they choose.
+    this.housekeeping.register('dedicated-account.held-credit', () =>
+      this.sweep(),
+    );
   }
 
   // --- Reading ----------------------------------------------------------------

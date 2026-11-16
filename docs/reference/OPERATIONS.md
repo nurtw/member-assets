@@ -589,9 +589,9 @@ SELECT created_at, after_value FROM audit_event
  WHERE action = 'payment.dedicated.unmatched' ORDER BY created_at DESC;
 ```
 
-**Held credit.** Money beyond what is owed is held, and an hourly job inside the API pays
-it into dues as they fall, so a member who sends two months' levy at once has the second
-month paid within the hour of it falling due. The order dues are paid in is the
+**Held credit.** Money beyond what is owed is held, and a job inside the API, run every six
+hours, pays it into dues as they fall, so a member who sends two months' levy at once has
+the second month paid within six hours of it falling due. The order dues are paid in is the
 `payments.dedicated_account.allocation_order` setting, `OLDEST_FIRST` as PAY-12 answered.
 
 ### The public docs page
@@ -864,7 +864,7 @@ organisation that can do nothing, and a portal account that can see only that.
 
 An application nobody decides **lapses after 30 days** (`portal.application_expiry_days`).
 The organisation's record is kept, marked revoked with that reason, and its portal account
-is removed so it may apply again. An hourly job inside the API does this.
+is removed so it may apply again. A job inside the API, run every six hours, does this.
 
 **What the organisation can do in its portal, once approved:** see its status, scopes, what
 its answers carry, and its limits; see its own usage by day; and create, replace, and

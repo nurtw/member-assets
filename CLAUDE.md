@@ -894,9 +894,15 @@ English first (GOV-22). Off until an administrator switches it on (`sms.enabled`
   a transfer's amount), and what they still owe from `DuesService.memberOutstanding`.
 - **The outbox is never polled.** A drain runs when a payment queues a message
   (`notifySmsQueued`, called after the transaction commits), at start-up, when a retry
-  falls due, and hourly as a safety net. A timer every few seconds keeps Neon's compute
-  running all day. Any new way of queueing a message must call `notifySmsQueued` after
-  its commit.
+  falls due, and in the housekeeping run as a safety net. A timer every few seconds keeps
+  Neon's compute running all day. Any new way of queueing a message must call
+  `notifySmsQueued` after its commit.
+- **One timer runs every periodic job: `HousekeepingService`** (`src/housekeeping/`),
+  every six hours. A service with periodic work calls `housekeeping.register(name, fn)`
+  from `onModuleInit` and never starts a `setInterval` of its own: Neon scales its compute
+  to zero after five minutes with no query, and each separate timer is a separate wake.
+  Nothing in the System polls the database. A job that must react to an event is called by
+  the event. A job is idempotent and tolerates running up to six hours after it was due.
 - **While switched off, a queued message becomes `NOT_SENT`**, and nothing is sent for it
   later. A message older than a day is `EXPIRED`. Retries follow `SMS_RETRY_DELAYS_MS`; a
   provider refusal is final.
@@ -1026,7 +1032,8 @@ per-address limits were shared by everyone (19 October 2026).
 - Paystack is sent only the email, names, and phone. No BVN is collected. PAY-20: only if
   a Paystack test shows it is required, and then it is passed straight through and never
   stored or logged.
-- The hourly held-credit sweep does not run under `NODE_ENV=test`; suites call `sweep()`.
+- The held-credit sweep runs from housekeeping, not under `NODE_ENV=test`; suites call
+  `sweep()`.
 
 ### Internal verification (item 10)
 
@@ -1146,7 +1153,7 @@ per-address limits were shared by everyone (19 October 2026).
   `X-Server-Request-ID`, stored as `api_request_log.server_request_id`.
 - **Test fixtures need a generous profile.** An organisation created in a suite starts on
   `STANDARD` (burst 5), so a suite making many calls gives its organisations a profile of
-  its own, as `api-client.e2e-spec.ts` does. The pruning timer does not run under
+  its own, as `api-client.e2e-spec.ts` does. Pruning runs from housekeeping, not under
   `NODE_ENV=test`; suites call `prune()`.
 
 ### Officer accounts and the second factor (item 28)

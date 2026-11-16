@@ -35,6 +35,7 @@ import { PermissionService } from '../auth/permission.service.js';
 import { loadEnvironment } from '../config/environment.js';
 import type { ActorContext } from '../organisation/organisation.service.js';
 import { DuesService } from '../payments/dues.service.js';
+import { HousekeepingService } from '../housekeeping/housekeeping.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   SMS_CHANNEL,
@@ -53,11 +54,9 @@ import {
  * The outbox is drained when a payment queues a message, once at start-up, and
  * when a retry falls due. It is not polled: a query every few seconds keeps the
  * database's compute running all day for an outbox that is nearly always empty.
- * This hourly drain is only the safety net, for a message queued by a process
- * that stopped before it could drain, and for one stuck `SENDING`.
+ * The housekeeping run drains it too, as a safety net for a message queued by a
+ * process that stopped before it could drain, and for one stuck `SENDING`.
  */
-const FALLBACK_DRAIN_INTERVAL_MS = 60 * 60 * 1000;
-
 /** Start-up drain: after the connection is up, and not in the way of the first requests. */
 const START_UP_DRAIN_DELAY_MS = 5_000;
 
@@ -98,7 +97,6 @@ const TEST_TEXT =
 @Injectable()
 export class SmsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SmsService.name);
-  private fallbackTimer: NodeJS.Timeout | undefined;
   private startUpTimer: NodeJS.Timeout | undefined;
   private retryTimer: NodeJS.Timeout | undefined;
   private retryAt = 0;
@@ -113,6 +111,7 @@ export class SmsService implements OnModuleInit, OnModuleDestroy {
     private readonly settings: SettingsService,
     private readonly dues: DuesService,
     private readonly termii: TermiiClient,
+    private readonly housekeeping: HousekeepingService,
   ) {}
 
   onModuleInit(): void {
@@ -123,17 +122,12 @@ export class SmsService implements OnModuleInit, OnModuleDestroy {
     this.unsubscribe = onSmsQueued(() => this.kick());
     this.startUpTimer = setTimeout(() => this.kick(), START_UP_DRAIN_DELAY_MS);
     this.startUpTimer.unref();
-    this.fallbackTimer = setInterval(
-      () => this.kick(),
-      FALLBACK_DRAIN_INTERVAL_MS,
-    );
-    this.fallbackTimer.unref();
+    this.housekeeping.register('sms.drain', () => this.drain());
   }
 
   onModuleDestroy(): void {
     this.unsubscribe?.();
     clearTimeout(this.startUpTimer);
-    clearInterval(this.fallbackTimer);
     clearTimeout(this.retryTimer);
   }
 

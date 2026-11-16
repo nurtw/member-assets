@@ -3,17 +3,14 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
-  Logger,
   Module,
-  OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 
-import { loadEnvironment } from '../config/environment.js';
+import { HousekeepingService } from '../housekeeping/housekeeping.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
-const PRUNE_INTERVAL_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** A limit refusal, carrying when to try again (`Retry-After`). */
@@ -36,29 +33,16 @@ export class PublicRateLimitedException extends HttpException {
  * counts.
  */
 @Injectable()
-export class PublicRateLimitService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(PublicRateLimitService.name);
-  private pruneTimer: NodeJS.Timeout | null = null;
+export class PublicRateLimitService implements OnModuleInit {
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly housekeeping: HousekeepingService,
+  ) {}
 
   onModuleInit(): void {
-    // Suites call `prune()` themselves, as they do for item 13's counters.
-    if (loadEnvironment().nodeEnv === 'test') {
-      return;
-    }
-    this.pruneTimer = setInterval(() => {
-      void this.prune().catch((error: unknown) =>
-        this.logger.error(`Public counter prune failed: ${String(error)}`),
-      );
-    }, PRUNE_INTERVAL_MS);
-    this.pruneTimer.unref();
-  }
-
-  onModuleDestroy(): void {
-    if (this.pruneTimer) {
-      clearInterval(this.pruneTimer);
-    }
+    // Pruned with the other housekeeping. Suites call `prune()` themselves.
+    this.housekeeping.register('public-rate-limit.prune', () => this.prune());
   }
 
   /**
