@@ -8,11 +8,11 @@ control, docs, plans, commits, and fixtures; the previous operator is never name
 
 ## Status
 
-Item 58 is built and tested; its irreversible delete waits for the owner's go-ahead.
+Item 58 is done: the 81 imported members were deleted on Neon on 16 November.
 
 ## Active roadmap item
 
-Item 58 — remove-imported-members — in-progress (`plans/58-remove-imported-members.md`)
+Item 58 — remove-imported-members — done (`plans/58-remove-imported-members.md`)
 
 ## Done this session
 
@@ -21,9 +21,10 @@ Item 58 — remove-imported-members — in-progress (`plans/58-remove-imported-m
   periodic job", "Retention runs from housekeeping").
 - **Owner's directions of 16 November** recorded: roadmap items 58 to 67, PRD 1.20,
   `QUESTIONS.md` MIG-08, VEH-38 to VEH-42, MEM-20, GOV-25.
-- **Item 58 built**: `apps/api/scripts/remove-imported-members/`, 5 e2e tests passing,
-  runbook in `OPERATIONS.md` §10. Neon dry run: **81 imported members, 13 kept, not
-  blocked**, 80 vehicles would lose only the driver link.
+- **Item 58 done**: `apps/api/scripts/remove-imported-members/`, 5 e2e tests passing,
+  runbook in `OPERATIONS.md` §10. **Run on Neon with the owner's go-ahead: 81 members
+  deleted, 13 kept, 80 vehicles unlinked (kept), one audit event.** Verified by a second dry
+  run (0 left). Restore point: `data/restore-points/imported-members-2026-11-16T10-40-58-211Z.json`.
 
 ## Current state
 
@@ -39,16 +40,15 @@ Item 58 — remove-imported-members — in-progress (`plans/58-remove-imported-m
 
 ## Next steps
 
-- **Owner's go-ahead, then:** `pnpm --filter api remove:imported-members --execute
-  --confirm 81` (re-run the dry run first; the count may have changed). Keep the restore
-  point under `data/restore-points/`. Then mark item 58 done in `ROADMAP.md`.
+- Keep the restore point safe (real personal data, gitignored); delete it when the owner
+  says so.
 - Owner: answer VEH-39 to VEH-42, MEM-20, GOV-25 so items 59 to 67 can be planned. VEH-41
   amends GOV-21 and gates item 64.
-- If done: run /plan for item 59, then /execute.
+- Then: run /plan for item 59, then /execute.
 
 ## Do NOT
 
-- Run `--execute` without the owner's go-ahead, or add any route that deletes a member.
+- Add any route that deletes a member, or run the removal command again without a go-ahead.
 - Edit `apps/api/.env`, write Neon rows, or push without a go-ahead.
 - Start a `setInterval` that touches the database: register with `HousekeepingService`.
 - Return a NIN whole, or change `IDENTITY_ENCRYPTION_KEY` once NINs exist.

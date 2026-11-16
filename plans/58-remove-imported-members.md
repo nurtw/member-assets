@@ -45,4 +45,4 @@ Archiving or a delete route. Removing the imported vehicles. Removing storage fi
       only the driver link.
 - [x] The restore point is written first and holds no file under version control.
 - [x] One audit event carries the counts and no name.
-- [ ] The Neon dry run is shown to the owner (done 16 November: 81 imported, 13 kept, not blocked); the delete runs only after their go-ahead.
+- [x] The Neon dry run is shown to the owner (16 November: 81 imported, 13 kept, not blocked); the delete ran only after their go-ahead (16 November, 81 deleted).

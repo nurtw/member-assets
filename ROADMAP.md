@@ -85,7 +85,7 @@ Each item is independently completable and independently testable. Status values
 | 55 | caller-address | Req. 14, 12.8; GOV-02; the owner's direction of 19 Oct | done (19 Oct; live, checked in the live log) | [plan](plans/55-caller-address.md) |
 | 56 | officer-access-forms | §16, Req. 17; Decisions 9.4, 9.6; the owner's direction of 20 Oct | done (21 Oct; live) | [plan](plans/56-officer-access-forms.md) |
 | 57 | sticker-verifies | §4, Req. 9A.1, §23.19; reverses VEH-22; the owner's direction of 21 Oct | done (21 Oct; live) | [plan](plans/57-sticker-verifies.md) |
-| 58 | remove-imported-members | §7, §9A (rev. 1.20); MIG-08; the owner's direction of 16 Nov | planned | [plan](plans/58-remove-imported-members.md) |
+| 58 | remove-imported-members | §7, §9A (rev. 1.20); MIG-08; the owner's direction of 16 Nov | done (16 Nov; 81 members deleted on Neon, 13 kept) | [plan](plans/58-remove-imported-members.md) |
 | 59 | declare-by-plate | §9, Req. 9.4, 9A.1 (rev. 1.20); VEH-38; supersedes VEH-34 and the route and owner requirements of rev. 1.3 | planned | [plan](plans/59-declare-by-plate.md) |
 | 60 | undeclare | §9, §23.19 (rev. 1.20); VEH-39; the owner's direction of 16 Nov | planned | [plan](plans/60-undeclare.md) |
 | 61 | immediate-registration | §7 (rev. 1.20); MEM-20; supersedes MEM-04 and the approval flow of item 05 | planned | [plan](plans/61-immediate-registration.md) |

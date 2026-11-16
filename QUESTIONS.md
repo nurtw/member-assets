@@ -1364,6 +1364,8 @@ writes a restore-point export outside version control first, deletes in one tran
 and records one audit event with the counts. No route in the API deletes a member. A vehicle
 linked to a removed member loses the driver link, and keeps everything else. A member added
 through the System is never touched.
+**Done** on 16 November 2026 (item 58): 81 members deleted on Neon, 13 kept, 80 vehicles unlinked.
+The restore point is in `data/restore-points/`.
 **Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD
 revision 1.20; roadmap item 58.
 
