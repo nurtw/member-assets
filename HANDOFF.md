@@ -26,6 +26,13 @@ Three rules outrank every default:
   All 17 expected indexes were checked present on Neon after the migration. All of it
   passed typecheck, lint, and its e2e suites. Whether Vercel rebuilt the web app is unchecked.
 
+- **Owner's directions of 16 November 2026 (onboarding feedback)** are recorded, not built:
+  roadmap items 58 to 67, PRD revision 1.20, and questions **MIG-08**, **VEH-38** (answered),
+  **MEM-20** (partly answered), **VEH-39 to VEH-42**, **GOV-25** (open). No plan files yet.
+  Answered: delete all imported members (a hard delete, by script, never a route); declare on
+  the plate alone and in bulk from the list; a registration is an active member at once.
+  Also asked: declare **and undeclare** vehicles (item 60).
+
 Tests at last full counts: domain 540, contracts 158, api 208+, web 113.
 
 ## Conflicts
@@ -45,6 +52,10 @@ Tests at last full counts: domain 540, contracts 158, api 208+, web 113.
 - `relationLoadStrategy: 'join'` is rejected by this Prisma setup. Do not use it.
 
 ## Next steps
+
+0. **Item 58 first** (`/plan`): take a restore-point export, dry-run against Neon, show the
+   owner the counts, and delete only on a go-ahead. Ask the owner about **VEH-41** before
+   item 64: showing "imported register" on a screen amends GOV-21.
 
 1. **Owner:** point DigitalOcean's `health_check.http_path` at `/api/v1/health/live`. It is
    still `/api/v1/health` (read 16 November), which keeps Neon awake. The route is live now.

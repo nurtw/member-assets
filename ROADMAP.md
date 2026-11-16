@@ -2,8 +2,8 @@
 
 ## NURTW Membership and Vehicle Verification System
 
-**Document version:** 1.24
-**Last revised:** 21 October 2026
+**Document version:** 1.25
+**Last revised:** 16 November 2026
 
 ---
 
@@ -85,6 +85,16 @@ Each item is independently completable and independently testable. Status values
 | 55 | caller-address | Req. 14, 12.8; GOV-02; the owner's direction of 19 Oct | done (19 Oct; live, checked in the live log) | [plan](plans/55-caller-address.md) |
 | 56 | officer-access-forms | §16, Req. 17; Decisions 9.4, 9.6; the owner's direction of 20 Oct | done (21 Oct; live) | [plan](plans/56-officer-access-forms.md) |
 | 57 | sticker-verifies | §4, Req. 9A.1, §23.19; reverses VEH-22; the owner's direction of 21 Oct | done (21 Oct; live) | [plan](plans/57-sticker-verifies.md) |
+| 58 | remove-imported-members | §7, §9A (rev. 1.20); MIG-08; the owner's direction of 16 Nov | planned | [plan](plans/58-remove-imported-members.md) |
+| 59 | declare-by-plate | §9, Req. 9.4, 9A.1 (rev. 1.20); VEH-38; supersedes VEH-34 and the route and owner requirements of rev. 1.3 | planned | [plan](plans/59-declare-by-plate.md) |
+| 60 | undeclare | §9, §23.19 (rev. 1.20); VEH-39; the owner's direction of 16 Nov | planned | [plan](plans/60-undeclare.md) |
+| 61 | immediate-registration | §7 (rev. 1.20); MEM-20; supersedes MEM-04 and the approval flow of item 05 | planned | [plan](plans/61-immediate-registration.md) |
+| 62 | imported-vehicle-edit | §9, §16 (rev. 1.20); VEH-40 | planned | [plan](plans/62-imported-vehicle-edit.md) |
+| 63 | bulk-declaration | §9, §16 (rev. 1.20); VEH-38 | planned | [plan](plans/63-bulk-declaration.md) |
+| 64 | sticker-origin | §9A (rev. 1.20); VEH-41; amends GOV-21 | planned | [plan](plans/64-sticker-origin.md) |
+| 65 | new-vehicles-list | §9, §22 (rev. 1.20); VEH-42 | planned | [plan](plans/65-new-vehicles-list.md) |
+| 66 | onboarding-report | §18, §22 (rev. 1.20); GOV-25 | planned | [plan](plans/66-onboarding-report.md) |
+| 67 | role-dashboards | §16, §22 (rev. 1.20); GOV-25 | planned | [plan](plans/67-role-dashboards.md) |
 
 ### Item summaries
 
@@ -457,7 +467,88 @@ is built. The recommended order is the numbers' order. Two parts of the directio
 aside by the owner for now: voice calls (GOV-23) and a sticker in each year's colour
 (VEH-36).
 
+## Onboarding feedback, 16 November 2026
+
+Onboarding began on 19 October 2026, and its first working day was Saturday 14 November.
+The owner then gave the directions below (`PRD.md` revision 1.20). They come from the
+owner and not from the proposal, so each cites the question that records it
+(`QUESTIONS.md`), and the PRD text of each is revised as the item is built. No plan files
+exist yet: each item is planned when it is reached.
+
+**58 — remove-imported-members.** *MIG-08, answered 16 November: delete all.* The
+imported members that were not added through the System are removed. This is a **hard
+delete**, the owner's explicit choice, and it departs from the rule that history is never
+hard-deleted (`CLAUDE.md`, domain rule 5), so it is a one-off: a script that does a dry run
+by default, writes a restore-point export outside version control first, and records one
+audit event. It is never a route in the API. Vehicles linked to a removed member lose the
+driver link and keep everything else.
+
+**59 — declare-by-plate.** *VEH-38, answered 16 November: the plate only.* A vehicle is
+declared on its plate alone. Route type, owner, and chassis number become optional
+everywhere, and no screen or route that edits, assigns, or updates a vehicle needs the
+vehicle to be declared. Extends item 57, and supersedes VEH-34 (the chassis number
+required) and the requirement for a route type and an owner (revision 1.3).
+
+**60 — undeclare.** *VEH-39; the owner's direction of 16 November.* A declared vehicle can
+be undeclared as well as declared. History is kept: undeclaring is a recorded change of
+status, with a reason, and never a delete. What it does to the external total, who holds
+the permission, and whether it can be undone are open (VEH-39).
+
+**61 — immediate-registration.** *MEM-20, answered 16 November: the member is active at
+once.* There is no draft and no application to review. Saving the registration form
+creates an active member with a membership number at once, by the officer who holds
+`member.create`. Supersedes the approval flow of item 05 and the question of a second
+officer (MEM-04). What becomes of applications already open is MEM-20.
+
+**62 — imported-vehicle-edit.** *VEH-40.* An enumerator may edit an imported vehicle's
+details once; senior roles may edit at any time. Which roles are senior, and what counts
+as the enumerator's one edit, are open (VEH-40).
+
+**63 — bulk-declaration.** *VEH-38, answered 16 November: tick vehicles in the list.* An
+administrator filters the vehicle list, selects some or all, and declares them in one act,
+with one audit event for each vehicle. Needs item 59.
+
+**64 — sticker-origin.** *VEH-41.* The dashboard and the sticker lists tell a sticker from
+the imported register from one that is new, and say which stickers were taken into stock
+from each. This **amends GOV-21**, which says a screen says only "sticker" and never which
+scheme a code belongs to, so it waits for the owner to confirm that (VEH-41).
+
+**65 — new-vehicles-list.** *VEH-42.* A well-detailed list of the vehicles added through
+the System, apart from the imported ones. Which fields it shows is open, because a list
+never carries an owner's phone or address (VEH-42). Needs item 59.
+
+**66 — onboarding-report.** *GOV-25.* How many people were onboarded in a day, and by which
+officer. Built from what the System already records, with no new data collected. Needs
+items 58 and 61, so the count starts from a clean register.
+
+**67 — role-dashboards.** *GOV-25.* A dashboard for each role, of counts and what waits,
+in place of Home's quick-action tiles alone. Each role sees only counts from lists it may
+already read. Built last, from items 64 to 66.
+
+```text
+58 remove imported members
+59 declare by plate --+--> 60 undeclare
+                      +--> 62 imported-vehicle edit
+                      +--> 63 bulk declaration
+                      +--> 65 new-vehicles list
+61 immediate registration
+58 + 61 -------------------> 66 onboarding report
+64 + 65 + 66 --------------> 67 role dashboards
+```
+
+Items 58, 59, and 61 are independent and may be built in any order. The recommended order
+is the numbers' order: 58 first, because the other counts are wrong until the register is
+clean, and 59 before the vehicle items that follow it.
+
 ## Open questions
+
+**Items 58 to 67 (16 November 2026)** rest on the owner's directions and not on the
+proposal. Their open questions are in `QUESTIONS.md`: **VEH-39** (what undeclaring does),
+**VEH-40** (which roles are senior, and what the enumerator's one edit is), **VEH-41**
+(whether a screen may say a sticker is from the imported register, which amends GOV-21),
+**VEH-42** (what the new-vehicles list shows), **MEM-20** (the applications already open),
+and **GOV-25** (what each role's dashboard holds). **MIG-08**, **VEH-38**, and the
+immediate registration of **MEM-20** are answered.
 
 The full register, answered and unanswered, is [QUESTIONS.md](QUESTIONS.md). Two questions
 now gate delivery: **ORG-05** (the Union's zones, branches, and units) and **ORG-06** (the
@@ -496,6 +587,7 @@ deferred by the owner:
 
 | Risk | Determination | Recorded at |
 |---|---|---|
+| Item 58 hard-deletes members, against the rule that history is never hard-deleted, and a delete in production cannot be undone | The owner's explicit choice, 16 November 2026 (`QUESTIONS.md` MIG-08), after being offered archiving and a delete of only the unlinked. Contained by a script that dry-runs by default, a restore-point export taken first, and one audit event. No route in the API deletes a member. | `QUESTIONS.md` MIG-08, `plans/58-remove-imported-members.md` |
 | Legacy barcodes are millisecond timestamps, deducible from one genuine sticker and carrying no authenticity proof | **Revised 22 September 2026 (PRD 1.2).** Legacy barcodes import unattached and resolve only once reattached. Reattachment requires the barcode to be on the imported register, bound to its recorded plate (no override), attached only once, and paid for. The previous operator has stopped issuing, so the register is closed and cannot be added to (`QUESTIONS.md` VEH-21). | PRD §9A, §26.4, `ARCHITECTURE.md` 6.4 |
 | A hijacked session holding `vehicle.declare` may create declarations, as step-up is not enabled | Accepted, and materially reduced on 9 September 2026 by restricting the permission to the super administrator plus express per-user grants. Bounded further by organisational scope, complete audit trail, and the absence of any other route to create a declaration. Step-up is built and may be enabled by configuration. | `ARCHITECTURE.md` 9.7 |
 | The shared database holds a pre-1.2 legacy import: 2,838 legacy vehicles marked declared, no owner details | Found 26 September 2026. Nothing depends on those rows yet. `migrate:legacy -- --repair` corrects them in place, audited, and was verified locally. **Closed 26 September 2026:** approved by the owner and completed. All 2,841 are on record with owner details, with one audit event each. | `plans/09-legacy-data-migration.md` |

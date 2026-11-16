@@ -47,14 +47,14 @@ thing a year later.
 | Group | Answered | Awaiting | Deferred | Total |
 |---|---|---|---|---|
 | Structure and master data (ORG) | 6 | 2 | — | 8 |
-| Membership and registration (MEM) | 11 | 8 | — | 19 |
+| Membership and registration (MEM) | 11 | 9 | — | 20 |
 | Cards (CARD) | 5 | 5 | — | 10 |
-| Vehicles and stickers (VEH) | 28 | 8 | 1 | 37 |
-| Legacy migration (MIG) | 5 | 2 | — | 7 |
+| Vehicles and stickers (VEH) | 29 | 12 | 1 | 42 |
+| Legacy migration (MIG) | 6 | 2 | — | 8 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 27 | 0 | — | 27 |
-| Governance and go-live (GOV) | 12 | 10 | 2 | 24 |
-| **Total** | **113** | **37** | **3** | **153** |
+| Governance and go-live (GOV) | 12 | 11 | 2 | 25 |
+| **Total** | **115** | **43** | **3** | **161** |
 
 ### Blocking production use right now
 
@@ -435,6 +435,31 @@ NIMC. PRD Requirement 7.4 (revision 1.16).
 
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
+
+### MEM-20 · Registering a member at once ⏳ (partly answered)
+
+**Question.** (The project owner's direction of 16 November 2026, after the first working
+day of onboarding.) "No need for draft, onboarding should be straightforward. Submitted
+immediately."
+
+**Answered.** **The member is active at once.** Saving the registration form creates an
+active member with a membership number, by the officer who holds `member.create`. There is
+no draft, no application to review, and no second officer to approve it. This supersedes
+the approval flow of item 05 and **MEM-04**, and reverses the rule that a number is given
+only on approval.
+
+**Still open.**
+
+1. What becomes of the applications already in the System as a draft or awaiting a decision?
+   They can be completed into members, or closed.
+2. Does anything still need `application.decide`, such as a correction after registration
+   or an applicant refused? If not, the permission and its screens are removed.
+3. With no second officer, nothing but the audit trail shows who registered a member. Is that
+   the Union's wish? (`approval.require_separate_officer` ships off and has no use here.)
+
+**Answer.** _Partly answered on 16 November 2026._
+**Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD
+revision 1.20; roadmap item 61.
 
 ---
 
@@ -1176,6 +1201,100 @@ attachment's audit event.
 **Answered on.** 18 October 2026. **Answered by.** Project owner. **Recorded at.** PRD
 Requirements 9A.4 and 27.2 (revision 1.17).
 
+### VEH-38 · Declaring on the plate alone, and in bulk ✅
+
+**Question.** (The project owner's direction of 16 November 2026.) "Declaration should not
+need any conditions, and assigning, updating or editing a vehicle should not need the
+vehicle being declared." And: "Bulk declaration for admin."
+
+**Answer.** **A vehicle is declared on its plate alone.** Route type, owner name and
+telephone, and chassis number stay recorded where given, and become optional everywhere,
+declaring included. No screen or route that edits, assigns, or updates a vehicle needs the
+vehicle to be declared. This supersedes VEH-34 (the chassis number required) and the
+requirement for a route type and an owner (revision 1.3). **An administrator declares many
+vehicles at once by ticking them in the filtered vehicle list**, with one audit event for
+each vehicle. (The owner chose the list over a pasted list of plates.)
+**Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD
+revision 1.20; roadmap items 59 and 63.
+
+### VEH-39 · Undeclaring a vehicle ⏳
+
+**Question.** (The project owner, 16 November 2026.) "We should be able to declare and
+undeclare vehicles."
+
+1. **What does undeclaring do?** A vehicle is counted in the external total when it is
+   declared and onboarded (Requirement 13.5). Undeclaring would stop it being counted, and
+   change nothing else, so it still verifies on its sticker (VEH-22, reversed by item 57).
+2. **Who may?** Declaring needs `vehicle.declare`, held by the super administrator and those
+   given it. Does undeclaring need the same permission, or one of its own?
+3. **Is a reason asked, and can it be undone?** The recommendation is a reason, and yes: a
+   vehicle undeclared by mistake is declared again, and every change stays in its history.
+
+**Recommended.** The same permission, a reason asked, history kept, and the vehicle
+returns to being on record. It is never a delete. Declaring an undeclared vehicle again is
+allowed at any time.
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### VEH-40 · Who may edit an imported vehicle, and how often ⏳
+
+**Question.** (The project owner, 16 November 2026.) "Add room to edit legacy vehicle info.
+One time for enumerator only, senior roles can edit anytime."
+
+1. **Which roles are senior?** Edits are decided by permission, never by role. Which
+   permission marks the senior ones: `vehicle.update`, which the branch and unit
+   administrators and the vehicle-record officer hold, or a new one?
+2. **What is the enumerator's one edit?** One save of the imported vehicle's details, after
+   which it is locked to them. Is that one save, or one edit of each field?
+3. **Which details are editable?** Everything on the record except the plate, or only the
+   fields the import left blank (route type, owner, local government area)?
+
+**Recommended.** Senior means `vehicle.update`. The enumerator has one save, and may then
+change nothing on that vehicle. The plate is never edited, since it is how every check
+finds the vehicle.
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### VEH-41 · Showing an imported sticker apart from a new one ⏳
+
+**Question.** (The project owner, 16 November 2026.) "Dashboard to differentiate legacy
+sticker from new sticker. We need to know also on the dashboard which stickers were added
+from legacy and from new."
+
+This **amends GOV-21**, the owner's direction of 5 October 2026 that a screen says only
+"sticker" and never which scheme a code belongs to.
+
+1. May an officer's screen now say a sticker is from the imported register? The previous
+   operator is still never named.
+2. What is "new"? Today a sticker is from the register (the 2,408 imported barcodes), from
+   stock (a printed sticker scanned in), or signed (paused, VEH-20).
+3. Does it show to every officer, or only to those who may read the dashboard?
+
+**Recommended.** The dashboard and the sticker lists say "imported register" or "added
+through the System", never a name, and only to officers who may read stickers.
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### VEH-42 · What the new-vehicles list shows ⏳
+
+**Question.** (The project owner, 16 November 2026.) "List of new vehicles well detailed."
+
+1. Which columns? Plate, category, route type, branch and unit, who recorded it and when,
+   its sticker, and whether it is declared are not sensitive.
+2. Owner name and telephone, and the chassis number, are restricted. May the list show them,
+   and to whom? Nothing in the System lists a person's telephone or address today, and a
+   list is not a directory.
+
+**Recommended.** The columns in 1, to anyone who may read vehicles; the owner's name and the
+chassis number only to a holder of `vehicle.read_restricted`; the telephone and address
+never, in a list.
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
 ---
 
 ## 8. Open — legacy migration (item 09)
@@ -1229,6 +1348,24 @@ project owner.** It runs against the shared Neon database only once the project 
 read that report.
 **Answered on.** 26 September 2026. **Answered by.** Project owner.
 **Recorded at.** `plans/09-legacy-data-migration.md`.
+
+### MIG-08 · Removing the imported members ✅
+
+**Question.** (The project owner, 16 November 2026.) "Remove all legacy members that are not
+newly added." About 86 members came from the import, against 8 added through the System.
+Cards, vehicle links, and history may point at them, and a delete in production cannot be
+undone. They could be archived, deleted only where nothing is linked, or all deleted.
+
+**Answer.** **Delete all of them.** The owner chose a hard delete, having been offered
+archiving, which keeps the rows and the history, and a delete of only the unlinked. This
+departs from the rule that history is never hard-deleted (`CLAUDE.md`, domain rule 5), so it
+is done once, outside the application: a script that does a dry run unless told otherwise,
+writes a restore-point export outside version control first, deletes in one transaction,
+and records one audit event with the counts. No route in the API deletes a member. A vehicle
+linked to a removed member loses the driver link, and keeps everything else. A member added
+through the System is never touched.
+**Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD
+revision 1.20; roadmap item 58.
 
 ---
 
@@ -1642,6 +1779,27 @@ what it stores. Deleting a record is not undone, so no period is chosen from cod
 it has expired, and it carries no member data. Messages and pauses are **kept**, unpurged,
 until the Union says otherwise. The access log is purged at 12 months, by the PRD's own
 figure, through the setting `retention.api_request_log_months`.
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### GOV-25 · Dashboards, and the onboarding report ⏳
+
+**Question.** (The project owner, 16 November 2026.) "How many people were onboarded in a day
+and by which person." And: "Proper dashboard for each role with counts and all."
+
+1. **The report.** Counts per day and per officer of members registered, vehicles recorded
+   and declared, and stickers attached. By the officer's name, or only their account? For
+   which dates, and may an officer read another's count?
+2. **The dashboards.** Which counts does each role need? The roles today are the super
+   administrator, branch and unit administrators, the vehicle-record officer, the field
+   enumerator, the card administrator, and the auditor, and the Union may compose more.
+3. **Who sees whose?** A branch administrator should see their own branch.
+
+**Recommended.** Counts only, drawn from lists each officer may already read, so a
+dashboard cannot show more than the lists do. The report by officer's name, to the super
+administrator and administrators over the branch. Each role's counts to be named by the
+Union before item 67 is planned.
 
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
@@ -2517,6 +2675,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 16 November 2026 | The project owner gave directions after the first working day of onboarding (14 November): the imported members are deleted (**MIG-08**, answered), a vehicle is declared on its plate alone and in bulk (**VEH-38**, answered), a registration makes an active member at once (**MEM-20**, partly answered); and **VEH-39** to **VEH-42** and **GOV-25** were opened. PRD revision 1.20; roadmap items 58 to 67. Totals: 115 answered, 43 awaiting, 3 deferred. |
 | 21 October 2026 | The project owner reversed **VEH-22**: an active sticker verifies on every channel, declared or not; declaring only counts a vehicle in the external total; a suspended, retired, disputed, or archived vehicle still does not verify; an undeclared vehicle may be suspended or retired. PRD revision 1.19, item 57. |
 | 19 October 2026 (hosting) | **GOV-02**: the project owner moved the live API from Render to DigitalOcean App Platform (Frankfurt) and deleted the Render service. The web stays on Vercel and the database on Neon. The keep-warm job is retired. |
 | 18 October 2026 (evening) | The project owner answered **ORG-08**: a park is a unit, and may have several collectors. Item 46 no longer waits on it. |
