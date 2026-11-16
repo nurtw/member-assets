@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, type OnModuleInit } from '@nestjs/common';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
+import { HousekeepingService } from '../housekeeping/housekeeping.service.js';
+import { purgeInBatches } from '../housekeeping/purge.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 /**
@@ -28,6 +30,9 @@ const TOKEN_BYTES = 32;
 
 const DEFAULT_LIFETIME_HOURS = 12;
 
+/** How long an expired session's row is kept before it is deleted. */
+const EXPIRED_SESSION_KEPT_MS = 30 * 24 * 60 * 60 * 1000;
+
 export interface SessionUser {
   readonly id: string;
   readonly email: string;
@@ -47,8 +52,35 @@ export interface IssuedSession {
 }
 
 @Injectable()
-export class SessionService {
-  constructor(private readonly prisma: PrismaService) {}
+export class SessionService implements OnModuleInit {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly housekeeping: HousekeepingService,
+  ) {}
+
+  onModuleInit(): void {
+    // Purged with the other housekeeping. Suites call `prune()` themselves.
+    this.housekeeping.register('user-session.prune', () => this.prune());
+  }
+
+  /**
+   * Deletes sessions that expired more than a month ago, revoked or not. A
+   * session past its expiry resolves to nobody, so nothing reads these rows
+   * again; they only add to what the database stores and bills for.
+   */
+  async prune(now: Date = new Date()): Promise<number> {
+    const cutoff = new Date(now.getTime() - EXPIRED_SESSION_KEPT_MS);
+    return purgeInBatches(
+      (take) =>
+        this.prisma.userSession.findMany({
+          where: { expiresAt: { lt: cutoff } },
+          select: { id: true },
+          take,
+        }),
+      (ids) =>
+        this.prisma.userSession.deleteMany({ where: { id: { in: ids } } }),
+    );
+  }
 
   private hash(token: string): string {
     return createHash('sha256').update(token).digest('hex');

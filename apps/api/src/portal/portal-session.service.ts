@@ -1,11 +1,16 @@
-import { Injectable, Module } from '@nestjs/common';
+import { Injectable, Module, type OnModuleInit } from '@nestjs/common';
 import { createHash, randomBytes } from 'node:crypto';
 
+import { HousekeepingService } from '../housekeeping/housekeeping.service.js';
+import { purgeInBatches } from '../housekeeping/purge.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { PortalPrincipal } from './portal-account.decorator.js';
 
 const TOKEN_BYTES = 32;
 const LIFETIME_HOURS = 12;
+
+/** How long an expired session's row is kept before it is deleted. */
+const EXPIRED_SESSION_KEPT_MS = 30 * 24 * 60 * 60 * 1000;
 
 export interface IssuedPortalSession {
   readonly token: string;
@@ -21,8 +26,31 @@ export interface IssuedPortalSession {
  * `SessionUser`, which is what every officer route asks for.
  */
 @Injectable()
-export class PortalSessionService {
-  constructor(private readonly prisma: PrismaService) {}
+export class PortalSessionService implements OnModuleInit {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly housekeeping: HousekeepingService,
+  ) {}
+
+  onModuleInit(): void {
+    // Purged with the other housekeeping. Suites call `prune()` themselves.
+    this.housekeeping.register('portal-session.prune', () => this.prune());
+  }
+
+  /** Deletes sessions that expired more than a month ago, as officers' are. */
+  async prune(now: Date = new Date()): Promise<number> {
+    const cutoff = new Date(now.getTime() - EXPIRED_SESSION_KEPT_MS);
+    return purgeInBatches(
+      (take) =>
+        this.prisma.portalSession.findMany({
+          where: { expiresAt: { lt: cutoff } },
+          select: { id: true },
+          take,
+        }),
+      (ids) =>
+        this.prisma.portalSession.deleteMany({ where: { id: { in: ids } } }),
+    );
+  }
 
   private hash(token: string): string {
     return createHash('sha256').update(token).digest('hex');

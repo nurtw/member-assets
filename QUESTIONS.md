@@ -53,8 +53,8 @@ thing a year later.
 | Legacy migration (MIG) | 5 | 2 | — | 7 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 27 | 0 | — | 27 |
-| Governance and go-live (GOV) | 12 | 9 | 2 | 23 |
-| **Total** | **113** | **36** | **3** | **152** |
+| Governance and go-live (GOV) | 12 | 10 | 2 | 24 |
+| **Total** | **113** | **37** | **3** | **153** |
 
 ### Blocking production use right now
 
@@ -1621,6 +1621,27 @@ third parties who never dealt with the Union directly.
 
 **Question.** How should a member request a copy of their data, or correction of it, and who
 handles such a request?
+
+**Answer.** _Outstanding._
+**Answered on.** — **Answered by.** — **Recorded at.** —
+
+### GOV-24 · How long text messages, sign-ins, and pauses are kept ⏳
+
+**Question.** PRD §23.15 sets retention for member records (the membership), audit events
+(7 years), and API request logs (12 months). Three other kinds of record have no period:
+
+1. **Text messages sent to members** (`sms_message`): the amount, the date, the status, and
+   the last four digits of the number. How long are they kept?
+2. **Pauses of an outside organisation's access** (`api_client_pause`).
+3. **Expired sign-in sessions** (officers' and organisations').
+
+**Why it is needed.** Each is a row the database stores for ever, and the database bills for
+what it stores. Deleting a record is not undone, so no period is chosen from code.
+
+**Interim.** Expired sessions are deleted a month after they expire: nothing reads one once
+it has expired, and it carries no member data. Messages and pauses are **kept**, unpurged,
+until the Union says otherwise. The access log is purged at 12 months, by the PRD's own
+figure, through the setting `retention.api_request_log_months`.
 
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —

@@ -1,7 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, type OnModuleInit } from '@nestjs/common';
 import type { IdentifierScheme } from '@prisma/client';
 
+import { HousekeepingService } from '../housekeeping/housekeeping.service.js';
+import { purgeInBatches } from '../housekeeping/purge.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { SettingsService } from '../settings/settings.service.js';
+
+/** PRD §23.15: API request logs are kept 12 months. The period is a setting. */
+export const API_REQUEST_LOG_RETENTION_MONTHS = 'retention.api_request_log_months';
+const DEFAULT_RETENTION_MONTHS = 12;
 
 /**
  * Why an external request was refused before it reached a route. The caller
@@ -49,8 +56,41 @@ export interface ApiRequestLogEntry {
  * the log into a copy of what each organisation asked about.
  */
 @Injectable()
-export class ApiRequestLogService {
-  constructor(private readonly prisma: PrismaService) {}
+export class ApiRequestLogService implements OnModuleInit {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settings: SettingsService,
+    private readonly housekeeping: HousekeepingService,
+  ) {}
+
+  onModuleInit(): void {
+    // Purged with the other housekeeping. Suites call `prune()` themselves.
+    this.housekeeping.register('api-request-log.retention', () => this.prune());
+  }
+
+  /**
+   * Deletes log rows older than the retention period (PRD §23.15), in
+   * batches. Returns how many it removed.
+   */
+  async prune(now: Date = new Date()): Promise<number> {
+    const months = await this.settings.getPositiveInteger(
+      API_REQUEST_LOG_RETENTION_MONTHS,
+      DEFAULT_RETENTION_MONTHS,
+    );
+    const cutoff = new Date(now);
+    cutoff.setUTCMonth(cutoff.getUTCMonth() - months);
+    return purgeInBatches(
+      (take) =>
+        this.prisma.apiRequestLog.findMany({
+          where: { createdAt: { lt: cutoff } },
+          select: { id: true },
+          orderBy: { createdAt: 'asc' },
+          take,
+        }),
+      (ids) =>
+        this.prisma.apiRequestLog.deleteMany({ where: { id: { in: ids } } }),
+    );
+  }
 
   async record(entry: ApiRequestLogEntry): Promise<void> {
     await this.prisma.apiRequestLog.create({
