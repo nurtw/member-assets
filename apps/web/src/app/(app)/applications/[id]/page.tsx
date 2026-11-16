@@ -1,13 +1,13 @@
 "use client";
 
 import type { ApplicationDetail } from "@nurtw/contracts";
-import { isApplicationEditable, type ApplicationStatus } from "@nurtw/domain";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
 
+import { CorrectRegistration } from "@/components/correct-registration";
 import { DedicatedAccountPanel } from "@/components/dedicated-account-panel";
 import { MemberDuesPanel } from "@/components/dues-panel";
 import {
@@ -15,10 +15,6 @@ import {
   MemberVehiclesPanel,
   memberVehiclesKey,
 } from "@/components/member-panels";
-import {
-  PhotographField,
-  type Photograph,
-} from "@/components/photograph-field";
 import {
   GuarantorDetails,
   NextOfKinDetails,
@@ -29,7 +25,6 @@ import {
   DetailList,
   ErrorNotice,
   Loading,
-  Notice,
   PageHeader,
   Section,
   StatusChip,
@@ -39,23 +34,21 @@ import {
   TabsTrigger,
   buttonVariants,
 } from "@/components/ui";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiError, api, fetcher } from "@/lib/api";
 import { ninStatement } from "@/lib/nin";
 import { useSession } from "@/lib/session";
 import { useTabParam } from "@/lib/use-tab-param";
 
 /**
- * One application, and the decision upon it.
+ * One registration (item 61: a member is active the moment it is saved).
  *
  * This is the only screen that shows next-of-kin, guarantor, and contact detail,
- * matching the only endpoint that returns them (PRD Requirement 7.1). The
- * decision controls are offered only to an officer holding `application.decide`
- * — and the API refuses regardless, so hiding them is courtesy rather than
- * control.
+ * matching the only endpoint that returns them (PRD Requirement 7.1). A wrong
+ * detail is corrected here: an administrator at any time, and the officer who
+ * registered the member once. The API decides; the button follows
+ * `application.correction`.
  *
- * The page is a record in tabs (`DESIGN.md` §10). What the application is
- * waiting for sits above the tabs, so a decision is never a scroll away.
+ * The page is a record in tabs (`DESIGN.md` §10).
  */
 
 const TAB_LABELS = {
@@ -66,22 +59,18 @@ const TAB_LABELS = {
 } as const;
 type TabName = keyof typeof TAB_LABELS;
 
-/** An act confirmed in a dialog. */
-type Confirming = "SUBMIT" | "APPROVE" | "REFUSE";
-
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
   const { holds } = useSession();
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiError | null>(null);
-  const [confirming, setConfirming] = useState<Confirming | null>(null);
+  const [correcting, setCorrecting] = useState(false);
 
   /**
    * The application.
    *
-   * `mutate` refetches after a decision, so the screen reflects what the server
-   * actually recorded rather than what the button assumed. An approval allocates
-   * a membership number server-side; guessing at it here would be inventing data.
+   * `mutate` refetches after a correction, so the screen reflects what the
+   * server actually recorded rather than what the form assumed.
    */
   const { data, error, isLoading, mutate } = useSWR<{
     application: ApplicationDetail;
@@ -91,9 +80,8 @@ export default function ApplicationDetailPage() {
   const loadError = error instanceof ApiError ? error : null;
 
   /**
-   * The applicant's vehicles (PRD Requirement 9.10, revision 1.3). Recorded in
-   * the registration flow, possibly while the application is still pending,
-   * so the reviewing officer can see them before deciding.
+   * The member's vehicles (PRD Requirement 9.10, revision 1.3), recorded in the
+   * registration flow.
    *
    * Counted here for the tab's label. The panel reads the same address, so
    * this is one request, and it is not made until the application has loaded:
@@ -112,8 +100,7 @@ export default function ApplicationDetailPage() {
   const offersVehicles = canSeeVehicles || canAddVehicle;
   // Dues are internal (Requirement 27.8): shown to those who may read members.
   const offersDues = holds("member.read") || holds("payment.read");
-  // Only an active member may hold a card, so this appears once the
-  // application has been approved.
+  // Only an active member may hold a card.
   const offersCard =
     application?.member.status === "ACTIVE" && holds("card.read");
   const tabs: { value: TabName }[] = [
@@ -168,84 +155,30 @@ export default function ApplicationDetailPage() {
   }
 
   const { member } = application;
-  const isDraft = application.status === "DRAFT";
-  const awaitingDecision =
-    application.status === "SUBMITTED" || application.status === "UNDER_REVIEW";
-  const canSubmit = isDraft && holds("member.create");
 
   // The member's photograph (MEM-18), by the signed link the detail carries.
-  // It is added or replaced only while the application can still be amended.
-  const photograph: Photograph | null =
+  // It is changed on the member's record (item 44), not here.
+  const photograph =
     application.passportPhotoId && application.passportPhotoUrl
       ? { id: application.passportPhotoId, url: application.passportPhotoUrl }
       : null;
-  const canAmendPhotograph =
-    isApplicationEditable(application.status as ApplicationStatus) &&
-    holds("member.create");
-
-  async function changePhotograph(next: Photograph | null) {
-    if (!application) {
-      return;
-    }
-    const replaced = application.passportPhotoId;
-    await act(
-      async () => {
-        await api.patch(`/applications/${application.id}/media`, {
-          passportPhotoId: next?.id ?? null,
-        });
-        // What it replaced is attached to nothing now, so it is discarded.
-        if (replaced && replaced !== next?.id) {
-          await api.delete(`/media/${replaced}`).catch(() => undefined);
-        }
-      },
-      next ? "Photograph saved" : "Photograph removed",
-    );
-  }
-  const canDecide = awaitingDecision && holds("application.decide");
-
-  /** Does a confirmed act. A failure is thrown, and shown in its dialog. */
-  async function confirmed(which: Confirming, reason: string) {
-    if (!application) {
-      return;
-    }
-    if (which === "SUBMIT") {
-      await api.post(`/applications/${application.id}/submission`);
-      toast.success("Submitted for review");
-    } else {
-      await api.post(`/applications/${application.id}/decision`, {
-        decision: which === "APPROVE" ? "APPROVED" : "REJECTED",
-        reason: reason || undefined,
-      });
-      toast.success(
-        which === "APPROVE"
-          ? "Approved: the membership number is issued"
-          : "Application refused",
-      );
-    }
-    await mutate();
-  }
 
   return (
     <div className="grid max-w-3xl gap-6">
       <PageHeader
         title={`${member.surname}, ${member.firstName} ${member.middleName ?? ""}`.trim()}
         back={{ href: "/applications", label: "Applications" }}
-        status={
-          <>
-            <StatusChip status={application.status} />
-            <StatusChip status={member.status} />
-          </>
-        }
+        status={<StatusChip status={member.status} />}
         meta={
           <>
-            Application{" "}
+            Registration{" "}
             <span className="font-mono">{application.applicationNumber}</span> ·{" "}
             {member.organisation.name}
           </>
         }
         actions={
-          // Once approved, the person has a record of their own (item 37).
-          member.status !== "PENDING" && holds("member.read") ? (
+          // The person has a record of their own (item 37).
+          holds("member.read") ? (
             <Link
               href={`/members/${member.id}`}
               className={buttonVariants({ variant: "secondary" })}
@@ -261,51 +194,6 @@ export default function ApplicationDetailPage() {
           message={actionError.message}
           requestId={actionError.requestId}
         />
-      ) : null}
-
-      {application.status === "REJECTED" && application.rejectionReason ? (
-        <Notice tone="deny" title="Application refused">
-          {application.rejectionReason}
-        </Notice>
-      ) : null}
-
-      {canSubmit ? (
-        <Notice
-          tone="info"
-          title="Draft: not yet submitted"
-          action={
-            <Button type="button" onClick={() => setConfirming("SUBMIT")}>
-              Submit for review
-            </Button>
-          }
-        >
-          Once submitted the application can no longer be amended, because the
-          reviewer must decide on what they were shown.
-        </Notice>
-      ) : null}
-
-      {canDecide ? (
-        <Notice
-          tone="caution"
-          title="Waiting for a decision"
-          action={
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" onClick={() => setConfirming("APPROVE")}>
-                Approve
-              </Button>
-              <Button
-                type="button"
-                variant="danger"
-                onClick={() => setConfirming("REFUSE")}
-              >
-                Refuse
-              </Button>
-            </div>
-          }
-        >
-          Approving issues the membership number. A refusal requires a reason,
-          recorded against the application and in the audit trail.
-        </Notice>
       ) : null}
 
       <Tabs value={tab} onValueChange={setTab} className="grid gap-6">
@@ -328,33 +216,46 @@ export default function ApplicationDetailPage() {
               <Detail
                 label="Membership number"
                 value={member.membershipNumber}
-                missing="Not yet issued"
+                missing="Not issued"
               />
               <Detail
-                label="Submitted"
-                value={
-                  application.submittedAt
-                    ? new Date(application.submittedAt).toLocaleString("en-GB")
-                    : null
-                }
-                missing="Not yet submitted"
+                label="Registered"
+                value={new Date(application.registeredAt).toLocaleString("en-GB")}
+              />
+              <Detail
+                label="Registered by"
+                value={application.registeredBy}
+                missing="Not recorded"
               />
             </DetailList>
           </Section>
 
+          {application.correction !== "NONE" ? (
+            <Section
+              title="Correction"
+              description={
+                application.correction === "ONCE"
+                  ? "You registered this member, so you have one correction. After it, only an administrator can change this registration."
+                  : "A wrong detail can be corrected at any time. Each correction is recorded in the audit trail."
+              }
+            >
+              <div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setCorrecting(true)}
+                >
+                  Correct this registration
+                </Button>
+              </div>
+            </Section>
+          ) : null}
+
           <Section
             title="Photograph"
-            description="The member’s photograph, as it is printed on their card."
+            description="The member’s photograph, as it is printed on their card. It is changed on the member’s record."
           >
-            {canAmendPhotograph ? (
-              <PhotographField
-                value={photograph}
-                // The one it replaces is attached to this member until the
-                // change is saved; this page discards it after that.
-                discardReplaced={false}
-                onChange={(next) => void changePhotograph(next)}
-              />
-            ) : photograph ? (
+            {photograph ? (
               // eslint-disable-next-line @next/next/no-img-element -- a signed, short-lived link to the API; next/image would cache and re-serve it.
               <img
                 src={api.mediaUrl(photograph.url)}
@@ -474,55 +375,11 @@ export default function ApplicationDetailPage() {
         ) : null}
       </Tabs>
 
-      {confirming === "SUBMIT" ? (
-        <ConfirmDialog
-          open
-          onOpenChange={(open) => !open && setConfirming(null)}
-          title="Submit for review?"
-          description={
-            <p>
-              Once submitted the application can no longer be amended, because
-              the reviewer must decide on what they were shown.
-            </p>
-          }
-          confirmLabel="Submit for review"
-          tone="primary"
-          onConfirm={(reason) => confirmed("SUBMIT", reason)}
-        />
-      ) : null}
-      {confirming === "APPROVE" ? (
-        <ConfirmDialog
-          open
-          onOpenChange={(open) => !open && setConfirming(null)}
-          title="Approve this application?"
-          description={
-            <p>
-              {member.firstName} {member.surname} becomes a member, and a
-              membership number is issued. This cannot be undone from this
-              screen.
-            </p>
-          }
-          confirmLabel="Approve and issue membership number"
-          tone="primary"
-          reason={{ optional: true }}
-          onConfirm={(reason) => confirmed("APPROVE", reason)}
-        />
-      ) : null}
-      {confirming === "REFUSE" ? (
-        <ConfirmDialog
-          open
-          onOpenChange={(open) => !open && setConfirming(null)}
-          title="Refuse this application?"
-          description={
-            <p>
-              {member.firstName} {member.surname} is not made a member. The
-              reason is recorded against the application, shown on this page,
-              and kept in the audit trail.
-            </p>
-          }
-          confirmLabel="Refuse the application"
-          reason={{}}
-          onConfirm={(reason) => confirmed("REFUSE", reason)}
+      {correcting ? (
+        <CorrectRegistration
+          application={application}
+          onOpenChange={(open) => !open && setCorrecting(false)}
+          onSaved={() => mutate()}
         />
       ) : null}
     </div>

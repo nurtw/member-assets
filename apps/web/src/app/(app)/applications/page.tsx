@@ -3,7 +3,6 @@
 import type { ApplicationSummary } from "@nurtw/contracts";
 import { FileText, Plus } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 import useSWR from "swr";
 
 import {
@@ -12,7 +11,6 @@ import {
   ListToolbar,
   Loading,
   PageHeader,
-  Select,
   StatusChip,
   Table,
   TableBody,
@@ -25,17 +23,9 @@ import {
 import { ApiError, fetcher } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
-const STATUSES = [
-  "DRAFT",
-  "SUBMITTED",
-  "UNDER_REVIEW",
-  "APPROVED",
-  "REJECTED",
-  "WITHDRAWN",
-];
-
 /**
- * The applications an officer may see.
+ * The registrations an officer may see (item 61: a member is active the moment a
+ * registration is saved, so there is no status to filter by).
  *
  * The list the API returns is already limited to the organisation subtrees this
  * officer holds `application.read` within, and it carries no next-of-kin,
@@ -44,63 +34,29 @@ const STATUSES = [
  */
 export default function ApplicationsPage() {
   const { holds } = useSession();
-  const [status, setStatus] = useState("");
 
-  /**
-   * The list, keyed by the filter.
-   *
-   * SWR keys on the query, so changing the filter is a new request with its own
-   * cache entry rather than an effect that has to be told to re-run. Nothing
-   * fetches from inside an effect body.
-   */
   const { data, error, isLoading } = useSWR<{
     applications: ApplicationSummary[];
-  }>(`/applications${status ? `?status=${status}` : ""}`, fetcher, {
-    keepPreviousData: true,
-  });
+  }>("/applications", fetcher);
 
   const applications = data?.applications ?? [];
   const apiError = error instanceof ApiError ? error : null;
   const register = holds("member.create") ? (
     <Link href="/applications/new" className={buttonVariants()}>
       <Plus aria-hidden />
-      Register an applicant
+      Register a member
     </Link>
   ) : null;
 
   return (
     <div className="grid gap-6">
       <PageHeader
-        title="Membership applications"
-        description="Applications within your area of responsibility."
+        title="Registrations"
+        description="Members registered within your area of responsibility, newest first."
         actions={register}
       />
 
-      <ListToolbar
-        count={
-          data
-            ? `${applications.length} ${status ? "with that status" : "in all"}`
-            : undefined
-        }
-      >
-        <div className="w-56">
-          <label htmlFor="status" className="sr-only">
-            Status
-          </label>
-          <Select
-            id="status"
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-          >
-            <option value="">All statuses</option>
-            {STATUSES.map((value) => (
-              <option key={value} value={value}>
-                {value.replace(/_/g, " ")}
-              </option>
-            ))}
-          </Select>
-        </div>
-      </ListToolbar>
+      <ListToolbar count={data ? `${applications.length} shown` : undefined} />
 
       {apiError ? (
         <ErrorNotice message={apiError.message} requestId={apiError.requestId} />
@@ -111,22 +67,19 @@ export default function ApplicationsPage() {
       ) : applications.length === 0 ? (
         <EmptyState
           icon={<FileText aria-hidden />}
-          title="No applications to show"
-          description={
-            status
-              ? "No application in your area of responsibility has that status."
-              : "Applications you register will appear here."
-          }
-          action={status ? null : register}
+          title="No registrations to show"
+          description="Members you register will appear here."
+          action={register}
         />
       ) : (
         <Table stacked className="sm:min-w-[46rem]">
           <TableHead>
             <tr>
-              <TableHeader>Applicant</TableHeader>
-              <TableHeader>Application no.</TableHeader>
+              <TableHeader>Member</TableHeader>
+              <TableHeader>Registration no.</TableHeader>
               <TableHeader>Unit</TableHeader>
               <TableHeader>Membership no.</TableHeader>
+              <TableHeader>Registered</TableHeader>
               <TableHeader>Status</TableHeader>
             </tr>
           </TableHead>
@@ -143,7 +96,7 @@ export default function ApplicationsPage() {
                   </Link>
                 </TableCell>
                 <TableCell
-                  label="Application no."
+                  label="Registration no."
                   className="font-mono text-xs text-muted-foreground"
                 >
                   {application.applicationNumber}
@@ -155,15 +108,19 @@ export default function ApplicationsPage() {
                   label="Membership no."
                   className="font-mono text-xs text-muted-foreground"
                 >
-                  {/* Absent until approval, and said so rather than left blank. */}
+                  {/* Absent only on a registration made before item 61. */}
                   {application.member.membershipNumber ?? (
                     <span className="font-sans italic text-faint-foreground">
-                      Not yet issued
+                      Not issued
                     </span>
                   )}
                 </TableCell>
+                <TableCell label="Registered" className="text-muted-foreground">
+                  {new Date(application.registeredAt).toLocaleDateString("en-GB")}
+                  {application.registeredBy ? ` · ${application.registeredBy}` : ""}
+                </TableCell>
                 <TableCell label="Status">
-                  <StatusChip status={application.status} />
+                  <StatusChip status={application.member.status} />
                 </TableCell>
               </TableRow>
             ))}

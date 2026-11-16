@@ -88,7 +88,7 @@ Each item is independently completable and independently testable. Status values
 | 58 | remove-imported-members | §7, §9A (rev. 1.20); MIG-08; the owner's direction of 16 Nov | done (16 Nov; 81 members deleted on Neon, 13 kept) | [plan](plans/58-remove-imported-members.md) |
 | 59 | declare-by-plate | §9, Req. 9.4, 9A.1 (rev. 1.20); VEH-38; supersedes VEH-34 and the route and owner requirements of rev. 1.3 | done (16 Nov; not yet deployed) | [plan](plans/59-declare-by-plate.md) |
 | 60 | undeclare | §9, §23.19 (rev. 1.20); VEH-39; the owner's direction of 16 Nov | done (16 Nov; not yet deployed) | [plan](plans/60-undeclare.md) |
-| 61 | immediate-registration | §7 (rev. 1.20); MEM-20; supersedes MEM-04 and the approval flow of item 05 | planned | [plan](plans/61-immediate-registration.md) |
+| 61 | immediate-registration | §7 (rev. 1.20); MEM-20; supersedes MEM-04 and the approval flow of item 05 | done (16 Nov; not pushed; the command runs on Neon on the owner's go-ahead) | [plan](plans/61-immediate-registration.md) |
 | 62 | imported-vehicle-edit | §9, §16 (rev. 1.20); VEH-40 | planned | [plan](plans/62-imported-vehicle-edit.md) |
 | 63 | bulk-declaration | §9, §16 (rev. 1.20); VEH-38 | planned | [plan](plans/63-bulk-declaration.md) |
 | 64 | sticker-origin | §9A (rev. 1.20); VEH-41; amends GOV-21 | planned | [plan](plans/64-sticker-origin.md) |

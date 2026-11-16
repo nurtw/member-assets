@@ -28,6 +28,7 @@
     "db:seed": "node --experimental-strip-types --env-file=.env prisma/seed.ts",
     "migrate:legacy": "node --experimental-strip-types --env-file=.env scripts/migrate-legacy/index.ts",
     "remove:imported-members": "node --experimental-strip-types --env-file=.env scripts/remove-imported-members/index.ts",
+    "activate:open-applications": "node --experimental-strip-types --env-file=.env scripts/activate-open-applications/index.ts",
     "docs:openapi": "nest build && node --env-file=.env dist/docs/generate-openapi.js"
   },
   "dependencies": {

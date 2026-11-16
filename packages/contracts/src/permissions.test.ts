@@ -176,10 +176,15 @@ describe('field enumerator records but never declares', () => {
     expect(held).toContain(RECORD_VEHICLE_PERMISSION);
   });
 
-  it('cannot declare, attach a sticker, or decide an application', () => {
+  it('cannot declare or attach a sticker', () => {
     expect(held).not.toContain(DECLARE_PERMISSION);
     expect(held).not.toContain(ATTACH_STICKER_PERMISSION);
-    expect(held).not.toContain('application.decide');
+  });
+
+  it('has no application to decide: registering needs no approval (item 61)', () => {
+    const codes = PERMISSIONS.map((entry) => entry.code as string);
+    expect(codes).not.toContain('application.decide');
+    expect(codes).not.toContain('application.review');
   });
 });
 

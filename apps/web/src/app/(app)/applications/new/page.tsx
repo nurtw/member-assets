@@ -7,7 +7,6 @@ import type {
 } from "@nurtw/contracts";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { toast } from "sonner";
 import useSWR from "swr";
 
 import {
@@ -227,22 +226,11 @@ export default function NewApplicationPage() {
                 address: form.gAddress,
               }
             : undefined,
+          // The member is active the moment this is saved (item 61), so the
+          // photograph (MEM-18) rides with it rather than following.
+          passportPhotoId: photograph?.id,
         },
       );
-      // The photograph is attached to the application just made (MEM-18). If
-      // that fails the application is still saved, so the officer is told and
-      // sent on: it can be added from the application's page.
-      if (photograph) {
-        try {
-          await api.patch(`/applications/${response.application.id}/media`, {
-            passportPhotoId: photograph.id,
-          });
-        } catch {
-          toast.error(
-            "The application was saved, but the photograph was not attached. Add it on the application’s page.",
-          );
-        }
-      }
       // PRD Requirement 9.10 (revision 1.3) — registration flows straight on
       // to the applicant's vehicle, which may be skipped. Only for an officer
       // who can add one; anyone else lands on the application as before.
@@ -272,7 +260,7 @@ export default function NewApplicationPage() {
         title="Membership registration"
         back={{ href: "/applications", label: "Applications" }}
         meta="Registration · Step 1 of 2"
-        description="Transcribe the completed Membership / Registration / Guarantorship form, section by section as it is printed. The application is saved as a draft and may be amended until it is submitted for review. The member's vehicles are added in the next step."
+        description="Transcribe the completed Membership / Registration / Guarantorship form, section by section as it is printed. Saving makes the person a member at once, with a membership number: there is no draft and no review. Check it before you save; a wrong detail can be corrected once afterwards. The member's vehicles are added in the next step."
       />
 
       {shown ? (
@@ -455,7 +443,7 @@ export default function NewApplicationPage() {
 
       <Section
         title="Section D — Guarantor"
-        description="Optional. Leave all three blank if this application has no guarantor. Where there is one, all three are needed."
+        description="Optional. Leave all three blank if this member has no guarantor. Where there is one, all three are needed."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
@@ -488,7 +476,7 @@ export default function NewApplicationPage() {
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={submitting}>
-          {submitting ? "Saving…" : "Save as draft"}
+          {submitting ? "Registering…" : "Register the member"}
         </Button>
         <Button
           type="button"

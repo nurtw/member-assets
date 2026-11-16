@@ -54,7 +54,7 @@ describe("visibleNavigation", () => {
     expect(labels("sticker.manage_stock")).not.toContain("Sticker stock");
   });
 
-  it("offers Members to an officer who reads members, and not Applications", () => {
+  it("offers Members to an officer who reads members, and not Registrations", () => {
     const groups = visibleNavigation(
       OFFICER_NAVIGATION,
       holding("member.read"),
@@ -207,7 +207,7 @@ describe("breadcrumbs", () => {
       ),
     ).toEqual([
       { label: "Membership" },
-      { label: "Applications", href: "/applications" },
+      { label: "Registrations", href: "/applications" },
       { label: "Details" },
     ]);
   });

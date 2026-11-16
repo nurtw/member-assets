@@ -307,6 +307,24 @@ pnpm --filter api remove:imported-members --execute --confirm <N>   # N = the me
 - The photograph and signature **files** in object storage are not removed. Remove them by
   the keys in the restore point.
 
+### Making the open applications members (one time, item 61)
+
+Registering a member makes them active at once (`QUESTIONS.md` MEM-20). The applications still
+open from before, as drafts or submitted, are made active members by a command. It deletes
+nothing, and a second run finds nothing open.
+
+```bash
+pnpm --filter api activate:open-applications                       # dry run: counts only
+pnpm --filter api activate:open-applications --execute --confirm <N>   # N = the total counted
+```
+
+- It prints the database's **host name** first. It reads `DATABASE_URL` from `apps/api/.env`,
+  which is Neon, and prints counts, never a name.
+- Each member gets a membership number, and the application is marked approved. One audit
+  event is written for each (`member.register`). Run only on the owner's go-ahead.
+- The membership fee is owed from the day it runs, as it is from the day a registration is
+  saved.
+
 ### Adding an officer, and giving them access
 
 Officers → **Add an officer** (needs `user.manage`). The System shows a temporary password
@@ -317,7 +335,7 @@ The account starts with no role. On the officer's page:
 
 - **Give a role** for a part of the Union. It covers that council, zone, branch, or unit and
   everything beneath it. You can only give a role whose every permission you hold there.
-- **Grant a single permission**, such as `vehicle.declare` (needs `permission.grant`), or
+- **Grant a single permission**, such as `vehicle.suspend` (needs `permission.grant`), or
   **revoke** one whatever their roles give (needs `permission.revoke`).
 
 You cannot change your own roles, permissions, or status. Another administrator does it.
@@ -429,8 +447,8 @@ logs <app> member-assets --type run`).
 
 **Members** lists everybody who is or was a member within your area: search by name or
 membership number, or filter by status (needs `member.read`). A member brought over from
-the legacy register has no application, and is found here and nowhere else. An applicant
-who has not been approved is under **Applications**.
+the legacy register has no registration, and is found here and nowhere else. Members registered
+through the System are also under **Registrations**.
 
 Open the member → **Manage** (needs `member.suspend`):
 
@@ -496,10 +514,10 @@ under **Fees**.
 
 `system_setting` key **`approval.require_separate_officer`**, shipped `false`.
 
-When `true`, the officer who recorded a membership application may not decide it,
-and the officer who prepared a card may not approve it. When `false`, one user
+When `true`, the officer who prepared a card may not approve it. When `false`, one user
 holding both permissions may do both — and the super administrator holds both by
-definition.
+definition. **It no longer applies to registration** (item 61, `QUESTIONS.md` MEM-20): a
+registration is not approved, so there is no second officer for it.
 
 **It ships off deliberately.** `QUESTIONS.md` **MEM-04** asks the Union whether a
 second approval is required, and with a single administrator account on the

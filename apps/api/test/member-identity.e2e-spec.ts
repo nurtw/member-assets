@@ -238,18 +238,25 @@ describe('A member’s NIN and photograph (e2e, item 44)', () => {
       }
     });
 
-    it('amending a draft replaces it when one is given, and keeps it when not', async () => {
+    it('a correction keeps it when none is given', async () => {
       const first = ninFor(4);
-      const second = ninFor(5);
-      const created = await register('Ninamend', first);
-      const { applicant } = applicationBody('Ninamend');
+      const created = await register('Ninkeep', first);
+      const { applicant } = applicationBody('Ninkeep');
 
+      // The registering officer's one correction (item 61).
       await request(server)
         .patch(`/api/v1/applications/${created.applicationId}`)
         .set('Cookie', cookies.registrar!)
         .send({ applicant })
         .expect(200);
       expect(await lastFourOf(created.memberId)).toBe(first.slice(-4));
+    });
+
+    it('a correction replaces it when one is given, and never records it', async () => {
+      const first = ninFor(5);
+      const second = ninFor(14);
+      const created = await register('Ninamend', first);
+      const { applicant } = applicationBody('Ninamend');
 
       await request(server)
         .patch(`/api/v1/applications/${created.applicationId}`)

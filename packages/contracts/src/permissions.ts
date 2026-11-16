@@ -48,14 +48,6 @@ export const PERMISSIONS = [
   // Membership ------------------------------------------------------------------
   { code: 'application.read', description: 'View membership applications' },
   {
-    code: 'application.review',
-    description: 'Take an application under review',
-  },
-  {
-    code: 'application.decide',
-    description: 'Approve or reject a membership application',
-  },
-  {
     code: 'member.read',
     description: 'View member records and card-display data',
   },
@@ -324,8 +316,6 @@ export const SYSTEM_ROLES = [
       'organisation.read',
       'master_data.read',
       'application.read',
-      'application.review',
-      'application.decide',
       'member.read',
       'member.create',
       'member.update',
@@ -343,7 +333,6 @@ export const SYSTEM_ROLES = [
       'organisation.read',
       'master_data.read',
       'application.read',
-      'application.review',
       'member.read',
       'member.update',
       'card.read',
@@ -405,9 +394,9 @@ export const SYSTEM_ROLES = [
   /**
    * PRD §16 (revision 1.3, `QUESTIONS.md` VEH-23). Registers members and
    * records vehicles in the field, within an assigned scope. Deliberately
-   * without `vehicle.declare`, `sticker.attach`, or `application.decide`: an
-   * enumerator captures, and somebody else declares, attaches, and approves —
-   * the separation the reference portal discussed with the Union relies on.
+   * without `vehicle.declare` or `sticker.attach`: an enumerator captures, and
+   * somebody else declares and attaches. A registration needs no approval since
+   * item 61 (MEM-20), so there is no `application.decide`.
    *
    * `member.read` is absent too: the registration flow carries the new
    * member's id straight into the vehicle step, so an enumerator never needs

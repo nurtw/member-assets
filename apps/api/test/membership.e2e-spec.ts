@@ -111,6 +111,7 @@ describe('Membership registration (e2e)', () => {
     for (const who of [
       'registrar',
       'approver',
+      'colleague',
       'otherbranch',
       'sensitive',
       'reader',
@@ -128,7 +129,7 @@ describe('Membership registration (e2e)', () => {
   // --- Registration --------------------------------------------------------
 
   describe('registering an applicant', () => {
-    it('creates a pending member with no membership number', async () => {
+    it('makes the member active at once, with a membership number (item 61)', async () => {
       const response = await request(server)
         .post('/api/v1/applications')
         .set('Cookie', cookies.registrar!)
@@ -136,10 +137,28 @@ describe('Membership registration (e2e)', () => {
         .expect(201);
 
       const { member, status } = response.body.application;
-      expect(status).toBe('DRAFT');
-      expect(member.status).toBe('PENDING');
-      // A number identifies a member of the Union. This person is not one yet.
-      expect(member.membershipNumber).toBeNull();
+      // There is no draft and no review: saved means registered.
+      expect(status).toBe('APPROVED');
+      expect(member.status).toBe('ACTIVE');
+      expect(member.membershipNumber).toMatch(
+        /^[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]$/,
+      );
+      // No excluded look-alikes anywhere in an issued number.
+      expect(member.membershipNumber).not.toMatch(/[ILOUZ]/);
+      // The record of who registered the member, and when.
+      expect(response.body.application.registeredBy).toBe('registrar fixture');
+      expect(response.body.application.registeredAt).toBeTruthy();
+
+      const stored = await prisma.membershipApplication.findUniqueOrThrow({
+        where: { id: response.body.application.id },
+      });
+      // The membership fee is owed from here (`DuesService` reads `reviewedAt`).
+      expect(stored.reviewedAt).not.toBeNull();
+      expect(stored.correctedAt).toBeNull();
+      const audit = await prisma.auditEvent.findFirst({
+        where: { action: 'member.register', subjectId: stored.id },
+      });
+      expect(audit?.actorUserId).toBe(stored.createdByUserId);
     });
 
     it('registers an applicant with no guarantor at all (MEM-06)', async () => {
@@ -456,138 +475,173 @@ describe('Membership registration (e2e)', () => {
 
   // --- Workflow ------------------------------------------------------------
 
-  describe('the review workflow', () => {
+  describe('the registration record and its corrections (item 61, MEM-20)', () => {
     let applicationId: string;
+    let memberId: string;
 
     beforeEach(async () => {
       const created = await request(server)
         .post('/api/v1/applications')
         .set('Cookie', cookies.registrar!)
-        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'Workflow'))
+        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'Corrected'))
         .expect(201);
       applicationId = created.body.application.id;
+      memberId = created.body.application.member.id;
     });
 
-    it('refuses a decision on a draft', async () => {
-      await request(server)
-        .post(`/api/v1/applications/${applicationId}/decision`)
-        .set('Cookie', cookies.approver!)
-        .send({ decision: 'APPROVED' })
-        .expect(409);
+    const personal = () => ({
+      ...applicationBody(fixture.unitAId, fixture.lgaId).applicant,
+      phone: '08077776666',
     });
 
-    it('does not let the registering officer approve their own work', async () => {
-      // member.create does not confer application.decide.
+    it('has no submission, decision, or withdrawal any more', async () => {
+      for (const route of ['submission', 'decision', 'withdrawal']) {
+        await request(server)
+          .post(`/api/v1/applications/${applicationId}/${route}`)
+          .set('Cookie', cookies.approver!)
+          .send({})
+          .expect(404);
+      }
       await request(server)
-        .post(`/api/v1/applications/${applicationId}/submission`)
+        .patch(`/api/v1/applications/${applicationId}/media`)
         .set('Cookie', cookies.registrar!)
-        .expect(201);
-
-      await request(server)
-        .post(`/api/v1/applications/${applicationId}/decision`)
-        .set('Cookie', cookies.registrar!)
-        .send({ decision: 'APPROVED' })
-        .expect(403);
+        .send({})
+        .expect(404);
     });
 
-    it('refuses amendment once submitted', async () => {
-      await request(server)
-        .post(`/api/v1/applications/${applicationId}/submission`)
+    it('gives the officer who registered the member one correction', async () => {
+      const before = await request(server)
+        .get(`/api/v1/applications/${applicationId}`)
         .set('Cookie', cookies.registrar!)
-        .expect(201);
+        .expect(200);
+      expect(before.body.application.correction).toBe('ONCE');
 
       await request(server)
         .patch(`/api/v1/applications/${applicationId}`)
         .set('Cookie', cookies.registrar!)
-        .send({ applicant: applicationBody(fixture.unitAId, fixture.lgaId).applicant })
+        .send({ applicant: personal() })
+        .expect(200);
+
+      const after = await request(server)
+        .get(`/api/v1/applications/${applicationId}`)
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+      expect(after.body.application.correction).toBe('NONE');
+      expect(after.body.application.contact.phone).toBe('+2348077776666');
+
+      // The second is refused, and changes nothing.
+      await request(server)
+        .patch(`/api/v1/applications/${applicationId}`)
+        .set('Cookie', cookies.registrar!)
+        .send({ applicant: { ...personal(), phone: '08011112222' } })
         .expect(409);
-    });
-
-    it('allocates a membership number on approval, and activates the member', async () => {
-      await request(server)
-        .post(`/api/v1/applications/${applicationId}/submission`)
-        .set('Cookie', cookies.registrar!)
-        .expect(201);
-
-      const decided = await request(server)
-        .post(`/api/v1/applications/${applicationId}/decision`)
-        .set('Cookie', cookies.approver!)
-        .send({ decision: 'APPROVED' })
-        .expect(201);
-
-      const { member, status } = decided.body.application;
-      expect(status).toBe('APPROVED');
-      expect(member.status).toBe('ACTIVE');
-      expect(member.membershipNumber).toMatch(
-        /^[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]$/,
-      );
-      // No excluded look-alikes anywhere in an issued number.
-      expect(member.membershipNumber).not.toMatch(/[ILOUZ]/);
-    });
-
-    it('requires a reason to refuse, and allocates no number when refused', async () => {
-      await request(server)
-        .post(`/api/v1/applications/${applicationId}/submission`)
-        .set('Cookie', cookies.registrar!)
-        .expect(201);
-
-      await request(server)
-        .post(`/api/v1/applications/${applicationId}/decision`)
-        .set('Cookie', cookies.approver!)
-        .send({ decision: 'REJECTED' })
-        .expect(400);
-
-      const refused = await request(server)
-        .post(`/api/v1/applications/${applicationId}/decision`)
-        .set('Cookie', cookies.approver!)
-        .send({ decision: 'REJECTED', reason: 'Guarantor could not be reached.' })
-        .expect(201);
-
-      expect(refused.body.application.member.status).toBe('PENDING');
-      expect(refused.body.application.member.membershipNumber).toBeNull();
-    });
-
-    it('does not let a decision be revisited', async () => {
-      await request(server)
-        .post(`/api/v1/applications/${applicationId}/submission`)
-        .set('Cookie', cookies.registrar!)
-        .expect(201);
-      await request(server)
-        .post(`/api/v1/applications/${applicationId}/decision`)
-        .set('Cookie', cookies.approver!)
-        .send({ decision: 'REJECTED', reason: 'Incomplete guarantor section.' })
-        .expect(201);
-
-      // A withdrawal after a refusal would let an applicant erase the record.
-      await request(server)
-        .post(`/api/v1/applications/${applicationId}/withdrawal`)
-        .set('Cookie', cookies.registrar!)
-        .send({ reason: 'changed mind' })
-        .expect(409);
-
-      await request(server)
-        .post(`/api/v1/applications/${applicationId}/decision`)
-        .set('Cookie', cookies.approver!)
-        .send({ decision: 'APPROVED' })
-        .expect(409);
-    });
-
-    it('records the decision in the audit trail with a reason', async () => {
-      await request(server)
-        .post(`/api/v1/applications/${applicationId}/submission`)
-        .set('Cookie', cookies.registrar!)
-        .expect(201);
-      await request(server)
-        .post(`/api/v1/applications/${applicationId}/decision`)
-        .set('Cookie', cookies.approver!)
-        .send({ decision: 'REJECTED', reason: 'Address could not be confirmed.' })
-        .expect(201);
-
-      const event = await prisma.auditEvent.findFirst({
-        where: { action: 'application.reject', subjectId: applicationId },
+      const stored = await prisma.memberContact.findUniqueOrThrow({
+        where: { memberId },
       });
-      expect(event?.reason).toBe('Address could not be confirmed.');
-      expect(event?.actorUserId).toBeTruthy();
+      expect(stored.phone).toBe('+2348077776666');
+
+      const used = await prisma.membershipApplication.findUniqueOrThrow({
+        where: { id: applicationId },
+      });
+      expect(used.correctedAt).not.toBeNull();
+    });
+
+    it('audits a correction with the sections it changed, never their values', async () => {
+      await request(server)
+        .patch(`/api/v1/applications/${applicationId}`)
+        .set('Cookie', cookies.registrar!)
+        .send({ applicant: personal() })
+        .expect(200);
+
+      const event = await prisma.auditEvent.findFirstOrThrow({
+        where: { action: 'member.correct', subjectId: applicationId },
+      });
+      expect(event.afterValue).toMatchObject({
+        sectionsAmended: ['applicant'],
+        usedOneCorrection: true,
+      });
+      expect(JSON.stringify(event)).not.toContain('2348077776666');
+      expect(JSON.stringify(event)).not.toContain('Zik Avenue');
+    });
+
+    it('gives an officer who did not register the member no correction', async () => {
+      // Holds member.create in the same branch, but did not record this one.
+      const detail = await request(server)
+        .get(`/api/v1/applications/${applicationId}`)
+        .set('Cookie', cookies.colleague!)
+        .expect(200);
+      expect(detail.body.application.correction).toBe('NONE');
+
+      await request(server)
+        .patch(`/api/v1/applications/${applicationId}`)
+        .set('Cookie', cookies.colleague!)
+        .send({ applicant: personal() })
+        .expect(409);
+    });
+
+    it('lets an administrator correct at any time, without using the officer’s one', async () => {
+      for (const phone of ['08011112222', '08033334444']) {
+        await request(server)
+          .patch(`/api/v1/members/${memberId}/registration`)
+          .set('Cookie', cookies.approver!)
+          .send({ applicant: { ...personal(), phone } })
+          .expect(200);
+      }
+      expect(
+        (await prisma.memberContact.findUniqueOrThrow({ where: { memberId } })).phone,
+      ).toBe('+2348033334444');
+
+      // Not counted: the registering officer still has theirs.
+      const detail = await request(server)
+        .get(`/api/v1/applications/${applicationId}`)
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+      expect(detail.body.application.correction).toBe('ONCE');
+      await request(server)
+        .patch(`/api/v1/applications/${applicationId}`)
+        .set('Cookie', cookies.registrar!)
+        .send({ applicant: personal() })
+        .expect(200);
+
+      // An administrator is told they may correct at any time.
+      const admin = await request(server)
+        .get(`/api/v1/applications/${applicationId}`)
+        .set('Cookie', cookies.approver!)
+        .expect(200);
+      expect(admin.body.application.correction).toBe('ANYTIME');
+    });
+
+    it('does not correct a cancelled membership', async () => {
+      await request(server)
+        .patch(`/api/v1/members/${memberId}/status`)
+        .set('Cookie', cookies.approver!)
+        .send({ status: 'CANCELLED', reason: 'e2e: registered by mistake' })
+        .expect(200);
+
+      await request(server)
+        .patch(`/api/v1/members/${memberId}/registration`)
+        .set('Cookie', cookies.approver!)
+        .send({ applicant: personal() })
+        .expect(409);
+      await request(server)
+        .patch(`/api/v1/applications/${applicationId}`)
+        .set('Cookie', cookies.registrar!)
+        .send({ applicant: personal() })
+        .expect(409);
+    });
+
+    it('answers 404 outside the branch, and 403 without member.update', async () => {
+      await request(server)
+        .patch(`/api/v1/members/${memberId}/registration`)
+        .set('Cookie', cookies.otherbranch!)
+        .send({ applicant: personal() })
+        .expect(404);
+      // The registering officer holds no member.update: their way is their own route.
+      await request(server)
+        .patch(`/api/v1/members/${memberId}/registration`)
+        .set('Cookie', cookies.registrar!)
+        .send({ applicant: personal() })
+        .expect(403);
     });
 
     it('keeps the audit trail free of the applicant’s sensitive detail', async () => {
@@ -607,39 +661,13 @@ describe('Membership registration (e2e)', () => {
   // --- Member status -------------------------------------------------------
 
   describe('member status', () => {
-    it('refuses to suspend a pending applicant', async () => {
-      const created = await request(server)
-        .post('/api/v1/applications')
-        .set('Cookie', cookies.registrar!)
-        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'Statuses'))
-        .expect(201);
-
-      // There is nothing yet to suspend. Refuse the application instead.
-      await request(server)
-        .patch(`/api/v1/members/${created.body.application.member.id}/status`)
-        .set('Cookie', cookies.approver!)
-        .send({ status: 'SUSPENDED', reason: 'attempted early suspension' })
-        .expect(409);
-    });
-
     it('suspends, restores, and then cancels terminally', async () => {
       const created = await request(server)
         .post('/api/v1/applications')
         .set('Cookie', cookies.registrar!)
         .send(applicationBody(fixture.unitAId, fixture.lgaId, 'Lifecycle'))
         .expect(201);
-      const id = created.body.application.id;
       const memberId = created.body.application.member.id;
-
-      await request(server)
-        .post(`/api/v1/applications/${id}/submission`)
-        .set('Cookie', cookies.registrar!)
-        .expect(201);
-      await request(server)
-        .post(`/api/v1/applications/${id}/decision`)
-        .set('Cookie', cookies.approver!)
-        .send({ decision: 'APPROVED' })
-        .expect(201);
 
       const setStatus = (status: string) =>
         request(server)
@@ -768,7 +796,7 @@ describe('Membership registration (e2e)', () => {
       expect(withOne.body.member.application).toEqual({
         id: created.body.application.id,
         applicationNumber: created.body.application.applicationNumber,
-        status: 'DRAFT',
+        status: 'APPROVED',
       });
     });
 
@@ -817,11 +845,15 @@ describe('Membership registration (e2e)', () => {
 
     it('lists by status, so the register can leave pending applicants out', async () => {
       await migratedMember('Registerlisted');
-      await request(server)
-        .post('/api/v1/applications')
-        .set('Cookie', cookies.registrar!)
-        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'Registerpending'))
-        .expect(201);
+      // A registration made before item 61 can still be pending.
+      await prisma.member.create({
+        data: {
+          status: 'PENDING',
+          surname: 'Registerpending',
+          firstName: 'Ada',
+          organisationId: fixture.unitAId,
+        },
+      });
 
       const surnames = async (query: string): Promise<string[]> => {
         const response = await request(server)
@@ -853,121 +885,6 @@ describe('Membership registration (e2e)', () => {
         .get('/api/v1/members?limit=201')
         .set('Cookie', cookies.reader!)
         .expect(400);
-    });
-  });
-
-  // --- Who may decide ------------------------------------------------------
-
-  describe('the second-officer requirement', () => {
-    /** Turns the requirement on or off for one test. */
-    async function setSeparateOfficer(enabled: boolean): Promise<void> {
-      await prisma.systemSetting.update({
-        where: { key: 'approval.require_separate_officer' },
-        data: { value: enabled ? 'true' : 'false' },
-      });
-    }
-
-    /** Registers and submits an application as `otherbranch`, who may also decide. */
-    async function submittedByOtherBranch(surname: string): Promise<string> {
-      const created = await request(server)
-        .post('/api/v1/applications')
-        .set('Cookie', cookies.otherbranch!)
-        .send(applicationBody(fixture.unitBId, fixture.lgaId, surname))
-        .expect(201);
-
-      await request(server)
-        .post(`/api/v1/applications/${created.body.application.id}/submission`)
-        .set('Cookie', cookies.otherbranch!)
-        .send({})
-        .expect(201);
-
-      return created.body.application.id as string;
-    }
-
-    it('records the officer who recorded the application', async () => {
-      const id = await submittedByOtherBranch('Recorded');
-
-      const application = await prisma.membershipApplication.findUniqueOrThrow({
-        where: { id },
-      });
-      const officer = await prisma.user.findUniqueOrThrow({
-        where: { email: `otherbranch.${TAG}@nurtw.test` },
-      });
-
-      expect(application.createdByUserId).toBe(officer.id);
-    });
-
-    it('lets one officer holding both permissions record and decide, while the setting is off', async () => {
-      // The shipped default. `member.create` and `application.decide` are
-      // separate permissions, but that separates the permissions and not the
-      // people — and the super administrator holds both by definition. With one
-      // administrator account, enforcing a second officer would make a
-      // registration impossible to complete. See QUESTIONS.md MEM-04.
-      const id = await submittedByOtherBranch('SelfApproved');
-
-      const decided = await request(server)
-        .post(`/api/v1/applications/${id}/decision`)
-        .set('Cookie', cookies.otherbranch!)
-        .send({ decision: 'APPROVED' })
-        .expect(201);
-
-      expect(decided.body.application.member.membershipNumber).not.toBeNull();
-    });
-
-    it('refuses the recording officer’s own decision once the Union turns the setting on', async () => {
-      const id = await submittedByOtherBranch('NeedsSecondPair');
-
-      await setSeparateOfficer(true);
-      try {
-        await request(server)
-          .post(`/api/v1/applications/${id}/decision`)
-          .set('Cookie', cookies.otherbranch!)
-          .send({ decision: 'APPROVED' })
-          .expect(409);
-
-        // Nothing was allocated by the refused attempt: the member is still
-        // pending and holds no membership number.
-        const application = await prisma.membershipApplication.findUniqueOrThrow({
-          where: { id },
-          include: { member: true },
-        });
-        expect(application.status).toBe('SUBMITTED');
-        expect(application.member?.status).toBe('PENDING');
-        expect(application.member?.membershipNumber).toBeNull();
-      } finally {
-        // Restored even if an assertion fails, so one failure cannot leave the
-        // control on and break every test that follows.
-        await setSeparateOfficer(false);
-      }
-    });
-
-    it('still lets a different officer decide while the setting is on', async () => {
-      const created = await request(server)
-        .post('/api/v1/applications')
-        .set('Cookie', cookies.registrar!)
-        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'SecondPair'))
-        .expect(201);
-
-      await request(server)
-        .post(`/api/v1/applications/${created.body.application.id}/submission`)
-        .set('Cookie', cookies.registrar!)
-        .send({})
-        .expect(201);
-
-      await setSeparateOfficer(true);
-      try {
-        // Recorded by `registrar`, decided by `approver`. The control refuses
-        // one person acting twice, not approval itself.
-        const decided = await request(server)
-          .post(`/api/v1/applications/${created.body.application.id}/decision`)
-          .set('Cookie', cookies.approver!)
-          .send({ decision: 'APPROVED' })
-          .expect(201);
-
-        expect(decided.body.application.status).toBe('APPROVED');
-      } finally {
-        await setSeparateOfficer(false);
-      }
     });
   });
 
@@ -1087,30 +1004,21 @@ describe('Membership registration (e2e)', () => {
       await request(server).get(tampered).expect(404);
     });
 
-    it('shows an attached photograph by a signed link on the application alone', async () => {
-      const created = await request(server)
-        .post('/api/v1/applications')
-        .set('Cookie', cookies.registrar!)
-        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'Photographed'))
-        .expect(201);
-      const id = created.body.application.id;
-
-      const before = await request(server)
-        .get(`/api/v1/applications/${id}`)
-        .set('Cookie', cookies.registrar!)
-        .expect(200);
-      expect(before.body.application.passportPhotoUrl).toBeNull();
-
+    it('shows a photograph given at registration by a signed link on the application alone', async () => {
       const photograph = await request(server)
         .post('/api/v1/media?kind=PASSPORT_PHOTOGRAPH')
         .set('Cookie', cookies.registrar!)
         .attach('file', PNG_BYTES, 'face.png')
         .expect(201);
-      await request(server)
-        .patch(`/api/v1/applications/${id}/media`)
+      const created = await request(server)
+        .post('/api/v1/applications')
         .set('Cookie', cookies.registrar!)
-        .send({ passportPhotoId: photograph.body.media.id })
-        .expect(200);
+        .send({
+          ...applicationBody(fixture.unitAId, fixture.lgaId, 'Photographed'),
+          passportPhotoId: photograph.body.media.id,
+        })
+        .expect(201);
+      const id = created.body.application.id;
 
       const after = await request(server)
         .get(`/api/v1/applications/${id}`)
@@ -1141,13 +1049,20 @@ describe('Membership registration (e2e)', () => {
         .expect(404);
     });
 
-    it('refuses to attach a signature asset as a passport photograph', async () => {
+    it('shows no photograph where none was given', async () => {
       const created = await request(server)
         .post('/api/v1/applications')
         .set('Cookie', cookies.registrar!)
-        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'Media'))
+        .send(applicationBody(fixture.unitAId, fixture.lgaId, 'Unphotographed'))
         .expect(201);
+      const detail = await request(server)
+        .get(`/api/v1/applications/${created.body.application.id}`)
+        .set('Cookie', cookies.registrar!)
+        .expect(200);
+      expect(detail.body.application.passportPhotoUrl).toBeNull();
+    });
 
+    it('refuses a signature asset given as a passport photograph', async () => {
       const signature = await request(server)
         .post('/api/v1/media?kind=MEMBER_SIGNATURE')
         .set('Cookie', cookies.registrar!)
@@ -1155,9 +1070,12 @@ describe('Membership registration (e2e)', () => {
         .expect(201);
 
       await request(server)
-        .patch(`/api/v1/applications/${created.body.application.id}/media`)
+        .post('/api/v1/applications')
         .set('Cookie', cookies.registrar!)
-        .send({ passportPhotoId: signature.body.media.id })
+        .send({
+          ...applicationBody(fixture.unitAId, fixture.lgaId, 'Media'),
+          passportPhotoId: signature.body.media.id,
+        })
         .expect(400);
     });
   });
@@ -1198,11 +1116,19 @@ describe('Membership registration (e2e)', () => {
       'member.create',
       'member.read',
     ]);
+    // Administers a branch's members: corrects a registration at any time, and
+    // cancels one registered by mistake (item 61).
     await buildUser('approver', branchA.id, [
       'application.read',
-      'application.decide',
+      'member.update',
       'member.read',
       'member.suspend',
+    ]);
+    // Registers members in the same branch, but did not register the others'.
+    await buildUser('colleague', branchA.id, [
+      'application.read',
+      'member.create',
+      'member.read',
     ]);
     await buildUser('sensitive', branchA.id, [
       'application.read',
@@ -1213,7 +1139,7 @@ describe('Membership registration (e2e)', () => {
     await buildUser('otherbranch', branchB.id, [
       'application.read',
       'member.create',
-      'application.decide',
+      'member.update',
       'member.read',
     ]);
 

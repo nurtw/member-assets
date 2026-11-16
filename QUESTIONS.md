@@ -47,14 +47,14 @@ thing a year later.
 | Group | Answered | Awaiting | Deferred | Total |
 |---|---|---|---|---|
 | Structure and master data (ORG) | 6 | 2 | — | 8 |
-| Membership and registration (MEM) | 12 | 8 | — | 20 |
+| Membership and registration (MEM) | 13 | 7 | — | 20 |
 | Cards (CARD) | 5 | 5 | — | 10 |
 | Vehicles and stickers (VEH) | 34 | 8 | 1 | 43 |
 | Legacy migration (MIG) | 6 | 2 | — | 8 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 27 | 0 | — | 27 |
 | Governance and go-live (GOV) | 13 | 10 | 2 | 25 |
-| **Total** | **122** | **37** | **3** | **162** |
+| **Total** | **123** | **36** | **3** | **162** |
 
 ### Blocking production use right now
 
@@ -201,7 +201,7 @@ the System checks no designation, and leaves it to the officer who makes each co
 
 ## 5. Open — membership and registration (item 05)
 
-### MEM-04 · Who approves a membership application ⏳
+### MEM-04 · Who approves a membership application ✅
 
 **Question.** Which officer approves a new membership, and at what level — unit, branch,
 zone, or council? Is a second approval required for any category of applicant? In
@@ -222,8 +222,12 @@ impossible to complete. The officer who recorded each application is now stored,
 control can be enforced retrospectively as well as prospectively. See
 `docs/reference/OPERATIONS.md` → "Requiring a second officer to approve".
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **Nobody: a registration is not approved.** The project owner directed on 16
+November 2026 that a member is active the moment the registration is saved (MEM-20), so there
+is no approval, no `application.decide`, and no second officer for registration. The
+separate-officer setting stays for cards.
+**Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD
+revision 1.20; roadmap item 61.
 
 ### MEM-05 · Existing membership numbers ✅
 
@@ -2726,6 +2730,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 16 November 2026 (item 61 built) | **MEM-04** is answered: nobody approves a registration, because a member is active the moment it is saved (MEM-20). Totals: 123 answered, 36 awaiting, 3 deferred. |
 | 16 November 2026 (item 61 planned) | The project owner settled **MEM-20**: the 10 open applications (8 drafts, 2 submitted) are made active members by a one-off command run on a go-ahead; administrators amend a registration at any time and the officer who registered gets one correction; `application.decide` and the submit, withdraw, and decision routes are removed; and no second officer is needed, so **MEM-04** is closed for registration. Totals: 122 answered, 37 awaiting, 3 deferred. |
 | 16 November 2026 (declared status) | The project owner directed that **declared status is visible to the super administrator only** (**VEH-43**, new, supersedes VEH-28). `vehicle.declare` can no longer be granted, so declaring, undeclaring, and bulk declaration are the super administrator's alone. This answers **GOV-06**. Nobody else held it on Neon, so no access is withdrawn. Totals: 121 answered, 38 awaiting, 3 deferred. |
 | 16 November 2026 (item 59 planned) | The project owner answered **VEH-39** (undeclaring uncounts a vehicle and changes nothing else), **VEH-40** (administrators edit at any time; others once), **VEH-41** (the dashboard counts imported and new stickers; a sticker's page still says only "sticker"), and **VEH-42** (the new-vehicles list's columns), and settled what item 59 needs under **VEH-38**: the plate alone is required, driver and sticker need no declaration, any vehicle not retired or archived may be declared, and a vehicle with no route type owes the default levy. **MEM-20** (the open applications) and **GOV-25** (the dashboards) remain open. Totals: 119 answered, 39 awaiting, 3 deferred. |

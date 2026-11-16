@@ -9,7 +9,6 @@ import {
 import type {
   ApplicationDetail,
   ApplicationSummary,
-  AttachMediaInput,
   CreateApplicationInput,
   MemberNinState,
   MemberPhotograph,
@@ -19,20 +18,16 @@ import type {
   RegistrationGuarantor,
   RegistrationNextOfKin,
   RemoveMemberNinInput,
-  ReviewApplicationInput,
   SetMemberNinInput,
   SetMemberStatusInput,
   UpdateApplicationInput,
-  WithdrawApplicationInput,
 } from '@nurtw/contracts';
 import {
-  assertApplicationTransition,
   assertMemberTransition,
+  correctionRight,
   generateIdentifier,
   InvalidStatusTransitionError,
-  isApplicationEditable,
   outermostScopes,
-  type ApplicationStatus,
   type MemberStatus,
 } from '@nurtw/domain';
 import type { Prisma } from '@prisma/client';
@@ -43,10 +38,6 @@ import { PermissionService } from '../auth/permission.service.js';
 import { MediaService } from '../media/media.service.js';
 import type { ActorContext } from '../organisation/organisation.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import {
-  REQUIRE_SEPARATE_OFFICER,
-  SettingsService,
-} from '../settings/settings.service.js';
 import { MemberIdentityService } from './member-identity.service.js';
 import {
   renderRegistrationForm,
@@ -55,7 +46,6 @@ import {
 
 const READ = 'application.read';
 const CREATE = 'member.create';
-const DECIDE = 'application.decide';
 const MEMBER_READ = 'member.read';
 const MEMBER_SUSPEND = 'member.suspend';
 const SENSITIVE_READ = 'member_sensitive.read';
@@ -105,9 +95,11 @@ const GUARANTOR_SELECT = {
  * officer in one branch could read, amend, and approve another branch's
  * applicants — which is the whole personal-data surface of the Union.
  *
- * The applicant is a `member` row in `PENDING` from the outset, and
- * `membership_application` records the review rather than a second copy of the
- * form. See `plans/05-membership-application.md`.
+ * Registering a member makes them active at once (item 61, `QUESTIONS.md`
+ * MEM-20): there is no draft and no review. The member is a `member` row in
+ * `ACTIVE` with a membership number, and `membership_application` is the
+ * registration record: its number, who recorded it, when, and the registering
+ * officer's one correction. See `plans/61-immediate-registration.md`.
  */
 @Injectable()
 export class MembershipService {
@@ -118,7 +110,6 @@ export class MembershipService {
     private readonly permissions: PermissionService,
     private readonly audit: AuditService,
     private readonly media: MediaService,
-    private readonly settings: SettingsService,
     private readonly identity: MemberIdentityService,
   ) {}
 
@@ -381,9 +372,18 @@ export class MembershipService {
       id: application.id,
       applicationNumber: application.applicationNumber,
       status: application.status,
-      submittedAt: application.submittedAt?.toISOString() ?? null,
-      reviewedAt: application.reviewedAt?.toISOString() ?? null,
-      rejectionReason: application.rejectionReason,
+      registeredAt: application.createdAt.toISOString(),
+      registeredBy: application.createdByUser?.fullName ?? null,
+      correction: correctionRight({
+        administrator: await this.permissions.can(
+          userId,
+          MEMBER_UPDATE,
+          // `loadVisible` has already refused an application with no member.
+          application.member!.organisation.path,
+        ),
+        registeredByCaller: application.createdByUserId === userId,
+        correctionUsed: application.correctedAt !== null,
+      }),
       member: {
         id: member.id,
         surname: member.surname,
@@ -454,13 +454,27 @@ export class MembershipService {
       // than everything but the NIN.
       this.identity.assertAvailable();
     }
+    // An asset uploaded as a signature must not become a passport photograph:
+    // the card composites them differently.
+    if (input.passportPhotoId) {
+      await this.media.assertKind(input.passportPhotoId, 'PASSPORT_PHOTOGRAPH');
+    }
+    if (input.signatureId) {
+      await this.media.assertKind(input.signatureId, 'MEMBER_SIGNATURE');
+    }
 
     const created = await this.prisma.$transaction(async (tx) => {
+      // Item 61 (MEM-20): the member is active the moment the registration is
+      // saved, with a number. Both are written in this transaction, so a member
+      // can never be active without a number, or hold one without a record.
+      const membershipNumber = await this.allocateMembershipNumber(tx);
+      const registeredAt = new Date();
       const member = await tx.member.create({
         data: {
-          // No membership number yet: allocated on approval, because somebody
-          // whose application is refused was never a member.
-          status: 'PENDING',
+          status: 'ACTIVE',
+          membershipNumber,
+          ...(input.passportPhotoId ? { passportPhotoId: input.passportPhotoId } : {}),
+          ...(input.signatureId ? { signatureId: input.signatureId } : {}),
           surname: input.applicant.surname,
           firstName: input.applicant.firstName,
           middleName: this.blankToNull(input.applicant.middleName),
@@ -481,18 +495,21 @@ export class MembershipService {
       const application = await tx.membershipApplication.create({
         data: {
           applicationNumber: await this.allocateApplicationNumber(tx),
-          status: 'DRAFT',
+          status: 'APPROVED',
           memberId: member.id,
-          // So that "did one person record this and then approve it" is a
-          // question the database can answer.
+          // Who registered the member: the only record of it, since nobody
+          // reviews a registration, and the one person with a single correction.
           createdByUserId: actor.userId,
+          reviewedByUserId: actor.userId,
+          // The membership fee is owed from here (`DuesService`).
+          reviewedAt: registeredAt,
         },
         select: this.summarySelect(),
       });
 
       await this.audit.record(
         {
-          action: 'application.create',
+          action: 'member.register',
           subjectType: 'membership_application',
           subjectId: application.id,
           organisationId: organisation.id,
@@ -502,7 +519,9 @@ export class MembershipService {
           // then retain for seven years (PRD §22).
           after: {
             applicationNumber: application.applicationNumber,
-            status: 'DRAFT',
+            status: 'APPROVED',
+            memberStatus: 'ACTIVE',
+            membershipNumber,
             memberId: member.id,
             surname: member.surname,
             firstName: member.firstName,
@@ -521,6 +540,14 @@ export class MembershipService {
     return this.toSummary(created);
   }
 
+  /**
+   * The registering officer's one correction (item 61, `QUESTIONS.md` MEM-20).
+   *
+   * An administrator may correct at any time, from the member's page
+   * (`amendRegistration`). The officer who registered the member has **one**
+   * correction, claimed by a conditional `updateMany` so two cannot race; nobody
+   * else has any. A cancelled membership is final and is not corrected.
+   */
   async update(
     actor: ActorContext,
     id: string,
@@ -530,22 +557,83 @@ export class MembershipService {
     const member = await this.loadMemberWithPath(application.memberId);
     await this.require(actor.userId, CREATE, member.organisation.path);
 
-    if (!isApplicationEditable(application.status as ApplicationStatus)) {
-      // Editing a submitted application changes what the reviewer is judging
-      // underneath them, so the decision in the audit trail would refer to
-      // something other than what was decided upon.
+    const right = correctionRight({
+      administrator: await this.permissions.can(
+        actor.userId,
+        MEMBER_UPDATE,
+        member.organisation.path,
+      ),
+      registeredByCaller: application.createdByUserId === actor.userId,
+      correctionUsed: application.correctedAt !== null,
+    });
+    if (right === 'NONE' || member.status === 'CANCELLED') {
       throw new ConflictException(
-        `An application in ${application.status} can no longer be amended.`,
+        'This registration can no longer be corrected by you.',
       );
     }
+
+    return this.correct(actor, {
+      applicationId: id,
+      member,
+      input,
+      destinationPermission: CREATE,
+      claimOnce: right === 'ONCE',
+    });
+  }
+
+  /**
+   * An administrator's correction of a member's registration, at any time
+   * (`PATCH /members/:id/registration`, `member.update`). Not counted: the one
+   * correction belongs to the officer who registered the member.
+   */
+  async amendRegistration(
+    actor: ActorContext,
+    memberId: string,
+    input: UpdateApplicationInput,
+  ): Promise<ApplicationSummary> {
+    const changing = await this.loadForChange(actor.userId, memberId);
+    const application = await this.prisma.membershipApplication.findUnique({
+      where: { memberId },
+      select: { id: true },
+    });
+    if (!application) {
+      throw new ConflictException('This member has no registration to correct.');
+    }
+    const member = await this.loadMemberWithPath(changing.id);
+    return this.correct(actor, {
+      applicationId: application.id,
+      member,
+      input,
+      destinationPermission: MEMBER_UPDATE,
+      claimOnce: false,
+    });
+  }
+
+  /** The correction itself, once the caller's right to make it is settled. */
+  private async correct(
+    actor: ActorContext,
+    options: {
+      applicationId: string;
+      member: {
+        id: string;
+        organisationId: string;
+        status: string;
+        organisation: { path: string; id: string };
+      };
+      input: UpdateApplicationInput;
+      destinationPermission: string;
+      claimOnce: boolean;
+    },
+  ): Promise<ApplicationSummary> {
+    const { applicationId: id, member, input } = options;
 
     if (input.assignment) {
       const destination = await this.loadOrganisation(
         input.assignment.organisationId,
       );
-      // Moving an applicant into another unit needs the permission there too,
-      // for the same reason moving an organisation does.
-      await this.require(actor.userId, CREATE, destination.path);
+      // Moving a member into another unit needs the permission there too, for
+      // the same reason moving an organisation does.
+      await this.require(actor.userId, options.destinationPermission, destination.path);
       await this.assertDesignationExists(input.assignment.designationId);
     }
     if (input.applicant) {
@@ -556,6 +644,18 @@ export class MembershipService {
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      if (options.claimOnce) {
+        const claimed = await tx.membershipApplication.updateMany({
+          where: { id, correctedAt: null, createdByUserId: actor.userId },
+          data: { correctedAt: new Date() },
+        });
+        if (claimed.count === 0) {
+          throw new ConflictException(
+            'This registration can no longer be corrected by you.',
+          );
+        }
+      }
+
       if (input.applicant) {
         await tx.member.update({
           where: { id: member.id },
@@ -599,13 +699,15 @@ export class MembershipService {
 
       await this.audit.record(
         {
-          action: 'application.update',
+          action: 'member.correct',
           subjectType: 'membership_application',
           subjectId: id,
           organisationId: member.organisationId,
           actorUserId: actor.userId,
           after: {
+            // The sections, never their values (Requirement 7.1).
             sectionsAmended: Object.keys(input),
+            usedOneCorrection: options.claimOnce,
             // That a NIN was given, never which (Requirement 7.4).
             ninRecorded: Boolean(input.applicant?.nin),
           },
@@ -619,171 +721,6 @@ export class MembershipService {
         where: { id },
         select: this.summarySelect(),
       });
-    });
-
-    return this.toSummary(updated);
-  }
-
-  /** Attaches an already-uploaded photograph or signature to the applicant. */
-  async attachMedia(
-    actor: ActorContext,
-    id: string,
-    input: AttachMediaInput,
-  ): Promise<ApplicationSummary> {
-    const application = await this.loadVisible(actor.userId, id);
-    const member = await this.loadMemberWithPath(application.memberId);
-    await this.require(actor.userId, CREATE, member.organisation.path);
-
-    if (!isApplicationEditable(application.status as ApplicationStatus)) {
-      throw new ConflictException(
-        `An application in ${application.status} can no longer be amended.`,
-      );
-    }
-
-    // An asset uploaded as a signature must not become a passport photograph:
-    // the card composites them differently and the kinds carry different
-    // retention expectations.
-    if (input.passportPhotoId) {
-      await this.media.assertKind(input.passportPhotoId, 'PASSPORT_PHOTOGRAPH');
-    }
-    if (input.signatureId) {
-      await this.media.assertKind(input.signatureId, 'MEMBER_SIGNATURE');
-    }
-
-    const updated = await this.prisma.$transaction(async (tx) => {
-      await tx.member.update({
-        where: { id: member.id },
-        data: {
-          ...(input.passportPhotoId !== undefined
-            ? { passportPhotoId: input.passportPhotoId }
-            : {}),
-          ...(input.signatureId !== undefined
-            ? { signatureId: input.signatureId }
-            : {}),
-        },
-      });
-
-      await this.audit.record(
-        {
-          action: 'application.attach_media',
-          subjectType: 'membership_application',
-          subjectId: id,
-          organisationId: member.organisationId,
-          actorUserId: actor.userId,
-          after: {
-            passportPhotoId: input.passportPhotoId ?? null,
-            signatureId: input.signatureId ?? null,
-          },
-          requestId: actor.requestId,
-          ipAddress: actor.ipAddress,
-        },
-        tx,
-      );
-
-      return tx.membershipApplication.findUniqueOrThrow({
-        where: { id },
-        select: this.summarySelect(),
-      });
-    });
-
-    return this.toSummary(updated);
-  }
-
-  // --- Workflow ------------------------------------------------------------
-
-  async submit(actor: ActorContext, id: string): Promise<ApplicationSummary> {
-    return this.transition(actor, id, 'SUBMITTED', CREATE, {
-      action: 'application.submit',
-      apply: (data) => ({ ...data, submittedAt: new Date() }),
-    });
-  }
-
-  async withdraw(
-    actor: ActorContext,
-    id: string,
-    input: WithdrawApplicationInput,
-  ): Promise<ApplicationSummary> {
-    return this.transition(actor, id, 'WITHDRAWN', CREATE, {
-      action: 'application.withdraw',
-      reason: input.reason,
-    });
-  }
-
-  /**
-   * Approve or refuse an application.
-   *
-   * Approval is the **only** route from `PENDING` to `ACTIVE`, and the only place
-   * a membership number is allocated. Both happen in the same transaction as the
-   * decision, so a member can never exist in `ACTIVE` without a number, nor hold
-   * a number without an approval recorded against it.
-   */
-  async review(
-    actor: ActorContext,
-    id: string,
-    input: ReviewApplicationInput,
-  ): Promise<ApplicationSummary> {
-    const application = await this.loadVisible(actor.userId, id);
-    const member = await this.loadMemberWithPath(application.memberId);
-    await this.require(actor.userId, DECIDE, member.organisation.path);
-
-    this.assertApplication(
-      application.status as ApplicationStatus,
-      input.decision,
-    );
-    await this.assertSeparateOfficer(
-      actor.userId,
-      application.createdByUserId,
-      'application',
-    );
-
-    const updated = await this.prisma.$transaction(async (tx) => {
-      let membershipNumber: string | null = null;
-
-      if (input.decision === 'APPROVED') {
-        assertMemberTransition(member.status as MemberStatus, 'ACTIVE');
-        membershipNumber = await this.allocateMembershipNumber(tx);
-        await tx.member.update({
-          where: { id: member.id },
-          data: { status: 'ACTIVE', membershipNumber },
-        });
-      }
-
-      const row = await tx.membershipApplication.update({
-        where: { id },
-        data: {
-          status: input.decision,
-          reviewedByUserId: actor.userId,
-          reviewedAt: new Date(),
-          rejectionReason:
-            input.decision === 'REJECTED' ? (input.reason ?? null) : null,
-        },
-        select: this.summarySelect(),
-      });
-
-      await this.audit.record(
-        {
-          action:
-            input.decision === 'APPROVED'
-              ? 'application.approve'
-              : 'application.reject',
-          subjectType: 'membership_application',
-          subjectId: id,
-          organisationId: member.organisationId,
-          actorUserId: actor.userId,
-          reason: input.reason ?? null,
-          before: { status: application.status, memberStatus: member.status },
-          after: {
-            status: input.decision,
-            memberStatus: input.decision === 'APPROVED' ? 'ACTIVE' : member.status,
-            membershipNumber,
-          },
-          requestId: actor.requestId,
-          ipAddress: actor.ipAddress,
-        },
-        tx,
-      );
-
-      return row;
     });
 
     return this.toSummary(updated);
@@ -1139,99 +1076,6 @@ export class MembershipService {
 
   // --- Internals -----------------------------------------------------------
 
-  private async transition(
-    actor: ActorContext,
-    id: string,
-    to: ApplicationStatus,
-    permission: string,
-    options: {
-      action: string;
-      reason?: string;
-      apply?: (data: Prisma.MembershipApplicationUpdateInput) => Prisma.MembershipApplicationUpdateInput;
-    },
-  ): Promise<ApplicationSummary> {
-    const application = await this.loadVisible(actor.userId, id);
-    const member = await this.loadMemberWithPath(application.memberId);
-    await this.require(actor.userId, permission, member.organisation.path);
-
-    this.assertApplication(application.status as ApplicationStatus, to);
-
-    const base: Prisma.MembershipApplicationUpdateInput = { status: to };
-    const data = options.apply ? options.apply(base) : base;
-
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const row = await tx.membershipApplication.update({
-        where: { id },
-        data,
-        select: this.summarySelect(),
-      });
-
-      await this.audit.record(
-        {
-          action: options.action,
-          subjectType: 'membership_application',
-          subjectId: id,
-          organisationId: member.organisationId,
-          actorUserId: actor.userId,
-          reason: options.reason ?? null,
-          before: { status: application.status },
-          after: { status: to },
-          requestId: actor.requestId,
-          ipAddress: actor.ipAddress,
-        },
-        tx,
-      );
-
-      return row;
-    });
-
-    return this.toSummary(updated);
-  }
-
-  /**
-   * Refuses a decision by the officer who recorded the work, when the Union has
-   * asked for a second pair of eyes.
-   *
-   * `member.create` and `application.decide` are separate permissions, but that
-   * separates the *permissions*, not the *people*: one user holding both may do
-   * both, and the super administrator holds both by definition. This is the
-   * control that separates the people, and it is **off by default** pending
-   * QUESTIONS.md MEM-04 — with one administrator account, enforcing it makes a
-   * registration impossible to complete.
-   *
-   * An unknown recorder allows the decision. The System cannot prove the same
-   * person is acting twice, and refusing on a suspicion would strand every
-   * application created before the column existed whose audit event has since
-   * been purged.
-   */
-  private async assertSeparateOfficer(
-    actorUserId: string,
-    recordedByUserId: string | null,
-    noun: string,
-  ): Promise<void> {
-    if (!recordedByUserId || recordedByUserId !== actorUserId) {
-      return;
-    }
-    if (!(await this.settings.isEnabled(REQUIRE_SEPARATE_OFFICER))) {
-      return;
-    }
-    throw new ConflictException(
-      `The officer who recorded this ${noun} may not decide it. ` +
-        'A second officer must act.',
-    );
-  }
-
-  private assertApplication(from: ApplicationStatus, to: ApplicationStatus): void {
-    try {
-      assertApplicationTransition(from, to);
-    } catch (error) {
-      if (error instanceof InvalidStatusTransitionError) {
-        throw new ConflictException(error.message);
-      }
-      throw error;
-    }
-  }
-
   private async readableScopes(
     userId: string,
     permission: string = READ,
@@ -1253,7 +1097,10 @@ export class MembershipService {
   private async loadVisible(userId: string, id: string) {
     const application = await this.prisma.membershipApplication.findUnique({
       where: { id },
-      include: { member: { include: { organisation: { select: { path: true } } } } },
+      include: {
+        member: { include: { organisation: { select: { path: true } } } },
+        createdByUser: { select: { fullName: true } },
+      },
     });
     if (!application?.member) {
       throw new NotFoundException();
@@ -1494,8 +1341,8 @@ export class MembershipService {
       id: true,
       applicationNumber: true,
       status: true,
-      submittedAt: true,
-      reviewedAt: true,
+      createdAt: true,
+      createdByUser: { select: { fullName: true } },
       member: {
         select: {
           id: true,
@@ -1515,8 +1362,8 @@ export class MembershipService {
     id: string;
     applicationNumber: string;
     status: string;
-    submittedAt: Date | null;
-    reviewedAt: Date | null;
+    createdAt: Date;
+    createdByUser: { fullName: string } | null;
     member: ApplicationSummary['member'] | null;
   }): ApplicationSummary {
     if (!row.member) {
@@ -1526,8 +1373,8 @@ export class MembershipService {
       id: row.id,
       applicationNumber: row.applicationNumber,
       status: row.status,
-      submittedAt: row.submittedAt?.toISOString() ?? null,
-      reviewedAt: row.reviewedAt?.toISOString() ?? null,
+      registeredAt: row.createdAt.toISOString(),
+      registeredBy: row.createdByUser?.fullName ?? null,
       member: row.member,
     };
   }

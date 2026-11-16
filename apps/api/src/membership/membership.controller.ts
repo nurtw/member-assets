@@ -17,24 +17,18 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
-  attachMediaSchema,
   createApplicationSchema,
   listMembersQuerySchema,
   removeMemberNinSchema,
-  reviewApplicationSchema,
   setMemberNinSchema,
   setMemberStatusSchema,
   updateApplicationSchema,
-  withdrawApplicationSchema,
-  type AttachMediaInput,
   type CreateApplicationInput,
   type ListMembersQuery,
   type RemoveMemberNinInput,
-  type ReviewApplicationInput,
   type SetMemberNinInput,
   type SetMemberStatusInput,
   type UpdateApplicationInput,
-  type WithdrawApplicationInput,
 } from '@nurtw/contracts';
 import type { Response } from 'express';
 
@@ -119,14 +113,15 @@ export class MembershipController {
   @RequirePermission('member.create')
   @Post()
   @Documented({
-    summary: 'Register an applicant.',
+    summary: 'Register a member.',
     description:
       'Captures all four groups of PRD §7 in one submission — applicant, organisational ' +
       'assignment, next of kin, and guarantor — because the form is completed in one sitting ' +
       'from a paper original, and four endpoints would create four ways to record half of it. ' +
-      'Creates the applicant as a member in `PENDING` with **no membership number**: a number ' +
-      'is allocated on approval, because somebody whose application is refused was never a ' +
-      'member. Authorised against the destination unit’s path.',
+      'Item 61 (MEM-20): the member is **active at once**, with a membership number, in the ' +
+      'same transaction. There is no draft, no submission, and no approval. A photograph or ' +
+      'signature already uploaded to `POST /media` may ride with it. Authorised against the ' +
+      'destination unit’s path.',
     body: createApplicationSchema,
     responses: {
       400: 'The body failed validation. Telephone numbers must be valid Nigerian numbers.',
@@ -148,16 +143,16 @@ export class MembershipController {
   @RequirePermission('member.create')
   @Patch(':id')
   @Documented({
-    summary: 'Amend a draft application.',
+    summary: 'Correct a registration, once, as the officer who recorded it.',
     description:
-      'Only a draft may be amended. Once submitted, the record is what the reviewer is ' +
-      'judging; editing it underneath them would mean the decision recorded in the audit ' +
-      'trail refers to something other than what was decided upon. Moving an applicant to ' +
-      'another unit requires the permission at that unit too.',
+      'Item 61 (MEM-20). The officer who registered the member has **one** correction; an ' +
+      'administrator corrects at any time through `PATCH /members/:id/registration`. Names only ' +
+      'what it changes. Moving a member to another unit requires the permission at that unit ' +
+      'too. Audited with the sections changed, never their values.',
     body: updateApplicationSchema,
     responses: {
       404: 'No such application, or it lies outside the caller’s scope.',
-      409: 'The application is no longer a draft.',
+      409: 'The caller has no correction left, did not register this member, or the membership is cancelled.',
     },
   })
   async update(
@@ -168,106 +163,6 @@ export class MembershipController {
   ) {
     return {
       application: await this.membership.update(this.actor(request), id, body),
-    };
-  }
-
-  @RequirePermission('member.create')
-  @Patch(':id/media')
-  @Documented({
-    summary: 'Attach a photograph or signature to a draft application.',
-    description:
-      'Takes identifiers returned by `POST /media`. An asset uploaded as a signature cannot ' +
-      'be attached as a passport photograph: the card composites them differently.',
-    body: attachMediaSchema,
-    responses: {
-      400: 'No such uploaded file, or it is of the wrong kind.',
-      409: 'The application is no longer a draft.',
-    },
-  })
-  async attachMedia(
-    @Req() request: AuthenticatedRequest,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(attachMediaSchema)) body: AttachMediaInput,
-  ) {
-    return {
-      application: await this.membership.attachMedia(
-        this.actor(request),
-        id,
-        body,
-      ),
-    };
-  }
-
-  @RequirePermission('member.create')
-  @Post(':id/submission')
-  @Documented({
-    summary: 'Submit a draft application for review.',
-    description: 'Draft to submitted. The application becomes read-only.',
-    responses: { 409: 'The application is not a draft.' },
-  })
-  async submit(
-    @Req() request: AuthenticatedRequest,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    return {
-      application: await this.membership.submit(this.actor(request), id),
-    };
-  }
-
-  @RequirePermission('member.create')
-  @Post(':id/withdrawal')
-  @Documented({
-    summary: 'Withdraw an application before a decision.',
-    description:
-      'Available up to the point of decision and not after. Permitting withdrawal afterwards ' +
-      'would let an applicant erase a refusal.',
-    body: withdrawApplicationSchema,
-    responses: { 409: 'A decision has already been recorded.' },
-  })
-  async withdraw(
-    @Req() request: AuthenticatedRequest,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(withdrawApplicationSchema))
-    body: WithdrawApplicationInput,
-  ) {
-    return {
-      application: await this.membership.withdraw(this.actor(request), id, body),
-    };
-  }
-
-  /**
-   * The decision.
-   *
-   * Requires `application.decide`, which registration does not confer: the
-   * officer who records an application is not thereby able to approve it.
-   */
-  @RequirePermission('application.decide')
-  @Post(':id/decision')
-  @Documented({
-    summary: 'Approve or refuse an application.',
-    description:
-      'Approval is the **only** route from `PENDING` to `ACTIVE` and the only place a ' +
-      'membership number is allocated; both happen in the same transaction as the decision, ' +
-      'so a member can never be active without a number nor hold a number without a recorded ' +
-      'approval. A refusal requires a reason and an approval does not — the asymmetry is ' +
-      'deliberate, because a refusal is the decision an applicant may challenge and an ' +
-      'officer will later be asked to justify. Requires `application.decide`, which ' +
-      'registration does not confer.',
-    body: reviewApplicationSchema,
-    responses: {
-      400: 'A refusal was submitted without a reason.',
-      403: 'The caller may not decide applications in that unit.',
-      409: 'The application has already been decided or withdrawn.',
-    },
-  })
-  async review(
-    @Req() request: AuthenticatedRequest,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(reviewApplicationSchema))
-    body: ReviewApplicationInput,
-  ) {
-    return {
-      application: await this.membership.review(this.actor(request), id, body),
     };
   }
 
@@ -399,6 +294,37 @@ export class MemberController {
     return { member: await this.membership.findMember(request.user.id, id) };
   }
 
+  @RequirePermission('member.update')
+  @Patch(':id/registration')
+  @Documented({
+    summary: 'Correct a member’s registration, at any time (administrators).',
+    description:
+      'Item 61 (MEM-20). An administrator holding `member.update` over the member corrects the ' +
+      'registration whenever it is wrong; the officer who recorded it has one correction of ' +
+      'their own (`PATCH /applications/:id`). Names only what it changes. Moving the member to ' +
+      'another unit requires `member.update` there too. Audited with the sections changed, ' +
+      'never their values. A cancelled membership is not corrected.',
+    body: updateApplicationSchema,
+    responses: {
+      404: 'No such member, or they lie outside the caller’s scope.',
+      409: 'The membership is cancelled, or the member has no registration to correct.',
+    },
+  })
+  async amendRegistration(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(updateApplicationSchema))
+    body: UpdateApplicationInput,
+  ) {
+    return {
+      application: await this.membership.amendRegistration(
+        this.actor(request),
+        id,
+        body,
+      ),
+    };
+  }
+
   @RequirePermission('member.suspend')
   @Patch(':id/status')
   @Documented({
@@ -406,8 +332,8 @@ export class MemberController {
     description:
       'Suspension is reversible; cancellation is terminal, because the register must be able ' +
       'to answer "was this person a member on that date", and a cancellation that could be ' +
-      'silently undone defeats that. A pending applicant cannot be suspended — refuse the ' +
-      'application instead. A reason is required and is recorded.',
+      'silently undone defeats that. A member registered by mistake is cancelled here. A ' +
+      'reason is required and is recorded.',
     body: setMemberStatusSchema,
     responses: {
       404: 'No such member, or they lie outside the caller’s scope.',

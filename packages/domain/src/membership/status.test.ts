@@ -1,38 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  APPLICATION_STATUSES,
-  InvalidStatusTransitionError,
   MEMBER_STATUSES,
-  assertApplicationTransition,
   assertMemberTransition,
-  canTransitionApplication,
   canTransitionMember,
-  isApplicationEditable,
-  isApplicationFinal,
+  correctionRight,
   isMemberFinal,
   isMemberInGoodStanding,
 } from './status.js';
 
-/**
- * The legal transitions, written out separately from the implementation.
- *
- * Deliberately a second, independent statement of the rule rather than an import
- * of the table under test — otherwise the exhaustive check below would compare
- * the implementation with itself and pass no matter what it said.
- */
-const LEGAL_APPLICATION: readonly [string, string][] = [
-  ['DRAFT', 'SUBMITTED'],
-  ['DRAFT', 'WITHDRAWN'],
-  ['SUBMITTED', 'UNDER_REVIEW'],
-  ['SUBMITTED', 'APPROVED'],
-  ['SUBMITTED', 'REJECTED'],
-  ['SUBMITTED', 'WITHDRAWN'],
-  ['UNDER_REVIEW', 'APPROVED'],
-  ['UNDER_REVIEW', 'REJECTED'],
-  ['UNDER_REVIEW', 'WITHDRAWN'],
-];
-
+/** The legal member transitions, written out apart from the table under test. */
 const LEGAL_MEMBER: readonly [string, string][] = [
   ['PENDING', 'ACTIVE'],
   ['PENDING', 'CANCELLED'],
@@ -42,74 +19,26 @@ const LEGAL_MEMBER: readonly [string, string][] = [
   ['SUSPENDED', 'CANCELLED'],
 ];
 
-describe('application lifecycle', () => {
-  it('permits exactly the legal transitions and refuses every other pair', () => {
-    const legal = new Set(LEGAL_APPLICATION.map(([a, b]) => `${a}->${b}`));
+describe('who may correct a registration (item 61, MEM-20)', () => {
+  const base = { administrator: false, registeredByCaller: false, correctionUsed: false };
 
-    for (const from of APPLICATION_STATUSES) {
-      for (const to of APPLICATION_STATUSES) {
-        expect(
-          canTransitionApplication(from, to),
-          `${from} -> ${to}`,
-        ).toBe(legal.has(`${from}->${to}`));
-      }
-    }
+  it('lets an administrator correct at any time, however often', () => {
+    expect(correctionRight({ ...base, administrator: true })).toBe('ANYTIME');
+    expect(
+      correctionRight({ ...base, administrator: true, correctionUsed: true }),
+    ).toBe('ANYTIME');
   });
 
-  it('refuses a status transitioning to itself', () => {
-    for (const status of APPLICATION_STATUSES) {
-      expect(canTransitionApplication(status, status)).toBe(false);
-    }
+  it('gives the officer who registered the member one correction', () => {
+    expect(correctionRight({ ...base, registeredByCaller: true })).toBe('ONCE');
+    expect(
+      correctionRight({ ...base, registeredByCaller: true, correctionUsed: true }),
+    ).toBe('NONE');
   });
 
-  it('treats a decision as final', () => {
-    // A withdrawal after a refusal would let an applicant erase the record of it.
-    expect(isApplicationFinal('APPROVED')).toBe(true);
-    expect(isApplicationFinal('REJECTED')).toBe(true);
-    expect(isApplicationFinal('WITHDRAWN')).toBe(true);
-    expect(isApplicationFinal('DRAFT')).toBe(false);
-    expect(isApplicationFinal('SUBMITTED')).toBe(false);
-  });
-
-  it('permits a decision without first claiming the application for review', () => {
-    // A small office approves directly; requiring UNDER_REVIEW first would be a
-    // workflow nobody follows.
-    expect(canTransitionApplication('SUBMITTED', 'APPROVED')).toBe(true);
-    expect(canTransitionApplication('SUBMITTED', 'REJECTED')).toBe(true);
-  });
-
-  it('does not allow a decision to be revisited', () => {
-    expect(canTransitionApplication('REJECTED', 'APPROVED')).toBe(false);
-    expect(canTransitionApplication('APPROVED', 'REJECTED')).toBe(false);
-    expect(canTransitionApplication('WITHDRAWN', 'SUBMITTED')).toBe(false);
-  });
-
-  it('allows editing only in draft', () => {
-    expect(isApplicationEditable('DRAFT')).toBe(true);
-    for (const status of APPLICATION_STATUSES.filter((s) => s !== 'DRAFT')) {
-      expect(isApplicationEditable(status)).toBe(false);
-    }
-  });
-
-  it('names the permitted transitions when it throws', () => {
-    expect(() => assertApplicationTransition('DRAFT', 'APPROVED')).toThrow(
-      InvalidStatusTransitionError,
-    );
-    expect(() => assertApplicationTransition('DRAFT', 'APPROVED')).toThrow(
-      /Permitted: SUBMITTED, WITHDRAWN/,
-    );
-  });
-
-  it('says so plainly when the source status is final', () => {
-    expect(() => assertApplicationTransition('APPROVED', 'DRAFT')).toThrow(
-      /APPROVED is final/,
-    );
-  });
-
-  it('accepts a legal transition silently', () => {
-    expect(() =>
-      assertApplicationTransition('SUBMITTED', 'APPROVED'),
-    ).not.toThrow();
+  it('gives anybody else none', () => {
+    expect(correctionRight(base)).toBe('NONE');
+    expect(correctionRight({ ...base, correctionUsed: true })).toBe('NONE');
   });
 });
 

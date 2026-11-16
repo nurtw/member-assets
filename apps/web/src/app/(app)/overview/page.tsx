@@ -2,7 +2,6 @@
 
 import type {
   ApiClientList,
-  ApplicationSummary,
   CardSummary,
 } from "@nurtw/contracts";
 import {
@@ -148,18 +147,9 @@ function Waiting({
 export default function HomePage() {
   const { user, holds } = useSession();
   const [assigning, setAssigning] = useState(false);
-  const readsApplications = holds("application.read");
   const readsCards = holds("card.read");
   const readsOrganisations = holds("api_client.read");
 
-  const submitted = useSWR<{ applications: ApplicationSummary[] }>(
-    readsApplications ? "/applications?status=SUBMITTED" : null,
-    fetcher,
-  );
-  const underReview = useSWR<{ applications: ApplicationSummary[] }>(
-    readsApplications ? "/applications?status=UNDER_REVIEW" : null,
-    fetcher,
-  );
   const cardsToApprove = useSWR<{ cards: CardSummary[] }>(
     readsCards ? "/cards?status=PENDING_APPROVAL" : null,
     fetcher,
@@ -173,22 +163,15 @@ export default function HomePage() {
     fetcher,
   );
 
-  const applicationsWaiting =
-    submitted.data && underReview.data
-      ? submitted.data.applications.length +
-        underReview.data.applications.length
-      : undefined;
   const clients = organisations.data?.clients;
   const counts = [
-    applicationsWaiting,
     cardsToApprove.data?.cards.length,
     cardsToCollect.data?.cards.length,
     clients?.filter((client) => client.status === "PENDING").length,
     clients?.filter((client) => client.currentToken?.expiringSoon).length,
   ];
-  const reads = readsApplications || readsCards || readsOrganisations;
+  const reads = readsCards || readsOrganisations;
   const loaded =
-    (!readsApplications || applicationsWaiting !== undefined) &&
     (!readsCards || (cardsToApprove.data && cardsToCollect.data)) &&
     (!readsOrganisations || clients);
   const nothingWaiting = loaded && counts.every((count) => !count);
@@ -301,30 +284,24 @@ export default function HomePage() {
             <ul className="flex flex-wrap gap-2">
               <Waiting
                 count={counts[0]}
-                one="application to decide"
-                many="applications to decide"
-                href="/applications"
-              />
-              <Waiting
-                count={counts[1]}
                 one="card to approve"
                 many="cards to approve"
                 href="/cards"
               />
               <Waiting
-                count={counts[2]}
+                count={counts[1]}
                 one="card to hand over"
                 many="cards to hand over"
                 href="/cards"
               />
               <Waiting
-                count={counts[3]}
+                count={counts[2]}
                 one="organisation to decide"
                 many="organisations to decide"
                 href="/organisations"
               />
               <Waiting
-                count={counts[4]}
+                count={counts[3]}
                 one="token to replace soon"
                 many="tokens to replace soon"
                 href="/organisations"

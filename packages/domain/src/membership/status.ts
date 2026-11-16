@@ -1,7 +1,7 @@
 /**
- * Status lifecycles for membership applications and members.
+ * Status lifecycle for members, and who may correct a registration.
  *
- * PRD §7 (review and approval) and §16. Domain rule 5 — history is preserved:
+ * PRD §7 and §16. Domain rule 5 — history is preserved:
  * nothing here deletes, and a terminal state is reached rather than erased.
  *
  * Expressed as explicit transition tables rather than as `if` statements spread
@@ -36,31 +36,10 @@ export class InvalidStatusTransitionError extends Error {
 }
 
 /**
- * Application transitions.
- *
- * `UNDER_REVIEW` is reachable only from `SUBMITTED`, and a decision only from
- * `UNDER_REVIEW` or `SUBMITTED` — an approver may decide directly without first
- * claiming the application, which is how a small office actually works.
- *
- * `WITHDRAWN` is available up to the point of decision and not after. A decision
- * is a record of what the Union determined; permitting withdrawal afterwards
- * would let an applicant erase a refusal.
- */
-const APPLICATION_TRANSITIONS: Readonly<
-  Record<ApplicationStatus, readonly ApplicationStatus[]>
-> = {
-  DRAFT: ['SUBMITTED', 'WITHDRAWN'],
-  SUBMITTED: ['UNDER_REVIEW', 'APPROVED', 'REJECTED', 'WITHDRAWN'],
-  UNDER_REVIEW: ['APPROVED', 'REJECTED', 'WITHDRAWN'],
-  APPROVED: [],
-  REJECTED: [],
-  WITHDRAWN: [],
-};
-
-/**
  * Member transitions.
  *
- * `PENDING → ACTIVE` is the approval of an application and has no other cause.
+ * `PENDING` is no longer created (item 61): a registration is active at once. It remains
+ * in the enum for rows registered before then.
  * Suspension is reversible; cancellation is not. `CANCELLED` is terminal because
  * a cancelled membership that could be silently restored would make the register
  * unable to answer "was this person a member on that date".
@@ -99,20 +78,6 @@ function assert<T extends string>(
   );
 }
 
-export function canTransitionApplication(
-  from: ApplicationStatus,
-  to: ApplicationStatus,
-): boolean {
-  return can(APPLICATION_TRANSITIONS, from, to);
-}
-
-export function assertApplicationTransition(
-  from: ApplicationStatus,
-  to: ApplicationStatus,
-): void {
-  assert(APPLICATION_TRANSITIONS, from, to, 'application');
-}
-
 export function canTransitionMember(
   from: MemberStatus,
   to: MemberStatus,
@@ -127,24 +92,35 @@ export function assertMemberTransition(
   assert(MEMBER_TRANSITIONS, from, to, 'member');
 }
 
-/** Statuses from which no further transition is possible. */
-export function isApplicationFinal(status: ApplicationStatus): boolean {
-  return APPLICATION_TRANSITIONS[status].length === 0;
-}
-
 export function isMemberFinal(status: MemberStatus): boolean {
   return MEMBER_TRANSITIONS[status].length === 0;
 }
 
 /**
- * Whether an application may still be edited.
+ * Who may correct a member's registration after it is saved (item 61,
+ * `QUESTIONS.md` MEM-20, answered 16 November 2026; the same shape as VEH-40).
  *
- * Only a draft. Once submitted, the record is what the reviewer is judging;
- * editing it underneath them would mean the decision recorded in the audit trail
- * refers to something other than what was decided upon.
+ * There is no draft and no review: registering makes the member active at once.
+ * An administrator (`member.update`) corrects at any time. The officer who
+ * registered the member has **one** correction, and nobody else has any.
  */
-export function isApplicationEditable(status: ApplicationStatus): boolean {
-  return status === 'DRAFT';
+export type CorrectionRight = 'ANYTIME' | 'ONCE' | 'NONE';
+
+export function correctionRight(input: {
+  /** Holds `member.update` over the member. */
+  administrator: boolean;
+  /** Is the officer who registered this member. */
+  registeredByCaller: boolean;
+  /** The registering officer's one correction is already used. */
+  correctionUsed: boolean;
+}): CorrectionRight {
+  if (input.administrator) {
+    return 'ANYTIME';
+  }
+  if (input.registeredByCaller && !input.correctionUsed) {
+    return 'ONCE';
+  }
+  return 'NONE';
 }
 
 /**

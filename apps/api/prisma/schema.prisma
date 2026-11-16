@@ -522,10 +522,14 @@ model MembershipApplication {
   /// have no creator recorded on the row; those are backfilled from the audit
   /// trail where the event survives, and stay null where it does not.
   ///
-  /// Whether a *different* officer must decide is a runtime setting
-  /// (`approval.require_separate_officer`), off by default pending
-  /// QUESTIONS.md MEM-04.
+  /// Item 61 (MEM-20): a registration is approved at once, by the officer who
+  /// recorded it, so there is no second officer to separate. `createdByUserId`
+  /// is now also the one person who gets a single correction (`correctedAt`).
   createdByUserId String? @map("created_by_user_id") @db.Uuid
+
+  /// When the registering officer used their one correction (item 61). An
+  /// administrator's corrections are not counted: they may correct at any time.
+  correctedAt DateTime? @map("corrected_at")
 
   submittedAt      DateTime? @map("submitted_at")
   reviewedByUserId String?   @map("reviewed_by_user_id") @db.Uuid

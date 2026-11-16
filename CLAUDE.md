@@ -489,21 +489,29 @@ the public surface grows beyond the routes it names.
 Validation errors are the **only** responses carrying detail beyond the generic message.
 That is sound: `details` describes the request the caller just sent, never the record set.
 
-### Membership registration (item 05)
+### Membership registration (item 05, changed by item 61)
 
-- **A membership number is allocated on approval, never earlier.** `membershipNumber` is
-  nullable; somebody whose application was refused was never a member, and a number in the
-  register that identifies no member states something untrue. Approval is the **only** route
-  from `PENDING` to `ACTIVE`, and both happen in one transaction.
-- **`member.create` does not confer `application.decide`**, and `card.issue` does not confer
-  `card.approve`. Keep those separate.
-
-  **This separates the permissions, not the people.** Nothing stops one user who holds both
-  from recording an application and then deciding it — and the super administrator holds
-  both by definition. `membership_application.createdByUserId` records who recorded it, and a
-  runtime setting (`approval.require_separate_officer`) can refuse a decision by that same
-  person — but it ships **off**, pending `QUESTIONS.md` **MEM-04**. Until it is turned on, do
-  not describe this as a segregation-of-duties control, because it is not one.
+- **Registering makes the member active at once** (item 61, PRD revision 1.20,
+  `QUESTIONS.md` MEM-20). `MembershipService.create` writes the member `ACTIVE` with its
+  membership number, and the `membership_application` row already `APPROVED` (with
+  `reviewedAt` set to now, which is when the membership fee falls due), in one transaction,
+  audited as `member.register`. There is no draft, no submission, no withdrawal, no
+  decision, and no `application.decide` or `application.review` permission. A photograph
+  or signature already uploaded rides in the create body (`passportPhotoId`,
+  `signatureId`).
+- **`membership_application` is the registration record.** `createdByUserId` is who
+  registered the member, and `correctedAt` marks the registering officer's one correction.
+  `approval.require_separate_officer` is no longer read for registration (cards still read
+  it). Never describe a registration as reviewed.
+- **Corrections** (`correctionRight` in `packages/domain`): an administrator
+  (`member.update`) corrects at any time through `PATCH /members/:id/registration`; the
+  officer who registered the member has **one**, through `PATCH /applications/:id`, claimed
+  by a conditional `updateMany` on `correctedAt` so two cannot race; nobody else has any.
+  Audited as `member.correct` with the sections changed, never their values. A cancelled
+  membership is not corrected. A member registered by mistake is cancelled with a reason.
+- **`activate:open-applications`** (`apps/api/scripts/activate-open-applications/`) made the
+  applications that were open when this changed into active members. Dry run by default;
+  `--execute --confirm <N>`; run on Neon only with the owner's go-ahead.
 - **A guarantor is optional, not compulsory** (`QUESTIONS.md` **MEM-06**, answered). The
   `createApplicationSchema.guarantor` field is optional; `Member.guarantor` is an optional
   1:1 relation and the create path omits the nested `create` entirely when none is supplied.

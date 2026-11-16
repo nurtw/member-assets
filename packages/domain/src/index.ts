@@ -87,15 +87,13 @@ export {
   APPLICATION_STATUSES,
   InvalidStatusTransitionError,
   MEMBER_STATUSES,
-  assertApplicationTransition,
   assertMemberTransition,
-  canTransitionApplication,
   canTransitionMember,
-  isApplicationEditable,
-  isApplicationFinal,
+  correctionRight,
   isMemberFinal,
   isMemberInGoodStanding,
   type ApplicationStatus,
+  type CorrectionRight,
   type MemberStatus,
 } from './membership/status.js';
 

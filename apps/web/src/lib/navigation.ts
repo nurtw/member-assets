@@ -82,7 +82,7 @@ export const OFFICER_NAVIGATION: readonly NavGroup[] = [
     items: [
       {
         href: "/applications",
-        label: "Applications",
+        label: "Registrations",
         icon: "applications",
         permissions: ["application.read"],
       },

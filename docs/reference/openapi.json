@@ -4223,8 +4223,8 @@
         }
       },
       "post": {
-        "summary": "Register an applicant.",
-        "description": "Captures all four groups of PRD §7 in one submission — applicant, organisational assignment, next of kin, and guarantor — because the form is completed in one sitting from a paper original, and four endpoints would create four ways to record half of it. Creates the applicant as a member in `PENDING` with **no membership number**: a number is allocated on approval, because somebody whose application is refused was never a member. Authorised against the destination unit’s path.\n\n**Permission required:** `member.create`.",
+        "summary": "Register a member.",
+        "description": "Captures all four groups of PRD §7 in one submission — applicant, organisational assignment, next of kin, and guarantor — because the form is completed in one sitting from a paper original, and four endpoints would create four ways to record half of it. Item 61 (MEM-20): the member is **active at once**, with a membership number, in the same transaction. There is no draft, no submission, and no approval. A photograph or signature already uploaded to `POST /media` may ride with it. Authorised against the destination unit’s path.\n\n**Permission required:** `member.create`.",
         "operationId": "MembershipController_create",
         "tags": [
           "Membership"
@@ -4375,6 +4375,16 @@
                       "phone",
                       "address"
                     ]
+                  },
+                  "passportPhotoId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "signatureId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   }
                 },
                 "required": [
@@ -4851,8 +4861,8 @@
         }
       },
       "patch": {
-        "summary": "Amend a draft application.",
-        "description": "Only a draft may be amended. Once submitted, the record is what the reviewer is judging; editing it underneath them would mean the decision recorded in the audit trail refers to something other than what was decided upon. Moving an applicant to another unit requires the permission at that unit too.\n\n**Permission required:** `member.create`.",
+        "summary": "Correct a registration, once, as the officer who recorded it.",
+        "description": "Item 61 (MEM-20). The officer who registered the member has **one** correction; an administrator corrects at any time through `PATCH /members/:id/registration`. Names only what it changes. Moving a member to another unit requires the permission at that unit too. Audited with the sections changed, never their values.\n\n**Permission required:** `member.create`.",
         "operationId": "MembershipController_update",
         "tags": [
           "Membership"
@@ -5187,276 +5197,7 @@
             }
           },
           "409": {
-            "description": "The application is no longer a draft.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/applications/{id}/decision": {
-      "post": {
-        "summary": "Approve or refuse an application.",
-        "description": "Approval is the **only** route from `PENDING` to `ACTIVE` and the only place a membership number is allocated; both happen in the same transaction as the decision, so a member can never be active without a number nor hold a number without a recorded approval. A refusal requires a reason and an approval does not — the asymmetry is deliberate, because a refusal is the decision an applicant may challenge and an officer will later be asked to justify. Requires `application.decide`, which registration does not confer.\n\n**Permission required:** `application.decide`.",
-        "operationId": "MembershipController_review",
-        "tags": [
-          "Membership"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "decision": {
-                    "type": "string",
-                    "enum": [
-                      "APPROVED",
-                      "REJECTED"
-                    ]
-                  },
-                  "reason": {
-                    "type": "string",
-                    "maxLength": 1000
-                  }
-                },
-                "required": [
-                  "decision"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created."
-          },
-          "400": {
-            "description": "A refusal was submitted without a reason.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "No valid session cookie was presented.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The caller may not decide applications in that unit.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The application has already been decided or withdrawn.",
+            "description": "The caller has no correction left, did not register this member, or the membership is cancelled.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5645,682 +5386,6 @@
           },
           "404": {
             "description": "No such application, or it lies outside the caller’s scope.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/applications/{id}/media": {
-      "patch": {
-        "summary": "Attach a photograph or signature to a draft application.",
-        "description": "Takes identifiers returned by `POST /media`. An asset uploaded as a signature cannot be attached as a passport photograph: the card composites them differently.\n\n**Permission required:** `member.create`.",
-        "operationId": "MembershipController_attachMedia",
-        "tags": [
-          "Membership"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "passportPhotoId": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "signatureId": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "format": "uuid",
-                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful response."
-          },
-          "400": {
-            "description": "No such uploaded file, or it is of the wrong kind.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "No valid session cookie was presented.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The session does not hold member.create in the relevant scope.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The application is no longer a draft.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/applications/{id}/submission": {
-      "post": {
-        "summary": "Submit a draft application for review.",
-        "description": "Draft to submitted. The application becomes read-only.\n\n**Permission required:** `member.create`.",
-        "operationId": "MembershipController_submit",
-        "tags": [
-          "Membership"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created."
-          },
-          "401": {
-            "description": "No valid session cookie was presented.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The session does not hold member.create in the relevant scope.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The application is not a draft.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/applications/{id}/withdrawal": {
-      "post": {
-        "summary": "Withdraw an application before a decision.",
-        "description": "Available up to the point of decision and not after. Permitting withdrawal afterwards would let an applicant erase a refusal.\n\n**Permission required:** `member.create`.",
-        "operationId": "MembershipController_withdraw",
-        "tags": [
-          "Membership"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "reason": {
-                    "type": "string",
-                    "minLength": 4,
-                    "maxLength": 1000
-                  }
-                },
-                "required": [
-                  "reason"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created."
-          },
-          "401": {
-            "description": "No valid session cookie was presented.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "The session does not hold member.create in the relevant scope.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "A decision has already been recorded.",
             "content": {
               "application/json": {
                 "schema": {
@@ -15427,10 +14492,404 @@
         }
       }
     },
+    "/api/v1/members/{id}/registration": {
+      "patch": {
+        "summary": "Correct a member’s registration, at any time (administrators).",
+        "description": "Item 61 (MEM-20). An administrator holding `member.update` over the member corrects the registration whenever it is wrong; the officer who recorded it has one correction of their own (`PATCH /applications/:id`). Names only what it changes. Moving the member to another unit requires `member.update` there too. Audited with the sections changed, never their values. A cancelled membership is not corrected.\n\n**Permission required:** `member.update`.",
+        "operationId": "MemberController_amendRegistration",
+        "tags": [
+          "Member"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "applicant": {
+                    "type": "object",
+                    "properties": {
+                      "surname": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      "firstName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      "middleName": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 80
+                          },
+                          {
+                            "type": "string",
+                            "const": ""
+                          }
+                        ]
+                      },
+                      "residentialAddress": {
+                        "type": "string",
+                        "minLength": 4,
+                        "maxLength": 400
+                      },
+                      "area": {
+                        "type": "string",
+                        "maxLength": 120
+                      },
+                      "townCity": {
+                        "type": "string",
+                        "maxLength": 120
+                      },
+                      "residentialLgaId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "stateOfOrigin": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 60
+                      },
+                      "phone": {
+                        "type": "string"
+                      },
+                      "nin": {
+                        "type": "string"
+                      },
+                      "signedOn": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      }
+                    },
+                    "required": [
+                      "surname",
+                      "firstName",
+                      "residentialAddress",
+                      "phone"
+                    ]
+                  },
+                  "assignment": {
+                    "type": "object",
+                    "properties": {
+                      "organisationId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "designationId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      }
+                    },
+                    "required": [
+                      "organisationId"
+                    ]
+                  },
+                  "nextOfKin": {
+                    "type": "object",
+                    "properties": {
+                      "fullName": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 200
+                      },
+                      "phone": {
+                        "type": "string"
+                      },
+                      "address": {
+                        "type": "string",
+                        "maxLength": 400
+                      },
+                      "signedOn": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      }
+                    },
+                    "required": [
+                      "fullName",
+                      "phone"
+                    ]
+                  },
+                  "guarantor": {
+                    "type": "object",
+                    "properties": {
+                      "fullName": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 200
+                      },
+                      "phone": {
+                        "type": "string"
+                      },
+                      "address": {
+                        "type": "string",
+                        "minLength": 4,
+                        "maxLength": 400
+                      },
+                      "signedOn": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      }
+                    },
+                    "required": [
+                      "fullName",
+                      "phone",
+                      "address"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The session does not hold member.update in the relevant scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such member, or they lie outside the caller’s scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The membership is cancelled, or the member has no registration to correct.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/members/{id}/status": {
       "patch": {
         "summary": "Suspend, restore, or cancel a member.",
-        "description": "Suspension is reversible; cancellation is terminal, because the register must be able to answer \"was this person a member on that date\", and a cancellation that could be silently undone defeats that. A pending applicant cannot be suspended — refuse the application instead. A reason is required and is recorded.\n\n**Permission required:** `member.suspend`.",
+        "description": "Suspension is reversible; cancellation is terminal, because the register must be able to answer \"was this person a member on that date\", and a cancellation that could be silently undone defeats that. A member registered by mistake is cancelled here. A reason is required and is recorded.\n\n**Permission required:** `member.suspend`.",
         "operationId": "MemberController_setStatus",
         "tags": [
           "Member"
@@ -25623,7 +25082,7 @@
                   },
                   "permissions": {
                     "minItems": 1,
-                    "maxItems": 59,
+                    "maxItems": 57,
                     "type": "array",
                     "items": {
                       "type": "string"
@@ -26591,7 +26050,7 @@
                   },
                   "permissions": {
                     "minItems": 1,
-                    "maxItems": 59,
+                    "maxItems": 57,
                     "type": "array",
                     "items": {
                       "type": "string"

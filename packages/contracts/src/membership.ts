@@ -241,11 +241,21 @@ export const createApplicationSchema = z.object({
   nextOfKin: nextOfKinSchema,
   // MEM-06: a guarantor is not compulsory.
   guarantor: guarantorSchema.optional(),
+  /**
+   * A photograph or signature already uploaded to `POST /media`. Registration is
+   * one act since item 61 (MEM-20): the member is active the moment it is saved,
+   * so these ride with it. A photograph is changed later on the member's record.
+   */
+  passportPhotoId: uuid.optional(),
+  signatureId: uuid.optional(),
 });
 
 export type CreateApplicationInput = z.infer<typeof createApplicationSchema>;
 
-/** Every group is optional on amendment; a draft is edited section by section. */
+/**
+ * A correction to a saved registration (item 61, MEM-20). Every group is
+ * optional, so a correction names only what it changes.
+ */
 export const updateApplicationSchema = z
   .object({
     applicant: applicantSchema.optional(),
@@ -258,50 +268,6 @@ export const updateApplicationSchema = z
   });
 
 export type UpdateApplicationInput = z.infer<typeof updateApplicationSchema>;
-
-/** Attaching a photograph or signature already uploaded to the media endpoint. */
-export const attachMediaSchema = z.object({
-  passportPhotoId: uuid.nullable().optional(),
-  signatureId: uuid.nullable().optional(),
-});
-
-export type AttachMediaInput = z.infer<typeof attachMediaSchema>;
-
-// --- Review ------------------------------------------------------------------
-
-export const APPLICATION_DECISIONS = ['APPROVED', 'REJECTED'] as const;
-export type ApplicationDecision = (typeof APPLICATION_DECISIONS)[number];
-
-/**
- * A decision on an application.
- *
- * A refusal requires a reason and an approval does not. The asymmetry is
- * deliberate: a refusal is the decision an applicant may challenge and the one
- * an officer will later be asked to justify.
- */
-export const reviewApplicationSchema = z
-  .object({
-    decision: z.enum(APPLICATION_DECISIONS),
-    reason: z.string().trim().max(1000).optional(),
-  })
-  .refine(
-    (value) =>
-      value.decision !== 'REJECTED' || (value.reason?.length ?? 0) >= 4,
-    {
-      message: 'A reason is required when refusing an application.',
-      path: ['reason'],
-    },
-  );
-
-export type ReviewApplicationInput = z.infer<typeof reviewApplicationSchema>;
-
-export const withdrawApplicationSchema = z.object({
-  reason: z.string().trim().min(4, 'A reason is required.').max(1000),
-});
-
-export type WithdrawApplicationInput = z.infer<
-  typeof withdrawApplicationSchema
->;
 
 /** Changing a member's status after approval (suspend, restore, cancel). */
 export const setMemberStatusSchema = z.object({
@@ -370,8 +336,10 @@ export interface ApplicationSummary {
   id: string;
   applicationNumber: string;
   status: string;
-  submittedAt: string | null;
-  reviewedAt: string | null;
+  /** When the registration was saved. */
+  registeredAt: string;
+  /** The officer who registered the member, or null where it was not recorded. */
+  registeredBy: string | null;
   member: {
     id: string;
     surname: string;
@@ -386,7 +354,12 @@ export interface ApplicationSummary {
 
 /** The full record, returned only from the registration endpoints. */
 export interface ApplicationDetail extends ApplicationSummary {
-  rejectionReason: string | null;
+  /**
+   * What the caller may do about a wrong detail (item 61): `ANYTIME` for an
+   * administrator, `ONCE` for the officer who registered the member and has not
+   * yet corrected it, `NONE` otherwise.
+   */
+  correction: 'ANYTIME' | 'ONCE' | 'NONE';
   contact: {
     phone: string;
     residentialAddress: string;

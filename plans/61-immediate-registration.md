@@ -48,9 +48,9 @@ suites that submit and approve to make members), `apps/web` applications and mem
 The imported-vehicle edit window (62), the onboarding report (66), the dashboards (67).
 
 ## Definition of done
-- [ ] Registering creates an active member with a number, in one transaction, audited.
-- [ ] No route submits, withdraws, or decides; `application.decide` is gone from catalogue and roles.
-- [ ] An administrator amends at any time; the registering officer once; nobody else; audited.
-- [ ] The command's dry run lists the 10; `--execute` is run only with the owner's go-ahead.
-- [ ] Every suite that made members by approving is updated; typecheck, lint, e2e pass.
-- [ ] PRD, `CLAUDE.md`, `openapi.json`, and `OPERATIONS.md` amended.
+- [x] Registering creates an active member with a number, in one transaction, audited.
+- [x] No route submits, withdraws, or decides; `application.decide` is gone from catalogue and roles.
+- [x] An administrator amends at any time; the registering officer once; nobody else; audited.
+- [ ] The command's dry run lists the 10; `--execute` is run only with the owner's go-ahead. (Built and tested; not yet run on Neon.)
+- [x] Every suite that made members by approving is updated; typecheck, lint, e2e pass.
+- [x] PRD, `CLAUDE.md`, `openapi.json`, and `OPERATIONS.md` amended.

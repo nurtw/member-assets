@@ -48,7 +48,7 @@ them, issued API credentials, and assigned explicit permissions.
 
 ### 2.1 In scope
 
-- Member registration, review, and approval.
+- Member registration. A member is active at once (revision 1.20).
 - Organisational hierarchy: council, zone, branch, and unit.
 - Vehicle declaration and association with a member or transport unit.
 - Membership card design, issuance, replacement, and status management.
@@ -222,7 +222,14 @@ set out in `docs/National_Union_of_Road_Transport_Workers_(NURTW).md` and is inc
 here by reference.
 
 Four data groups are captured: **applicant**, **organisational assignment**, **next of
-kin**, and **guarantor**, together with a **review and approval** record.
+kin**, and **guarantor**, together with a **registration** record: who registered the member,
+and when. *Revision 1.20 (MEM-20):* **registering makes the member active at once**, with a
+membership number, in one act. There is no draft, no review, and no approval, so no
+`application.decide` permission and no second officer; the audit trail and the registration
+record show who registered a member. **A wrong detail is corrected afterwards: an
+administrator (`member.update`) at any time, and the officer who registered the member once.**
+A member registered by mistake is cancelled with a reason. The open applications of the
+earlier flow were made active members by a one-off command.
 
 **Requirement 7.1.** Sensitive registration data — next-of-kin details, guarantor details,
 signatures, collateral responses, telephone numbers, residential addresses, and *(revision
@@ -1521,7 +1528,8 @@ it is first set.
 - **The levy** falls due per vehicle on the 1st of each calendar month, starting with the
   month after the vehicle is onboarded, with no proration.
 - **The membership fee** covers the member for 12 months from the date it is paid. It first
-  falls due on approval, or on the go-live date for a member migrated before it.
+  falls due on registration (revision 1.20; formerly approval), or on the go-live date for a
+  member migrated before it.
 - Nothing is owed for any earlier period. Legacy balances are neither honoured nor
   migrated. Unpaid dues accumulate from the start dates onwards.
 - *Revision 1.4* (PAY-18). **A membership fee paid while cover is running adds 12 months to

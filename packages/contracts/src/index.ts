@@ -190,10 +190,8 @@ export {
 } from './permissions.js';
 
 export {
-  APPLICATION_DECISIONS,
   MEMBER_LIST_MAXIMUM,
   applicantSchema,
-  attachMediaSchema,
   createApplicationSchema,
   guarantorSchema,
   listMembersQuerySchema,
@@ -201,16 +199,12 @@ export {
   ninSchema,
   organisationalAssignmentSchema,
   removeMemberNinSchema,
-  reviewApplicationSchema,
   setMemberNinSchema,
   setMemberStatusSchema,
   updateApplicationSchema,
-  withdrawApplicationSchema,
   type ApplicantInput,
-  type ApplicationDecision,
   type ApplicationDetail,
   type ApplicationSummary,
-  type AttachMediaInput,
   type CreateApplicationInput,
   type GuarantorInput,
   type ListMembersQuery,
@@ -225,11 +219,9 @@ export {
   type RegistrationNextOfKin,
   type RegistrationPerson,
   type RemoveMemberNinInput,
-  type ReviewApplicationInput,
   type SetMemberNinInput,
   type SetMemberStatusInput,
   type UpdateApplicationInput,
-  type WithdrawApplicationInput,
 } from './membership.js';
 
 export {
