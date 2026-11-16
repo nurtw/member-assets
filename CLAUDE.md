@@ -1087,7 +1087,12 @@ per-address limits were shared by everyone (19 October 2026).
 Declaring (`vehicle.declare`) needs no field and any status but retired or archived:
 `statusOnDeclaring` makes a vehicle on record ACTIVE and leaves a suspended or disputed one
 as it is. A declared vehicle is one with `declaredAt`; a disputed row is created with none
-(migration `20261116130000_disputed_not_declared` cleared the existing ones). This holds on every route and screen, not only the Verify page.
+(migration `20261116130000_disputed_not_declared` cleared the existing ones).
+Undeclaring (item 60, `VehicleService.undeclare`, `POST /vehicles/:id/undeclare`) clears
+`declaredAt` and, for an active vehicle, returns it to `ON_RECORD` (`statusOnUndeclaring`);
+a suspended or disputed one keeps its status. It needs a reason, checks scope before status,
+and is audited as `vehicle.undeclare`. The external total counts from the new `declaredAt`
+only when it is declared again. This holds on every route and screen, not only the Verify page.
 
 - `VehicleSummary.status` and `declaredAt` are optional. `VehicleService.toSummary` takes
   `showDeclaration` and leaves both out otherwise. Never return them any other way.

@@ -404,7 +404,11 @@ granted.** Only the super administrator therefore sees, makes, or undoes a decla
 *Revision 1.20 (VEH-38):* **declaring needs nothing but the vehicle**, from any status but
 retired or archived. A vehicle on record becomes active; a suspended or disputed one keeps
 its status. A disputed claim carries no declared date until it is declared. Assigning a
-driver and attaching a sticker need no declaration.
+driver and attaching a sticker need no declaration. *Revision 1.20 (VEH-39, item 60):* **a
+declared vehicle can be undeclared**, by the super administrator, with a reason. It stops
+counting in the external total and changes nothing else: an active vehicle returns to on
+record, a suspended or disputed one keeps its status, its sticker still verifies, and its
+history is kept. Declaring it again counts it from the new date only.
 
 **Requirement 9A.2 — onboarding.** A vehicle is onboarded when a sticker is attached to it
 following a payment of the onboarding fee that Paystack has confirmed (§27). For a vehicle

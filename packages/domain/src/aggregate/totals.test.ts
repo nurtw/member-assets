@@ -52,6 +52,16 @@ describe('which vehicle counts (Requirement 13.5)', () => {
     expect(isCountedAt(vehicle(), at('2026-09-02T09:00:00Z'))).toBe(true);
   });
 
+  it('counts an undeclared vehicle in no period, and once declared again only from the new date (item 60)', () => {
+    const undeclared = vehicle({ status: 'ON_RECORD', declaredAt: null });
+    expect(isCountedAt(undeclared, NOW)).toBe(false);
+    expect(isCountedAt(undeclared, at('2026-09-15T00:00:00Z'))).toBe(false);
+
+    const again = vehicle({ declaredAt: at('2026-10-02T09:00:00Z') });
+    expect(isCountedAt(again, at('2026-09-15T00:00:00Z'))).toBe(false);
+    expect(isCountedAt(again, NOW)).toBe(true);
+  });
+
   it('counts a retired vehicle only before its retirement', () => {
     const retired = vehicle({
       status: 'RETIRED',

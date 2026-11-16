@@ -40,9 +40,9 @@ on its sticker, its history stays, and it may be declared again. Never a delete.
 Bulk declaration and undeclaration (63), the edit window (62), the dashboard counts (64).
 
 ## Definition of done
-- [ ] An active vehicle is undeclared to on record, uncounted, and still verifies on its sticker.
-- [ ] A suspended vehicle stays suspended; retired and archived refuse; an undeclared vehicle refuses.
-- [ ] A reason is required; the audit event records it; nothing is deleted.
-- [ ] Only a holder of `vehicle.declare` can; an out-of-scope vehicle answers 404.
-- [ ] Declaring again works and counts from the new date; the external total moves both ways.
-- [ ] PRD, `CLAUDE.md`, `openapi.json` updated; typecheck, lint, e2e pass.
+- [x] An active vehicle is undeclared to on record, uncounted, and still verifies on its sticker.
+- [x] A suspended vehicle stays suspended; retired and archived refuse; an undeclared vehicle refuses.
+- [x] A reason is required; the audit event records it; nothing is deleted.
+- [x] Only a holder of `vehicle.declare` can; an out-of-scope vehicle answers 404.
+- [x] Declaring again works and counts from the new date; the external total moves both ways.
+- [x] PRD, `CLAUDE.md`, `openapi.json` updated; typecheck, lint, e2e pass.

@@ -576,6 +576,134 @@ describe('Vehicle declaration (e2e)', () => {
     });
   });
 
+  describe('undeclaring (item 60, VEH-39)', () => {
+    function undeclare(id: string, body: Record<string, unknown>, who = 'declarer') {
+      return request(server)
+        .post(`/api/v1/vehicles/${id}/undeclare`)
+        .set('Cookie', cookies[who]!)
+        .send(body);
+    }
+
+    it('returns an active vehicle to on record, uncounted, with the reason audited', async () => {
+      const created = await declare({ plateNumberDisplay: plate('UD1') }).expect(
+        201,
+      );
+      const id = created.body.vehicle.id as string;
+
+      const response = await undeclare(id, { reason: 'e2e: declared by mistake' })
+        .expect(201);
+      expect(response.body.vehicle.status).toBe('ON_RECORD');
+      expect(response.body.vehicle.declaredAt).toBeNull();
+
+      const stored = await prisma.vehicle.findUniqueOrThrow({ where: { id } });
+      expect(stored.status).toBe('ON_RECORD');
+      expect(stored.declaredAt).toBeNull();
+
+      const audit = await prisma.auditEvent.findFirstOrThrow({
+        where: { subjectId: id, action: 'vehicle.undeclare' },
+      });
+      expect(audit.reason).toBe('e2e: declared by mistake');
+      expect(JSON.stringify(audit.beforeValue)).toContain('ACTIVE');
+    });
+
+    it('can be declared again, and counts only from the new date', async () => {
+      const created = await declare({ plateNumberDisplay: plate('UD2') }).expect(
+        201,
+      );
+      const id = created.body.vehicle.id as string;
+      const first = (
+        await prisma.vehicle.findUniqueOrThrow({ where: { id } })
+      ).declaredAt!;
+
+      await undeclare(id, { reason: 'e2e: undo' }).expect(201);
+      await request(server)
+        .post(`/api/v1/vehicles/${id}/declare`)
+        .set('Cookie', cookies.declarer!)
+        .send({})
+        .expect(201);
+
+      const again = await prisma.vehicle.findUniqueOrThrow({ where: { id } });
+      expect(again.status).toBe('ACTIVE');
+      expect(again.declaredAt!.getTime()).toBeGreaterThanOrEqual(first.getTime());
+      // One row throughout: nothing was deleted or duplicated.
+      expect(
+        await prisma.vehicle.count({ where: { plateNumberNormalized: 'E2EVUD2' } }),
+      ).toBe(1);
+    });
+
+    it('keeps a suspended vehicle suspended, and lifting it then returns it to on record', async () => {
+      const created = await declare({ plateNumberDisplay: plate('UD3') }).expect(
+        201,
+      );
+      const id = created.body.vehicle.id as string;
+      await request(server)
+        .patch(`/api/v1/vehicles/${id}/status`)
+        .set('Cookie', cookies.declarer!)
+        .send({ status: 'SUSPENDED', reason: 'e2e: suspended' })
+        .expect(200);
+
+      const response = await undeclare(id, { reason: 'e2e: uncount' }).expect(201);
+      expect(response.body.vehicle.status).toBe('SUSPENDED');
+      expect(response.body.vehicle.declaredAt).toBeNull();
+
+      await request(server)
+        .patch(`/api/v1/vehicles/${id}/status`)
+        .set('Cookie', cookies.declarer!)
+        .send({ status: 'ACTIVE', reason: 'e2e: lifted' })
+        .expect(200);
+      expect(
+        (await prisma.vehicle.findUniqueOrThrow({ where: { id } })).status,
+      ).toBe('ON_RECORD');
+    });
+
+    it('asks for a reason', async () => {
+      const created = await declare({ plateNumberDisplay: plate('UD4') }).expect(
+        201,
+      );
+      await undeclare(created.body.vehicle.id, {}).expect(400);
+      await undeclare(created.body.vehicle.id, { reason: 'no' }).expect(400);
+    });
+
+    it('refuses a vehicle that is not declared, retired, or archived', async () => {
+      const onRecord = await record({ plateNumberDisplay: plate('UD5') }).expect(
+        201,
+      );
+      await undeclare(onRecord.body.vehicle.id, { reason: 'e2e: nothing to undo' })
+        .expect(409);
+
+      for (const [suffix, status] of [
+        ['UD6', 'RETIRED'],
+        ['UD7', 'ARCHIVED'],
+      ] as const) {
+        const row = await prisma.vehicle.create({
+          data: {
+            plateNumberNormalized: `E2EV${suffix}`,
+            plateNumberDisplay: plate(suffix),
+            branchId: fixture.branchAId,
+            status,
+          },
+        });
+        await undeclare(row.id, { reason: 'e2e: terminal' }).expect(409);
+      }
+    });
+
+    it('needs vehicle.declare, and answers 404 outside the caller’s scope', async () => {
+      const created = await declare({ plateNumberDisplay: plate('UD8') }).expect(
+        201,
+      );
+      const id = created.body.vehicle.id as string;
+
+      await undeclare(id, { reason: 'e2e: not mine' }, 'reader').expect(403);
+      await undeclare(id, { reason: 'e2e: not mine' }, 'suspender').expect(403);
+      // Holds the permission, but in another branch.
+      await undeclare(id, { reason: 'e2e: not mine' }, 'otherbranch').expect(404);
+
+      expect(
+        (await prisma.vehicle.findUniqueOrThrow({ where: { id } })).status,
+      ).toBe('ACTIVE');
+    });
+  });
+
   describe('declaration status (QUESTIONS.md VEH-28)', () => {
     it('shows the status only to a holder of vehicle.declare', async () => {
       const created = await declare({ plateNumberDisplay: plate('DS1') }).expect(

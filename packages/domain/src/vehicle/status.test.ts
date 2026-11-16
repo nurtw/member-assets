@@ -9,10 +9,12 @@ import {
   isDeclarationFinal,
   isDeclarable,
   isDeclarationLive,
+  isUndeclarable,
   isWithheld,
   statusChangeTarget,
   statusOnDeclaring,
   statusOnLifting,
+  statusOnUndeclaring,
 } from './status.js';
 
 /**
@@ -31,6 +33,8 @@ const LEGAL: readonly [string, string][] = [
   ['PENDING', 'ARCHIVED'],
   ['ACTIVE', 'SUSPENDED'],
   ['ACTIVE', 'RETIRED'],
+  // Item 60: undeclaring an active vehicle.
+  ['ACTIVE', 'ON_RECORD'],
   ['SUSPENDED', 'ACTIVE'],
   ['SUSPENDED', 'ON_RECORD'],
   ['SUSPENDED', 'RETIRED'],
@@ -183,6 +187,23 @@ describe('declaring a vehicle (item 59, VEH-38)', () => {
     expect(statusOnDeclaring('PENDING')).toBe('ACTIVE');
     expect(statusOnDeclaring('SUSPENDED')).toBe('SUSPENDED');
     expect(statusOnDeclaring('DISPUTED')).toBe('DISPUTED');
+  });
+});
+
+describe('undeclaring a vehicle (item 60, VEH-39)', () => {
+  it('is allowed from active, suspended, and disputed, never from the others', () => {
+    for (const status of ['ACTIVE', 'SUSPENDED', 'DISPUTED'] as const) {
+      expect(isUndeclarable(status), status).toBe(true);
+    }
+    for (const status of ['ON_RECORD', 'PENDING', 'RETIRED', 'ARCHIVED'] as const) {
+      expect(isUndeclarable(status), status).toBe(false);
+    }
+  });
+
+  it('returns an active vehicle to on record, and leaves a suspended or disputed one as it is', () => {
+    expect(statusOnUndeclaring('ACTIVE')).toBe('ON_RECORD');
+    expect(statusOnUndeclaring('SUSPENDED')).toBe('SUSPENDED');
+    expect(statusOnUndeclaring('DISPUTED')).toBe('DISPUTED');
   });
 });
 

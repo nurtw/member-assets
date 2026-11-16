@@ -239,6 +239,17 @@ export const dismissDisputeSchema = z.object({
 
 export type DismissDisputeInput = z.infer<typeof dismissDisputeSchema>;
 
+/**
+ * Undeclares a declared vehicle (`vehicle.declare`, item 60, VEH-39). It stops
+ * counting in the external total and changes nothing else. A reason is always
+ * asked, as for every other change of a vehicle's standing.
+ */
+export const undeclareVehicleSchema = z.object({
+  reason: z.string().trim().min(4, 'A reason is required.').max(1000),
+});
+
+export type UndeclareVehicleInput = z.infer<typeof undeclareVehicleSchema>;
+
 // --- Responses ---------------------------------------------------------------
 
 /**

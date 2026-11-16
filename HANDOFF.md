@@ -8,43 +8,40 @@ control, docs, plans, commits, and fixtures; the previous operator is never name
 
 ## Status
 
-Item 59 is built and pushed (800ea90). A follow-up (disputed rows carry no declared date; `hasRouteType` removed) is committed locally, not pushed.
+Item 60 is built and committed locally, not pushed or deployed. Items 58 and 59 are live,
+and the disputed-date migration is applied on Neon.
 
 ## Active roadmap item
 
-Item 59 — declare-by-plate — done (`plans/59-declare-by-plate.md`)
+Item 60 — undeclare — done (`plans/60-undeclare.md`)
 
 ## Done this session
 
-- **Plate-only:** recording and declaring need the plate alone. Route type, owner (each
-  part), chassis, category, and branch or unit are optional (`packages/contracts/src/vehicle.ts`).
-  No branch means the officer's own (`organisationOrOwn`; 400 if none or several).
-- **Declaring** works from any status but retired or archived, once (`declaredAt`):
-  `statusOnDeclaring` makes ON_RECORD active, and keeps SUSPENDED and DISPUTED as they are.
-- **`vehicle.declare` cannot be granted** (`isNeverGranted`; `POST /users/:id/grants`
-  answers 409; the officer screen hides it). The super administrator alone holds it.
-- **Sticker attach** no longer needs a route type or a declaration; a vehicle with no route
-  type owes the default levy (tested). Web: vehicle form fields optional, declare panel is
-  one button, onboarding panel's route-type gate removed.
-- PRD 9.4, 9.8, 9.9, 9A.1, 9A.2, 9.5 amended; CLAUDE.md updated.
+- **Undeclare** (`VehicleService.undeclare`, `POST /vehicles/:id/undeclare`, VEH-39): the
+  super administrator, with a reason, clears `declaredAt`. An ACTIVE vehicle returns to
+  ON_RECORD; SUSPENDED and DISPUTED keep their status. Scope is checked before status;
+  audited as `vehicle.undeclare`. Retired, archived, and undeclared vehicles answer 409.
+- Domain: `ACTIVE -> ON_RECORD`, `isUndeclarable`, `statusOnUndeclaring`.
+- Past totals: declaring again stamps a new `declaredAt`, so a vehicle counts from then
+  only (no schema change). Domain test added.
+- Web: an "Undeclare" act on the vehicle's Manage tab, through `ConfirmDialog`.
+- PRD 9A.1, CLAUDE.md, `openapi.json` updated. 6 e2e tests added to the vehicle suite.
 
 ## Current state
 
-- Files: `packages/domain` (status, accounts), `packages/contracts/src/vehicle.ts`,
-  `apps/api/src/{vehicle,users,sticker}`, e2e specs (vehicle, users, sticker, dues),
-  web `vehicle-form`, `vehicles/[id]/page`, `onboarding-section`, `sticker-prompt`,
-  `settings/users/[id]/page`, `docs/reference/openapi.json`.
-- Conflicts with PRD: none left; PRD amended to revision 1.20 text.
-- Follow-up: a DISPUTED row is now created with no `declaredAt`; migration
-  `20261116130000_disputed_not_declared` clears existing ones. **Applied locally only. It
-  is data-only and runs on Neon at the next `db:deploy`: needs the owner's go-ahead.**
-  `OnboardingState.hasRouteType` is removed. Owner edits stay set-only (no clearing).
-- Run e2e with the local `DATABASE_URL` (`localhost:5433`).
+- Files: `packages/domain/src/vehicle/`, `packages/contracts/src/vehicle.ts`,
+  `apps/api/src/vehicle/`, `apps/api/test/vehicle.e2e-spec.ts`,
+  `apps/web/src/app/(app)/vehicles/[id]/page.tsx`, `docs/reference/openapi.json`.
+- Conflicts with PRD: none. No migration in this item.
+- Known issues: "still verifies on its sticker" is covered by the domain verdict tests
+  (an on-record vehicle with an active sticker verifies), not by an e2e of its own.
+- Run e2e with the local `DATABASE_URL` (`localhost:5433`); `.env` is Neon.
 
 ## Next steps
 
-- Item 60 (undeclare) is planned (`plans/60-undeclare.md`): run /execute. Push and deploy only with a go-ahead.
-- **MEM-20** and **GOV-25** still open (items 61, 66, 67).
+- Run /plan for item 61 (immediate registration). **MEM-20** (open applications) and
+  **GOV-25** (dashboards) are still open and shape items 61, 66, 67: ask first.
+- Push and deploy only with a go-ahead.
 
 ## Do NOT
 

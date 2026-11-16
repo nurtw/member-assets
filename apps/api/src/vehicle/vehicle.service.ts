@@ -11,6 +11,7 @@ import type {
   DismissDisputeInput,
   RecordVehicleInput,
   SetDeclarationStatusInput,
+  UndeclareVehicleInput,
   UpdateVehicleInput,
   VehicleDetail,
   VehicleOwnerInput,
@@ -22,11 +23,13 @@ import {
   assertDeclarationTransition,
   decidePermission,
   isDeclarable,
+  isUndeclarable,
   listEffectivePermissions,
   normalizePlateNumber,
   outermostScopes,
   statusChangeTarget,
   statusOnDeclaring,
+  statusOnUndeclaring,
   type DeclarationStatus,
   type PermissionAssignments,
 } from '@nurtw/domain';
@@ -905,6 +908,79 @@ export class VehicleService {
     this.assertTransition(from, to);
 
     return this.applyStatus(actor, vehicle, to, input.reason);
+  }
+
+  /**
+   * Item 60 (VEH-39) — undeclares a declared vehicle. It stops counting in the
+   * external total (`declaredAt` is cleared) and changes nothing else: an
+   * active vehicle returns to `ON_RECORD`, a suspended or disputed one keeps its
+   * status, its sticker still verifies, and its history stays. Declaring it
+   * again stamps a new `declaredAt`, so it counts only from then.
+   *
+   * Scope before status, as `declareRecorded` does (VEH-28): answering 409
+   * first would tell an undeclarer from another area whether a vehicle is
+   * declared. Needs `vehicle.declare`, which only the super administrator holds.
+   */
+  async undeclare(
+    actor: ActorContext,
+    id: string,
+    input: UndeclareVehicleInput,
+  ): Promise<VehicleSummary> {
+    const vehicle = await this.loadVisible(actor.userId, id);
+    await this.require(actor.userId, DECLARE, vehicle.path);
+
+    const from = vehicle.status as DeclarationStatus;
+    if (!isUndeclarable(from) || vehicle.declaredAt === null) {
+      throw new ConflictException(
+        'This vehicle is not declared, or has left the register.',
+      );
+    }
+    const to = statusOnUndeclaring(from);
+    if (to !== from) {
+      this.assertTransition(from, to);
+    }
+
+    try {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const row = await tx.vehicle.update({
+          where: { id },
+          data: { status: to, declaredAt: null },
+          select: summarySelect(),
+        });
+        await this.audit.record(
+          {
+            action: 'vehicle.undeclare',
+            subjectType: 'vehicle',
+            subjectId: id,
+            organisationId: vehicle.organisationId,
+            actorUserId: actor.userId,
+            before: {
+              status: from,
+              declaredAt: vehicle.declaredAt?.toISOString() ?? null,
+            },
+            after: { status: to, declaredAt: null },
+            reason: input.reason,
+            requestId: actor.requestId,
+            ipAddress: actor.ipAddress,
+          },
+          tx,
+        );
+        return row;
+      });
+      return await this.summaryFor(actor.userId, updated);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        // Another record for this plate went on record between the read and
+        // the update (`vehicle_one_on_record_per_plate`).
+        throw new ConflictException(
+          'This plate number changed a moment ago. Reload the vehicle to see its current state.',
+        );
+      }
+      throw error;
+    }
   }
 
   /**

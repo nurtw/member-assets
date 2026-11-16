@@ -56,7 +56,13 @@ const TAB_LABELS = {
 type TabName = keyof typeof TAB_LABELS;
 
 /** An act that is confirmed in a dialog, with its reason. */
-type Confirming = "SUSPEND" | "REACTIVATE" | "RETIRE" | "DISMISS" | "REISSUE";
+type Confirming =
+  | "SUSPEND"
+  | "REACTIVATE"
+  | "RETIRE"
+  | "DISMISS"
+  | "REISSUE"
+  | "UNDECLARE";
 
 const CONFIRM: Record<
   Confirming,
@@ -99,6 +105,14 @@ const CONFIRM: Record<
     confirmLabel: "Dismiss this claim",
     tone: "danger",
     done: "Claim dismissed",
+  },
+  UNDECLARE: {
+    title: "Undeclare this vehicle?",
+    description:
+      "It stops counting in the vehicle total given to outside organisations, and nothing else changes: its sticker still verifies, its history is kept, and a suspension stays. Declaring it again counts it only from that day, not from the first declaration.",
+    confirmLabel: "Undeclare the vehicle",
+    tone: "danger",
+    done: "Vehicle undeclared",
   },
   REISSUE: {
     title: "Reissue the vehicle letter?",
@@ -157,6 +171,13 @@ export default function VehicleDetailPage() {
   const canChangeStatus =
     holds("vehicle.suspend") && (isActive || isSuspended || isOnRecord);
   const canDismiss = isDisputed && holds("vehicle.resolve_dispute");
+  // Item 60 (VEH-39). The status is present only for the super administrator
+  // (VEH-43), so this is theirs alone.
+  const canUndeclare =
+    vehicle?.status !== undefined &&
+    Boolean(vehicle.declaredAt) &&
+    (isActive || isSuspended || isDisputed) &&
+    holds("vehicle.declare");
 
   // A tab is offered only where it has something for this officer.
   const offersSticker =
@@ -164,7 +185,7 @@ export default function VehicleDetailPage() {
     (holds("sticker.attach") || Boolean(vehicle.onboarding?.letterReference));
   const offersManage =
     vehicle !== null &&
-    (holds("vehicle.update") || canDismiss || canChangeStatus);
+    (holds("vehicle.update") || canDismiss || canChangeStatus || canUndeclare);
   const tabs: { value: TabName }[] = [
     { value: "details" },
     ...(offersSticker ? [{ value: "sticker" as const }] : []),
@@ -273,7 +294,9 @@ export default function VehicleDetailPage() {
     if (!vehicle) {
       return;
     }
-    if (which === "DISMISS") {
+    if (which === "UNDECLARE") {
+      await api.post(`/vehicles/${vehicle.id}/undeclare`, { reason });
+    } else if (which === "DISMISS") {
       await api.post(`/vehicles/${vehicle.id}/dismiss-dispute`, { reason });
     } else if (which === "REISSUE") {
       try {
@@ -598,6 +621,23 @@ export default function VehicleDetailPage() {
                     onClick={() => setConfirming("DISMISS")}
                   >
                     Dismiss this claim
+                  </Button>
+                </div>
+              </Section>
+            ) : null}
+
+            {canUndeclare ? (
+              <Section
+                title="Declaration"
+                description="This vehicle is declared, so it counts in the total given to outside organisations. Undeclaring uncounts it and changes nothing else."
+              >
+                <div>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    onClick={() => setConfirming("UNDECLARE")}
+                  >
+                    Undeclare
                   </Button>
                 </div>
               </Section>

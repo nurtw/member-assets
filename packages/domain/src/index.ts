@@ -141,10 +141,12 @@ export {
   isDeclarationFinal,
   isDeclarable,
   isDeclarationLive,
+  isUndeclarable,
   isWithheld,
   statusChangeTarget,
   statusOnDeclaring,
   statusOnLifting,
+  statusOnUndeclaring,
   type DeclarationStatus,
 } from './vehicle/status.js';
 

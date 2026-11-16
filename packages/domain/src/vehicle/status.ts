@@ -68,7 +68,8 @@ const DECLARATION_TRANSITIONS: Readonly<
   // (`statusOnLifting`): declaring stays the one way to ACTIVE.
   ON_RECORD: ['ACTIVE', 'SUSPENDED', 'RETIRED'],
   PENDING: ['ACTIVE', 'DISPUTED', 'ARCHIVED'],
-  ACTIVE: ['SUSPENDED', 'RETIRED'],
+  // Item 60 (VEH-39): undeclaring an active vehicle returns it to on record.
+  ACTIVE: ['SUSPENDED', 'RETIRED', 'ON_RECORD'],
   SUSPENDED: ['ACTIVE', 'ON_RECORD', 'RETIRED'],
   RETIRED: [],
   DISPUTED: ['ARCHIVED'],
@@ -186,6 +187,24 @@ export function isDeclarable(status: DeclarationStatus): boolean {
 /** The status a vehicle holds once declared. Only `ON_RECORD` and `PENDING` move. */
 export function statusOnDeclaring(from: DeclarationStatus): DeclarationStatus {
   return from === 'ON_RECORD' || from === 'PENDING' ? 'ACTIVE' : from;
+}
+
+/**
+ * Item 60 (VEH-39) — a vehicle may be undeclared from any status but retired or
+ * archived, and only while it is declared (the caller checks `declaredAt`).
+ * Undeclaring uncounts a vehicle and changes nothing else.
+ */
+export function isUndeclarable(status: DeclarationStatus): boolean {
+  return status === 'ACTIVE' || status === 'SUSPENDED' || status === 'DISPUTED';
+}
+
+/**
+ * The status a vehicle holds once undeclared: an active vehicle returns to
+ * `ON_RECORD`; a suspended or disputed one keeps its status, so undeclaring
+ * never lifts a suspension or settles a dispute (answered 16 November 2026).
+ */
+export function statusOnUndeclaring(from: DeclarationStatus): DeclarationStatus {
+  return from === 'ACTIVE' ? 'ON_RECORD' : from;
 }
 
 /**

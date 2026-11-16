@@ -28801,7 +28801,7 @@
     "/api/v1/vehicles/{id}/declare": {
       "post": {
         "summary": "Declare a vehicle that is on record.",
-        "description": "ARCHITECTURE.md Decision 6.6. Promotes this `ON_RECORD` vehicle to `ACTIVE` in place. Whatever the record lacks — a legacy record has no route type and may have no owner phone — must be supplied here. `organisationId` moves the record as it is declared, and then `vehicle.declare` is required at both the current and the destination organisation.\n\n**Permission required:** `vehicle.declare`.",
+        "description": "ARCHITECTURE.md Decision 6.6, revision 1.20 (VEH-38). Declares this vehicle in place, from any status but retired or archived, once. Nothing is required: a route type, an owner, and a chassis number are optional. A vehicle on record becomes `ACTIVE`; a suspended or disputed one keeps its status. `organisationId` moves the record as it is declared, and then `vehicle.declare` is required at both the current and the destination organisation.\n\n**Permission required:** `vehicle.declare`.",
         "operationId": "VehicleController_declareRecorded",
         "tags": [
           "Vehicle"
@@ -28869,60 +28869,6 @@
         "responses": {
           "201": {
             "description": "Created."
-          },
-          "400": {
-            "description": "The declared record would lack a route type or the owner’s name and phone.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "error"
-                  ],
-                  "properties": {
-                    "error": {
-                      "type": "object",
-                      "required": [
-                        "code",
-                        "message",
-                        "requestId"
-                      ],
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string",
-                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
-                        },
-                        "requestId": {
-                          "type": "string"
-                        },
-                        "details": {
-                          "type": "array",
-                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
-                          "items": {
-                            "type": "object",
-                            "required": [
-                              "field",
-                              "message"
-                            ],
-                            "properties": {
-                              "field": {
-                                "type": "string"
-                              },
-                              "message": {
-                                "type": "string"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
           },
           "401": {
             "description": "No valid session cookie was presented.",
@@ -29087,7 +29033,7 @@
             }
           },
           "409": {
-            "description": "The vehicle is not on record, or the plate already has an active declaration.",
+            "description": "The vehicle is already declared or has left the register, or the plate already has an active declaration.",
             "content": {
               "application/json": {
                 "schema": {
@@ -30262,6 +30208,269 @@
           },
           "409": {
             "description": "Not a legal transition from the declaration’s current status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vehicles/{id}/undeclare": {
+      "post": {
+        "summary": "Undeclare a declared vehicle.",
+        "description": "Item 60, VEH-39. Stops the vehicle counting in the external total and changes nothing else: an `ACTIVE` vehicle returns to `ON_RECORD`, a suspended or disputed one keeps its status, its sticker still verifies, and its history is kept. A reason is required. Declaring it again stamps a new declared date, so it counts only from then. Never a delete. `vehicle.declare` is held by the super administrator alone (VEH-43).\n\n**Permission required:** `vehicle.declare`.",
+        "operationId": "VehicleController_undeclare",
+        "tags": [
+          "Vehicle"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created."
+          },
+          "401": {
+            "description": "No valid session cookie was presented.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller may not undeclare vehicles here.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such vehicle, or it lies outside the caller’s scope.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The vehicle is not declared, or has left the register.",
             "content": {
               "application/json": {
                 "schema": {

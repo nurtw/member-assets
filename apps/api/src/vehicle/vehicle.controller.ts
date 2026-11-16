@@ -16,12 +16,14 @@ import {
   dismissDisputeSchema,
   recordVehicleSchema,
   setDeclarationStatusSchema,
+  undeclareVehicleSchema,
   updateVehicleSchema,
   type DeclareRecordedVehicleInput,
   type DeclareVehicleInput,
   type DismissDisputeInput,
   type RecordVehicleInput,
   type SetDeclarationStatusInput,
+  type UndeclareVehicleInput,
   type UpdateVehicleInput,
 } from '@nurtw/contracts';
 
@@ -169,16 +171,17 @@ export class VehicleController {
   @Documented({
     summary: 'Declare a vehicle that is on record.',
     description:
-      'ARCHITECTURE.md Decision 6.6. Promotes this `ON_RECORD` vehicle to `ACTIVE` in place. ' +
-      'Whatever the record lacks — a legacy record has no route type and may have no owner ' +
-      'phone — must be supplied here. `organisationId` moves the record as it is declared, and ' +
-      'then `vehicle.declare` is required at both the current and the destination organisation.',
+      'ARCHITECTURE.md Decision 6.6, revision 1.20 (VEH-38). Declares this vehicle in place, ' +
+      'from any status but retired or archived, once. Nothing is required: a route type, an ' +
+      'owner, and a chassis number are optional. A vehicle on record becomes `ACTIVE`; a ' +
+      'suspended or disputed one keeps its status. `organisationId` moves the record as it is ' +
+      'declared, and then `vehicle.declare` is required at both the current and the ' +
+      'destination organisation.',
     body: declareRecordedVehicleSchema,
     responses: {
-      400: 'The declared record would lack a route type or the owner’s name and phone.',
       403: 'The caller may not declare here, or may not move the record to that organisation.',
       404: 'No such vehicle, or it lies outside the caller’s scope.',
-      409: 'The vehicle is not on record, or the plate already has an active declaration.',
+      409: 'The vehicle is already declared or has left the register, or the plate already has an active declaration.',
     },
   })
   async declareRecorded(
@@ -189,6 +192,33 @@ export class VehicleController {
   ) {
     const actor = this.actor(request);
     return { vehicle: await this.vehicles.declareRecorded(actor, id, body) };
+  }
+
+  @RequirePermission('vehicle.declare')
+  @Post(':id/undeclare')
+  @Documented({
+    summary: 'Undeclare a declared vehicle.',
+    description:
+      'Item 60, VEH-39. Stops the vehicle counting in the external total and changes nothing ' +
+      'else: an `ACTIVE` vehicle returns to `ON_RECORD`, a suspended or disputed one keeps its ' +
+      'status, its sticker still verifies, and its history is kept. A reason is required. ' +
+      'Declaring it again stamps a new declared date, so it counts only from then. Never a ' +
+      'delete. `vehicle.declare` is held by the super administrator alone (VEH-43).',
+    body: undeclareVehicleSchema,
+    responses: {
+      403: 'The caller may not undeclare vehicles here.',
+      404: 'No such vehicle, or it lies outside the caller’s scope.',
+      409: 'The vehicle is not declared, or has left the register.',
+    },
+  })
+  async undeclare(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(undeclareVehicleSchema))
+    body: UndeclareVehicleInput,
+  ) {
+    const actor = this.actor(request);
+    return { vehicle: await this.vehicles.undeclare(actor, id, body) };
   }
 
   @RequirePermission('vehicle.update')
