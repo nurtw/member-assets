@@ -246,7 +246,27 @@ export {
 } from './card.js';
 
 export {
+  addedVehiclesQuerySchema,
+  onboardingReportQuerySchema,
+  type AddedVehicle,
+  type AddedVehiclesQuery,
+  type AddedVehiclesResponse,
+  type MemberCounts,
+  type OnboardingReport,
+  type OnboardingReportQuery,
+  type OnboardingReportRow,
+  type OwnWork,
+  type OwnWorkCounts,
+  type StickerOriginCount,
+  type StickerOriginCounts,
+  type VehicleCounts,
+} from './report.js';
+
+export {
   SETTABLE_DECLARATION_STATUSES,
+  BULK_DECLARE_LIMIT,
+  BULK_SKIP_REASONS,
+  declareManyVehiclesSchema,
   declareRecordedVehicleSchema,
   declareVehicleSchema,
   dismissDisputeSchema,
@@ -255,6 +275,9 @@ export {
   setDeclarationStatusSchema,
   updateVehicleSchema,
   vehicleOwnerSchema,
+  type BulkSkipReason,
+  type DeclareManyVehiclesInput,
+  type DeclareManyVehiclesResult,
   type DeclareRecordedVehicleInput,
   type DeclareVehicleInput,
   type DismissDisputeInput,

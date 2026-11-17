@@ -25,6 +25,7 @@ describe("visibleNavigation", () => {
     expect(navigationItems(groups).map((item) => item.label)).toEqual([
       "Verify",
       "Vehicles",
+      "New vehicles",
     ]);
   });
 
@@ -98,6 +99,23 @@ describe("landingHref", () => {
     expect(navigationItems(groups).map((item) => item.href)).not.toContain(
       "/overview",
     );
+  });
+
+  it("gives a vehicle-record officer a Home, and a verification officer none", () => {
+    expect(
+      landingHref(
+        OFFICER_NAVIGATION,
+        OFFICER_LANDING_ORDER,
+        holding("vehicle.read", "vehicle.update", "member.read"),
+      ),
+    ).toBe("/overview");
+    expect(
+      landingHref(
+        OFFICER_NAVIGATION,
+        OFFICER_LANDING_ORDER,
+        holding("vehicle.read", "verification.perform"),
+      ),
+    ).toBe("/verify");
   });
 
   it("lands a verification officer on Verify", () => {

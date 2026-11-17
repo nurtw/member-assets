@@ -1,16 +1,23 @@
 "use client";
 
-import type { VehicleSummary } from "@nurtw/contracts";
+import {
+  BULK_DECLARE_LIMIT,
+  type DeclareManyVehiclesResult,
+  type VehicleSummary,
+} from "@nurtw/contracts";
 import { Bus, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import useSWR from "swr";
 
 import {
+  Button,
   EmptyState,
   ErrorNotice,
   ListToolbar,
   Loading,
+  Notice,
   PageHeader,
   Select,
   StatusChip,
@@ -23,7 +30,9 @@ import {
   TextInput,
   buttonVariants,
 } from "@/components/ui";
-import { ApiError, fetcher } from "@/lib/api";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ApiError, api, fetcher } from "@/lib/api";
+import { chunk, isTickable, skipWords } from "@/lib/bulk-declare";
 import { useSession } from "@/lib/session";
 
 const STATUSES = [
@@ -52,6 +61,15 @@ export default function VehiclesPage() {
   const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
+  // Item 63: bulk declaration. Ticks are ids; what is acted on is always the ticked
+  // rows that are still shown and still declarable.
+  const [ticked, setTicked] = useState<ReadonlySet<string>>(new Set());
+  const [confirming, setConfirming] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    declared: number;
+    skipped: DeclareManyVehiclesResult["skipped"];
+  } | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQ(q.trim()), 300);
@@ -63,13 +81,57 @@ export default function VehiclesPage() {
   if (debouncedQ) params.set("q", debouncedQ);
   const queryString = params.toString();
 
-  const { data, error, isLoading } = useSWR<{ vehicles: VehicleSummary[] }>(
+  const { data, error, isLoading, mutate } = useSWR<{
+    vehicles: VehicleSummary[];
+  }>(
     `/vehicles${queryString ? `?${queryString}` : ""}`,
     fetcher,
     { keepPreviousData: true },
   );
 
   const vehicles = data?.vehicles ?? [];
+  // Only the super administrator holds `vehicle.declare` (VEH-43).
+  const canTick = seesDeclarations;
+  const tickable = canTick ? vehicles.filter(isTickable) : [];
+  const chosen = tickable.filter((vehicle) => ticked.has(vehicle.id));
+  const allTicked = tickable.length > 0 && chosen.length === tickable.length;
+
+  function toggle(id: string) {
+    const next = new Set(ticked);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setTicked(next);
+  }
+
+  /** Declares the ticked vehicles, in requests the API accepts. */
+  async function declareChosen() {
+    const ids = chosen.map((vehicle) => vehicle.id);
+    let declared = 0;
+    const skipped: DeclareManyVehiclesResult["skipped"] = [];
+    try {
+      for (const part of chunk(ids, BULK_DECLARE_LIMIT)) {
+        setProgress(`Declared ${declared + skipped.length} of ${ids.length}…`);
+        const answer = await api.post<DeclareManyVehiclesResult>(
+          "/vehicles/declare-many",
+          { vehicleIds: part },
+        );
+        declared += answer.declared;
+        skipped.push(...answer.skipped);
+      }
+    } finally {
+      // Whatever was done is shown, even when a later request failed.
+      setProgress(null);
+      setResult({ declared, skipped });
+      setTicked(new Set());
+      await mutate();
+    }
+    toast.success(
+      `${declared} ${declared === 1 ? "vehicle" : "vehicles"} declared`,
+    );
+  }
   const apiError = error instanceof ApiError ? error : null;
   const narrowed = Boolean(status || debouncedQ);
   const add =
@@ -89,7 +151,17 @@ export default function VehiclesPage() {
             ? "Vehicles within your area of responsibility, declared and on record. A declaration is never created by a verification enquiry — only through this screen."
             : "Vehicles within your area of responsibility."
         }
-        actions={add}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/vehicles/added"
+              className={buttonVariants({ variant: "secondary" })}
+            >
+              New vehicles
+            </Link>
+            {add}
+          </div>
+        }
       />
 
       <ListToolbar
@@ -111,6 +183,24 @@ export default function VehiclesPage() {
             placeholder="Search by plate number"
           />
         </div>
+
+        {canTick && tickable.length > 0 ? (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-line accent-primary"
+              checked={allTicked}
+              onChange={() =>
+                setTicked(
+                  allTicked
+                    ? new Set()
+                    : new Set(tickable.map((vehicle) => vehicle.id)),
+                )
+              }
+            />
+            Select all {tickable.length} that can be declared
+          </label>
+        ) : null}
 
         {seesDeclarations ? (
           <div className="w-56">
@@ -137,6 +227,48 @@ export default function VehiclesPage() {
         <ErrorNotice message={apiError.message} requestId={apiError.requestId} />
       ) : null}
 
+      {chosen.length > 0 ? (
+        <div
+          role="region"
+          aria-label="Declare the ticked vehicles"
+          className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface-muted px-4 py-3 text-sm"
+        >
+          <span>
+            {chosen.length} {chosen.length === 1 ? "vehicle" : "vehicles"} ticked
+          </span>
+          <Button type="button" onClick={() => setConfirming(true)}>
+            Declare {chosen.length === 1 ? "this vehicle" : `these ${chosen.length}`}
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => setTicked(new Set())}>
+            Clear the ticks
+          </Button>
+        </div>
+      ) : null}
+
+      {result ? (
+        <Notice
+          tone={result.skipped.length > 0 ? "caution" : "affirm"}
+          title={`${result.declared} ${result.declared === 1 ? "vehicle" : "vehicles"} declared${result.skipped.length > 0 ? `, ${result.skipped.length} skipped` : ""}`}
+          role="status"
+          action={
+            <Button type="button" variant="ghost" onClick={() => setResult(null)}>
+              Close
+            </Button>
+          }
+        >
+          {result.skipped.length > 0 ? (
+            <ul className="mt-1 list-disc pl-5">
+              {result.skipped.map((entry) => (
+                <li key={entry.id}>
+                  <span className="font-mono">{entry.plate ?? "A vehicle"}</span>:{" "}
+                  {skipWords(entry.reason)}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </Notice>
+      ) : null}
+
       {isLoading ? (
         <Loading />
       ) : vehicles.length === 0 ? (
@@ -154,6 +286,7 @@ export default function VehiclesPage() {
         <Table stacked className="sm:min-w-[52rem]">
           <TableHead>
             <tr>
+              {canTick ? <TableHeader>Tick</TableHeader> : null}
               <TableHeader>Plate</TableHeader>
               <TableHeader>Type</TableHeader>
               <TableHeader>Route</TableHeader>
@@ -170,6 +303,19 @@ export default function VehiclesPage() {
           <TableBody>
             {vehicles.map((vehicle) => (
               <TableRow key={vehicle.id}>
+                {canTick ? (
+                  <TableCell label="Tick">
+                    {isTickable(vehicle) ? (
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-line accent-primary"
+                        aria-label={`Tick ${vehicle.plateNumberDisplay}`}
+                        checked={ticked.has(vehicle.id)}
+                        onChange={() => toggle(vehicle.id)}
+                      />
+                    ) : null}
+                  </TableCell>
+                ) : null}
                 <TableCell>
                   <Link
                     href={`/vehicles/${vehicle.id}`}
@@ -230,6 +376,32 @@ export default function VehiclesPage() {
           </TableBody>
         </Table>
       )}
+
+      {confirming ? (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setConfirming(false);
+            }
+          }}
+          title={`Declare ${chosen.length} ${chosen.length === 1 ? "vehicle" : "vehicles"}?`}
+          tone="primary"
+          confirmLabel="Declare"
+          description={
+            <p>
+              Each ticked vehicle is declared as it is: nothing more is asked
+              of it. It then counts in the vehicle total given to outside
+              organisations from today. A vehicle that cannot be declared is
+              skipped, and you are told which and why. Each declaration is
+              recorded in the audit trail.
+            </p>
+          }
+          onConfirm={declareChosen}
+        >
+          {progress ? <p className="text-sm text-muted-foreground">{progress}</p> : null}
+        </ConfirmDialog>
+      ) : null}
     </div>
   );
 }

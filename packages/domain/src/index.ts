@@ -149,6 +149,25 @@ export {
 } from './vehicle/status.js';
 
 export {
+  ONBOARDING_DEFAULT_DAYS,
+  ONBOARDING_KINDS,
+  ONBOARDING_MAX_DAYS,
+  lagosDay,
+  lagosDayBegins,
+  readDayRange,
+  tallyOnboarding,
+  type DayRange,
+  type OnboardingEvent,
+  type OnboardingKind,
+  type OnboardingRow,
+} from './report/onboarding.js';
+
+export {
+  stickerOriginGroup,
+  type StickerOriginGroup,
+} from './sticker/origin-group.js';
+
+export {
   FIELDS_LOCKED_TO_ONE_EDIT,
   importedEditRight,
   type ImportedEditRight,

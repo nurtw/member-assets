@@ -11,6 +11,7 @@ import {
   Req,
 } from '@nestjs/common';
 import {
+  declareManyVehiclesSchema,
   declareRecordedVehicleSchema,
   declareVehicleSchema,
   dismissDisputeSchema,
@@ -18,6 +19,7 @@ import {
   setDeclarationStatusSchema,
   undeclareVehicleSchema,
   updateVehicleSchema,
+  type DeclareManyVehiclesInput,
   type DeclareRecordedVehicleInput,
   type DeclareVehicleInput,
   type DismissDisputeInput,
@@ -164,6 +166,31 @@ export class VehicleController {
   ) {
     const actor = this.actor(request);
     return { vehicle: await this.vehicles.record(actor, body) };
+  }
+
+  @RequirePermission('vehicle.declare')
+  @Post('declare-many')
+  @Documented({
+    summary: 'Declare several vehicles at once.',
+    description:
+      'Item 63 (VEH-38). Declares each vehicle named, as it is, the way `POST /vehicles/:id/declare` ' +
+      'does with an empty body: one `vehicle.declare` audit event for each, and a refusal skips that ' +
+      'vehicle and not the rest. At most 50 ids. The answer counts those declared and lists each ' +
+      'skipped vehicle with a reason (`ALREADY_DECLARED`, `LEFT_REGISTER`, `PLATE_ACTIVE_ELSEWHERE`, ' +
+      '`NOT_FOUND`, `FAILED`). A vehicle that does not exist and one outside the caller’s scope are ' +
+      'both `NOT_FOUND`, with no plate.',
+    body: declareManyVehiclesSchema,
+    responses: {
+      400: 'No ids, more than 50, or an id that is not a UUID.',
+    },
+  })
+  async declareMany(
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(declareManyVehiclesSchema))
+    body: DeclareManyVehiclesInput,
+  ) {
+    const actor = this.actor(request);
+    return this.vehicles.declareMany(actor, body.vehicleIds);
   }
 
   @RequirePermission('vehicle.declare')

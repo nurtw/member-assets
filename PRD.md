@@ -402,6 +402,39 @@ owner's details, and never blanks one; it **may not change the plate number, the
 unit, or the linked member**. An administrator may change all of them. The limit applies to
 imported vehicles only: a vehicle recorded through the System is amended as before.
 
+**Requirement 9.12 — declaring several vehicles at once** *(revision 1.20, VEH-38, roadmap
+item 63)*. A holder of `vehicle.declare` (the super administrator alone, VEH-43) ticks
+vehicles in the vehicle list and declares them in one act. Each is declared as it is, on its
+plate alone, and **each has its own audit event**, as if declared singly. A vehicle that
+cannot be declared (already declared, retired or archived, its plate already actively
+declared, or not found) is skipped, and the officer is told which and why; the rest are
+declared. A vehicle that does not exist and one outside the officer's scope are told alike.
+At most 50 vehicles go in one request, and the screen sends a larger selection in several.
+Only the ticked vehicles are declared: a filter alone declares nothing.
+
+**Requirement 9.13 — the vehicles added through the System** *(revision 1.20, VEH-42, roadmap
+item 65)*. A list of the vehicles that did not come with the imported register, newest first,
+for anyone who may read vehicles, within their own scope: plate, vehicle type, branch or unit,
+who recorded it and when, and whether it has a sticker. Whether it is declared appears only to
+a holder of `vehicle.declare`. The owner's name and the chassis number appear only to a holder
+of `vehicle.read_restricted`. **A telephone number and an address appear in no list.**
+
+**Requirement 9.14 — counts for officers** *(revision 1.20, VEH-41, GOV-25, roadmap items 64,
+66, and 67)*. Home carries counts, and the Onboarding report gives them by day and officer.
+Every figure is taken inside the organisations where the officer holds the permission that
+opens the matching list (`member.read`, `vehicle.read`, `sticker.read`, `report.read`), so a
+count never shows more than a list does. The sticker counts say "imported register" and
+"added through the System", never a name and never a scheme's code, and amend `GOV-21` for
+the dashboard alone. The onboarding report counts, per Lagos day and officer, members
+registered through the System (so not the imported ones), vehicles recorded and declared, and
+stickers attached, by the officer's name, over at most 92 days. What each role sees is
+settled (`QUESTIONS.md` GOV-25, accepted 17 November 2026): administrators, the auditor, and the
+super administrator see the area's members, vehicles, and stickers and the onboarding report
+with each officer's name, and the super administrator also sees the vehicles not yet declared;
+the vehicle-record officer sees the area's vehicles and those with no sticker yet; the field
+enumerator sees **only their own work** and no other officer's numbers; the card administrator
+sees the cards waiting. An officer does not read another's count.
+
 ---
 
 ## 9A. Vehicle onboarding *(revision 1.2)*

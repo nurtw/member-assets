@@ -49,12 +49,12 @@ thing a year later.
 | Structure and master data (ORG) | 6 | 2 | — | 8 |
 | Membership and registration (MEM) | 13 | 7 | — | 20 |
 | Cards (CARD) | 5 | 5 | — | 10 |
-| Vehicles and stickers (VEH) | 34 | 8 | 1 | 43 |
+| Vehicles and stickers (VEH) | 35 | 8 | 1 | 44 |
 | Legacy migration (MIG) | 6 | 2 | — | 8 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 27 | 0 | — | 27 |
-| Governance and go-live (GOV) | 13 | 10 | 2 | 25 |
-| **Total** | **123** | **36** | **3** | **162** |
+| Governance and go-live (GOV) | 14 | 9 | 2 | 25 |
+| **Total** | **125** | **35** | **3** | **163** |
 
 ### Blocking production use right now
 
@@ -1348,6 +1348,27 @@ is withdrawn. Supersedes VEH-28 and answers **GOV-06**: nobody else.
 **Answered on.** 16 November 2026. **Answered by.** Project owner. **Recorded at.** PRD
 revision 1.20; roadmap items 59, 60, and 63.
 
+### VEH-44 · The edges of bulk declaration ✅
+
+**Question.** (Raised planning item 63, 16 November 2026.) The owner asked for bulk declaration
+by ticking vehicles in the list (VEH-38). Two edges were not covered.
+
+1. **Bulk undeclare.** Should the super administrator also undeclare many vehicles at once? Each
+   undeclaring asks for a reason (VEH-39); one reason would cover the batch.
+2. **More than the 200 the list shows.** About 2,400 imported vehicles are on record. Should there
+   be a way to declare every vehicle matching a filter, or is declaring 200 at a time enough?
+
+**Recommended.** Not now: declare the ticked vehicles only, 200 at most, and no bulk undeclare,
+until the owner has used it on the first batches.
+
+**Answer.** **Not now, as recommended.** Only the ticked vehicles are declared, 200 at most in a
+list, in rounds; there is no bulk undeclare and no "declare everything this filter matches". If
+the owner later wants either, the two are built together, and the one-click declaration makes
+the officer type how many vehicles it will declare before it runs. For the first batch, declare
+about 50 and check that the external total moved by 50 before going on.
+**Answered on.** 17 November 2026 (relayed: the owner accepted the recommendations). **Answered by.**
+Project owner. **Recorded at.** Roadmap item 63.
+
 ---
 
 ## 8. Open — legacy migration (item 09)
@@ -1840,7 +1861,7 @@ figure, through the setting `retention.api_request_log_months`.
 **Answer.** _Outstanding._
 **Answered on.** — **Answered by.** — **Recorded at.** —
 
-### GOV-25 · Dashboards, and the onboarding report ⏳
+### GOV-25 · Dashboards, and the onboarding report ✅
 
 **Question.** (The project owner, 16 November 2026.) "How many people were onboarded in a day
 and by which person." And: "Proper dashboard for each role with counts and all."
@@ -1858,8 +1879,25 @@ dashboard cannot show more than the lists do. The report by officer's name, to t
 administrator and administrators over the branch. Each role's counts to be named by the
 Union before item 67 is planned.
 
-**Answer.** _Outstanding._
-**Answered on.** — **Answered by.** — **Recorded at.** —
+**Answer.** **Accepted as recommended, with this for each role** (relayed 17 November 2026). Counts
+only, inside the reader's own scope, never more than the lists the officer may already read.
+Days are Lagos days, at most 92 in the report.
+
+- **Super administrator:** everything below, and the vehicles **not yet declared**, their
+  working backlog.
+- **Branch and unit administrators:** members, vehicles, and stickers for their branch or unit,
+  and the onboarding report with each officer's name, for their area only.
+- **Vehicle-record officer:** vehicles in their area, those added today, and the vehicles with
+  **no sticker yet**. They have a Home.
+- **Field enumerator:** **only their own work** (members registered, vehicles recorded, and
+  stickers attached, today and over the week), and never another officer's numbers.
+- **Card administrator:** the cards to approve and to hand over, as Home already shows.
+- **Auditor:** the same read-only counts as an administrator, across their scope.
+- **Finance or operations, and the API administrator:** nothing new until they say what they need.
+- **Names in the report:** shown only to a holder of `report.read`. An officer does not read
+  another's count.
+**Answered on.** 17 November 2026. **Answered by.** Project owner (accepting the recommendation).
+**Recorded at.** PRD Requirement 9.14; roadmap items 66 and 67.
 
 ### GOV-16 · How a new officer gets a first password ✅
 
@@ -2732,6 +2770,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 17 November 2026 | The owner accepted the recommendations on **GOV-25** (what each role's dashboard shows, and that the report names officers only to holders of `report.read`) and **VEH-44** (no bulk undeclare and no declare-all-matching for now). Roadmap items 66 and 67 are built to the answer. Totals: 125 answered, 35 awaiting, 3 deferred. |
 | 16 November 2026 (item 61 built) | **MEM-04** is answered: nobody approves a registration, because a member is active the moment it is saved (MEM-20). Totals: 123 answered, 36 awaiting, 3 deferred. |
 | 16 November 2026 (item 61 planned) | The project owner settled **MEM-20**: the 10 open applications (8 drafts, 2 submitted) are made active members by a one-off command run on a go-ahead; administrators amend a registration at any time and the officer who registered gets one correction; `application.decide` and the submit, withdraw, and decision routes are removed; and no second officer is needed, so **MEM-04** is closed for registration. Totals: 122 answered, 37 awaiting, 3 deferred. |
 | 16 November 2026 (declared status) | The project owner directed that **declared status is visible to the super administrator only** (**VEH-43**, new, supersedes VEH-28). `vehicle.declare` can no longer be granted, so declaring, undeclaring, and bulk declaration are the super administrator's alone. This answers **GOV-06**. Nobody else held it on Neon, so no access is withdrawn. Totals: 121 answered, 38 awaiting, 3 deferred. |

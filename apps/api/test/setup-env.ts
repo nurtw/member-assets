@@ -11,3 +11,12 @@
  * See CLAUDE.md → "The `.env` trap that cost real time".
  */
 import 'dotenv/config';
+
+/**
+ * The suite never uses the real object store. `.env` holds the live `CLOUDINARY_URL`, and with it
+ * the photograph tests uploaded test images to the Union's own Cloudinary account over the
+ * network, and failed with a 500 whenever that call ran slow (about five seconds). With it
+ * unset, `MediaModule` binds `LocalFilesystemStorage` (`var/media`, ignored by git), which is
+ * what these tests are about anyway: the bytes are identified, signed, and served, not hosted.
+ */
+delete process.env.CLOUDINARY_URL;

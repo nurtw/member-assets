@@ -20,6 +20,7 @@ import { useState } from "react";
 import useSWR from "swr";
 
 import { AssignStickerDialog } from "@/components/assign-sticker-dialog";
+import { DashboardCounts } from "@/components/dashboard-counts";
 import { SteeringWheel, UnionRule } from "@/components/shell/identity";
 import { fetcher } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -310,6 +311,8 @@ export default function HomePage() {
           )}
         </section>
       ) : null}
+
+      <DashboardCounts />
 
       {actions.length > 0 ? (
         <section aria-labelledby="actions" className="flex flex-1 flex-col">

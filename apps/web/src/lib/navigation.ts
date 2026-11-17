@@ -57,6 +57,11 @@ export const OVERVIEW_PERMISSIONS = [
   "api_client.read",
   "user.read",
   "payment.read",
+  // Item 67 (GOV-25): an officer who reads the onboarding report, or who keeps the
+  // area's vehicle records, has a desk of counts. A verification officer, who only
+  // reads vehicles, still has none.
+  "report.read",
+  "vehicle.update",
 ] as const;
 
 export const OFFICER_NAVIGATION: readonly NavGroup[] = [
@@ -110,10 +115,27 @@ export const OFFICER_NAVIGATION: readonly NavGroup[] = [
         permissions: ["vehicle.read"],
       },
       {
+        href: "/vehicles/added",
+        label: "New vehicles",
+        icon: "vehicles",
+        permissions: ["vehicle.read"],
+      },
+      {
         href: "/stickers/stock",
         label: "Sticker stock",
         icon: "stickers",
         permissions: ["sticker.stock_intake"],
+      },
+    ],
+  },
+  {
+    label: "Reports",
+    items: [
+      {
+        href: "/reports/onboarding",
+        label: "Onboarding",
+        icon: "usage",
+        permissions: ["report.read"],
       },
     ],
   },
@@ -244,6 +266,8 @@ export const OFFICER_LANDING_ORDER: readonly string[] = [
   "/verify",
   "/cards",
   "/vehicles",
+  "/vehicles/added",
+  "/reports/onboarding",
   "/stickers/stock",
   "/members",
   "/settings/fees",

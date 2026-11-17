@@ -90,11 +90,11 @@ Each item is independently completable and independently testable. Status values
 | 60 | undeclare | §9, §23.19 (rev. 1.20); VEH-39; the owner's direction of 16 Nov | done (16 Nov; not yet deployed) | [plan](plans/60-undeclare.md) |
 | 61 | immediate-registration | §7 (rev. 1.20); MEM-20; supersedes MEM-04 and the approval flow of item 05 | done (16 Nov; not pushed; the command runs on Neon on the owner's go-ahead) | [plan](plans/61-immediate-registration.md) |
 | 62 | imported-vehicle-edit | §9, §16 (rev. 1.20); VEH-40 | done (16 Nov; not pushed; `db:deploy` then `db:seed` on Neon on a go-ahead) | [plan](plans/62-imported-vehicle-edit.md) |
-| 63 | bulk-declaration | §9, §16 (rev. 1.20); VEH-38 | planned | [plan](plans/63-bulk-declaration.md) |
-| 64 | sticker-origin | §9A (rev. 1.20); VEH-41; amends GOV-21 | planned | [plan](plans/64-sticker-origin.md) |
-| 65 | new-vehicles-list | §9, §22 (rev. 1.20); VEH-42 | planned | [plan](plans/65-new-vehicles-list.md) |
-| 66 | onboarding-report | §18, §22 (rev. 1.20); GOV-25 | planned | [plan](plans/66-onboarding-report.md) |
-| 67 | role-dashboards | §16, §22 (rev. 1.20); GOV-25 | planned | [plan](plans/67-role-dashboards.md) |
+| 63 | bulk-declaration | §9, §16 (rev. 1.20); VEH-38 | done (16 Nov; not pushed) | [plan](plans/63-bulk-declaration.md) |
+| 64 | sticker-origin | §9A (rev. 1.20); VEH-41; amends GOV-21 | done (16 Nov; not pushed; GOV-21 amended for the dashboard) | [plan](plans/64-sticker-origin.md) |
+| 65 | new-vehicles-list | §9, §22 (rev. 1.20); VEH-42 | done (16 Nov; not pushed) | [plan](plans/65-new-vehicles-list.md) |
+| 66 | onboarding-report | §18, §22 (rev. 1.20); GOV-25 | done (16 Nov; not pushed; GOV-25 answered 17 Nov) | [plan](plans/66-onboarding-report.md) |
+| 67 | role-dashboards | §16, §22 (rev. 1.20); GOV-25 | done (17 Nov; not pushed; per-role table accepted, GOV-25 answered) | [plan](plans/67-role-dashboards.md) |
 
 ### Item summaries
 
@@ -510,7 +510,8 @@ change the plate, branch or unit, or linked member. See the plan.
 
 **63 — bulk-declaration.** *VEH-38, answered 16 November: tick vehicles in the list.* The
 super administrator filters the vehicle list, selects some or all, and declares them in one act,
-with one audit event for each vehicle. Needs item 59.
+with one audit event for each vehicle. Needs item 59. Planned: ticked ids only, partial
+success with a reason for each skip, and chunks of 50 (VEH-44 open: undeclare, and more than 200).
 
 **64 — sticker-origin.** *VEH-41.* The dashboard and the sticker lists tell a sticker from
 the imported register from one that is new, and say which stickers were taken into stock

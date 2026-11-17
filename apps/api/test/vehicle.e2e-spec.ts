@@ -579,6 +579,188 @@ describe('Vehicle declaration (e2e)', () => {
     });
   });
 
+  describe('declaring several at once (item 63, VEH-38)', () => {
+    /** A vehicle in branch A, as the legacy register left it, unless said otherwise. */
+    async function seeded(
+      suffix: string,
+      extra: Record<string, unknown> = {},
+      branchId: string = fixture.branchAId,
+    ) {
+      return prisma.vehicle.create({
+        data: {
+          plateNumberNormalized: `E2EV${suffix}`,
+          plateNumberDisplay: plate(suffix),
+          branchId,
+          status: 'ON_RECORD',
+          declaredAt: null,
+          isLegacyImport: true,
+          ...extra,
+        },
+      });
+    }
+
+    const declareMany = (who: string, vehicleIds: unknown) =>
+      request(server)
+        .post('/api/v1/vehicles/declare-many')
+        .set('Cookie', cookies[who]!)
+        .send({ vehicleIds });
+
+    it('declares every ticked vehicle, with one audit event for each', async () => {
+      const first = await seeded('BD1');
+      const second = await seeded('BD2');
+      const third = await seeded('BD3');
+
+      const response = await declareMany('declarer', [
+        first.id,
+        second.id,
+        third.id,
+      ]).expect(201);
+
+      expect(response.body).toEqual({ declared: 3, skipped: [] });
+      for (const vehicle of [first, second, third]) {
+        const row = await prisma.vehicle.findUniqueOrThrow({
+          where: { id: vehicle.id },
+        });
+        expect(row.status).toBe('ACTIVE');
+        expect(row.declaredAt).not.toBeNull();
+        const events = await prisma.auditEvent.findMany({
+          where: { subjectId: vehicle.id, action: 'vehicle.declare' },
+        });
+        expect(events).toHaveLength(1);
+      }
+    });
+
+    it('needs only the plate, and leaves a suspended vehicle suspended', async () => {
+      const suspended = await seeded('BD4', { status: 'SUSPENDED' });
+
+      const response = await declareMany('declarer', [suspended.id]).expect(201);
+
+      expect(response.body.declared).toBe(1);
+      const row = await prisma.vehicle.findUniqueOrThrow({
+        where: { id: suspended.id },
+      });
+      expect(row.status).toBe('SUSPENDED');
+      expect(row.declaredAt).not.toBeNull();
+    });
+
+    it('skips what cannot be declared, says why, and declares the rest', async () => {
+      const good = await seeded('BD5');
+      const already = await seeded('BD6', {
+        status: 'ACTIVE',
+        declaredAt: new Date(),
+      });
+      const retired = await seeded('BD7', { status: 'RETIRED' });
+      // The plate already holds an active declaration, so this record cannot be declared.
+      await seeded('BD8', { status: 'ACTIVE', declaredAt: new Date() });
+      const clash = await seeded('BD8', { plateNumberDisplay: plate('BD8') });
+      const missing = '00000000-0000-4000-8000-000000000001';
+
+      const response = await declareMany('declarer', [
+        good.id,
+        already.id,
+        retired.id,
+        clash.id,
+        missing,
+      ]).expect(201);
+
+      expect(response.body.declared).toBe(1);
+      const reasons = Object.fromEntries(
+        response.body.skipped.map((entry: { id: string; reason: string }) => [
+          entry.id,
+          entry.reason,
+        ]),
+      );
+      expect(reasons).toEqual({
+        [already.id]: 'ALREADY_DECLARED',
+        [retired.id]: 'LEFT_REGISTER',
+        [clash.id]: 'PLATE_ACTIVE_ELSEWHERE',
+        [missing]: 'NOT_FOUND',
+      });
+      const named = response.body.skipped.find(
+        (entry: { id: string }) => entry.id === already.id,
+      );
+      expect(named.plate).toBe(plate('BD6'));
+      expect(
+        response.body.skipped.find((entry: { id: string }) => entry.id === missing)
+          .plate,
+      ).toBeNull();
+      expect(
+        (await prisma.vehicle.findUniqueOrThrow({ where: { id: good.id } })).status,
+      ).toBe('ACTIVE');
+    });
+
+    it('answers a vehicle outside the caller’s area as it answers one that is not there', async () => {
+      const elsewhere = await seeded('BD9', {}, fixture.branchBId);
+
+      const response = await declareMany('declarer', [elsewhere.id]).expect(201);
+
+      expect(response.body).toEqual({
+        declared: 0,
+        skipped: [{ id: elsewhere.id, plate: null, reason: 'NOT_FOUND' }],
+      });
+      expect(
+        (await prisma.vehicle.findUniqueOrThrow({ where: { id: elsewhere.id } }))
+          .declaredAt,
+      ).toBeNull();
+    });
+
+    it('counts a repeated id once', async () => {
+      const vehicle = await seeded('BD10');
+
+      const response = await declareMany('declarer', [
+        vehicle.id,
+        vehicle.id,
+      ]).expect(201);
+
+      expect(response.body).toEqual({ declared: 1, skipped: [] });
+      expect(
+        await prisma.auditEvent.count({
+          where: { subjectId: vehicle.id, action: 'vehicle.declare' },
+        }),
+      ).toBe(1);
+    });
+
+    it('refuses none, too many, or a malformed id', async () => {
+      await declareMany('declarer', []).expect(400);
+      await declareMany('declarer', ['not-a-uuid']).expect(400);
+      const many = Array.from(
+        { length: 51 },
+        (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+      );
+      await declareMany('declarer', many).expect(400);
+      await request(server)
+        .post('/api/v1/vehicles/declare-many')
+        .set('Cookie', cookies.declarer!)
+        .send({})
+        .expect(400);
+    });
+
+    it('accepts exactly fifty', async () => {
+      const ids = Array.from(
+        { length: 50 },
+        (_, index) => `00000000-0000-4000-8000-${String(index + 100).padStart(12, '0')}`,
+      );
+
+      const response = await declareMany('declarer', ids).expect(201);
+
+      expect(response.body.declared).toBe(0);
+      expect(response.body.skipped).toHaveLength(50);
+    });
+
+    it('is for a holder of vehicle.declare alone', async () => {
+      const vehicle = await seeded('BD11');
+
+      await declareMany('editor', [vehicle.id]).expect(403);
+      await declareMany('enumerator', [vehicle.id]).expect(403);
+      await declareMany('senior', [vehicle.id]).expect(403);
+
+      expect(
+        (await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicle.id } }))
+          .declaredAt,
+      ).toBeNull();
+    });
+  });
+
   describe('undeclaring (item 60, VEH-39)', () => {
     function undeclare(id: string, body: Record<string, unknown>, who = 'declarer') {
       return request(server)

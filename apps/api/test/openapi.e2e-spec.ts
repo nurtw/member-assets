@@ -202,7 +202,8 @@ describe('API reference (e2e)', () => {
     // `@SignedIn()` asks for a session and no permission (item 28). It exists
     // for who-am-I, one's own password, and one's own second factor. Adding a
     // line here should require an argument for why the route names no
-    // permission.
+    // permission. `my-work` (GOV-25) counts only the caller's own actions and
+    // reads no record, so there is no record to scope and nothing to withhold.
     const own = openApi
       .getRoutes()
       .filter((route) => route.permission === SIGNED_IN)
@@ -211,6 +212,7 @@ describe('API reference (e2e)', () => {
 
     expect(own).toEqual([
       'GET /api/v1/auth/me',
+      'GET /api/v1/reports/my-work',
       'POST /api/v1/auth/mfa/confirm',
       'POST /api/v1/auth/mfa/enrol',
       'POST /api/v1/auth/mfa/recovery-codes',

@@ -153,6 +153,46 @@ export type DeclareRecordedVehicleInput = z.infer<
   typeof declareRecordedVehicleSchema
 >;
 
+/** The most vehicles one bulk declaration takes (item 63). The screen sends larger selections in chunks. */
+export const BULK_DECLARE_LIMIT = 50;
+
+/**
+ * Declares several vehicles as they are, from the ticks in the vehicle list
+ * (`POST /vehicles/declare-many`, item 63, `QUESTIONS.md` VEH-38). Nothing is
+ * supplied but the ids: a vehicle is declared on its plate alone. A repeated id
+ * counts once.
+ */
+export const declareManyVehiclesSchema = z.object({
+  vehicleIds: z
+    .array(uuid)
+    .min(1)
+    .max(BULK_DECLARE_LIMIT)
+    .transform((ids) => [...new Set(ids)]),
+});
+
+export type DeclareManyVehiclesInput = z.infer<typeof declareManyVehiclesSchema>;
+
+/**
+ * Why a vehicle was not declared in a bulk declaration. `NOT_FOUND` is a vehicle
+ * that does not exist and one outside the caller's scope alike, so an identifier
+ * cannot be probed.
+ */
+export const BULK_SKIP_REASONS = [
+  'ALREADY_DECLARED',
+  'LEFT_REGISTER',
+  'PLATE_ACTIVE_ELSEWHERE',
+  'NOT_FOUND',
+  'FAILED',
+] as const;
+
+export type BulkSkipReason = (typeof BULK_SKIP_REASONS)[number];
+
+export interface DeclareManyVehiclesResult {
+  declared: number;
+  /** `plate` is null for `NOT_FOUND`: nothing is said about a vehicle the caller may not see. */
+  skipped: { id: string; plate: string | null; reason: BulkSkipReason }[];
+}
+
 /**
  * Amends a declaration's record-keeping fields, and optionally moves it to a
  * different branch or unit. Never changes `status` — see

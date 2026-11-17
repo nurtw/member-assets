@@ -1,6 +1,6 @@
 # Session Handoff
 
-**Last revised:** 16 November 2026
+**Last revised:** 17 November 2026
 
 Cold start: read `CLAUDE.md` first. Three rules outrank every default: no
 `Co-Authored-By` or "Generated with Claude Code" anywhere; `data/` stays out of version
@@ -8,49 +8,52 @@ control, docs, plans, commits, and fixtures; the previous operator is never name
 
 ## Status
 
-Item 62 is built and tested locally, **not committed, pushed, or deployed**. Items 58 to 61
-are live on Neon, DigitalOcean, and origin (`76e17ce`); the 10 open applications were made
-active members on 16 November 2026.
+Items 58 to 62 are live (origin `bb8d94e`, Neon migrated and seeded, DigitalOcean active).
+**Items 63 to 67 are built and tested locally, not committed, pushed, or deployed.** That
+finishes the owner's roadmap of 16 November (items 58 to 67).
 
 ## Active roadmap item
 
-Item 62 — imported-vehicle-edit — done (`plans/62-imported-vehicle-edit.md`)
+None open. Next: the owner's go-ahead to commit, push, and deploy 63 to 67.
 
 ## Done this session
 
-- **Imported vehicles are amended by seniors at any time, others once** (PRD Requirement 9.11,
-  VEH-40). Senior is the new permission `vehicle.update_imported` (branch and unit
-  administrators, super administrator). One edit is one save per vehicle, shared:
-  `vehicle.importedEditedAt`, claimed by a conditional `updateMany`.
-- `importedEditRight` and `FIELDS_LOCKED_TO_ONE_EDIT` in `packages/domain`;
-  `VehicleDetail.edit` (`right`, `via`); `VehicleService.amend`; `PATCH /vehicles/:id`
-  (`vehicle.update`) and new `PATCH /vehicles/:id/imported` (`vehicle.record`).
-- One edit may not change plate, branch or unit, or linked member (403, nothing spent).
-- Web: `components/correct-vehicle.tsx`, "Correct the details" on the vehicle page; the Driver
-  section hides for a non-senior on an imported vehicle.
-- Migration `20261116170000_imported_vehicle_edit`. Applied **locally only**.
-- The planning decisions are recorded under VEH-40 and may be changed by the owner.
+- **63 bulk declaration:** `POST /vehicles/declare-many` (`vehicle.declare`, 50 ids), each id
+  through `declareRecorded`; partial success with a reason per skip; ticks on the Vehicles list.
+- **64 to 67:** `src/report/` (read-only, scope-bound): sticker origin counts (imported or
+  added), `GET /reports/added-vehicles` (no phone or address), the onboarding report by Lagos
+  day and officer, and member and vehicle counts. Web: Home counts (`dashboard-counts.tsx`),
+  `/vehicles/added`, `/reports/onboarding`, navigation entries.
+- Domain: `readDayRange`, `tallyOnboarding`, `lagosDay`, `stickerOriginGroup`.
+- No migration and no new permission in 63 to 67, so no `db:deploy` or `db:seed` is needed.
+- **GOV-25 and VEH-44 are answered** (the owner accepted the recommendations, 17 November).
+  Built to it: `withoutSticker` and `declaration.notDeclared`, `GET /reports/my-work`
+  (`@SignedIn`, the field enumerator's own numbers only), a "Your work" block, the vehicles
+  block only for officers who oversee, and `vehicle.update` among the permissions that open
+  Home (the vehicle-record officer now has a Home).
+- Docs: PRD 9.12 to 9.14, `CLAUDE.md`, the register (VEH-44 and GOV-25 answered, totals 125 /
+  35 / 3), `openapi.json`.
 
 ## Current state
 
-- Verified locally: domain 553, contracts 161, e2e 602 of 602 (27 files), typecheck, lint.
-  One earlier full e2e run had 6 failures (photograph uploads answering 500, in two files);
-  the next full run and the membership file alone were green. Not understood; watch for it.
-- Conflicts with PRD: none.
-- **On Neon, with the owner's go-ahead, in order:** push and deploy, `db:deploy`, then
-  `db:seed` (puts `vehicle.update_imported` in the administrator role). Vercel web rebuild for
-  item 61 has not been checked.
+- Verified locally: domain 565, web 125, typecheck, lint, and the full e2e suite, 641 of 641
+  across 28 files.
+- **The e2e setup now unsets `CLOUDINARY_URL`** (`test/setup-env.ts`). `.env` holds the live
+  one, so the photograph tests were uploading to the Union's real Cloudinary account and
+  failing with a 500 whenever that call ran slow. They now use local storage (`var/media`).
+- Docker Desktop stops by itself; blank Prisma errors in e2e mean it is down (memory:
+  docker-desktop-local-db). Files run in parallel, so a test must not assert a global count.
+- No question blocks anything built. Bulk undeclare and declare-all-matching stay unbuilt by the
+  owner's answer (VEH-44); build them together or not at all.
 - Known issues: the Members list does not show who registered a member; legacy `PENDING`
-  wording remains on the member and vehicle pages; a member's signature cannot be changed
-  after registration.
-- Run e2e with the local `DATABASE_URL` (`localhost:5433`); `.env` is Neon. If it is
-  refused, Docker Desktop has stopped (memory: docker-desktop-local-db).
+  wording on the member and vehicle pages; a member's signature cannot be changed after
+  registration.
 
 ## Next steps
 
-- Commit and push item 62 and deploy on the owner's go-ahead.
-- Run /plan for item 63 (bulk declaration), then /execute. **GOV-25** (dashboards) is still
-  open and shapes items 66 and 67.
+- On the owner's go-ahead: commit, push, and watch the DigitalOcean deploy. Nothing to run on
+  Neon for 63 to 67.
+- Check on the first live use: the dashboards for each role, as the owner described them.
 
 ## Do NOT
 

@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  DeclareManyVehiclesResult,
   DeclareRecordedVehicleInput,
   DeclareVehicleInput,
   DismissDisputeInput,
@@ -607,6 +608,57 @@ export class VehicleService {
       },
     );
     return this.summaryFor(actor.userId, promoted);
+  }
+
+  /**
+   * Declares each of the vehicles as it is (item 63, VEH-38). Every one goes
+   * through `declareRecorded`, in its own transaction, so the scope check, the
+   * plate rule, and the audit event (one per vehicle) are the single-vehicle
+   * ones, and a refusal skips that vehicle and not the rest.
+   */
+  async declareMany(
+    actor: ActorContext,
+    vehicleIds: readonly string[],
+  ): Promise<DeclareManyVehiclesResult> {
+    let declared = 0;
+    const skipped: DeclareManyVehiclesResult['skipped'] = [];
+    for (const id of vehicleIds) {
+      try {
+        await this.declareRecorded(actor, id, {});
+        declared += 1;
+      } catch (error) {
+        skipped.push(await this.skipped(id, error));
+      }
+    }
+    return { declared, skipped };
+  }
+
+  /**
+   * What to tell the caller about a vehicle that was not declared. Called only
+   * after `declareRecorded` has refused, so a conflict means the caller's scope
+   * was already passed and the plate may be named.
+   */
+  private async skipped(
+    id: string,
+    error: unknown,
+  ): Promise<DeclareManyVehiclesResult['skipped'][number]> {
+    if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+      return { id, plate: null, reason: 'NOT_FOUND' };
+    }
+    const row = await this.prisma.vehicle.findUnique({
+      where: { id },
+      select: { plateNumberDisplay: true, status: true, declaredAt: true },
+    });
+    if (!row || !(error instanceof ConflictException)) {
+      return { id, plate: row?.plateNumberDisplay ?? null, reason: 'FAILED' };
+    }
+    const reason =
+      row.declaredAt !== null
+        ? 'ALREADY_DECLARED'
+        : !isDeclarable(row.status as DeclarationStatus)
+          ? 'LEFT_REGISTER'
+          : 'PLATE_ACTIVE_ELSEWHERE';
+    return { id, plate: row.plateNumberDisplay, reason };
   }
 
   /**

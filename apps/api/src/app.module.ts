@@ -19,6 +19,7 @@ import { PaymentsModule } from './payments/payments.module.js';
 import { PortalModule } from './portal/portal.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { RateLimitModule } from './rate-limit/rate-limit.module.js';
+import { ReportModule } from './report/report.module.js';
 import { SettingsModule } from './settings/settings.module.js';
 import { StickerModule } from './sticker/sticker.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -63,6 +64,7 @@ import { VerificationModule } from './verification/verification.module.js';
     AggregateModule,
     UsersModule,
     PortalModule,
+    ReportModule,
   ],
 })
 export class AppModule {}

@@ -1109,6 +1109,59 @@ per-address limits were shared by everyone (19 October 2026).
 - **A release adding `vehicle.update_imported` needs `db:seed` after `db:deploy`** to put it
   in the branch and unit administrator role.
 
+### Declaring several vehicles at once (item 63, VEH-38)
+
+- **`POST /vehicles/declare-many`** (`vehicle.declare`, so the super administrator alone,
+  VEH-43) takes `vehicleIds` (1 to `BULK_DECLARE_LIMIT`, 50, repeats counted once). It calls
+  `declareRecorded(actor, id, {})` for each id in turn, **each in its own transaction**, so
+  the scope check, the plate rule, and the audit event (one `vehicle.declare` each) are the
+  single-vehicle ones. Never write a second declaring path for it.
+- **Partial, not all-or-nothing.** A refusal skips that vehicle with a reason
+  (`BULK_SKIP_REASONS`); the answer is `{ declared, skipped: [{ id, plate, reason }] }`. A
+  vehicle that does not exist and one outside scope are both `NOT_FOUND` with a null plate.
+- **The 50 limit is about Neon's distance from the API**, not the list: a long loop would
+  outlast a gateway. The vehicles list sends a larger selection in chunks (`chunk`,
+  `lib/bulk-declare.ts`) and acts only on rows that are ticked, still shown, and still
+  declarable (`isTickable`; a row whose status is absent is never offered).
+- Bulk undeclare, and declaring everything a filter matches, are not built (`QUESTIONS.md`
+  VEH-44).
+
+### Counts and lists for officers (items 64 to 67, VEH-41, VEH-42, GOV-25)
+
+- **`src/report/` is read-only and counts only inside the caller's scope.** Each route asks
+  for the permission that opens the matching list (`sticker.read`, `vehicle.read`,
+  `member.read`, `report.read`), and `ReportService` takes the outermost scopes at which the
+  caller holds it (`scopesHolding`) and counts vehicles the way the vehicle list does (the
+  unit's path, or the branch's when there is no unit). A count must never show more than a
+  list would. Never add a count whose list the caller may not read.
+- **Sticker counts say `imported` and `added`, never a name or a scheme's code** (VEH-41
+  amends GOV-21 for the dashboard alone). `stickerOriginGroup` maps `REGISTER` to imported;
+  stock and signed are added. A sticker's own page still says only "sticker". The total
+  includes stickers attached to nothing, which belong to no branch, so it is `null` unless
+  the caller's scope is a whole council.
+- **`GET /reports/added-vehicles` carries no telephone and no address** (VEH-42): the owner
+  select names `ownerName` only, and the name and chassis number go only to
+  `vehicle.read_restricted`; `declared` only to `vehicle.declare`. `report.e2e-spec.ts`
+  fails on the words phone and address in the response.
+- **The onboarding report is by Lagos day** (`lagosDay`, `readDayRange` in
+  `@nurtw/domain`), at most 92 days, 14 by default. A member counts only if a registration
+  record names who registered them, so the imported members are not counted.
+- **Home's counts follow the owner's table for each role** (GOV-25, accepted 17 November 2026;
+  `components/dashboard-counts.tsx`, which says it in its header). Blocks are opened by the
+  permission that opens the matching list, and the area blocks (vehicles) only for an officer
+  who oversees (`vehicle.update`, `report.read`, or `vehicle.declare`): a field enumerator
+  sees **only their own work** from `GET /reports/my-work`, never another officer's numbers.
+  They load once, with no polling.
+- **`GET /reports/my-work` is `@SignedIn()`** and is pinned in `openapi.e2e-spec.ts` with the
+  argument: it counts only the caller's own actions and reads no record. It is never scoped by
+  organisation and never takes a user id from the request.
+- **`withoutSticker` counts every status**, because leaving out the retired would give a status
+  away (VEH-28). `declaration.notDeclared` (not declared, not retired or archived) goes only to
+  a holder of `vehicle.declare`.
+- **Home opens for `OVERVIEW_PERMISSIONS`**, now including `report.read` and `vehicle.update`
+  (the vehicle-record officer has a Home). A verification officer, who only reads vehicles,
+  still lands on Verify.
+
 ### Who sees a declaration status (VEH-28, VEH-43)
 
 **Only a holder of `vehicle.declare` over the vehicle**, by the owner's direction of
