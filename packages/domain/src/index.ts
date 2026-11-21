@@ -152,14 +152,18 @@ export {
   ONBOARDING_DEFAULT_DAYS,
   ONBOARDING_KINDS,
   ONBOARDING_MAX_DAYS,
+  countOnboarded,
+  firstAttachments,
   lagosDay,
   lagosDayBegins,
   readDayRange,
   tallyOnboarding,
   type DayRange,
+  type OnboardedCount,
   type OnboardingEvent,
   type OnboardingKind,
   type OnboardingRow,
+  type StickerAttachment,
 } from './report/onboarding.js';
 
 export {

@@ -56,7 +56,14 @@ describe('Counts and lists for officers (e2e)', () => {
 
     await cleanUp();
     fixture = await buildFixture();
-    for (const who of ['admin', 'brancha', 'branchb', 'reader', 'officer1', 'officer2']) {
+    for (const who of [
+      'admin',
+      'brancha',
+      'branchb',
+      'reader',
+      'officer1',
+      'officer2',
+    ]) {
       cookies[who] = await login(`${who}.${TAG}@nurtw.test`);
     }
   });
@@ -72,21 +79,27 @@ describe('Counts and lists for officers (e2e)', () => {
 
   describe('stickers by origin (item 64, VEH-41)', () => {
     it('counts the attached ones in the caller’s scope, by origin', async () => {
-      const response = await get('brancha', '/reports/sticker-origins').expect(200);
+      const response = await get('brancha', '/reports/sticker-origins').expect(
+        200,
+      );
 
       expect(response.body.counts.imported.attached).toBe(1);
       expect(response.body.counts.added.attached).toBe(1);
     });
 
     it('keeps the totals, which include stickers attached to nothing, from a narrower scope', async () => {
-      const response = await get('brancha', '/reports/sticker-origins').expect(200);
+      const response = await get('brancha', '/reports/sticker-origins').expect(
+        200,
+      );
 
       expect(response.body.counts.imported.total).toBeNull();
       expect(response.body.counts.added.total).toBeNull();
     });
 
     it('gives a whole-council scope the totals', async () => {
-      const response = await get('admin', '/reports/sticker-origins').expect(200);
+      const response = await get('admin', '/reports/sticker-origins').expect(
+        200,
+      );
 
       // Other suites add stickers at the same time, so the totals are at least what this
       // fixture holds: two imported (one attached, one not) and two taken into stock.
@@ -100,17 +113,26 @@ describe('Counts and lists for officers (e2e)', () => {
     });
 
     it('counts nothing attached for a branch with no vehicle of the kind', async () => {
-      const response = await get('branchb', '/reports/sticker-origins').expect(200);
+      const response = await get('branchb', '/reports/sticker-origins').expect(
+        200,
+      );
 
       expect(response.body.counts.imported.attached).toBe(0);
       expect(response.body.counts.added.attached).toBe(0);
     });
 
     it('never says a scheme’s code or a name', async () => {
-      const response = await get('admin', '/reports/sticker-origins').expect(200);
+      const response = await get('admin', '/reports/sticker-origins').expect(
+        200,
+      );
 
-      expect(Object.keys(response.body.counts).sort()).toEqual(['added', 'imported']);
-      expect(JSON.stringify(response.body)).not.toMatch(/barcode|legacy|REGISTER|STOCK/i);
+      expect(Object.keys(response.body.counts).sort()).toEqual([
+        'added',
+        'imported',
+      ]);
+      expect(JSON.stringify(response.body)).not.toMatch(
+        /barcode|legacy|REGISTER|STOCK/i,
+      );
     });
 
     it('is for a holder of sticker.read', async () => {
@@ -120,23 +142,35 @@ describe('Counts and lists for officers (e2e)', () => {
 
   describe('the vehicles added through the System (item 65, VEH-42)', () => {
     it('lists the added ones in scope and leaves out the imported', async () => {
-      const response = await get('brancha', '/reports/added-vehicles').expect(200);
+      const response = await get('brancha', '/reports/added-vehicles').expect(
+        200,
+      );
 
-      const ids = response.body.vehicles.map((vehicle: { id: string }) => vehicle.id);
-      expect(ids.sort()).toEqual([fixture.vehicles.v1, fixture.vehicles.v2].sort());
+      const ids = response.body.vehicles.map(
+        (vehicle: { id: string }) => vehicle.id,
+      );
+      expect(ids.sort()).toEqual(
+        [fixture.vehicles.v1, fixture.vehicles.v2].sort(),
+      );
       expect(response.body.total).toBe(2);
     });
 
     it('lists another branch’s only for a caller whose scope reaches it', async () => {
-      const response = await get('admin', '/reports/added-vehicles').expect(200);
+      const response = await get('admin', '/reports/added-vehicles').expect(
+        200,
+      );
 
-      const ids = response.body.vehicles.map((vehicle: { id: string }) => vehicle.id);
+      const ids = response.body.vehicles.map(
+        (vehicle: { id: string }) => vehicle.id,
+      );
       expect(ids).toContain(fixture.vehicles.v4);
       expect(ids).not.toContain(fixture.vehicles.v3);
     });
 
     it('says who recorded it, when, and its sticker', async () => {
-      const response = await get('brancha', '/reports/added-vehicles').expect(200);
+      const response = await get('brancha', '/reports/added-vehicles').expect(
+        200,
+      );
 
       const first = response.body.vehicles.find(
         (vehicle: { id: string }) => vehicle.id === fixture.vehicles.v1,
@@ -153,7 +187,9 @@ describe('Counts and lists for officers (e2e)', () => {
     });
 
     it('shows the owner’s name and the chassis number only to vehicle.read_restricted', async () => {
-      const restricted = await get('admin', '/reports/added-vehicles').expect(200);
+      const restricted = await get('admin', '/reports/added-vehicles').expect(
+        200,
+      );
       const plain = await get('brancha', '/reports/added-vehicles').expect(200);
 
       const seen = restricted.body.vehicles.find(
@@ -171,7 +207,9 @@ describe('Counts and lists for officers (e2e)', () => {
     });
 
     it('never carries a telephone or an address, to anyone', async () => {
-      const restricted = await get('admin', '/reports/added-vehicles').expect(200);
+      const restricted = await get('admin', '/reports/added-vehicles').expect(
+        200,
+      );
 
       const text = JSON.stringify(restricted.body);
       expect(text).not.toContain(OWNER_PHONE);
@@ -180,7 +218,9 @@ describe('Counts and lists for officers (e2e)', () => {
     });
 
     it('shows whether a vehicle is declared only to a holder of vehicle.declare', async () => {
-      const declarer = await get('admin', '/reports/added-vehicles').expect(200);
+      const declarer = await get('admin', '/reports/added-vehicles').expect(
+        200,
+      );
       const plain = await get('brancha', '/reports/added-vehicles').expect(200);
 
       const declared = declarer.body.vehicles.find(
@@ -193,7 +233,10 @@ describe('Counts and lists for officers (e2e)', () => {
     });
 
     it('narrows by plate and by day, and pages', async () => {
-      const byPlate = await get('brancha', '/reports/added-vehicles?q=rpt-v1').expect(200);
+      const byPlate = await get(
+        'brancha',
+        '/reports/added-vehicles?q=rpt-v1',
+      ).expect(200);
       expect(byPlate.body.vehicles).toHaveLength(1);
       expect(byPlate.body.total).toBe(1);
 
@@ -203,52 +246,69 @@ describe('Counts and lists for officers (e2e)', () => {
       ).expect(200);
       expect(future.body.vehicles).toEqual([]);
 
-      const page = await get('brancha', '/reports/added-vehicles?limit=1').expect(200);
+      const page = await get(
+        'brancha',
+        '/reports/added-vehicles?limit=1',
+      ).expect(200);
       expect(page.body.vehicles).toHaveLength(1);
       expect(page.body.total).toBe(2);
     });
 
     it('refuses a day that is not one, and a limit over 200', async () => {
-      await get('brancha', '/reports/added-vehicles?from=2026-02-30').expect(400);
+      await get('brancha', '/reports/added-vehicles?from=2026-02-30').expect(
+        400,
+      );
       await get('brancha', '/reports/added-vehicles?limit=201').expect(400);
     });
 
     it('is for a holder of vehicle.read', async () => {
-      const nobody = await request(server).get('/api/v1/reports/added-vehicles');
+      const nobody = await request(server).get(
+        '/api/v1/reports/added-vehicles',
+      );
       expect(nobody.status).toBe(401);
     });
   });
 
   describe('the onboarding report (item 66, GOV-25)', () => {
+    const onboarded = (total: number, imported: number, added: number) => ({
+      total,
+      imported,
+      added,
+    });
+
     it('counts each officer’s work for the day, in the caller’s scope', async () => {
       const response = await get('brancha', '/reports/onboarding').expect(200);
 
       const rows = response.body.report.rows;
       const one = rows.find(
-        (row: { officer: { id: string } }) => row.officer.id === fixture.officer1.id,
+        (row: { officer: { id: string } }) =>
+          row.officer.id === fixture.officer1.id,
       );
+      // Officer 1 attached the first sticker of one imported vehicle and one new one.
       expect(one).toMatchObject({
         officer: { name: fixture.officer1.name },
+        vehiclesOnboarded: onboarded(2, 1, 1),
         membersRegistered: 1,
         vehiclesRecorded: 1,
-        vehiclesDeclared: 0,
-        stickersAttached: 2,
       });
-      const two = rows.find(
-        (row: { officer: { id: string } }) => row.officer.id === fixture.officer2.id,
-      );
-      expect(two).toMatchObject({
-        membersRegistered: 0,
-        vehiclesRecorded: 0,
-        vehiclesDeclared: 1,
-        stickersAttached: 0,
-      });
+      // Officer 2 only declared in branch A, and declaring is not onboarding.
+      expect(
+        rows.find(
+          (row: { officer: { id: string } }) =>
+            row.officer.id === fixture.officer2.id,
+        ),
+      ).toBeUndefined();
       expect(response.body.report.totals).toEqual({
+        vehiclesOnboarded: onboarded(2, 1, 1),
         membersRegistered: 1,
         vehiclesRecorded: 1,
-        vehiclesDeclared: 1,
-        stickersAttached: 2,
       });
+    });
+
+    it('says nothing of declaring', async () => {
+      const response = await get('brancha', '/reports/onboarding').expect(200);
+
+      expect(JSON.stringify(response.body)).not.toMatch(/declar/i);
     });
 
     it('counts what lies in another branch for a caller whose scope reaches it', async () => {
@@ -265,6 +325,36 @@ describe('Counts and lists for officers (e2e)', () => {
 
       // The imported member has no registration record, so no officer registered them.
       expect(response.body.report.totals.membersRegistered).toBe(2);
+    });
+
+    it('does not count a replacement sticker as a second onboarding', async () => {
+      const replacement = await prisma.sticker.create({
+        data: {
+          stickerQrId: `${TAG}-replacement`,
+          legacyBarcode: `${TAG}-replacement-code`,
+          templateVersion: 'legacy-barcode',
+          status: 'ISSUED',
+          stockAddedAt: new Date(),
+          vehicleId: fixture.vehicles.v1,
+          attachedAt: new Date(Date.now() + 1000),
+          attachedByUserId: fixture.officer2.id,
+        },
+      });
+      try {
+        const response = await get('brancha', '/reports/onboarding').expect(
+          200,
+        );
+
+        expect(response.body.report.totals.vehiclesOnboarded).toEqual(
+          onboarded(2, 1, 1),
+        );
+        const mine = await get('officer2', '/reports/my-work').expect(200);
+        expect(mine.body.work.total.vehiclesOnboarded).toEqual(
+          onboarded(0, 0, 0),
+        );
+      } finally {
+        await prisma.sticker.delete({ where: { id: replacement.id } });
+      }
     });
 
     it('names the officer and no one else’s details', async () => {
@@ -289,8 +379,14 @@ describe('Counts and lists for officers (e2e)', () => {
 
     it('refuses days that are not days, a reversed range, and more than 92 days', async () => {
       await get('brancha', '/reports/onboarding?from=2026-13-01').expect(400);
-      await get('brancha', '/reports/onboarding?from=2026-11-10&to=2026-11-01').expect(400);
-      await get('brancha', '/reports/onboarding?from=2026-01-01&to=2026-11-01').expect(400);
+      await get(
+        'brancha',
+        '/reports/onboarding?from=2026-11-10&to=2026-11-01',
+      ).expect(400);
+      await get(
+        'brancha',
+        '/reports/onboarding?from=2026-01-01&to=2026-11-01',
+      ).expect(400);
     });
 
     it('is for a holder of report.read', async () => {
@@ -299,32 +395,64 @@ describe('Counts and lists for officers (e2e)', () => {
   });
 
   describe('the counts on Home (item 67, GOV-25)', () => {
-    it('counts the members in scope, apart from those registered through the System', async () => {
-      const response = await get('brancha', '/reports/member-counts').expect(200);
+    it('counts the members in scope, and those registered through the System', async () => {
+      const response = await get('brancha', '/reports/member-counts').expect(
+        200,
+      );
 
       expect(response.body.counts).toEqual({
+        registered: 1,
+        registeredToday: 1,
         active: 2,
         suspended: 1,
-        registeredToday: 1,
-        registeredLastSevenDays: 1,
       });
     });
 
-    it('counts the vehicles in scope and says nothing of declaration to one who may not see it', async () => {
-      const response = await get('brancha', '/reports/vehicle-counts').expect(200);
+    it('leads with the vehicles onboarded, and says nothing of declaration to one who may not see it', async () => {
+      const response = await get('brancha', '/reports/vehicle-counts').expect(
+        200,
+      );
 
       expect(response.body.counts).toEqual({
-        total: 3,
-        addedThroughSystem: 2,
-        addedToday: 2,
+        // The imported vehicle and the first new one have a sticker attached.
+        onboarded: { total: 2, imported: 1, added: 1 },
+        onboardedToday: { total: 2, imported: 1, added: 1 },
+        onboardedWithoutMember: 2,
         // Only the second vehicle has no sticker attached.
         withoutSticker: 1,
       });
     });
 
+    it('counts an onboarded vehicle with its driver linked apart', async () => {
+      const member = await prisma.member.findFirstOrThrow({
+        where: { surname: `Registered A ${TAG}` },
+      });
+      await prisma.vehicle.update({
+        where: { id: fixture.vehicles.v1 },
+        data: { declaredByMemberId: member.id },
+      });
+      try {
+        const response = await get('brancha', '/reports/vehicle-counts').expect(
+          200,
+        );
+
+        expect(response.body.counts.onboardedWithoutMember).toBe(1);
+        expect(response.body.counts.onboarded.total).toBe(2);
+      } finally {
+        await prisma.vehicle.update({
+          where: { id: fixture.vehicles.v1 },
+          data: { declaredByMemberId: null },
+        });
+      }
+    });
+
     it('counts a retired vehicle with no sticker for one who may not see its status, and not as a backlog for the one who may', async () => {
-      const before = await get('brancha', '/reports/vehicle-counts').expect(200);
-      const adminBefore = await get('admin', '/reports/vehicle-counts').expect(200);
+      const before = await get('brancha', '/reports/vehicle-counts').expect(
+        200,
+      );
+      const adminBefore = await get('admin', '/reports/vehicle-counts').expect(
+        200,
+      );
       const retired = await prisma.vehicle.create({
         data: {
           plateNumberNormalized: 'RPTV9',
@@ -335,8 +463,12 @@ describe('Counts and lists for officers (e2e)', () => {
         },
       });
       try {
-        const after = await get('brancha', '/reports/vehicle-counts').expect(200);
-        const adminAfter = await get('admin', '/reports/vehicle-counts').expect(200);
+        const after = await get('brancha', '/reports/vehicle-counts').expect(
+          200,
+        );
+        const adminAfter = await get('admin', '/reports/vehicle-counts').expect(
+          200,
+        );
 
         // The count leaves no status out, so it cannot say which vehicle is retired.
         expect(after.body.counts.withoutSticker).toBe(
@@ -352,9 +484,14 @@ describe('Counts and lists for officers (e2e)', () => {
     });
 
     it('gives a holder of vehicle.declare the declared and on-record figures', async () => {
-      const response = await get('admin', '/reports/vehicle-counts').expect(200);
+      const response = await get('admin', '/reports/vehicle-counts').expect(
+        200,
+      );
 
-      expect(response.body.counts.declaration).toEqual({ notDeclared: 3, declared: 1 });
+      expect(response.body.counts.declaration).toEqual({
+        notDeclared: 3,
+        declared: 1,
+      });
     });
 
     it('is for a holder of the permission that opens the list', async () => {
@@ -364,40 +501,65 @@ describe('Counts and lists for officers (e2e)', () => {
   });
 
   describe('an officer’s own work (GOV-25, the field enumerator’s dashboard)', () => {
-    it('counts what the caller did, today and over the week', async () => {
+    const none = {
+      vehiclesOnboarded: { total: 0, imported: 0, added: 0 },
+      membersRegistered: 0,
+    };
+
+    it('counts what the caller did, in all and today, with the legacy and new split', async () => {
       const response = await get('officer1', '/reports/my-work').expect(200);
 
+      const mine = {
+        vehiclesOnboarded: { total: 2, imported: 1, added: 1 },
+        membersRegistered: 1,
+      };
       expect(response.body.work).toEqual({
-        today: { membersRegistered: 1, vehiclesRecorded: 1, stickersAttached: 2 },
-        lastSevenDays: { membersRegistered: 1, vehiclesRecorded: 1, stickersAttached: 2 },
+        since: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        total: mine,
+        day: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        onDay: mine,
+        // The vehicle officer 1 added has its sticker.
+        awaitingSticker: 0,
       });
+    });
+
+    it('shows another day on request, and keeps the totals', async () => {
+      const response = await get(
+        'officer1',
+        '/reports/my-work?day=2020-01-01',
+      ).expect(200);
+
+      expect(response.body.work.day).toBe('2020-01-01');
+      expect(response.body.work.onDay).toEqual(none);
+      expect(response.body.work.total.vehiclesOnboarded.total).toBe(2);
+      await get('officer1', '/reports/my-work?day=2026-13-01').expect(400);
     });
 
     it('never counts another officer’s work', async () => {
       const response = await get('officer2', '/reports/my-work').expect(200);
 
-      // Officer 2 registered one member and recorded one vehicle, and attached no sticker.
-      expect(response.body.work.today).toEqual({
+      // Officer 2 registered one member and added one vehicle, and attached no sticker.
+      expect(response.body.work.total).toEqual({
+        ...none,
         membersRegistered: 1,
-        vehiclesRecorded: 1,
-        stickersAttached: 0,
       });
+      expect(response.body.work.awaitingSticker).toBe(1);
     });
 
     it('gives an officer who did nothing zeros', async () => {
       const response = await get('reader', '/reports/my-work').expect(200);
 
-      expect(response.body.work.today).toEqual({
-        membersRegistered: 0,
-        vehiclesRecorded: 0,
-        stickersAttached: 0,
-      });
+      expect(response.body.work.total).toEqual(none);
+      expect(response.body.work.onDay).toEqual(none);
+      expect(response.body.work.awaitingSticker).toBe(0);
     });
 
-    it('names no officer, and needs a session', async () => {
-      const response = await get('officer1', '/reports/my-work').expect(200);
+    it('names no officer, says nothing of declaring, and needs a session', async () => {
+      const response = await get('officer2', '/reports/my-work').expect(200);
 
-      expect(JSON.stringify(response.body)).not.toMatch(/officer\d|fixture/i);
+      const text = JSON.stringify(response.body);
+      expect(text).not.toMatch(/officer\d|fixture/i);
+      expect(text).not.toMatch(/declar/i);
       await request(server).get('/api/v1/reports/my-work').expect(401);
     });
   });
@@ -411,7 +573,12 @@ describe('Counts and lists for officers (e2e)', () => {
       parent: { id: string; path: string } | null,
     ) => {
       const row = await prisma.organisation.create({
-        data: { name: `${name} ${TAG}`, level, parentId: parent?.id ?? null, path: 'placeholder' },
+        data: {
+          name: `${name} ${TAG}`,
+          level,
+          parentId: parent?.id ?? null,
+          path: 'placeholder',
+        },
       });
       return prisma.organisation.update({
         where: { id: row.id },
@@ -425,7 +592,10 @@ describe('Counts and lists for officers (e2e)', () => {
 
     const baseline = {
       imported: await prisma.sticker.count({
-        where: { registeredPlateNormalized: { not: null }, status: { not: 'CANCELLED' } },
+        where: {
+          registeredPlateNormalized: { not: null },
+          status: { not: 'CANCELLED' },
+        },
       }),
       added: await prisma.sticker.count({
         where: {
@@ -486,7 +656,10 @@ describe('Counts and lists for officers (e2e)', () => {
         },
       },
     });
-    const v2 = await vehicle('2', branchA.id, { status: 'ACTIVE', declaredAt: new Date() });
+    const v2 = await vehicle('2', branchA.id, {
+      status: 'ACTIVE',
+      declaredAt: new Date(),
+    });
     const v3 = await vehicle('3', branchA.id, { isLegacyImport: true });
     const v4 = await vehicle('4', branchB.id);
 
@@ -497,7 +670,13 @@ describe('Counts and lists for officers (e2e)', () => {
       organisationId: string,
     ) =>
       prisma.auditEvent.create({
-        data: { action, subjectType: 'vehicle', subjectId, actorUserId, organisationId },
+        data: {
+          action,
+          subjectType: 'vehicle',
+          subjectId,
+          actorUserId,
+          organisationId,
+        },
       });
     await audit('vehicle.record', v1.id, officer1.id, branchA.id);
     await audit('vehicle.declare', v2.id, officer2.id, branchA.id);
@@ -505,10 +684,7 @@ describe('Counts and lists for officers (e2e)', () => {
 
     // An imported-register sticker on the imported vehicle, and a taken-into-stock
     // sticker on a vehicle added through the System, both attached by officer 1.
-    const sticker = (
-      label: string,
-      extra: Record<string, unknown>,
-    ) =>
+    const sticker = (label: string, extra: Record<string, unknown>) =>
       prisma.sticker.create({
         data: {
           stickerQrId: `${TAG}-${label}`,
@@ -533,9 +709,18 @@ describe('Counts and lists for officers (e2e)', () => {
     });
     await sticker('stock-free', { stockAddedAt: new Date() });
 
-    const member = (surname: string, branchId: string, status: 'ACTIVE' | 'SUSPENDED') =>
+    const member = (
+      surname: string,
+      branchId: string,
+      status: 'ACTIVE' | 'SUSPENDED',
+    ) =>
       prisma.member.create({
-        data: { surname: `${surname} ${TAG}`, firstName: 'Fixture', status, organisationId: branchId },
+        data: {
+          surname: `${surname} ${TAG}`,
+          firstName: 'Fixture',
+          status,
+          organisationId: branchId,
+        },
       });
     const m1 = await member('Registered A', branchA.id, 'ACTIVE');
     await member('Imported A', branchA.id, 'ACTIVE');
@@ -582,7 +767,9 @@ describe('Counts and lists for officers (e2e)', () => {
       },
     });
     for (const code of permissions) {
-      const permission = await prisma.permission.findUniqueOrThrow({ where: { code } });
+      const permission = await prisma.permission.findUniqueOrThrow({
+        where: { code },
+      });
       await prisma.userPermissionGrant.create({
         data: {
           userId: user.id,
@@ -622,7 +809,9 @@ describe('Counts and lists for officers (e2e)', () => {
       select: { id: true },
     });
 
-    await prisma.sticker.deleteMany({ where: { stickerQrId: { startsWith: TAG } } });
+    await prisma.sticker.deleteMany({
+      where: { stickerQrId: { startsWith: TAG } },
+    });
     await prisma.auditEvent.deleteMany({
       where: {
         OR: [
@@ -632,12 +821,16 @@ describe('Counts and lists for officers (e2e)', () => {
         ],
       },
     });
-    await prisma.vehicle.deleteMany({ where: { id: { in: vehicles.map((v) => v.id) } } });
+    await prisma.vehicle.deleteMany({
+      where: { id: { in: vehicles.map((v) => v.id) } },
+    });
     await prisma.membershipApplication.deleteMany({
       where: { applicationNumber: { startsWith: TAG.toUpperCase() } },
     });
     await prisma.member.deleteMany({ where: { surname: { contains: TAG } } });
-    await prisma.userPermissionGrant.deleteMany({ where: { userId: { in: userIds } } });
+    await prisma.userPermissionGrant.deleteMany({
+      where: { userId: { in: userIds } },
+    });
     await prisma.userSession.deleteMany({ where: { userId: { in: userIds } } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
     for (const org of orgs) {

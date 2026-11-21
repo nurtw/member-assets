@@ -1,13 +1,24 @@
-import { BadRequestException, Controller, Get, Query, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Query,
+  Req,
+} from '@nestjs/common';
 import {
   addedVehiclesQuerySchema,
   onboardingReportQuerySchema,
+  ownWorkQuerySchema,
   type AddedVehiclesQuery,
   type OnboardingReportQuery,
+  type OwnWorkQuery,
 } from '@nurtw/contracts';
 
 import type { AuthenticatedRequest } from '../auth/authorisation.guard.js';
-import { RequirePermission, SignedIn } from '../auth/require-permission.decorator.js';
+import {
+  RequirePermission,
+  SignedIn,
+} from '../auth/require-permission.decorator.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { Documented } from '../docs/documented.decorator.js';
 import { ReportService } from './report.service.js';
@@ -33,7 +44,8 @@ export class ReportController {
   @RequirePermission('sticker.read')
   @Get('sticker-origins')
   @Documented({
-    summary: 'Stickers from the imported register and stickers added through the System.',
+    summary:
+      'Stickers from the imported register and stickers added through the System.',
     description:
       'Item 64 (VEH-41). Counts, for the dashboard: those from the imported register and those ' +
       'added through the System (taken into stock, or signed), and how many of each are attached ' +
@@ -64,7 +76,8 @@ export class ReportController {
   })
   async addedVehicles(
     @Req() request: AuthenticatedRequest,
-    @Query(new ZodValidationPipe(addedVehiclesQuerySchema)) query: AddedVehiclesQuery,
+    @Query(new ZodValidationPipe(addedVehiclesQuerySchema))
+    query: AddedVehiclesQuery,
   ) {
     return this.reports.addedVehicles(this.userId(request), query);
   }
@@ -74,21 +87,27 @@ export class ReportController {
   @Documented({
     summary: 'How many were onboarded each day, and by which officer.',
     description:
-      'Item 66 (GOV-25). Per Lagos day and officer: members registered, vehicles recorded, ' +
-      'vehicles declared, and stickers attached, over the records inside the caller’s `report.read` ' +
-      'scope. Imported members and vehicles are not counted. At most 92 days; the last 14 by default.',
+      'Item 66 (GOV-25; the owner’s direction of 18 November 2026). Per Lagos day and officer: ' +
+      'vehicles onboarded (legacy and new), members registered, and vehicles recorded, over the records ' +
+      'inside the caller’s `report.read` scope. A vehicle is onboarded on the day its first sticker is ' +
+      'attached, by the officer who attached it. Imported members are not counted. At most 92 days; ' +
+      'the last 14 by default.',
     query: [
       { name: 'from', description: 'First day, YYYY-MM-DD (Lagos).' },
       { name: 'to', description: 'Last day, YYYY-MM-DD (Lagos).' },
     ],
-    responses: { 400: 'Not real days, `from` after `to`, or more than 92 days.' },
+    responses: {
+      400: 'Not real days, `from` after `to`, or more than 92 days.',
+    },
   })
   async onboarding(
     @Req() request: AuthenticatedRequest,
     @Query(new ZodValidationPipe(onboardingReportQuerySchema))
     query: OnboardingReportQuery,
   ) {
-    return { report: await this.reports.onboarding(this.userId(request), query) };
+    return {
+      report: await this.reports.onboarding(this.userId(request), query),
+    };
   }
 
   @RequirePermission('member.read')
@@ -96,8 +115,8 @@ export class ReportController {
   @Documented({
     summary: 'Counts of members, for the dashboard.',
     description:
-      'Item 67. Active and suspended members, and those registered today and in the last seven days, ' +
-      'inside the caller’s `member.read` scope.',
+      'Item 67. Members registered through the System, in all and today, and the active and ' +
+      'suspended members, inside the caller’s `member.read` scope.',
   })
   async memberCounts(@Req() request: AuthenticatedRequest) {
     return { counts: await this.reports.memberCounts(this.userId(request)) };
@@ -106,14 +125,26 @@ export class ReportController {
   @SignedIn()
   @Get('my-work')
   @Documented({
-    summary: 'What the signed-in officer did today and over the last seven days.',
+    summary: 'What the signed-in officer has done, in all and on one day.',
     description:
-      'GOV-25. The caller’s own numbers and no one else’s: members they registered, vehicles they ' +
-      'recorded, and stickers they attached, today and over the last seven Lagos days. It names no ' +
-      'permission because it counts only the caller’s own actions and reads no record.',
+      'GOV-25; the owner’s direction of 18 November 2026. The caller’s own numbers and no one ' +
+      'else’s: vehicles they onboarded (they attached its first sticker; legacy and new), and members ' +
+      'they registered, in all since their account was made and on one Lagos day, with the vehicles ' +
+      'they added that have no sticker yet. It names no permission because it counts only the ' +
+      'caller’s own actions and reads no record.',
+    query: [
+      {
+        name: 'day',
+        description: 'The day, YYYY-MM-DD (Lagos). Today when absent.',
+      },
+    ],
+    responses: { 400: 'The day is not a real day.' },
   })
-  async myWork(@Req() request: AuthenticatedRequest) {
-    return { work: await this.reports.ownWork(this.userId(request)) };
+  async myWork(
+    @Req() request: AuthenticatedRequest,
+    @Query(new ZodValidationPipe(ownWorkQuerySchema)) query: OwnWorkQuery,
+  ) {
+    return { work: await this.reports.ownWork(this.userId(request), query) };
   }
 
   @RequirePermission('vehicle.read')
@@ -121,9 +152,10 @@ export class ReportController {
   @Documented({
     summary: 'Counts of vehicles, for the dashboard.',
     description:
-      'Item 67. Vehicles in the caller’s scope, those added through the System, and those added today. ' +
-      'and those with no sticker yet. `declaration` (not yet declared, and declared) is present only ' +
-      'for a holder of `vehicle.declare`.',
+      'Item 67; the owner’s direction of 18 November 2026. In the caller’s scope: vehicles onboarded ' +
+      '(a sticker attached) in all and today, each split into legacy and new; onboarded vehicles with ' +
+      'no member linked; and vehicles with no sticker yet. `declaration` (not yet declared, and ' +
+      'declared) is present only for a holder of `vehicle.declare`.',
   })
   async vehicleCounts(@Req() request: AuthenticatedRequest) {
     return { counts: await this.reports.vehicleCounts(this.userId(request)) };

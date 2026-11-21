@@ -53,8 +53,8 @@ thing a year later.
 | Legacy migration (MIG) | 6 | 2 | — | 8 |
 | External organisations (EXT) | 19 | 2 | — | 21 |
 | Payments (PAY) | 27 | 0 | — | 27 |
-| Governance and go-live (GOV) | 14 | 9 | 2 | 25 |
-| **Total** | **125** | **35** | **3** | **163** |
+| Governance and go-live (GOV) | 15 | 9 | 2 | 26 |
+| **Total** | **126** | **35** | **3** | **164** |
 
 ### Blocking production use right now
 
@@ -1899,6 +1899,37 @@ Days are Lagos days, at most 92 in the report.
 **Answered on.** 17 November 2026. **Answered by.** Project owner (accepting the recommendation).
 **Recorded at.** PRD Requirement 9.14; roadmap items 66 and 67.
 
+### GOV-26 · What the dashboards count: vehicles onboarded ✅
+
+**Question.** (The project owner's voice notes to the developer, 18 November 2026.) "The
+enumerators' dashboard is kind of confusing." What should each dashboard count, and when is a
+vehicle onboarded?
+
+**Answer.** **A vehicle is onboarded once a sticker is attached to it**, whether the sticker
+is from the imported register or new stock, and whether the vehicle is a legacy one or new.
+Without a sticker it is not onboarded. Then:
+
+- **Field enumerator:** the total of vehicles they onboarded and members they registered since
+  their login was created; below it, the same for today, with a date picker to look up any
+  day. The total first, then how many were legacy and how many new. No declared figures:
+  "They should not have to declare vehicles, or even see how many have been declared."
+- **Administrators:** the total of vehicles onboarded, legacy or not; the vehicles onboarded
+  with no driver attached; the members registered; and a daily record of how many vehicles
+  each enumerator onboarded. The declared total stays with the administrator who declares,
+  who is the super administrator alone (VEH-43).
+- **Declaring stays with the administrator.** Only declared vehicles count on the Ministry's
+  dashboard, while every onboarded vehicle verifies (as built since item 57).
+
+Settled in building it (roadmap item 68): the officer who attached a vehicle's **first**
+sticker onboarded it, so a replacement sticker is not a second onboarding; "legacy" means the
+vehicle came with the imported register; "no driver attached" means no member is linked to
+the vehicle; and the area sticker counts are no longer shown to an officer who only captures
+in the field, since they are other officers' numbers (GOV-25). The owner's list of
+administrator figures trailed off ("and the total number of…"); anything further is to be
+asked for.
+**Answered on.** 18 November 2026. **Answered by.** Project owner (voice notes).
+**Recorded at.** PRD revision 1.21, Requirement 9.14; roadmap item 68. Amends GOV-25.
+
 ### GOV-16 · How a new officer gets a first password ✅
 
 **Question.** The System cannot send email yet (GOV-08). How does a new officer, or one whose
@@ -2770,6 +2801,7 @@ recorded in `HANDOFF.md` and referred back rather than resolved in the plan.
 
 | Date | Change |
 |---|---|
+| 21 November 2026 | New **GOV-26**, answered: the owner's voice notes of 18 November 2026 on the dashboards. A vehicle is onboarded once a sticker is attached; the enumerator sees their own vehicles onboarded and members registered, in all and by day, with no declared figures; administrators see vehicles onboarded, those with no driver linked, and each enumerator's daily work. PRD revision 1.21; roadmap item 68. Totals: 126 answered, 35 awaiting, 3 deferred. |
 | 17 November 2026 | The owner accepted the recommendations on **GOV-25** (what each role's dashboard shows, and that the report names officers only to holders of `report.read`) and **VEH-44** (no bulk undeclare and no declare-all-matching for now). Roadmap items 66 and 67 are built to the answer. Totals: 125 answered, 35 awaiting, 3 deferred. |
 | 16 November 2026 (item 61 built) | **MEM-04** is answered: nobody approves a registration, because a member is active the moment it is saved (MEM-20). Totals: 123 answered, 36 awaiting, 3 deferred. |
 | 16 November 2026 (item 61 planned) | The project owner settled **MEM-20**: the 10 open applications (8 drafts, 2 submitted) are made active members by a one-off command run on a go-ahead; administrators amend a registration at any time and the officer who registered gets one correction; `application.decide` and the submit, withdraw, and decision routes are removed; and no second officer is needed, so **MEM-04** is closed for registration. Totals: 122 answered, 37 awaiting, 3 deferred. |

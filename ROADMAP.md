@@ -95,6 +95,7 @@ Each item is independently completable and independently testable. Status values
 | 65 | new-vehicles-list | §9, §22 (rev. 1.20); VEH-42 | done (16 Nov; not pushed) | [plan](plans/65-new-vehicles-list.md) |
 | 66 | onboarding-report | §18, §22 (rev. 1.20); GOV-25 | done (16 Nov; not pushed; GOV-25 answered 17 Nov) | [plan](plans/66-onboarding-report.md) |
 | 67 | role-dashboards | §16, §22 (rev. 1.20); GOV-25 | done (17 Nov; not pushed; per-role table accepted, GOV-25 answered) | [plan](plans/67-role-dashboards.md) |
+| 68 | onboarded-dashboards | §9 Requirement 9.14 (rev. 1.21); GOV-26; amends items 66 and 67 | done (21 Nov) | [plan](plans/68-onboarded-dashboards.md) |
 
 ### Item summaries
 

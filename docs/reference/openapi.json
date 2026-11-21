@@ -22286,7 +22286,7 @@
     "/api/v1/reports/member-counts": {
       "get": {
         "summary": "Counts of members, for the dashboard.",
-        "description": "Item 67. Active and suspended members, and those registered today and in the last seven days, inside the caller’s `member.read` scope.\n\n**Permission required:** `member.read`.",
+        "description": "Item 67. Members registered through the System, in all and today, and the active and suspended members, inside the caller’s `member.read` scope.\n\n**Permission required:** `member.read`.",
         "operationId": "ReportController_memberCounts",
         "tags": [
           "Report"
@@ -22408,15 +22408,80 @@
     },
     "/api/v1/reports/my-work": {
       "get": {
-        "summary": "What the signed-in officer did today and over the last seven days.",
-        "description": "GOV-25. The caller’s own numbers and no one else’s: members they registered, vehicles they recorded, and stickers they attached, today and over the last seven Lagos days. It names no permission because it counts only the caller’s own actions and reads no record.\n\n**Permission required:** `(any signed-in officer)`.",
+        "summary": "What the signed-in officer has done, in all and on one day.",
+        "description": "GOV-25; the owner’s direction of 18 November 2026. The caller’s own numbers and no one else’s: vehicles they onboarded (they attached its first sticker; legacy and new), and members they registered, in all since their account was made and on one Lagos day, with the vehicles they added that have no sticker yet. It names no permission because it counts only the caller’s own actions and reads no record.\n\n**Permission required:** `(any signed-in officer)`.",
         "operationId": "ReportController_myWork",
         "tags": [
           "Report"
         ],
+        "parameters": [
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "description": "The day, YYYY-MM-DD (Lagos). Today when absent.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful response."
+          },
+          "400": {
+            "description": "The day is not a real day.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message",
+                        "requestId"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "Deliberately uninformative. Correlate the requestId with the server log for detail."
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "array",
+                          "description": "Field-level validation failures. Present only on a rejected request body, and describing only the request the caller sent.",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "field",
+                              "message"
+                            ],
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "description": "No valid session cookie was presented.",
@@ -22532,7 +22597,7 @@
     "/api/v1/reports/onboarding": {
       "get": {
         "summary": "How many were onboarded each day, and by which officer.",
-        "description": "Item 66 (GOV-25). Per Lagos day and officer: members registered, vehicles recorded, vehicles declared, and stickers attached, over the records inside the caller’s `report.read` scope. Imported members and vehicles are not counted. At most 92 days; the last 14 by default.\n\n**Permission required:** `report.read`.",
+        "description": "Item 66 (GOV-25; the owner’s direction of 18 November 2026). Per Lagos day and officer: vehicles onboarded (legacy and new), members registered, and vehicles recorded, over the records inside the caller’s `report.read` scope. A vehicle is onboarded on the day its first sticker is attached, by the officer who attached it. Imported members are not counted. At most 92 days; the last 14 by default.\n\n**Permission required:** `report.read`.",
         "operationId": "ReportController_onboarding",
         "tags": [
           "Report"
@@ -22852,7 +22917,7 @@
     "/api/v1/reports/vehicle-counts": {
       "get": {
         "summary": "Counts of vehicles, for the dashboard.",
-        "description": "Item 67. Vehicles in the caller’s scope, those added through the System, and those added today. and those with no sticker yet. `declaration` (not yet declared, and declared) is present only for a holder of `vehicle.declare`.\n\n**Permission required:** `vehicle.read`.",
+        "description": "Item 67; the owner’s direction of 18 November 2026. In the caller’s scope: vehicles onboarded (a sticker attached) in all and today, each split into legacy and new; onboarded vehicles with no member linked; and vehicles with no sticker yet. `declaration` (not yet declared, and declared) is present only for a holder of `vehicle.declare`.\n\n**Permission required:** `vehicle.read`.",
         "operationId": "ReportController_vehicleCounts",
         "tags": [
           "Report"

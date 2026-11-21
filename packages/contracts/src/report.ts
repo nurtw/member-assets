@@ -12,7 +12,10 @@ const day = z
   .refine((value) => {
     // A date parser rolls 30 February forward instead of refusing it.
     const parsed = new Date(`${value}T00:00:00.000Z`);
-    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+    return (
+      !Number.isNaN(parsed.getTime()) &&
+      parsed.toISOString().slice(0, 10) === value
+    );
   }, 'Use a real day.');
 
 // --- Item 64: stickers by origin ---------------------------------------------
@@ -72,6 +75,20 @@ export interface AddedVehiclesResponse {
   total: number;
 }
 
+// --- Onboarded vehicles (the owner's direction of 18 November 2026) ------------
+
+/**
+ * Vehicles onboarded: the total first, and beneath it how many came with the imported
+ * register (`imported`, "legacy" on the screens) and how many were added through the
+ * System (`added`, "new"). A vehicle is onboarded when its first sticker is attached,
+ * and the officer who attached that sticker onboarded it. Declaring is not onboarding.
+ */
+export interface OnboardedVehicles {
+  total: number;
+  imported: number;
+  added: number;
+}
+
 // --- Item 66: the onboarding report -------------------------------------------
 
 export const onboardingReportQuerySchema = z.object({
@@ -85,10 +102,10 @@ export interface OnboardingReportRow {
   /** A Lagos day, `YYYY-MM-DD`. */
   day: string;
   officer: { id: string; name: string };
+  vehiclesOnboarded: OnboardedVehicles;
   membersRegistered: number;
+  /** Vehicles added through the System, whether or not a sticker followed. */
   vehiclesRecorded: number;
-  vehiclesDeclared: number;
-  stickersAttached: number;
 }
 
 export interface OnboardingReport {
@@ -96,26 +113,29 @@ export interface OnboardingReport {
   to: string;
   rows: OnboardingReportRow[];
   totals: {
+    vehiclesOnboarded: OnboardedVehicles;
     membersRegistered: number;
     vehiclesRecorded: number;
-    vehiclesDeclared: number;
-    stickersAttached: number;
   };
 }
 
 // --- Item 67: the counts on Home ------------------------------------------------
 
 export interface MemberCounts {
+  /** Every member registered through the System, in scope. The imported are not. */
+  registered: number;
+  registeredToday: number;
   active: number;
   suspended: number;
-  registeredToday: number;
-  registeredLastSevenDays: number;
 }
 
 export interface VehicleCounts {
-  total: number;
-  addedThroughSystem: number;
-  addedToday: number;
+  /** Every vehicle in scope that has had a sticker attached, whatever its status now. */
+  onboarded: OnboardedVehicles;
+  /** Those whose first sticker was attached today (Lagos). */
+  onboardedToday: OnboardedVehicles;
+  /** Onboarded vehicles with no member (driver) linked. */
+  onboardedWithoutMember: number;
   /**
    * Vehicles with no sticker attached yet (GOV-25, the record officer's backlog). Every
    * vehicle in scope counts whatever its status, because leaving out the retired would
@@ -129,19 +149,31 @@ export interface VehicleCounts {
   declaration?: { notDeclared: number; declared: number };
 }
 
-/** What one officer did on one span of days, by their own hand (GOV-25). */
+export const ownWorkQuerySchema = z.object({
+  /** The day to show beside the totals. Today (Lagos) when absent. */
+  day: day.optional(),
+});
+
+export type OwnWorkQuery = z.infer<typeof ownWorkQuerySchema>;
+
+/** What one officer did, by their own hand. */
 export interface OwnWorkCounts {
+  vehiclesOnboarded: OnboardedVehicles;
   membersRegistered: number;
-  vehiclesRecorded: number;
-  stickersAttached: number;
 }
 
 /**
- * An officer's own numbers, and no one else's (GOV-25, accepted 17 November 2026): the
- * field enumerator's dashboard. Counts only what the caller did, so it reads no record
- * and needs no scope.
+ * An officer's own numbers, and no one else's (GOV-25; the owner's direction of
+ * 18 November 2026): the field enumerator's dashboard. Counts only what the caller did,
+ * so it reads no one else's record and needs no scope.
  */
 export interface OwnWork {
-  today: OwnWorkCounts;
-  lastSevenDays: OwnWorkCounts;
+  /** The Lagos day the officer's account was made: the totals run from it. */
+  since: string;
+  total: OwnWorkCounts;
+  /** The day asked for, `YYYY-MM-DD`. */
+  day: string;
+  onDay: OwnWorkCounts;
+  /** Vehicles the officer added that have no sticker yet, so are not onboarded. */
+  awaitingSticker: number;
 }

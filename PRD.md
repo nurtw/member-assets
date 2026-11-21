@@ -4,9 +4,9 @@
 
 **Owner:** National Union of Road Transport Workers — Anambra State Council
 **Status:** Approved for implementation. All determinations are recorded at §23. Revisions
-1.2 to 1.20 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
-**Document version:** 1.20
-**Last revised:** 16 November 2026
+1.2 to 1.21 (§2.3) are approved by the project owner (`QUESTIONS.md` PAY-09).
+**Document version:** 1.21
+**Last revised:** 21 November 2026
 
 ---
 
@@ -92,6 +92,7 @@ of this document approved by the Union, not a plan-level decision.
 | 1.9 | 5 October 2026 | Outside organisations may apply for themselves through a portal, and see their usage and manage their own tokens; approval is unchanged. Withdrawal for cause is immediate, otherwise on 30 days' notice. Production only; no holder's name outside; one pilot after go-live. The second factor is a go-live gate; no parallel running; the go-live date waits on named gates (§23.27). The dedicated-account percentage is Paystack's fee plus 0.5 per cent. Payment is offered wherever a vehicle is checked, and through a personal pay link that never says what is owed. See §23.10, §23.22–§23.27, Requirements 12.11, 27.7 and 27.8. | The project owner (`QUESTIONS.md` EXT-05, EXT-08, EXT-12, EXT-13, EXT-17, EXT-20, GOV-11, GOV-18, PAY-11, PAY-20, PAY-21), 5 October 2026. |
 | 1.10 | 5 October 2026 | The API administrator may invite a named organisation by a personal link that opens the application form addressed to it. A link is used once, expires, and may be withdrawn; the application it produces is confirmed and decided as any other. See §23.23 and Requirement 12.11. | The project owner (`QUESTIONS.md` EXT-21), 5 October 2026. |
 | 1.11 | 5 October 2026 | A vehicle without a sticker says so on its page each time it is opened, and adding a vehicle ends on a prompt to buy and attach its sticker, which may be closed. While new NURTW stickers are not issued, a vehicle the register holds no barcode for is told so, and nothing is charged. See Requirement 9A.7. | The project owner (`QUESTIONS.md` VEH-30), 5 October 2026. |
+| 1.21 | 21 November 2026 | The dashboards count **vehicles onboarded**, and a vehicle is onboarded once a sticker is attached, whether it is a legacy vehicle or a new one; the officer who attached its first sticker onboarded it. Every count leads with the total and gives the legacy and new split beneath. The field enumerator sees their own vehicles onboarded and members registered since their account was made, and for a day they choose; nothing about declaring. Administrators see the area's vehicles onboarded, those with no driver linked, the members registered, and each officer's work for the day. The onboarding report no longer counts declaring. Requirement 9.14 amended (GOV-26). | The project owner's voice notes of 18 November 2026 (`QUESTIONS.md` GOV-26). |
 | 1.20 | 16 November 2026 | After the first working day of onboarding (14 November), the owner directs the following. The imported members that were not added through the System are removed, by hard delete (`QUESTIONS.md` MIG-08). A vehicle is declared on its plate alone: route type, owner, and chassis number become optional, and no edit, assignment, or update of a vehicle needs it declared (VEH-38; supersedes VEH-34 and the route and owner requirements of revision 1.3). A declared vehicle can also be undeclared (VEH-39). A registration is saved as an active member with a membership number at once, with no draft and no application to review (MEM-20; supersedes the approval flow and MEM-04). An enumerator may edit an imported vehicle once, and senior roles at any time (VEH-40). An administrator may declare many vehicles in one act, chosen from the list (VEH-38). The dashboard and sticker lists tell the imported register's stickers from new ones (VEH-41; amends GOV-21). A detailed list of the vehicles added through the System (VEH-42), a report of members onboarded each day and by whom, and a dashboard for each role (GOV-25). Whether a vehicle is declared is visible to the super administrator alone, and only the super administrator declares or undeclares (VEH-43, supersedes VEH-28). The text of each Requirement is amended as its roadmap item (58 to 67) is built. | The project owner's direction of 16 November 2026 (`QUESTIONS.md` MIG-08, VEH-38 to VEH-42, MEM-20, GOV-25). |
 | 1.19 | 21 October 2026 | A vehicle with an active sticker verifies on every channel, declared or not: declaring counts a vehicle in the external total and changes nothing else. A suspended, retired, disputed, or archived vehicle does not verify, and a vehicle need not be declared to be suspended or retired. A vehicle may therefore verify before it is counted. Reverses VEH-22. See Requirement 9A.1 and §23.19. | The project owner (`QUESTIONS.md` VEH-22), 21 October 2026. |
 | 1.18 | 18 October 2026 | Each payment credited to a member is confirmed to them by SMS, through Termii under the sender name "NURTW", once messages are switched on: the amount paid and what is still owed. The words are the Union's, versioned, and changed in settings. No message carries a NIN, an address, a whole telephone number, or a link. See Requirements 27.8 and 27.14. | The project owner's direction of 18 October 2026 (`QUESTIONS.md` PAY-22, GOV-22), for roadmap item 45. |
@@ -425,15 +426,25 @@ Every figure is taken inside the organisations where the officer holds the permi
 opens the matching list (`member.read`, `vehicle.read`, `sticker.read`, `report.read`), so a
 count never shows more than a list does. The sticker counts say "imported register" and
 "added through the System", never a name and never a scheme's code, and amend `GOV-21` for
-the dashboard alone. The onboarding report counts, per Lagos day and officer, members
-registered through the System (so not the imported ones), vehicles recorded and declared, and
-stickers attached, by the officer's name, over at most 92 days. What each role sees is
+the dashboard alone. *Revision 1.21 (GOV-26):* **a vehicle is onboarded once a sticker is
+attached to it**, legacy or new, and the officer who attached its first sticker onboarded it;
+a replacement sticker is not a second onboarding. Every count of vehicles onboarded gives the
+total first and the legacy and new split beneath. The onboarding report counts, per Lagos day
+and officer, vehicles onboarded, members registered through the System (so not the imported
+ones), and vehicles added, by the officer's name, over at most 92 days. It does not count
+declaring. What each role sees is
 settled (`QUESTIONS.md` GOV-25, accepted 17 November 2026): administrators, the auditor, and the
 super administrator see the area's members, vehicles, and stickers and the onboarding report
 with each officer's name, and the super administrator also sees the vehicles not yet declared;
 the vehicle-record officer sees the area's vehicles and those with no sticker yet; the field
 enumerator sees **only their own work** and no other officer's numbers; the card administrator
-sees the cards waiting. An officer does not read another's count.
+sees the cards waiting. An officer does not read another's count. *Revision 1.21 (GOV-26):*
+the field enumerator's own work is their vehicles onboarded and members registered, in all
+since their account was made, and on a day they choose (today by default), with the vehicles
+they added that still have no sticker; never a declaration. An administrator's vehicles are
+led by those onboarded, in all and today, with those that have no driver (member) linked and
+those with no sticker yet; members by those registered, in all and today; and today's work by
+each officer's name. The declared figures remain the super administrator's alone (VEH-43).
 
 ---
 

@@ -1146,12 +1146,23 @@ per-address limits were shared by everyone (19 October 2026).
 - **The onboarding report is by Lagos day** (`lagosDay`, `readDayRange` in
   `@nurtw/domain`), at most 92 days, 14 by default. A member counts only if a registration
   record names who registered them, so the imported members are not counted.
+- **A vehicle is onboarded once a sticker is attached** (GOV-26, the owner's voice notes of
+  18 November 2026; item 68), legacy or new. The officer who attached its **first** sticker
+  onboarded it (`firstAttachments` in `@nurtw/domain`): a replacement is never a second
+  onboarding and never credits its attacher. Every count of vehicles onboarded is
+  `{ total, imported, added }`, shown as the total with "legacy" and "new" beneath. Never
+  count `stickersAttached` as vehicles onboarded.
+- **No dashboard count but the super administrator's says anything of declaring.** The
+  onboarding report and `my-work` carry no declared figure; `report.e2e-spec.ts` fails on the
+  word in either.
 - **Home's counts follow the owner's table for each role** (GOV-25, accepted 17 November 2026;
   `components/dashboard-counts.tsx`, which says it in its header). Blocks are opened by the
   permission that opens the matching list, and the area blocks (vehicles) only for an officer
   who oversees (`vehicle.update`, `report.read`, or `vehicle.declare`): a field enumerator
-  sees **only their own work** from `GET /reports/my-work`, never another officer's numbers.
-  They load once, with no polling.
+  sees **only their own work** from `GET /reports/my-work`, never another officer's numbers,
+  and so no area sticker counts either. `my-work` gives totals since the account was made
+  and one day (`?day=`, today by default) chosen on Home's date picker. They load once,
+  with no polling.
 - **`GET /reports/my-work` is `@SignedIn()`** and is pinned in `openapi.e2e-spec.ts` with the
   argument: it counts only the caller's own actions and reads no record. It is never scoped by
   organisation and never takes a user id from the request.

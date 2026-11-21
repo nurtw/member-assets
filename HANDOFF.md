@@ -1,6 +1,6 @@
 # Session Handoff
 
-**Last revised:** 17 November 2026
+**Last revised:** 21 November 2026
 
 Cold start: read `CLAUDE.md` first. Three rules outrank every default: no
 `Co-Authored-By` or "Generated with Claude Code" anywhere; `data/` stays out of version
@@ -8,55 +8,54 @@ control, docs, plans, commits, and fixtures; the previous operator is never name
 
 ## Status
 
-Items 58 to 62 are live (origin `bb8d94e`, Neon migrated and seeded, DigitalOcean active).
-**Items 63 to 67 are built and tested locally, not committed, pushed, or deployed.** That
-finishes the owner's roadmap of 16 November (items 58 to 67).
+Item 68 is committed and pushed to origin on the owner's go-ahead of 21 November; the
+DigitalOcean deploy follows the push (check its state with `doctl`, memory: digitalocean-app).
 
 ## Active roadmap item
 
-None open. Next: the owner's go-ahead to commit, push, and deploy 63 to 67.
+None open. Item 68 — onboarded-dashboards (`plans/68-onboarded-dashboards.md`), from the
+owner's voice notes of 18 November (`QUESTIONS.md` GOV-26, PRD revision 1.21), is done.
 
 ## Done this session
 
-- **63 bulk declaration:** `POST /vehicles/declare-many` (`vehicle.declare`, 50 ids), each id
-  through `declareRecorded`; partial success with a reason per skip; ticks on the Vehicles list.
-- **64 to 67:** `src/report/` (read-only, scope-bound): sticker origin counts (imported or
-  added), `GET /reports/added-vehicles` (no phone or address), the onboarding report by Lagos
-  day and officer, and member and vehicle counts. Web: Home counts (`dashboard-counts.tsx`),
-  `/vehicles/added`, `/reports/onboarding`, navigation entries.
-- Domain: `readDayRange`, `tallyOnboarding`, `lagosDay`, `stickerOriginGroup`.
-- No migration and no new permission in 63 to 67, so no `db:deploy` or `db:seed` is needed.
-- **GOV-25 and VEH-44 are answered** (the owner accepted the recommendations, 17 November).
-  Built to it: `withoutSticker` and `declaration.notDeclared`, `GET /reports/my-work`
-  (`@SignedIn`, the field enumerator's own numbers only), a "Your work" block, the vehicles
-  block only for officers who oversee, and `vehicle.update` among the permissions that open
-  Home (the vehicle-record officer now has a Home).
-- Docs: PRD 9.12 to 9.14, `CLAUDE.md`, the register (VEH-44 and GOV-25 answered, totals 125 /
-  35 / 3), `openapi.json`.
+- **Onboarded = a sticker attached.** `firstAttachments` and `countOnboarded` in
+  `@nurtw/domain`: the first sticker's attacher onboarded the vehicle; replacements never count.
+- `GET /reports/my-work?day=`: totals since the account was made, one chosen day, and the
+  vehicles the officer added with no sticker yet. No declaring.
+- `vehicle-counts`: onboarded and onboarded today (legacy/new), onboarded with no member
+  linked, no sticker yet; declared still only for `vehicle.declare`.
+- `member-counts`: registered (all, today), active, suspended.
+- Onboarding report: vehicles onboarded (split), members registered, vehicles added. The
+  declared column is gone.
+- Home: "Your work" with a date picker; area sticker counts hidden from field-only officers;
+  "Onboarded today" lists each officer. Report columns updated.
+- Docs: PRD 1.21 (Requirement 9.14), GOV-26 (totals 126 / 35 / 3), `CLAUDE.md`, roadmap,
+  `openapi.json`.
 
 ## Current state
 
-- Verified locally: domain 565, web 125, typecheck, lint, and the full e2e suite, 641 of 641
-  across 28 files.
-- **The e2e setup now unsets `CLOUDINARY_URL`** (`test/setup-env.ts`). `.env` holds the live
-  one, so the photograph tests were uploading to the Union's real Cloudinary account and
-  failing with a 500 whenever that call ran slow. They now use local storage (`var/media`).
-- Docker Desktop stops by itself; blank Prisma errors in e2e mean it is down (memory:
-  docker-desktop-local-db). Files run in parallel, so a test must not assert a global count.
-- No question blocks anything built. Bulk undeclare and declare-all-matching stay unbuilt by the
-  owner's answer (VEH-44); build them together or not at all.
-- Known issues: the Members list does not show who registered a member; legacy `PENDING`
-  wording on the member and vehicle pages; a member's signature cannot be changed after
+- Verified locally: domain 569, web 125, typecheck (api, web), lint (api, web), and the e2e
+  report suite 35 of 35 and openapi suite 15 of 15. The full e2e suite was not rerun.
+- Run e2e and `docs:openapi` with `DATABASE_URL` exported for the local database (from
+  `.env.example`): `apps/api/.env` points at Neon, and `dotenv` never overrides an export.
+  Give `docs:openapi` `NODE_ENV=test` too, so its boot runs no start-up jobs.
+- No migration and no new permission: nothing to run on Neon.
+- The Field enumerator role holds no `sticker.attach`; enumerators who attach stickers hold it
+  by grant. "Your work" counts by who attached, whatever the role.
+- Known issues (unchanged): the Members list does not show who registered a member; legacy
+  `PENDING` wording on the member and vehicle pages; a signature cannot be changed after
   registration.
 
 ## Next steps
 
-- On the owner's go-ahead: commit, push, and watch the DigitalOcean deploy. Nothing to run on
-  Neon for 63 to 67.
-- Check on the first live use: the dashboards for each role, as the owner described them.
+- Check the dashboards on the live System for each role: enumerator, administrator, super administrator.
+- Ask the owner whether the administrator's list (which trailed off in the voice note) needs
+  more figures.
 
 ## Do NOT
 
+- Count `stickersAttached` as vehicles onboarded, or show a declared figure to anyone but a
+  holder of `vehicle.declare`.
 - Add any route that deletes a member, or run the removal command again without a go-ahead.
 - Run the activation command again, edit `apps/api/.env`, write Neon rows, or push without a go-ahead.
 - Start a `setInterval` that touches the database: register with `HousekeepingService`.

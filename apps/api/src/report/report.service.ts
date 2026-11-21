@@ -4,14 +4,18 @@ import type {
   AddedVehiclesQuery,
   AddedVehiclesResponse,
   MemberCounts,
+  OnboardedVehicles,
   OnboardingReport,
   OnboardingReportQuery,
   OwnWork,
+  OwnWorkQuery,
   StickerOriginCounts,
   VehicleCounts,
 } from '@nurtw/contracts';
 import {
+  countOnboarded,
   decidePermission,
+  firstAttachments,
   lagosDay,
   lagosDayBegins,
   listEffectivePermissions,
@@ -20,6 +24,7 @@ import {
   tallyOnboarding,
   type OnboardingEvent,
   type PermissionAssignments,
+  type StickerAttachment,
 } from '@nurtw/domain';
 import type { Prisma } from '@prisma/client';
 
@@ -230,7 +235,9 @@ export class ReportService {
         recordedBy: recorderOf.get(row.id) || null,
         recordedAt: row.createdAt.toISOString(),
         sticker: { attached: status !== undefined, status: status ?? null },
-        ...(may('vehicle.declare') ? { declared: row.declaredAt !== null } : {}),
+        ...(may('vehicle.declare')
+          ? { declared: row.declaredAt !== null }
+          : {}),
         ...(may('vehicle.read_restricted')
           ? {
               owner: row.owner?.ownerName ?? null,
@@ -247,11 +254,12 @@ export class ReportService {
   // --- Item 66: the onboarding report ----------------------------------------------
 
   /**
-   * Counts per Lagos day and per officer of members registered, vehicles recorded,
-   * vehicles declared, and stickers attached, by the officer's name, over the
-   * records inside the caller's `report.read` scope. Only what the System
-   * recorded: a member counts if a registration records who registered them, so
-   * the imported members are not counted. Nothing new is collected.
+   * Counts per Lagos day and per officer of vehicles onboarded (legacy and new), members
+   * registered, and vehicles recorded, by the officer's name, over the records inside the
+   * caller's `report.read` scope (the owner's direction of 18 November 2026). A vehicle is
+   * onboarded on the day its first sticker is attached, by the officer who attached it.
+   * Only what the System recorded: a member counts if a registration records who
+   * registered them, so the imported members are not counted. Nothing new is collected.
    */
   async onboarding(
     userId: string,
@@ -266,7 +274,7 @@ export class ReportService {
     const scopes = this.scopesHolding(assignments, 'report.read');
     const between = { gte: range.starts, lt: range.ends };
 
-    const [applications, audit, stickers] = await Promise.all([
+    const [applications, recorded, attachments] = await Promise.all([
       this.prisma.membershipApplication.findMany({
         where: {
           createdByUserId: { not: null },
@@ -277,24 +285,27 @@ export class ReportService {
       }),
       this.prisma.auditEvent.findMany({
         where: {
-          action: { in: ['vehicle.record', 'vehicle.declare'] },
+          action: 'vehicle.record',
           actorUserId: { not: null },
           createdAt: between,
           organisation: {
             OR: scopes.map((scope) => ({ path: { startsWith: scope } })),
           },
         },
-        select: { action: true, actorUserId: true, createdAt: true },
+        select: { actorUserId: true, createdAt: true },
       }),
-      this.prisma.sticker.findMany({
-        where: {
-          attachedAt: between,
-          attachedByUserId: { not: null },
-          vehicle: this.vehicleScope(scopes),
-        },
-        select: { attachedByUserId: true, attachedAt: true },
+      // Every attachment of a vehicle that had one in the range, so that a vehicle
+      // first onboarded before the range is not counted again for a replacement.
+      this.attachments({
+        AND: [
+          this.vehicleScope(scopes),
+          { stickers: { some: { attachedAt: between } } },
+        ],
       }),
     ]);
+    const onboardings = firstAttachments(attachments).filter(
+      (row) => row.at >= range.starts && row.at < range.ends,
+    );
 
     const events: OnboardingEvent[] = [
       ...applications.map((row) => ({
@@ -302,19 +313,24 @@ export class ReportService {
         officerId: row.createdByUserId!,
         kind: 'membersRegistered' as const,
       })),
-      ...audit.map((row) => ({
+      ...recorded.map((row) => ({
         at: row.createdAt,
         officerId: row.actorUserId!,
-        kind:
-          row.action === 'vehicle.record'
-            ? ('vehiclesRecorded' as const)
-            : ('vehiclesDeclared' as const),
+        kind: 'vehiclesRecorded' as const,
       })),
-      ...stickers.map((row) => ({
-        at: row.attachedAt!,
-        officerId: row.attachedByUserId!,
-        kind: 'stickersAttached' as const,
-      })),
+      ...onboardings.flatMap((row): OnboardingEvent[] =>
+        row.officerId === null
+          ? []
+          : [
+              {
+                at: row.at,
+                officerId: row.officerId,
+                kind: row.imported
+                  ? 'importedVehiclesOnboarded'
+                  : 'addedVehiclesOnboarded',
+              },
+            ],
+      ),
     ];
 
     const tallied = tallyOnboarding(events);
@@ -323,76 +339,144 @@ export class ReportService {
       where: { id: { in: officerIds } },
       select: { id: true, fullName: true },
     });
-    const nameOf = new Map(officers.map((officer) => [officer.id, officer.fullName]));
+    const nameOf = new Map(
+      officers.map((officer) => [officer.id, officer.fullName]),
+    );
 
-    const totals = {
-      membersRegistered: 0,
-      vehiclesRecorded: 0,
-      vehiclesDeclared: 0,
-      stickersAttached: 0,
-    };
+    const onboarded = (imported: number, added: number): OnboardedVehicles => ({
+      total: imported + added,
+      imported,
+      added,
+    });
+    let membersRegistered = 0;
+    let vehiclesRecorded = 0;
+    let imported = 0;
+    let added = 0;
     const rows = tallied.map((row) => {
-      totals.membersRegistered += row.membersRegistered;
-      totals.vehiclesRecorded += row.vehiclesRecorded;
-      totals.vehiclesDeclared += row.vehiclesDeclared;
-      totals.stickersAttached += row.stickersAttached;
+      membersRegistered += row.membersRegistered;
+      vehiclesRecorded += row.vehiclesRecorded;
+      imported += row.importedVehiclesOnboarded;
+      added += row.addedVehiclesOnboarded;
       return {
         day: row.day,
-        officer: { id: row.officerId, name: nameOf.get(row.officerId) ?? 'Unknown' },
+        officer: {
+          id: row.officerId,
+          name: nameOf.get(row.officerId) ?? 'Unknown',
+        },
+        vehiclesOnboarded: onboarded(
+          row.importedVehiclesOnboarded,
+          row.addedVehiclesOnboarded,
+        ),
         membersRegistered: row.membersRegistered,
         vehiclesRecorded: row.vehiclesRecorded,
-        vehiclesDeclared: row.vehiclesDeclared,
-        stickersAttached: row.stickersAttached,
       };
     });
-    return { from: range.from, to: range.to, rows, totals };
+    return {
+      from: range.from,
+      to: range.to,
+      rows,
+      totals: {
+        vehiclesOnboarded: onboarded(imported, added),
+        membersRegistered,
+        vehiclesRecorded,
+      },
+    };
   }
 
   // --- Item 67: the counts on Home -----------------------------------------------------
 
-  async memberCounts(userId: string, now: Date = new Date()): Promise<MemberCounts> {
+  async memberCounts(
+    userId: string,
+    now: Date = new Date(),
+  ): Promise<MemberCounts> {
     const assignments = await this.permissions.loadAssignments(userId);
     const scopes = this.scopesHolding(assignments, 'member.read');
     const member = this.memberScope(scopes);
     const today = lagosDayBegins(lagosDay(now));
-    const week = new Date(today.getTime() - 6 * DAY_MS);
-    const registeredSince = (since: Date) =>
+    const registeredSince = (since?: Date) =>
       this.prisma.membershipApplication.count({
-        where: { createdByUserId: { not: null }, createdAt: { gte: since }, member },
+        where: {
+          createdByUserId: { not: null },
+          ...(since ? { createdAt: { gte: since } } : {}),
+          member,
+        },
       });
 
-    const [active, suspended, registeredToday, registeredLastSevenDays] =
-      await Promise.all([
-        this.prisma.member.count({ where: { status: 'ACTIVE', ...member } }),
-        this.prisma.member.count({ where: { status: 'SUSPENDED', ...member } }),
-        registeredSince(today),
-        registeredSince(week),
-      ]);
-    return { active, suspended, registeredToday, registeredLastSevenDays };
+    const [registered, registeredToday, active, suspended] = await Promise.all([
+      registeredSince(),
+      registeredSince(today),
+      this.prisma.member.count({ where: { status: 'ACTIVE', ...member } }),
+      this.prisma.member.count({ where: { status: 'SUSPENDED', ...member } }),
+    ]);
+    return { registered, registeredToday, active, suspended };
   }
 
-  async vehicleCounts(userId: string, now: Date = new Date()): Promise<VehicleCounts> {
+  /**
+   * The vehicles onboarded in scope, led by the total (the owner's direction of
+   * 18 November 2026). No status is left out of any figure here but the declaration
+   * backlog, so a count cannot say which vehicle is retired (VEH-28).
+   */
+  async vehicleCounts(
+    userId: string,
+    now: Date = new Date(),
+  ): Promise<VehicleCounts> {
     const assignments = await this.permissions.loadAssignments(userId);
-    const scoped = this.vehicleScope(this.scopesHolding(assignments, 'vehicle.read'));
+    const scoped = this.vehicleScope(
+      this.scopesHolding(assignments, 'vehicle.read'),
+    );
     const today = lagosDayBegins(lagosDay(now));
+    const onboarded: Prisma.VehicleWhereInput = {
+      ...scoped,
+      stickers: { some: { attachedAt: { not: null } } },
+    };
+    // The first sticker today: one attached today, and none before.
+    const onboardedToday: Prisma.VehicleWhereInput = {
+      ...scoped,
+      stickers: {
+        some: { attachedAt: { gte: today } },
+        none: { attachedAt: { lt: today } },
+      },
+    };
+    const split = async (
+      where: Prisma.VehicleWhereInput,
+    ): Promise<OnboardedVehicles> => {
+      const [imported, added] = await Promise.all([
+        this.prisma.vehicle.count({
+          where: { ...where, isLegacyImport: true },
+        }),
+        this.prisma.vehicle.count({
+          where: { ...where, isLegacyImport: false },
+        }),
+      ]);
+      return { total: imported + added, imported, added };
+    };
 
-    const [total, addedThroughSystem, addedToday, withoutSticker] = await Promise.all([
-      this.prisma.vehicle.count({ where: scoped }),
-      this.prisma.vehicle.count({ where: { ...scoped, isLegacyImport: false } }),
-      this.prisma.vehicle.count({
-        where: { ...scoped, isLegacyImport: false, createdAt: { gte: today } },
-      }),
-      // No status is left out: the count must not say which vehicles are retired (VEH-28).
-      this.prisma.vehicle.count({
-        where: { ...scoped, stickers: { none: { attachedAt: { not: null } } } },
-      }),
-    ]);
+    const [all, todays, onboardedWithoutMember, withoutSticker] =
+      await Promise.all([
+        split(onboarded),
+        split(onboardedToday),
+        this.prisma.vehicle.count({
+          where: { ...onboarded, declaredByMemberId: null },
+        }),
+        this.prisma.vehicle.count({
+          where: {
+            ...scoped,
+            stickers: { none: { attachedAt: { not: null } } },
+          },
+        }),
+      ]);
+    const counts: VehicleCounts = {
+      onboarded: all,
+      onboardedToday: todays,
+      onboardedWithoutMember,
+      withoutSticker,
+    };
 
     // The declaration status is for a holder of `vehicle.declare` alone, and only
     // over the vehicles that holder may see it for (VEH-28, VEH-43).
     const declareScopes = this.scopesHolding(assignments, 'vehicle.declare');
     if (declareScopes.length === 0) {
-      return { total, addedThroughSystem, addedToday, withoutSticker };
+      return counts;
     }
     const declarable = this.vehicleScope(declareScopes);
     const [notDeclared, declared] = await Promise.all([
@@ -407,40 +491,102 @@ export class ReportService {
         where: { ...declarable, declaredAt: { not: null } },
       }),
     ]);
-    return {
-      total,
-      addedThroughSystem,
-      addedToday,
-      withoutSticker,
-      declaration: { notDeclared, declared },
-    };
+    return { ...counts, declaration: { notDeclared, declared } };
   }
 
   /**
-   * The caller's own work, today and over the last seven Lagos days (GOV-25, the field
-   * enumerator's dashboard): members they registered, vehicles they recorded, stickers they
-   * attached. Only their own actions are counted, so it reads no one else's record and
-   * needs no scope. An imported member has no registering officer, so is never counted.
+   * The caller's own work (GOV-25; the owner's direction of 18 November 2026, the field
+   * enumerator's dashboard): vehicles they onboarded and members they registered, in all
+   * since their account was made and on one Lagos day. A vehicle is theirs when they
+   * attached its first sticker, legacy or new. Only their own actions are counted, so it
+   * reads no one else's record and needs no scope. An imported member has no registering
+   * officer, so is never counted. Nothing about declaring is counted or said.
    */
-  async ownWork(userId: string, now: Date = new Date()): Promise<OwnWork> {
-    const today = lagosDayBegins(lagosDay(now));
-    const week = new Date(today.getTime() - 6 * DAY_MS);
-    const since = async (from: Date) => {
-      const [membersRegistered, vehiclesRecorded, stickersAttached] = await Promise.all([
+  async ownWork(
+    userId: string,
+    query: OwnWorkQuery,
+    now: Date = new Date(),
+  ): Promise<OwnWork> {
+    const day = query.day ?? lagosDay(now);
+    const starts = lagosDayBegins(day);
+    const ends = new Date(starts.getTime() + DAY_MS);
+
+    const [user, attachments, membersTotal, membersOnDay, recorded] =
+      await Promise.all([
+        this.prisma.user.findUniqueOrThrow({
+          where: { id: userId },
+          select: { createdAt: true },
+        }),
+        this.attachments({ stickers: { some: { attachedByUserId: userId } } }),
         this.prisma.membershipApplication.count({
-          where: { createdByUserId: userId, createdAt: { gte: from } },
+          where: { createdByUserId: userId },
         }),
-        this.prisma.auditEvent.count({
-          where: { action: 'vehicle.record', actorUserId: userId, createdAt: { gte: from } },
+        this.prisma.membershipApplication.count({
+          where: {
+            createdByUserId: userId,
+            createdAt: { gte: starts, lt: ends },
+          },
         }),
-        this.prisma.sticker.count({
-          where: { attachedByUserId: userId, attachedAt: { gte: from } },
+        this.prisma.auditEvent.findMany({
+          where: {
+            action: 'vehicle.record',
+            actorUserId: userId,
+            subjectType: 'vehicle',
+            subjectId: { not: null },
+          },
+          select: { subjectId: true },
         }),
       ]);
-      return { membersRegistered, vehiclesRecorded, stickersAttached };
+
+    const mine = firstAttachments(attachments).filter(
+      (row) => row.officerId === userId,
+    );
+    const onDay = mine.filter((row) => row.at >= starts && row.at < ends);
+    const recordedIds = [...new Set(recorded.map((row) => row.subjectId!))];
+    const awaitingSticker =
+      recordedIds.length === 0
+        ? 0
+        : await this.prisma.vehicle.count({
+            where: {
+              id: { in: recordedIds },
+              stickers: { none: { attachedAt: { not: null } } },
+            },
+          });
+
+    return {
+      since: lagosDay(user.createdAt),
+      total: {
+        vehiclesOnboarded: countOnboarded(mine),
+        membersRegistered: membersTotal,
+      },
+      day,
+      onDay: {
+        vehiclesOnboarded: countOnboarded(onDay),
+        membersRegistered: membersOnDay,
+      },
+      awaitingSticker,
     };
-    const [todayCounts, weekCounts] = await Promise.all([since(today), since(week)]);
-    return { today: todayCounts, lastSevenDays: weekCounts };
+  }
+
+  /** Every sticker attachment of the vehicles that match, for `firstAttachments`. */
+  private async attachments(
+    vehicle: Prisma.VehicleWhereInput,
+  ): Promise<StickerAttachment[]> {
+    const rows = await this.prisma.sticker.findMany({
+      where: { attachedAt: { not: null }, vehicleId: { not: null }, vehicle },
+      select: {
+        vehicleId: true,
+        attachedAt: true,
+        attachedByUserId: true,
+        vehicle: { select: { isLegacyImport: true } },
+      },
+    });
+    return rows.map((row) => ({
+      vehicleId: row.vehicleId!,
+      at: row.attachedAt!,
+      officerId: row.attachedByUserId,
+      imported: row.vehicle?.isLegacyImport ?? false,
+    }));
   }
 
   // --- Scope ---------------------------------------------------------------------------
@@ -477,7 +623,9 @@ export class ReportService {
 
   private memberScope(scopes: readonly string[]): Prisma.MemberWhereInput {
     return {
-      organisation: { OR: scopes.map((scope) => ({ path: { startsWith: scope } })) },
+      organisation: {
+        OR: scopes.map((scope) => ({ path: { startsWith: scope } })),
+      },
     };
   }
 }
